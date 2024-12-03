@@ -2,8 +2,8 @@
 # coding: utf-8
 
 # # Copy raw images into one folder to use for CellProfiler processing
-#
-# Currently, the images are located nest deep within multiple folders.
+# 
+# Currently, the images are located nest deep within multiple folders. 
 # For best practices, we will copy the images (preserving metadata) to one folder that can be used for CellProfiler processing.
 
 # ## Import libraries
@@ -11,23 +11,27 @@
 # In[1]:
 
 
+import argparse
 import pathlib
 import shutil
 
 import tqdm
+
 
 # ## Set paths and variables
 
 # In[2]:
 
 
-# argparse = argparse.ArgumentParser(description='Copy files from one directory to another')
-# argparse.add_argument('--HPC', type=bool, help='Type of compute to run on', required=True)
+argparse = argparse.ArgumentParser(
+    description="Copy files from one directory to another"
+)
+argparse.add_argument(
+    "--HPC", type=bool, help="Type of compute to run on", required=True
+)
 
-# args = argparse.parse_args()
-# compute_type = args.HPC
-
-HPC = False
+args = argparse.parse_args()
+HPC = args.HPC
 
 
 # In[3]:
@@ -41,7 +45,7 @@ if not HPC:
     ).resolve(strict=True)
 else:
     parent_dir = pathlib.Path(
-        "/pl/active/koala/GFF_Data/GFF-Raw/Cell Painting-NF0014 Thawed3-Pilot Drug Screening/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
+        "/pl/active/koala/GFF_Data/GFF-Raw/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy/"
     ).resolve(strict=True)
 
 # Create the NF0014 folder next to the parent_dir (same level in the hierarchy)
@@ -69,3 +73,4 @@ for image_file in tqdm.tqdm(parent_dir.rglob("*")):
         for image in dir.rglob("*/*"):
             if image.suffix in image_extensions:
                 shutil.copy2(image, well_dir)
+

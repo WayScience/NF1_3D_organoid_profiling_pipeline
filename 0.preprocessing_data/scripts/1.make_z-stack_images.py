@@ -12,6 +12,7 @@ import numpy as np
 import tifffile as tiff
 import tqdm
 
+
 # In[2]:
 
 
@@ -74,3 +75,4 @@ for well_dir in tqdm.tqdm(input_dirs):
         output_path = output_z_stack_dir / f"{well}" / f"{channel_name}.tif"
         output_path.parent.mkdir(exist_ok=True, parents=True)
         tiff.imwrite(output_path, images_to_stack)
+
