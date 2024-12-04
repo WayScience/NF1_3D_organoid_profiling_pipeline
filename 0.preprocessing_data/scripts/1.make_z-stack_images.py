@@ -27,6 +27,7 @@ output_z_stack_dir.mkdir(exist_ok=True, parents=True)
 
 # get a list of all dirs in the input dir
 input_dirs = [x for x in input_dir.iterdir() if x.is_dir()]
+input_dirs.sort()
 print(f"There are {len(input_dirs)} directories in the input directory.")
 
 
@@ -72,7 +73,7 @@ for well_dir in tqdm.tqdm(input_dirs):
             images_to_stack.append(tiff.imread(filepath))
         well = str(filepath.parent).split("/")[-1]
         images_to_stack = np.array(images_to_stack)
-        output_path = output_z_stack_dir / f"{well}" / f"{channel_name}.tif"
+        output_path = output_z_stack_dir / f"{well}_{channel_name}.tif"
         output_path.parent.mkdir(exist_ok=True, parents=True)
         tiff.imwrite(output_path, images_to_stack)
 
