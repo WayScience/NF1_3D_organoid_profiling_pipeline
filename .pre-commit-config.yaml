@@ -13,14 +13,13 @@ repos:
         name: isort (python)
         args: ["--profile", "black", "--filter-files"]
 
-    #Code formatter for both python files and jupyter notebooks
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.14.11
-
+  #Code formatter for both python files and jupyter notebooks
+-   repo: https://github.com/psf/black
+    rev: 22.10.0
     hooks:
-      # Run the formatter.
-    -   id: ruff-format
+    -   id: black-jupyter
+    -   id: black
+        language_version: python3.10
 
 -   repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
@@ -29,20 +28,23 @@ repos:
         additional_dependencies: [isort==5.6.4]
         args: [--profile=black]
 
-    # additional hooks found with in the pre-commit lib
+
+  # remove unused imports
+-   repo: https://github.com/hadialqattan/pycln.git
+    rev: v2.4.0
+    hooks:
+    -   id: pycln
+
+  # additional hooks found with in the pre-commit lib
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: v5.0.0
     hooks:
     -   id: trailing-whitespace # removes trailing white spaces
     -   id: mixed-line-ending # removes mixed end of line
         args:
         -   --fix=lf
--   repo: local
-    hooks:
-    -   id: shellcheck
-        name: shellcheck
-        description: Test shell scripts with shellcheck
-        entry: shellcheck
-        language: python
-        types: [shell]
-        require_serial: true # shellcheck can detect sourcing this way
+    -   id: pretty-format-json # JSON Formatter
+        args:
+        -   --autofix
+        -   --indent=4
+        -   --no-sort-keys
