@@ -1,0 +1,41 @@
+name: GFF_cellprofiler
+
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+
+dependencies:
+  - conda-forge::python=3.8
+  - conda-forge::ipykernel
+  - conda-forge::jupyter
+  - conda-forge::nbconvert
+  - conda-forge::nb_conda_kernels
+  - conda-forge::pip
+  - conda-forge::numpy
+  - conda-forge::matplotlib
+  - conda-forge::pandas
+  - conda-forge::scikit-learn
+  - conda-forge::scikit-learn
+  - conda-forge::mahotas
+  - conda-forge::gtk2
+  - conda-forge::openjdk
+  # these are strict because that is how it is on the CellProfiler wiki
+  # had to move up version for Jinja2 to use jupyter nbconvert
+  - conda-forge::Jinja2=3.0.3
+  - conda-forge::inflect=5.3.0
+  - conda-forge::wxpython=4.1.0
+  - conda-forge::sentry-sdk=0.18.0
+  - conda-forge::mysqlclient=1.4.4
+  - pip:
+      - cellprofiler==4.2.6
+      - cytotable
+      - pycytominer
+      - torch==2.2.1
+      - torchvision
+      - tensorflow
+      - omnipose
+      - cellpose
+      - stardist
+      - nvidia-cudnn-cu11==8.6.0.163
+      - tensorflow==2.11
