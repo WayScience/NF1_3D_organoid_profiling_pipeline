@@ -108,7 +108,6 @@ for image_index in range(imgs.shape[0]):
         image_stack_2_5D, np.max(image_stack_window, axis=0)[np.newaxis, :, :], axis=0
     )
 
-image_stack_2_5D = np.array(image_stack_2_5D)
 imgs = np.array(image_stack_2_5D)
 print("2.5D image stack shape:", image_stack_2_5D.shape)
 
