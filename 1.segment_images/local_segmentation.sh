@@ -7,6 +7,7 @@ conda activate GFF_segmentation
 
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
+# run the notebooks with papermill
 if [ "$NOTEBOOK" = True ]; then
     cd notebooks/ || exit
     papermill 0.segment_nuclei_organoids.ipynb 0.segment_nuclei_organoids.ipynb
