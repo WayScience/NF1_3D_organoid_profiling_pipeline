@@ -204,3 +204,5 @@ nextflow_pipeline/workflows/work/*
 7.technical_analysis/processed_data/*
 models/*
 data/*
+1.segment_images/examples/raw_z_input/*
+1.segment_images/processed_data/*
