@@ -78,9 +78,10 @@ files = sorted(input_dir.glob("*"))
 files = [str(x) for x in files if x.suffix in image_extensions]
 
 
-# In[4]:
+# In[ ]:
 
 
+# get the nuclei image
 for f in files:
     if "405" in f:
         nuclei = io.imread(f)
@@ -93,7 +94,7 @@ original_z_slice_count = len(imgs)
 print("number of z slices in the original image:", original_z_slice_count)
 
 
-# In[5]:
+# In[ ]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -114,7 +115,7 @@ print("2.5D image stack shape:", image_stack_2_5D.shape)
 
 # ## Cellpose
 
-# In[6]:
+# In[ ]:
 
 
 # Load the model
@@ -123,7 +124,6 @@ use_GPU = core.use_gpu()
 model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
 
 # Perform segmentation
-# labels, details, _ = model.eval(imgs, diameter=50, channels=[0, 0])
 labels, details, _ = model.eval(
     imgs, diameter=75, channels=[0, 0], z_axis=0, stitch_threshold=0.8
 )

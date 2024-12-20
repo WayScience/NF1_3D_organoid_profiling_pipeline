@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# This notebook makes gifs of the z-stack segmentaions
+
 # In[1]:
 
 
