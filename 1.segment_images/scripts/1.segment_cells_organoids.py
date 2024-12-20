@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -17,9 +17,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import tifffile
-from cellpose import core, io, models
+from cellpose import core
+from cellpose import io as cellpose_io
+from cellpose import models
 
-io.logger_setup()
+cellpose_io.logger_setup()
 from cellpose.io import imread
 from PIL import Image
 from skimage import io
@@ -83,9 +85,10 @@ files = sorted(input_dir.glob("*"))
 files = [str(x) for x in files if x.suffix in image_extensions]
 
 
-# In[4]:
+# In[ ]:
 
 
+# find the cytoplasmic channels in the image set
 for f in files:
     print(f)
     if "405" in f:
@@ -110,7 +113,7 @@ original_nuclei_z_count = nuclei.shape[0]
 original_cyto_z_count = cyto.shape[0]
 
 
-# In[5]:
+# In[ ]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -140,7 +143,6 @@ for image_index in range(nuclei.shape[0]):
         image_stack_2_5D, np.max(image_stack_window, axis=0)[np.newaxis, :, :], axis=0
     )
 
-image_stack_2_5D = np.array(image_stack_2_5D)
 nuclei = np.array(image_stack_2_5D)
 print("2.5D nuclei image stack shape:", nuclei.shape)
 
@@ -186,7 +188,7 @@ for z in range(nuclei.shape[0]):
 
 # ## Cellpose
 
-# In[8]:
+# In[ ]:
 
 
 # model_type='cyto' or 'nuclei' or 'cyto2' or 'cyto3'
@@ -198,6 +200,8 @@ diameter = 200
 masks_all_dict = {"masks": [], "imgs": []}
 imgs = np.array(imgs)
 
+# get masks for all the images
+# save to a dict for later use
 for img in imgs:
     masks, flows, styles, diams = model.eval(img, diameter=diameter, channels=channels)
     masks_all_dict["masks"].append(masks)
@@ -229,7 +233,7 @@ if in_notebook:
         plt.show()
 
 
-# In[11]:
+# In[ ]:
 
 
 # reverse sliding window max projection
@@ -237,9 +241,14 @@ full_mask_z_stack = []
 reconstruction_dict = {index: [] for index in range(original_cyto_z_count)}
 print(f"Decoupling the sliding window max projection of {window_size} slices")
 
+# decouple the sliding window max projection based on window size
+# each slice in a stack
 for z_stack_mask_index in range(len(masks_all)):
+    # temoporary list to hold the decoupled z stack
     z_stack_decouple = []
+    # decouple
     [z_stack_decouple.append(masks_all[z_stack_mask_index]) for _ in range(window_size)]
+    # dull out the decouple slice to the correct z index
     for z_window_index, z_stack_mask in enumerate(z_stack_decouple):
         if not (z_stack_mask_index + z_window_index) >= original_cyto_z_count:
             reconstruction_dict[z_stack_mask_index + z_window_index].append(
