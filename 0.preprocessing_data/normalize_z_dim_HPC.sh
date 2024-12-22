@@ -6,6 +6,8 @@
 #SBATCH --account=amc-general
 #SBATCH --time=00:60:00
 #SBATCH --output=preprocessing-%j.out
+#SBATCH --array=1-${len}
+
 
 module load anaconda
 
@@ -15,14 +17,16 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 
 cd scripts/ || exit
 
-python 0.update_file_structure.py --HPC True
-python 1.make_z-stack_images.py
+# get the current directory
+# get a list of all directories in the data/z-stack_images directory
 
-cd .. || exit
+dirs_list=$(ls -d ../../data/z-stack_images/*)
 
-conda deactivate
+# get the length of the list
+len=${#dirs_list[@]}
 
-s
-
-echo "Preprocessing complete"
+# set up the job array
+dir=${dirs_list[$SLURM_ARRAY_TASK_ID]}
+echo "Processing directory: $dir"
+python
 
