@@ -252,7 +252,7 @@ def plot_z_slice_histograms(
 
 # ## Load arguments, vars, and paths
 
-# In[3]:
+# In[ ]:
 
 
 # check if in a jupyter notebook
@@ -282,11 +282,12 @@ else:
         "../../data/z-stack_images/raw_z_input"
     ).resolve(strict=True)
     show_plots = True
+    figures_output_path = pathlib.Path(
+        f"../figures/{path_containing_images.stem}"
+    ).resolve()
+    figures_output_path.mkdir(parents=True, exist_ok=True)
 
-figures_output_path = pathlib.Path(
-    f"../figures/{path_containing_images.stem}"
-).resolve()
-figures_output_path.mkdir(parents=True, exist_ok=True)
+
 images_output_path = pathlib.Path(
     f"../../data/normalized_z/{path_containing_images.stem}"
 ).resolve()

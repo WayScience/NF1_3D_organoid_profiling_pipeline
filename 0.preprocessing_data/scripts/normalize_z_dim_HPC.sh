@@ -13,10 +13,6 @@ module load anaconda
 
 conda activate gff_preprocessing_env
 
-jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
-
-cd scripts/ || exit
-
 # get the current directory
 # get a list of all directories in the data/z-stack_images directory
 
@@ -29,8 +25,6 @@ len=${#dirs_list[@]}
 dir=${dirs_list[$SLURM_ARRAY_TASK_ID]}
 echo "Processing directory: $dir"
 python 2.z_slice_instensity_normalization.py --input_dir $dir
-
-cd .. || exit
 
 conda deactivate
 
