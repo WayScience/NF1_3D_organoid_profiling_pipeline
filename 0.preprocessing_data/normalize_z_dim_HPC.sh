@@ -6,7 +6,7 @@
 #SBATCH --account=amc-general
 #SBATCH --time=00:60:00
 #SBATCH --output=preprocessing-%j.out
-#SBATCH --array=1-${len}
+#SBATCH --array=1-3
 
 
 module load anaconda
@@ -28,5 +28,12 @@ len=${#dirs_list[@]}
 # set up the job array
 dir=${dirs_list[$SLURM_ARRAY_TASK_ID]}
 echo "Processing directory: $dir"
-python
+python 2.z_slice_instensity_normalization.py --input_dir $dir
+
+cd .. || exit
+
+conda deactivate
+
+echo "Z-slice intensity normalization complete"
+
 
