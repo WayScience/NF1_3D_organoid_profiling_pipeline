@@ -320,13 +320,6 @@ channel_images
 
 # ## Rescale the pixel intensity of each slice
 
-# In[6]:
-
-
-# temporarily use only the 405 channel
-channel_images = {key: value for key, value in channel_images.items() if key == "405"}
-
-
 # In[7]:
 
 
