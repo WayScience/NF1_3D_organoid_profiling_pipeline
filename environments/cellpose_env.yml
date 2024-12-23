@@ -20,6 +20,8 @@ dependencies:
   - conda-forge::scikit-image
   - conda-forge::papermill
   - conda-forge::opencv
+  - conda-forge::plant-seg
+  - gurobi::gurobi
   - pip:
       - torch
       - torchvision
@@ -29,3 +31,4 @@ dependencies:
       - aicsimageio
       - torch_optimizer
       - nvidia-cudnn-cu11==8.6.0.163
+      - ultrack
