@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=amilan
+#SBATCH --qos=normal
+#SBATCH --account=amc-general
+#SBATCH --time=1:00:00
+#SBATCH --output=preprocessing-%j.out
+
+
+module load anaconda
+
+conda activate GFF_segmentation
+
+
+cd scripts/ || exit
+# get all input directories in specified directory
+z_stack_dir="../../data/z-stack_images/"
+input_dirs=$(ls -d $z_stack_dir*)
+
+# subset the input directories for testing
+input_dirs=$(echo "$input_dirs" | head -n 2)
+
+compartments=( "nuclei" "cells" )
+
+touch job_ids.txt
+jobs_submitted_counter=0
+for compartment in "${compartments[@]}"; do
+    for dir in "${input_dirs[@]}"; do
+        # get the number of jobs for the user
+        number_of_jobs=$(squeue -u $USER | wc -l)
+        while [ $number_of_jobs -gt 990 ]; do
+            sleep 1s
+            number_of_jobs=$(squeue -u $USER | wc -l)
+        done
+
+        job_id=$(sbatch process_segmentation_child.sh "$dir" "$compartment")
+        # append the job id to the file
+        job_id=$(echo $job_id | awk '{print $4}')
+        echo " '$job_id' '$compartment' '$dir'" >> job_ids.txt
+        let jobs_submitted_counter++
+	done
+done
+
+
+echo "$jobs_submitted_counter"
+
+echo "Array complete"
+
+# end this job once reaching this point
+exit 0

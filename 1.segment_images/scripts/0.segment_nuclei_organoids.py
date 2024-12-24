@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import tifffile
+import torch
 from cellpose import core, models
 from skimage import io
 
@@ -78,7 +79,7 @@ files = sorted(input_dir.glob("*"))
 files = [str(x) for x in files if x.suffix in image_extensions]
 
 
-# In[ ]:
+# In[4]:
 
 
 # get the nuclei image
@@ -94,7 +95,7 @@ original_z_slice_count = len(imgs)
 print("number of z slices in the original image:", original_z_slice_count)
 
 
-# In[ ]:
+# In[5]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -115,12 +116,12 @@ print("2.5D image stack shape:", image_stack_2_5D.shape)
 
 # ## Cellpose
 
-# In[ ]:
+# In[6]:
 
 
+use_GPU = torch.cuda.is_available()
 # Load the model
 model_name = "nuclei"
-use_GPU = core.use_gpu()
 model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
 
 # Perform segmentation
@@ -150,41 +151,5 @@ for z_stack_mask_index in range(len(labels)):
                 z_stack_mask
             )
 
-
-# In[8]:
-
-
-# max project each z position back to the original image
-reconstructed_masks = np.empty(
-    (0, labels[0].shape[0], labels[0].shape[1]), dtype=labels[0].dtype
-)
-
-for z_index in range(original_z_slice_count):
-    z_stack_masks = np.array(reconstruction_dict[z_index])
-    z_stack_max_projected = np.max(z_stack_masks, axis=0)[np.newaxis, :, :]
-    reconstructed_masks = np.append(reconstructed_masks, z_stack_max_projected, axis=0)
-
-print(reconstructed_masks.shape)
-if in_notebook:
-    # show each z slice of the image and masks
-    for z in range(reconstructed_masks.shape[0]):
-        fig = plt.figure(figsize=(10, 5))
-        plt.subplot(121)
-        plt.imshow(original_imgs[z, :, :], cmap="gray")
-        plt.title("image")
-        plt.axis("off")
-        plt.subplot(122)
-        plt.imshow(reconstructed_masks[z], cmap="magma")
-        plt.title("masks")
-        plt.axis("off")
-        plt.show()
-
-
-# In[9]:
-
-
-# # save the masks
-print(reconstructed_masks.shape)
-# save the masks as tiff
-mask_file_path = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve()
-tifffile.imsave(mask_file_path, reconstructed_masks)
+# save the reconstruction_dict to a file for downstream decoupling
+np.save(mask_path / "reconstruction_dict.npy", reconstruction_dict)

@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -22,12 +22,12 @@ from cellpose import io as cellpose_io
 from cellpose import models
 
 cellpose_io.logger_setup()
+import torch
 from cellpose.io import imread
 from PIL import Image
 from skimage import io
 
-use_GPU = core.use_gpu()
-print(">>> GPU activated? %d" % use_GPU)
+use_GPU = torch.cuda.is_available()
 
 
 # check if in a jupyter notebook
@@ -85,7 +85,7 @@ files = sorted(input_dir.glob("*"))
 files = [str(x) for x in files if x.suffix in image_extensions]
 
 
-# In[ ]:
+# In[4]:
 
 
 # find the cytoplasmic channels in the image set
@@ -113,7 +113,7 @@ original_nuclei_z_count = nuclei.shape[0]
 original_cyto_z_count = cyto.shape[0]
 
 
-# In[ ]:
+# In[5]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -188,11 +188,12 @@ for z in range(nuclei.shape[0]):
 
 # ## Cellpose
 
-# In[ ]:
+# In[8]:
 
 
 # model_type='cyto' or 'nuclei' or 'cyto2' or 'cyto3'
-model = models.Cellpose(model_type="cyto3", gpu=use_GPU)
+model_name = "cyto3"
+model = models.Cellpose(model_type=model_name, gpu=use_GPU)
 
 channels = [[1, 3]]  # channels=[red cells, blue nuclei]
 diameter = 200
@@ -233,7 +234,7 @@ if in_notebook:
         plt.show()
 
 
-# In[ ]:
+# In[11]:
 
 
 # reverse sliding window max projection
