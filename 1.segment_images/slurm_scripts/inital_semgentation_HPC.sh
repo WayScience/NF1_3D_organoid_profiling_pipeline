@@ -2,24 +2,32 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=8
 #SBATCH --partition=aa100
+#SBATCH --gres=gpu:1
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
 #SBATCH --time=6:00:00
-#SBATCH --output=preprocessing-%j.out
+#SBATCH --output=segmentation-%j.out
 
 module load anaconda
 
 conda activate GFF_segmentation
-
+cd .. || exit
 cd scripts/ || exit
 # get all input directories in specified directory
 z_stack_dir="../../data/z-stack_images/"
-input_dirs=$(ls -d $z_stack_dir*)
 
-# subset the input directories for testing
-input_dirs=$(echo "$input_dirs" | head -n 2)
 
-total_dirs=$(echo "$input_dirs" | wc -l)
+# Use mapfile to read the output of ls -d into an array
+mapfile -t input_dirs < <(ls -d "$z_stack_dir"*)
+
+# Slice the array to get the first two elements
+input_dirs=("${input_dirs[@]:0:2}")
+
+# Print each path to ensure they are separate elements
+for dir in "${input_dirs[@]}"; do
+    echo "Directory: $dir"
+done
+
 current_dir=0
 
 # loop through all input directories
