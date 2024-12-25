@@ -22,7 +22,7 @@ cd .. || exit
 
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
-scripts || exit
+cd scripts || exit
 
 python 2.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment"
 python 3.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10

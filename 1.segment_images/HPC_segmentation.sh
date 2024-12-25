@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NOTEBOOK=True
+NOTEBOOK=False
 
 # activate  cellprofiler environment
 conda activate GFF_segmentation
@@ -23,9 +23,6 @@ if [ "$NOTEBOOK" = False ]; then
     # get all input directories in specified directory
     z_stack_dir="../../data/z-stack_images/"
     input_dirs=$(ls -d $z_stack_dir*)
-
-    # subset the input directories for testing
-    input_dirs=$(echo "$input_dirs" | head -n 2)
 
     total_dirs=$(echo "$input_dirs" | wc -l)
     current_dir=0

@@ -64,7 +64,7 @@ img_files = sorted(input_dir.glob("*"))
 mask_files = sorted(mask_input_dir.glob("*"))
 
 
-# ## Load images
+# ## Load images 
 
 # In[ ]:
 
@@ -136,3 +136,4 @@ frames = [mask[i] for i in range(mask.shape[0])]
 imageio.mimsave(
     output_mask_file_path, frames, duration=0.1, loop=10
 )  # duration is the time between frames in seconds
+
