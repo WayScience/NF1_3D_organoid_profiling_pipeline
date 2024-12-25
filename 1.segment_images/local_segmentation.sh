@@ -37,14 +37,14 @@ if [ "$NOTEBOOK" = False ]; then
         dir=${dir%*/}
         current_dir=$((current_dir + 1))
         echo -ne "Processing directory $current_dir of $total_dirs\r"
-        python 0.segment_nuclei_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.05
-        python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1
+        # python 0.segment_nuclei_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.05
+        # python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1
         for compartment in "${compartments[@]}"; do
             python 2.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment"
             python 3.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10
             python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "$compartment"
         done
-        python 4.create_cytoplasm_masks.py --input_dir "$dir" --compartment "$compartment"
+        python 4.create_cytoplasm_masks.py --input_dir "$dir"
         python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cytoplasm"
 
     done

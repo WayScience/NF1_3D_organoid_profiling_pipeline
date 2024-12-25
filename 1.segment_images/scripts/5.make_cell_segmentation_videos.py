@@ -20,7 +20,7 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -42,7 +42,7 @@ if not in_notebook:
 
     args = parser.parse_args()
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
-    compatment = args.compartment
+    compartment = args.compartment
     mask_input_dir = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve(
         strict=True
     )
@@ -84,18 +84,18 @@ for f in mask_files:
 
     if compartment == "nuclei":
         if "nuclei" in str(f.stem):
-            mask_path = f
+            mask_input_dir = f
             output_img_file_path = pathlib.Path(output_path / "nuclei_img_output.gif")
             output_mask_file_path = pathlib.Path(output_path / "nuclei_mask_output.gif")
 
     elif compartment == "cell":
         if "cell" in str(f.stem):
-            mask_path = f
+            mask_input_dir = f
             output_img_file_path = pathlib.Path(output_path / "cell_img_output.gif")
             output_mask_file_path = pathlib.Path(output_path / "cell_mask_output.gif")
     elif compartment == "cytoplasm":
         if "cytoplasm" in str(f.stem):
-            mask_path = f
+            mask_input_dir = f
             output_img_file_path = pathlib.Path(
                 output_path / "cytoplasm_img_output.gif"
             )
@@ -107,7 +107,7 @@ for f in mask_files:
 
 # read in the cell masks
 img = io.imread(img_path)
-mask = io.imread(mask_path)
+mask = io.imread(mask_input_dir)
 
 # scale the images to unit8
 img = (img / 255).astype("uint8") * 8

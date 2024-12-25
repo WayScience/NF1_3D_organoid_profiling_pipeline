@@ -11,7 +11,11 @@
 module load anaconda
 
 conda activate GFF_segmentation
+
 cd .. || exit
+
+jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
+
 cd scripts/ || exit
 # get all input directories in specified directory
 z_stack_dir="../../data/z-stack_images/"
