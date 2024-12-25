@@ -45,7 +45,7 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -85,10 +85,10 @@ mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 if compartment == "nuclei":
-    input_image_dir = pathlib.Path(input_dir / "nuclei_masks.tiff").resolve(strict=True)
+    input_image_dir = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve(strict=True)
     output_image_dir = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve()
 elif compartment == "cell":
-    input_image_dir = pathlib.Path(input_dir / "cell_masks.tiff").resolve(strict=True)
+    input_image_dir = pathlib.Path(mask_path / "cell_masks.tiff").resolve(strict=True)
     output_image_dir = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
 else:
     raise ValueError("Invalid compartment, please choose either 'nuclei' or 'cell'")

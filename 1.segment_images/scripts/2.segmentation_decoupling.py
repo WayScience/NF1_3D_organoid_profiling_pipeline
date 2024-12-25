@@ -73,7 +73,7 @@ else:
 
 # ## Set up images, paths and functions
 
-# In[3]:
+# In[ ]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -194,6 +194,7 @@ class DecoupleSlidingWindowMasks:
 
 
 # parallel processing for the cell above
+
 
 # set the number of cores to use
 num_cores = multiprocessing.cpu_count() - 2
