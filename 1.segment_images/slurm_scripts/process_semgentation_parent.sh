@@ -20,7 +20,6 @@ z_stack_dir="../../data/z-stack_images/"
 # Use mapfile to read the output of ls -d into an array
 mapfile -t input_dirs < <(ls -d "$z_stack_dir"*)
 
-
 # Print each path to ensure they are separate elements
 for dir in "${input_dirs[@]}"; do
     echo "Directory: $dir"

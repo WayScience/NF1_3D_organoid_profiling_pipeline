@@ -1,4 +1,0 @@
- '' 'nuclei' '../../data/z-stack_images/C10-1
-../../data/z-stack_images/C10-2'
- '' 'cells' '../../data/z-stack_images/C10-1
-../../data/z-stack_images/C10-2'

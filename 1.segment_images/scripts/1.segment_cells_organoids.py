@@ -220,23 +220,6 @@ imgs = masks_all_dict["imgs"]
 # In[10]:
 
 
-# masks, flows, styles, diams
-plot = plt.figure(figsize=(10, 5))
-if in_notebook:
-    for z in range(len(masks_all)):
-        plt.figure(figsize=(10, 10))
-        plt.subplot(121)
-        plt.imshow(masks_all[z], cmap="gray")
-        plt.title(f"mask: {z}")
-        plt.subplot(122)
-        plt.imshow(imgs[z], cmap="gray")
-        plt.title(f"raw: {z}")
-        plt.show()
-
-
-# In[11]:
-
-
 # reverse sliding window max projection
 full_mask_z_stack = []
 reconstruction_dict = {index: [] for index in range(original_cyto_z_count)}
@@ -256,47 +239,22 @@ for z_stack_mask_index in range(len(masks_all)):
                 z_stack_mask
             )
 
-
-# In[12]:
-
-
-# max project each z position back to the original image
-reconstructed_masks = np.empty(
-    (0, masks_all[0].shape[0], masks_all[0].shape[1]), dtype=masks_all[0].dtype
-)
+# save the reconstruction_dict to a file for downstream decoupling
+np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
 
 
-for z_index in range(original_cyto_z_count):
-    z_stack_masks = np.array(reconstruction_dict[z_index])
-    z_stack_max_projected = np.max(z_stack_masks, axis=0)[np.newaxis, :, :]
-    reconstructed_masks = np.append(reconstructed_masks, z_stack_max_projected, axis=0)
+# In[11]:
 
-print(reconstructed_masks.shape)
+
 if in_notebook:
-    # show each z slice of the image and masks
-    for z in range(reconstructed_masks.shape[0]):
-        fig = plt.figure(figsize=(10, 5))
-        plt.subplot(131)
-        plt.imshow(original_nuclei_image[z, :, :], cmap="gray")
-        plt.title("Nuclei")
-        plt.axis("off")
-        plt.subplot(132)
-        plt.imshow(original_cyto_image[z, :, :], cmap="gray")
-        plt.title("Cells")
-        plt.axis("off")
-        plt.subplot(133)
-        plt.imshow(reconstructed_masks[z], cmap="magma")
-        plt.title("masks")
-        plt.axis("off")
+    # masks, flows, styles, diams
+    plot = plt.figure(figsize=(10, 5))
+    for z in range(len(masks_all)):
+        plt.figure(figsize=(10, 10))
+        plt.subplot(121)
+        plt.imshow(masks_all[z], cmap="gray")
+        plt.title(f"mask: {z}")
+        plt.subplot(122)
+        plt.imshow(imgs[z], cmap="gray")
+        plt.title(f"raw: {z}")
         plt.show()
-
-
-# In[13]:
-
-
-# # save the masks
-print(reconstructed_masks.shape)
-# save the masks as tiff
-mask_file_path = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
-tifffile.imsave(mask_file_path, reconstructed_masks)
-

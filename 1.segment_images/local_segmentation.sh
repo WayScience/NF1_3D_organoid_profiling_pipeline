@@ -23,10 +23,10 @@ if [ "$NOTEBOOK" = False ]; then
     cd scripts/ || exit
     # get all input directories in specified directory
     z_stack_dir="../../data/z-stack_images/"
-    input_dirs=$(ls -d $z_stack_dir*)
+    mapfile -t input_dirs < <(ls -d "$z_stack_dir"*)
 
     # subset the input directories for testing
-    input_dirs=$(echo "$input_dirs" | head -n 2)
+    input_dirs="${input_dirs[@]:0:1}"
 
     total_dirs=$(echo "$input_dirs" | wc -l)
     current_dir=0
@@ -37,8 +37,8 @@ if [ "$NOTEBOOK" = False ]; then
         dir=${dir%*/}
         current_dir=$((current_dir + 1))
         echo -ne "Processing directory $current_dir of $total_dirs\r"
-        # python 0.segment_nuclei_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.05
-        # python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1
+        python 0.segment_nuclei_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.05
+        python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1
         for compartment in "${compartments[@]}"; do
             python 2.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment"
             python 3.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10

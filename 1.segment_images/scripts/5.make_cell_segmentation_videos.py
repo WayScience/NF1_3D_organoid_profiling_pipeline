@@ -64,7 +64,7 @@ img_files = sorted(input_dir.glob("*"))
 mask_files = sorted(mask_input_dir.glob("*"))
 
 
-# ## Load images 
+# ## Load images
 
 # In[ ]:
 
@@ -83,18 +83,18 @@ for f in img_files:
 for f in mask_files:
 
     if compartment == "nuclei":
-        if "nuclei" in str(f.stem):
+        if "nuclei" in str(f.stem) and "mask" in str(f.stem):
             mask_input_dir = f
             output_img_file_path = pathlib.Path(output_path / "nuclei_img_output.gif")
             output_mask_file_path = pathlib.Path(output_path / "nuclei_mask_output.gif")
 
     elif compartment == "cell":
-        if "cell" in str(f.stem):
+        if "cell" in str(f.stem) and "mask" in str(f.stem):
             mask_input_dir = f
             output_img_file_path = pathlib.Path(output_path / "cell_img_output.gif")
             output_mask_file_path = pathlib.Path(output_path / "cell_mask_output.gif")
     elif compartment == "cytoplasm":
-        if "cytoplasm" in str(f.stem):
+        if "cytoplasm" in str(f.stem) and "mask" in str(f.stem):
             mask_input_dir = f
             output_img_file_path = pathlib.Path(
                 output_path / "cytoplasm_img_output.gif"
@@ -136,4 +136,3 @@ frames = [mask[i] for i in range(mask.shape[0])]
 imageio.mimsave(
     output_mask_file_path, frames, duration=0.1, loop=10
 )  # duration is the time between frames in seconds
-

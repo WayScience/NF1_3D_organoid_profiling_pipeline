@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# ## import libraries 
+# ## import libraries
 
 # In[1]:
 
@@ -32,7 +32,7 @@ except NameError:
 
 # ## parse args and set paths
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -65,8 +65,14 @@ mask_path.mkdir(exist_ok=True, parents=True)
 
 if compartment == "nuclei":
     mask_file_path = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve()
+    reconstruction_dict_path = pathlib.Path(
+        mask_path / "nuclei_reconstruction_dict.npy"
+    ).resolve(strict=True)
 elif compartment == "cell":
     mask_file_path = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
+    reconstruction_dict_path = pathlib.Path(
+        mask_path / "cell_reconstruction_dict.npy"
+    ).resolve(strict=True)
 else:
     raise ValueError("Invalid compartment, please choose 'nuclei' or 'cell'")
 
@@ -91,12 +97,9 @@ original_z_slice_count = len(imgs)
 print("number of z slices in the original image:", original_z_slice_count)
 
 
-# In[4]:
+# In[ ]:
 
 
-reconstruction_dict_path = pathlib.Path(mask_path / "reconstruction_dict.npy").resolve(
-    strict=True
-)
 reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item()
 
 
@@ -222,13 +225,13 @@ for index, new_image in results:
 reconstructed_masks = reconstructed_masks.astype(int)
 
 
-# In[7]:
+# In[ ]:
 
 
 # # save the masks
 print(reconstructed_masks.shape)
 # save the masks as tiff
-tifffile.imsave(mask_file_path, reconstructed_masks)
+tifffile.tifffile.imwrite(mask_file_path, reconstructed_masks)
 
 
 # In[8]:
@@ -247,4 +250,3 @@ if in_notebook:
         plt.title("masks")
         plt.axis("off")
         # plt.show()
-
