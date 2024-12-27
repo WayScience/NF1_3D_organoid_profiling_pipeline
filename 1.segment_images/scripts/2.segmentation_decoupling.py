@@ -32,7 +32,7 @@ except NameError:
 
 # ## parse args and set paths
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -79,7 +79,7 @@ else:
 
 # ## Set up images, paths and functions
 
-# In[ ]:
+# In[3]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -97,7 +97,7 @@ original_z_slice_count = len(imgs)
 print("number of z slices in the original image:", original_z_slice_count)
 
 
-# In[ ]:
+# In[4]:
 
 
 reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item()
@@ -225,13 +225,15 @@ for index, new_image in results:
 reconstructed_masks = reconstructed_masks.astype(int)
 
 
-# In[ ]:
+# In[7]:
 
 
 # # save the masks
 print(reconstructed_masks.shape)
+print(reconstructed_masks.dtype)
+print(reconstructed_masks[0])
 # save the masks as tiff
-tifffile.tifffile.imwrite(mask_file_path, reconstructed_masks)
+tifffile.imwrite(mask_file_path, reconstructed_masks)
 
 
 # In[8]:
@@ -249,4 +251,4 @@ if in_notebook:
         plt.imshow(reconstructed_masks[z], cmap="magma")
         plt.title("masks")
         plt.axis("off")
-        # plt.show()
+        plt.show()

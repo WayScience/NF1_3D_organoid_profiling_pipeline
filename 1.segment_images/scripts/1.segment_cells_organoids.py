@@ -243,7 +243,7 @@ for z_stack_mask_index in range(len(masks_all)):
 np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
 
 
-# In[11]:
+# In[ ]:
 
 
 if in_notebook:
@@ -252,9 +252,9 @@ if in_notebook:
     for z in range(len(masks_all)):
         plt.figure(figsize=(10, 10))
         plt.subplot(121)
-        plt.imshow(masks_all[z], cmap="gray")
-        plt.title(f"mask: {z}")
-        plt.subplot(122)
         plt.imshow(imgs[z], cmap="gray")
         plt.title(f"raw: {z}")
+        plt.subplot(122)
+        plt.imshow(masks_all[z], cmap="gray")
+        plt.title(f"mask: {z}")
         plt.show()

@@ -2,13 +2,13 @@
 # coding: utf-8
 
 # # An attempt at an elegant solution to the 2D -> 3D object relation problem.
-# I will use graph theory to solve this problem. 
+# I will use graph theory to solve this problem.
 # The idea is to create a graph where each node represents a 2D object and each edge represents a potential relation between two objects across z or an absolute relation between two objects in the same z.
 # These edges will be weighted based on their z distance.
 # The problem then becomes a shortest path problem where we need to find the shortest path between the start and end nodes.
 # An issue that will arise is figuring out how many nodes might exist in a given path. This will vary and will be a challenge to solve.
 # Some nodes will not start until a certain z level and some nodes will end at a certain z level.
-# 
+#
 # ### To do this we must make the following assumptions:
 # 1. Nodes in the same z level are connected to each other, but will not be used in the shortest path calculation - these are separate objects.
 # 2. The variablility in the distance between the X-Y coordinates across z-slices for the same 3D object is minimal.
@@ -45,7 +45,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -132,7 +132,7 @@ coordinates_df
 
 # ## Plot the coordinates of the masks in the XY plane
 
-# In[4]:
+# In[ ]:
 
 
 # plot the data
@@ -150,7 +150,7 @@ if in_notebook:
 
 # ## Create a graph where each node is a 2D object and each edge is a potential relation between two objects across z or an absolute relation between two objects in the same z.
 
-# In[5]:
+# In[ ]:
 
 
 # construct a graph of nodes and edges from the df
@@ -185,7 +185,7 @@ for slice in coordinates_df["slice"].unique():
                     G.add_edge(row["unique_id"], row2["unique_id"], weight=distance)
 
 
-# In[6]:
+# In[ ]:
 
 
 # Visualization of the graph for 3D data
@@ -201,7 +201,7 @@ if in_notebook:
 
 # ## Sovle the graph for the shortest path between the start and end nodes.
 
-# In[7]:
+# In[ ]:
 
 
 # Assuming G is your graph and df is your original DataFrame
@@ -234,7 +234,7 @@ results_df = pd.DataFrame(results, columns=["node1", "node2", "path", "distance"
 results_df.head()
 
 
-# In[8]:
+# In[ ]:
 
 
 # drop rows with no path
@@ -245,7 +245,7 @@ results_df.head()
 
 # ## Clean up the graph solve output to get the final path.
 
-# In[9]:
+# In[ ]:
 
 
 # drop a row if the path is contained in another path
@@ -271,7 +271,7 @@ print(results_df.shape)
 results_df.head()
 
 
-# In[10]:
+# In[ ]:
 
 
 # add an object number to each row
@@ -283,7 +283,7 @@ results_df = results_df.explode("path")
 results_df.rename(columns={"path": "node"}, inplace=True)
 
 
-# In[11]:
+# In[ ]:
 
 
 # # get the x and y coordinates of each node from the original df
@@ -305,7 +305,7 @@ results_df
 
 # ## Plot paths output
 
-# In[12]:
+# In[ ]:
 
 
 if in_notebook:
@@ -326,7 +326,7 @@ if in_notebook:
 
 # ## Generate the new image via mask number reassignment
 
-# In[13]:
+# In[ ]:
 
 
 # go back through the image and color each mask with the object number based on x and y coordinates for each slice
@@ -340,7 +340,16 @@ for slice in range(image.shape[0]):
         new_image[slice][image[slice] == row["label"]] = row["object_number"]
 
 
-# In[14]:
+# In[ ]:
+
+
+# rescale the images so that the max pixel value is 255
+new_image = (new_image / np.max(new_image)) * 255
+# conver image to uint8 int
+new_image = new_image.astype(np.uint8)
+
+
+# In[ ]:
 
 
 # save the new image
@@ -349,7 +358,7 @@ tifffile.imwrite(output_image_dir, new_image)
 
 # ## Visualize the new image per z-slice
 
-# In[15]:
+# In[ ]:
 
 
 # plot the new image masks
@@ -363,3 +372,5 @@ if in_notebook:
         plt.title("3D related")
         plt.show()
 
+
+# In[ ]:
