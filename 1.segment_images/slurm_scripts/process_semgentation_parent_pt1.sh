@@ -49,7 +49,35 @@ for compartment in "${compartments[@]}"; do
 	done
 done
 
+# wait for all jobs to finish before proceeding
+while [ $(squeue -u $USER | wc -l) -gt 1 ]; do
+    sleep 1s
+done
+
+for dir in "${input_dirs[@]}"; do
+    dir=${dir%*/}
+# get the number of jobs for the user
+    number_of_jobs=$(squeue -u $USER | wc -l)
+    while [ $number_of_jobs -gt 990 ]; do
+        sleep 1s
+        number_of_jobs=$(squeue -u $USER | wc -l)
+    done
+    echo " '$job_id' '$dir' "
+    echo " '$job_id' '$dir' " >> job_ids.txt
+    job_id=$(sbatch process_semgentation_child_pt2.sh "$dir" "$compartment")
+    # append the job id to the file
+    job_id=$(echo $job_id | awk '{print $4}')
+    let jobs_submitted_counter++
+done
+
+# wait for all jobs to finish before proceeding
+while [ $(squeue -u $USER | wc -l) -gt 1 ]; do
+    sleep 1s
+done
+
 cd ../scripts/ || exit
+
+python 6.clean_up_segmentation.py
 
 echo "$jobs_submitted_counter"
 
