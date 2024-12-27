@@ -49,6 +49,9 @@ for compartment in "${compartments[@]}"; do
 	done
 done
 
+cd ../scripts/ || exit
+
+python 6.clean_up_segmentation.py
 
 echo "$jobs_submitted_counter"
 

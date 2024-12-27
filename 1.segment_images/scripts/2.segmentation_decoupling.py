@@ -58,7 +58,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../examples/raw_z_input/").resolve(strict=True)
-    compartment = "nuclei"
+    compartment = "cell"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)

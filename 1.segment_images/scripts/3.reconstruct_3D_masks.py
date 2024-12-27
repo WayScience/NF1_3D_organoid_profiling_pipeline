@@ -79,7 +79,7 @@ else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../processed_data/raw_z_input/").resolve(strict=True)
     x_y_vector_radius_max_constaint = 10
-    compartment = "nuclei"
+    compartment = "cell"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -132,7 +132,7 @@ coordinates_df
 
 # ## Plot the coordinates of the masks in the XY plane
 
-# In[ ]:
+# In[4]:
 
 
 # plot the data
@@ -150,7 +150,7 @@ if in_notebook:
 
 # ## Create a graph where each node is a 2D object and each edge is a potential relation between two objects across z or an absolute relation between two objects in the same z.
 
-# In[ ]:
+# In[5]:
 
 
 # construct a graph of nodes and edges from the df
@@ -185,7 +185,7 @@ for slice in coordinates_df["slice"].unique():
                     G.add_edge(row["unique_id"], row2["unique_id"], weight=distance)
 
 
-# In[ ]:
+# In[6]:
 
 
 # Visualization of the graph for 3D data
@@ -201,7 +201,7 @@ if in_notebook:
 
 # ## Sovle the graph for the shortest path between the start and end nodes.
 
-# In[ ]:
+# In[7]:
 
 
 # Assuming G is your graph and df is your original DataFrame
@@ -234,7 +234,7 @@ results_df = pd.DataFrame(results, columns=["node1", "node2", "path", "distance"
 results_df.head()
 
 
-# In[ ]:
+# In[8]:
 
 
 # drop rows with no path
@@ -245,7 +245,7 @@ results_df.head()
 
 # ## Clean up the graph solve output to get the final path.
 
-# In[ ]:
+# In[9]:
 
 
 # drop a row if the path is contained in another path
@@ -271,7 +271,7 @@ print(results_df.shape)
 results_df.head()
 
 
-# In[ ]:
+# In[10]:
 
 
 # add an object number to each row
@@ -283,7 +283,7 @@ results_df = results_df.explode("path")
 results_df.rename(columns={"path": "node"}, inplace=True)
 
 
-# In[ ]:
+# In[11]:
 
 
 # # get the x and y coordinates of each node from the original df
@@ -305,7 +305,7 @@ results_df
 
 # ## Plot paths output
 
-# In[ ]:
+# In[12]:
 
 
 if in_notebook:
@@ -326,7 +326,7 @@ if in_notebook:
 
 # ## Generate the new image via mask number reassignment
 
-# In[ ]:
+# In[13]:
 
 
 # go back through the image and color each mask with the object number based on x and y coordinates for each slice
@@ -340,7 +340,7 @@ for slice in range(image.shape[0]):
         new_image[slice][image[slice] == row["label"]] = row["object_number"]
 
 
-# In[ ]:
+# In[14]:
 
 
 # rescale the images so that the max pixel value is 255
@@ -349,7 +349,7 @@ new_image = (new_image / np.max(new_image)) * 255
 new_image = new_image.astype(np.uint8)
 
 
-# In[ ]:
+# In[15]:
 
 
 # save the new image
@@ -358,7 +358,7 @@ tifffile.imwrite(output_image_dir, new_image)
 
 # ## Visualize the new image per z-slice
 
-# In[ ]:
+# In[16]:
 
 
 # plot the new image masks

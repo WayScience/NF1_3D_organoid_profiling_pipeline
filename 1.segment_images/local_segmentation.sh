@@ -46,6 +46,7 @@ if [ "$NOTEBOOK" = False ]; then
         done
         python 4.create_cytoplasm_masks.py --input_dir "$dir"
         python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cytoplasm"
+        python 6.clean_up_segmentation.py
 
     done
     echo -ne "\n"

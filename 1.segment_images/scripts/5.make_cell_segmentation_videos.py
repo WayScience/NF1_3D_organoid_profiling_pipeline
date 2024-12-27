@@ -20,7 +20,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -66,7 +66,7 @@ mask_files = sorted(mask_input_dir.glob("*"))
 
 # ## Load images
 
-# In[ ]:
+# In[3]:
 
 
 for f in img_files:
