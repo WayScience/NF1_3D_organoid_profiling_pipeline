@@ -165,3 +165,6 @@ cython_debug/
 data/*
 1.segment_images/examples/raw_z_input/*
 1.segment_images/processed_data/*
+2.cellprofiling/notebooks/logs/*
+2.cellprofiling/scripts/logs/*
+2.cellprofiling/analysis_output/*
