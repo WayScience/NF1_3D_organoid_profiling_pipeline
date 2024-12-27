@@ -55,3 +55,17 @@ for well_dir in dirs:
                 cellprofiler_dir, well_dir.name, file.stem + file.suffix
             )
             shutil.copy(file, new_file_dir)
+
+
+# In[5]:
+
+
+dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
+for dir in dirs_in_cellprofiler_dir:
+    files = [x for x in dir.iterdir() if x.is_file()]
+    if len(files) > 8:
+        print(f"{dir.name} has too many files: {len(files)}")
+    elif len(files) < 8:
+        print(f"{dir.name} has too few files: {len(files)}")
+    else:
+        pass

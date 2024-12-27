@@ -31,22 +31,21 @@ compartments=( "nuclei" "cell" )
 
 touch job_ids.txt
 jobs_submitted_counter=0
-for compartment in "${compartments[@]}"; do
-    for dir in "${input_dirs[@]}"; do
-        dir=${dir%*/}
-	# get the number of jobs for the user
+
+for dir in "${input_dirs[@]}"; do
+    dir=${dir%*/}
+# get the number of jobs for the user
+    number_of_jobs=$(squeue -u $USER | wc -l)
+    while [ $number_of_jobs -gt 990 ]; do
+        sleep 1s
         number_of_jobs=$(squeue -u $USER | wc -l)
-        while [ $number_of_jobs -gt 990 ]; do
-            sleep 1s
-            number_of_jobs=$(squeue -u $USER | wc -l)
-        done
-	echo " '$job_id' '$compartment' '$dir' "
-        echo " '$job_id' '$compartment' '$dir' " >> job_ids.txt
-        job_id=$(sbatch process_semgentation_child.sh "$dir" "$compartment")
-        # append the job id to the file
-        job_id=$(echo $job_id | awk '{print $4}')
-        let jobs_submitted_counter++
-	done
+    done
+    echo " '$job_id' '$compartment' '$dir' "
+    echo " '$job_id' '$compartment' '$dir' " >> job_ids.txt
+    job_id=$(sbatch process_semgentation_child_pt2.sh "$dir" "$compartment")
+    # append the job id to the file
+    job_id=$(echo $job_id | awk '{print $4}')
+    let jobs_submitted_counter++
 done
 
 cd ../scripts/ || exit
