@@ -64,7 +64,7 @@ for dir in "${input_dirs[@]}"; do
     done
     echo " '$job_id' '$dir' "
     echo " '$job_id' '$dir' " >> job_ids.txt
-    job_id=$(sbatch process_semgentation_child_pt2.sh "$dir" "$compartment")
+    job_id=$(sbatch process_semgentation_child_pt2.sh "$dir")
     # append the job id to the file
     job_id=$(echo $job_id | awk '{print $4}')
     let jobs_submitted_counter++
@@ -75,9 +75,11 @@ while [ $(squeue -u $USER | wc -l) -gt 1 ]; do
     sleep 1s
 done
 
-cd ../scripts/ || exit
+cd ../slurm_scripts/ || exit
 
-python 6.clean_up_segmentation.py
+sbatch process_semgentation_child_pt3.sh
+
+cd ../ || exit
 
 echo "$jobs_submitted_counter"
 

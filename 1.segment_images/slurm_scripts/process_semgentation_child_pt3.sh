@@ -12,20 +12,11 @@ module load anaconda
 
 conda activate GFF_segmentation
 
-dir=$1
-
-echo "$dir"
-
-cd .. || exit
-
-jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
-
 cd scripts || exit
 
-python 4.create_cytoplasm_masks.py --input_dir "$dir"
-python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cytoplasm"
+python 6.clean_up_segmentation.py
 
-cd ../slurm_scripts/ || exit
+cd ../scripts/ || exit
 
 conda deactivate
 echo "Segmentation complete"
