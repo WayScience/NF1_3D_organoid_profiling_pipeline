@@ -42,7 +42,7 @@ for compartment in "${compartments[@]}"; do
         done
 	echo " '$job_id' '$compartment' '$dir' "
         echo " '$job_id' '$compartment' '$dir' " >> job_ids.txt
-        job_id=$(sbatch process_semgentation_child_pt1.sh "$dir" "$compartment")
+        job_id=$(sbatch process_segmentation_child_pt1.sh "$dir" "$compartment")
         # append the job id to the file
         job_id=$(echo $job_id | awk '{print $4}')
         let jobs_submitted_counter++
@@ -64,7 +64,7 @@ for dir in "${input_dirs[@]}"; do
     done
     echo " '$job_id' '$dir' "
     echo " '$job_id' '$dir' " >> job_ids.txt
-    job_id=$(sbatch process_semgentation_child_pt2.sh "$dir")
+    job_id=$(sbatch process_segmentation_child_pt2.sh "$dir")
     # append the job id to the file
     job_id=$(echo $job_id | awk '{print $4}')
     let jobs_submitted_counter++
@@ -77,7 +77,7 @@ done
 
 cd ../slurm_scripts/ || exit
 
-sbatch process_semgentation_child_pt3.sh
+sbatch process_segmentation_child_pt3.sh
 
 cd ../ || exit
 
