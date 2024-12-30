@@ -22,5 +22,7 @@ cd .. || exit
 
 conda deactivate
 
+s
+
 echo "Preprocessing complete"
 

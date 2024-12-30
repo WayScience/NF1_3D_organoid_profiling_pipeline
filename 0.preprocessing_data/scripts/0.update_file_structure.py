@@ -2,9 +2,10 @@
 # coding: utf-8
 
 # # Copy raw images into one folder to use for CellProfiler processing
-# 
-# Currently, the images are located nest deep within multiple folders. 
+#
+# Currently, the images are located nest deep within multiple folders.
 # For best practices, we will copy the images (preserving metadata) to one folder that can be used for CellProfiler processing.
+# This file is modified from its original version:https://github.com/WayScience/GFF_2D_organoid_prototyping .
 
 # ## Import libraries
 
@@ -16,7 +17,6 @@ import pathlib
 import shutil
 
 import tqdm
-
 
 # ## Set paths and variables
 
@@ -64,6 +64,8 @@ image_extensions = {".tif", ".tiff"}
 # In[ ]:
 
 
+# loop through the well level directories and copy the images a this repository's data directory
+
 for image_file in tqdm.tqdm(parent_dir.rglob("*")):
     list_of_dirs = list(image_file.rglob("*"))
     list_of_dirs = [x for x in list_of_dirs if x.is_dir()]
@@ -73,4 +75,3 @@ for image_file in tqdm.tqdm(parent_dir.rglob("*")):
         for image in dir.rglob("*/*"):
             if image.suffix in image_extensions:
                 shutil.copy2(image, well_dir)
-
