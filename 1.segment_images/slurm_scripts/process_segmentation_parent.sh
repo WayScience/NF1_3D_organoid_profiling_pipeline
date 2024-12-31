@@ -14,8 +14,8 @@ conda activate GFF_segmentation
 
 
 # get all input directories in specified directory
-# z_stack_dir="../../data/z-stack_images/"
-z_stack_dir="../../data/test_dir/"
+z_stack_dir="../../data/z-stack_images/"
+# z_stack_dir="../../data/test_dir/"
 
 
 # Use mapfile to read the output of ls -d into an array

@@ -27,7 +27,7 @@ if [ "$NOTEBOOK" = False ]; then
 
     # subset the input directories for testing
     # input_dirs="${input_dirs[@]:0:1}"
-    input_dirs=( "../../data/normalized_z/F3-1" )
+    input_dirs=( "../../data/normalized_z/D8-1" )
 
     total_dirs=$(echo "$input_dirs" | wc -l)
     current_dir=0

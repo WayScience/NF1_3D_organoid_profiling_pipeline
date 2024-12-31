@@ -8,7 +8,7 @@ import pathlib
 import shutil
 
 import numpy as np
-
+import tqdm
 
 # In[2]:
 
@@ -21,16 +21,19 @@ overwrite = False
 
 processed_data_dir = pathlib.Path("../processed_data").resolve(strict=True)
 normalized_data_dir = pathlib.Path("../../data/normalized_z").resolve(strict=True)
+# normalized_data_dir = pathlib.Path("../../data/test_dir").resolve(strict=True)
 cellprofiler_dir = pathlib.Path("../../data/cellprofiler").resolve()
 cellprofiler_dir.mkdir(parents=True, exist_ok=True)
 
 # get the list of dirs in the normalized_data_dir
 norm_dirs = [x for x in normalized_data_dir.iterdir() if x.is_dir()]
 # copy each dir and files to cellprofiler_dir
-for norm_dir in norm_dirs:
+for norm_dir in tqdm.tqdm(norm_dirs):
     dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
     if dest_dir.exists() and overwrite:
         shutil.rmtree(dest_dir)
+        shutil.copytree(norm_dir, dest_dir)
+    elif not dest_dir.exists():
         shutil.copytree(norm_dir, dest_dir)
     else:
         pass
@@ -45,7 +48,7 @@ dirs = [x for x in processed_data_dir.iterdir() if x.is_dir()]
 
 file_extensions = {".tif", ".tiff"}
 # get a list of files in each dir
-for well_dir in dirs:
+for well_dir in tqdm.tqdm(dirs):
     files = [x for x in well_dir.iterdir() if x.is_file()]
     for file in files:
         # remove numpy files
@@ -62,7 +65,7 @@ for well_dir in dirs:
 
 
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
-for dir in dirs_in_cellprofiler_dir:
+for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
     files = [x for x in dir.iterdir() if x.is_file()]
     if len(files) > 8:
         print(f"{dir.name} has too many files: {len(files)}")
@@ -70,4 +73,3 @@ for dir in dirs_in_cellprofiler_dir:
         print(f"{dir.name} has too few files: {len(files)}")
     else:
         pass
-
