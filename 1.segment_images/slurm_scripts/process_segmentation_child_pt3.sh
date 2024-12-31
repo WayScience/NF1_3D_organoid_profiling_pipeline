@@ -5,7 +5,7 @@
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
 #SBATCH --time=1:00:00
-#SBATCH --output=child_output-%j.out
+#SBATCH --output=child_output_pt3-%j.out
 
 
 module load anaconda

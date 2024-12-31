@@ -5,7 +5,7 @@
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
 #SBATCH --time=30:00
-#SBATCH --output=child_output-%j.out
+#SBATCH --output=check_job_status-%j.out
 
 job_id_file="job_ids.txt"
 

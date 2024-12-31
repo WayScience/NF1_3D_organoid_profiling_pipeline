@@ -74,11 +74,9 @@ while [ $(squeue -u $USER | wc -l) -gt 2 ]; do
     sleep 1s
 done
 
-sbatch check_job_status.sh
+job_id=$(sbatch process_segmentation_child_pt3.sh | awk '{print $4}')
 
-cd ../slurm_scripts/ || exit
-
-sbatch process_segmentation_child_pt3.sh
+sbatch --dependency=afterok:"$job_id" check_job_status.sh
 
 cd ../ || exit
 
