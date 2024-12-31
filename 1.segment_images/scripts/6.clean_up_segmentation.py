@@ -9,6 +9,7 @@ import shutil
 
 import numpy as np
 
+
 # In[2]:
 
 
@@ -69,3 +70,4 @@ for dir in dirs_in_cellprofiler_dir:
         print(f"{dir.name} has too few files: {len(files)}")
     else:
         pass
+
