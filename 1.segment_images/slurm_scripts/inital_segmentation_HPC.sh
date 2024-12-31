@@ -18,8 +18,8 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 
 cd scripts/ || exit
 # get all input directories in specified directory
-z_stack_dir="../../data/z-stack_images/"
-
+# z_stack_dir="../../data/z-stack_images/"
+z_stack_dir="../../data/test_dir/"
 
 # Use mapfile to read the output of ls -d into an array
 mapfile -t input_dirs < <(ls -d "$z_stack_dir"*)
