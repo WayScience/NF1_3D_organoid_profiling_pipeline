@@ -39,7 +39,7 @@ for compartment in "${compartments[@]}"; do
             sleep 1s
             number_of_jobs=$(squeue -u $USER | wc -l)
         done
-	echo " '$job_id' '$compartment' '$dir' "
+	    echo " '$job_id' '$compartment' '$dir' "
         echo " '$job_id' '$compartment' '$dir' " >> job_ids.txt
         job_id=$(sbatch process_segmentation_child_pt1.sh "$dir" "$compartment")
         # append the job id to the file

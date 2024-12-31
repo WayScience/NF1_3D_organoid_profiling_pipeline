@@ -12,11 +12,11 @@ module load anaconda
 
 conda activate GFF_segmentation
 
-cd scripts || exit
+cd ../scripts/ || exit
 
 python 6.clean_up_segmentation.py
 
-cd ../scripts/ || exit
+cd ../ || exit
 
 conda deactivate
 echo "Segmentation complete"

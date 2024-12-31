@@ -167,3 +167,6 @@ data/*
 1.segment_images/processed_data/*
 1.segment_images/scripts/job_ids.txt
 1.segment_images/*.out
+
+# SLURM output_files
+*.out
