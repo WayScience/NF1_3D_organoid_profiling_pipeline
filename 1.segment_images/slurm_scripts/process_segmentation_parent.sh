@@ -14,7 +14,8 @@ conda activate GFF_segmentation
 
 
 # get all input directories in specified directory
-z_stack_dir="../../data/z-stack_images/"
+# z_stack_dir="../../data/z-stack_images/"
+z_stack_dir="../../data/test_dir/"
 
 
 # Use mapfile to read the output of ls -d into an array
@@ -24,8 +25,6 @@ mapfile -t input_dirs < <(ls -d "$z_stack_dir"*)
 for dir in "${input_dirs[@]}"; do
     echo "Directory: $dir"
 done
-
-echo $input_dir
 
 compartments=( "nuclei" "cell" )
 
@@ -50,7 +49,7 @@ for compartment in "${compartments[@]}"; do
 done
 
 # wait for all jobs to finish before proceeding
-while [ $(squeue -u $USER | wc -l) -gt 1 ]; do
+while [ $(squeue -u $USER | wc -l) -gt 2 ]; do
     sleep 1s
 done
 
@@ -71,9 +70,11 @@ for dir in "${input_dirs[@]}"; do
 done
 
 # wait for all jobs to finish before proceeding
-while [ $(squeue -u $USER | wc -l) -gt 1 ]; do
+while [ $(squeue -u $USER | wc -l) -gt 2 ]; do
     sleep 1s
 done
+
+sbatch check_job_status.sh
 
 cd ../slurm_scripts/ || exit
 
