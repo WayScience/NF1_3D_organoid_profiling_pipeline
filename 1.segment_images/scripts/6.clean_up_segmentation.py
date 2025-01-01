@@ -10,6 +10,7 @@ import shutil
 import numpy as np
 import tqdm
 
+
 # In[2]:
 
 
@@ -73,3 +74,4 @@ for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
         print(f"{dir.name} has too few files: {len(files)}")
     else:
         pass
+
