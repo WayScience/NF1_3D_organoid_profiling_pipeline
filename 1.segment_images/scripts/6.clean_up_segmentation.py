@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[1]:
 
 
 import pathlib
@@ -14,13 +14,13 @@ import tqdm
 sys.path.append(str(pathlib.Path("../../utils").resolve()))
 from file_checking import check_number_of_files
 
-# In[13]:
+# In[2]:
 
 
 overwrite = True
 
 
-# In[14]:
+# In[6]:
 
 
 # set path to the processed data dir
@@ -28,10 +28,13 @@ processed_data_dir = pathlib.Path("../processed_data").resolve(strict=True)
 normalized_data_dir = pathlib.Path("../../data/normalized_z").resolve(strict=True)
 # normalized_data_dir = pathlib.Path("../../data/test_dir").resolve(strict=True)
 cellprofiler_dir = pathlib.Path("../../data/cellprofiler").resolve()
-cellprofiler_dir.mkdir(parents=True, exist_ok=True)
+if cellprofiler_dir.exists():
+    shutil.rmtree(cellprofiler_dir)
+else:
+    cellprofiler_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[15]:
+# In[7]:
 
 
 # perform checks for each directory
@@ -44,7 +47,8 @@ print(
       #################################################################################\n
       ## Checking the number of files in each subdirectory of:\n
       ## {processed_data_dir.absolute()}\n
-      #################################################################################"""
+      #################################################################################
+      """
 )
 for file in processed_data_dir_directories:
     check_number_of_files(file, 3)
@@ -55,7 +59,8 @@ print(
       #################################################################################\n
       ## Checking the number of files in each subdirectory of:\n
       ## {normalized_data_dir.absolute()}\n
-      #################################################################################"""
+      #################################################################################
+      """
 )
 for file in normalized_data_dir_directories:
     check_number_of_files(file, 5)
@@ -66,14 +71,14 @@ print(
       #################################################################################\n
       ## Checking the number of files in each subdirectory of:\n
       ## {cellprofiler_dir.absolute()}\n
-      #################################################################################"""
+      #################################################################################
+      """
 )
 for file in cellprofiler_dir_directories:
     check_number_of_files(file, 0)
 
 
-# In[ ]:
-
+# ## Copy the normalized images to the cellprofiler images dir
 
 # In[ ]:
 
@@ -92,13 +97,13 @@ for norm_dir in tqdm.tqdm(norm_dirs):
         pass
 
 
+# ## Copy
+
+# In[9]:
+
+
 # get a list of dirs in processed_data
 dirs = [x for x in processed_data_dir.iterdir() if x.is_dir()]
-
-
-# In[ ]:
-
-
 file_extensions = {".tif", ".tiff"}
 # get a list of files in each dir
 for well_dir in tqdm.tqdm(dirs):
@@ -112,15 +117,9 @@ for well_dir in tqdm.tqdm(dirs):
             shutil.copy(file, new_file_dir)
 
 
-# In[ ]:
+# In[11]:
 
 
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
 for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
-    files = [x for x in dir.iterdir() if x.is_file()]
-    if len(files) > 8:
-        print(f"{dir.name} has too many files: {len(files)}")
-    elif len(files) < 8:
-        print(f"{dir.name} has too few files: {len(files)}")
-    else:
-        pass
+    check_number_of_files(dir, 5)

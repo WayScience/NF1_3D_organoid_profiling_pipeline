@@ -6,17 +6,12 @@
 
 import argparse
 import pathlib
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import skimage.io as io
 import tifffile
-
-# set import path
-sys.path.append(str(pathlib.Path("../../utils/").resolve()))
-from file_checking import check_number_of_files
 
 # check if in a jupyter notebook
 try:
@@ -59,8 +54,6 @@ output_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 output_path.mkdir(parents=True, exist_ok=True)
 output_file_path = pathlib.Path(output_path / "cytoplasm_mask.tiff").resolve()
 
-check_number_of_files(pathlib.Path(mask_input_dir), 4)
-
 
 # In[3]:
 
@@ -91,7 +84,6 @@ for z_slice_index in range(nuclei_masks.shape[0]):
 
 
 tifffile.imwrite(output_file_path, cytoplasm_masks)
-check_number_of_files(pathlib.Path(mask_input_dir), 5)
 
 
 # In[6]:

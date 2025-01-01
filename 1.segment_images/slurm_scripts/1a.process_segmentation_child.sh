@@ -4,7 +4,7 @@
 #SBATCH --partition=amilan
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
-#SBATCH --time=30:00
+#SBATCH --time=1:00:00
 #SBATCH --output=child_output_pt1-%j.out
 
 

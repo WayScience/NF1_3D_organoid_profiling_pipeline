@@ -11,7 +11,6 @@
 import argparse
 import pathlib
 import sys
-import sys
 
 import matplotlib.pyplot as plt
 
@@ -245,10 +244,8 @@ for z_stack_mask_index in range(len(masks_all)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
-check_number_of_files(pathlib.Path(mask_path), 2)
 
 
-# In[11]:
 # In[11]:
 
 

@@ -371,4 +371,3 @@ if in_notebook:
         plt.imshow(new_image[slice])
         plt.title("3D related")
         plt.show()
-
