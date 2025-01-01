@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -26,7 +26,7 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -87,7 +87,7 @@ for z_slice_index in range(nuclei_masks.shape[0]):
     cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
 
-# In[5]:
+# In[ ]:
 
 
 tifffile.imwrite(output_file_path, cytoplasm_masks)
@@ -112,4 +112,3 @@ if in_notebook:
         plt.title("Cytoplasm Mask")
         plt.axis("off")
         plt.show()
-

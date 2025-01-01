@@ -5,11 +5,12 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
 import pathlib
+import sys
 import sys
 
 import matplotlib.pyplot as plt
@@ -32,7 +33,6 @@ use_GPU = torch.cuda.is_available()
 
 # set import path
 sys.path.append(str(pathlib.Path("../../utils/").resolve()))
-from file_checking import check_number_of_files
 
 # check if in a jupyter notebook
 try:
@@ -221,7 +221,7 @@ masks_all = masks_all_dict["masks"]
 imgs = masks_all_dict["imgs"]
 
 
-# In[10]:
+# In[ ]:
 
 
 # reverse sliding window max projection
@@ -249,6 +249,7 @@ check_number_of_files(pathlib.Path(mask_path), 2)
 
 
 # In[11]:
+# In[11]:
 
 
 if in_notebook:
@@ -263,4 +264,3 @@ if in_notebook:
         plt.imshow(masks_all[z], cmap="gray")
         plt.title(f"mask: {z}")
         plt.show()
-

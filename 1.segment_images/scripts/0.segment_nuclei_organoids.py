@@ -5,9 +5,9 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# ## import libraries 
+# ## import libraries
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -38,7 +38,7 @@ except NameError:
 
 # ## parse args and set paths
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -141,7 +141,7 @@ labels, details, _ = model.eval(
 
 # ## Reverse the sliding window max projection
 
-# In[7]:
+# In[ ]:
 
 
 # reverse sliding window max projection
@@ -160,5 +160,3 @@ for z_stack_mask_index in range(len(labels)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "nuclei_reconstruction_dict.npy", reconstruction_dict)
-check_number_of_files(pathlib.Path(mask_path), 1)
-

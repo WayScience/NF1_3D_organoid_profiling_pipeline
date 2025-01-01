@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# ## import libraries 
+# ## import libraries
 
 # In[1]:
 
@@ -252,4 +252,3 @@ if in_notebook:
         plt.title("masks")
         plt.axis("off")
         plt.show()
-
