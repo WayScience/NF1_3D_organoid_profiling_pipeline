@@ -9,10 +9,10 @@
 
 cd slurm_scripts || exit
 
-#job1=$(sbatch inital_segmentation_HPC.sh | awk '{print $4}')
+#job1=$(sbatch 0.inital_segmentation_HPC.sh | awk '{print $4}')
 
-#job2=$(sbatch --dependency=afterok:$job1 process_segmentation_parent.sh | awk '{print $4}')
+#job2=$(sbatch --dependency=afterok:$job1 1.process_segmentation_parent.sh | awk '{print $4}')
 
-sbatch process_segmentation_parent.sh
+sbatch 1.process_segmentation_parent.sh
 
 exit 0
