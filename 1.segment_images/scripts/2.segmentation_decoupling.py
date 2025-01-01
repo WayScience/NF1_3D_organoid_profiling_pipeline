@@ -58,7 +58,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../examples/raw_z_input/").resolve(strict=True)
-    compartment = "cell"
+    compartment = "nuclei"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -80,32 +80,6 @@ else:
 # ## Set up images, paths and functions
 
 # In[3]:
-
-
-image_extensions = {".tif", ".tiff"}
-files = sorted(input_dir.glob("*"))
-files = [str(x) for x in files if x.suffix in image_extensions]
-# get the nuclei image
-for f in files:
-    if compartment == "nuclei" and "405" in f:
-        imgs = io.imread(f)
-    elif compartment == "cell" and "555" in f:
-        imgs = io.imread(f)
-imgs = np.array(imgs)
-original_imgs = imgs.copy()
-original_z_slice_count = len(imgs)
-print("number of z slices in the original image:", original_z_slice_count)
-
-
-# In[4]:
-
-
-reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item()
-
-
-# ## Reverse the sliding window max projection
-
-# In[5]:
 
 
 class DecoupleSlidingWindowMasks:
@@ -192,6 +166,32 @@ class DecoupleSlidingWindowMasks:
         self.check_overlap()
         return self.reconstruct_image()
 
+
+# In[4]:
+
+
+image_extensions = {".tif", ".tiff"}
+files = sorted(input_dir.glob("*"))
+files = [str(x) for x in files if x.suffix in image_extensions]
+# get the nuclei image
+for f in files:
+    if compartment == "nuclei" and "405" in f:
+        imgs = io.imread(f)
+    elif compartment == "cell" and "555" in f:
+        imgs = io.imread(f)
+imgs = np.array(imgs)
+original_imgs = imgs.copy()
+original_z_slice_count = len(imgs)
+print("number of z slices in the original image:", original_z_slice_count)
+
+
+# In[5]:
+
+
+reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item()
+
+
+# ## Reverse the sliding window max projection
 
 # In[6]:
 

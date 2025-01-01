@@ -14,7 +14,7 @@ import tqdm
 # In[2]:
 
 
-overwrite = False
+overwrite = True
 
 
 # In[3]:
@@ -56,6 +56,7 @@ for well_dir in tqdm.tqdm(dirs):
         if file.suffix == ".npy":
             file.unlink()
         elif file.suffix in file_extensions:
+            # copy each of the raw files to the cellprofiler_dir for feature extraction
             new_file_dir = pathlib.Path(
                 cellprofiler_dir, well_dir.name, file.stem + file.suffix
             )

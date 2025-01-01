@@ -10,6 +10,7 @@
 
 import argparse
 import pathlib
+import sys
 
 import matplotlib.pyplot as plt
 
@@ -29,6 +30,9 @@ from skimage import io
 
 use_GPU = torch.cuda.is_available()
 
+# set import path
+sys.path.append(str(pathlib.Path("../../utils/").resolve()))
+from file_checking import check_number_of_files
 
 # check if in a jupyter notebook
 try:
@@ -241,9 +245,10 @@ for z_stack_mask_index in range(len(masks_all)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
+check_number_of_files(pathlib.Path(mask_path), 2)
 
 
-# In[ ]:
+# In[11]:
 
 
 if in_notebook:

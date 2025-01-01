@@ -79,7 +79,7 @@ else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../processed_data/raw_z_input/").resolve(strict=True)
     x_y_vector_radius_max_constaint = 10
-    compartment = "cell"
+    compartment = "nuclei"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -371,10 +371,4 @@ if in_notebook:
         plt.imshow(new_image[slice])
         plt.title("3D related")
         plt.show()
-
-
-# In[ ]:
-
-
-
 

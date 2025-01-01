@@ -12,6 +12,7 @@
 
 import argparse
 import pathlib
+import sys
 
 import matplotlib.pyplot as plt
 
@@ -22,6 +23,10 @@ import tifffile
 import torch
 from cellpose import core, models
 from skimage import io
+
+# set import path
+sys.path.append(str(pathlib.Path("../../utils/").resolve()))
+from file_checking import check_number_of_files
 
 # check if in a jupyter notebook
 try:
@@ -67,6 +72,8 @@ else:
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
+
+check_number_of_files(pathlib.Path(input_dir), 4)
 
 
 # ## Set up images, paths and functions
@@ -153,4 +160,5 @@ for z_stack_mask_index in range(len(labels)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "nuclei_reconstruction_dict.npy", reconstruction_dict)
+check_number_of_files(pathlib.Path(mask_path), 1)
 
