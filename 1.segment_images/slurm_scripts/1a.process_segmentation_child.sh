@@ -26,6 +26,7 @@ cd scripts || exit
 
 # capture exit code for each script
 python 2.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment"
+sleep 5 # wait for the previous script to finish and allow for file latency
 python 3.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10
 
 cd ../slurm_scripts/ || exit
