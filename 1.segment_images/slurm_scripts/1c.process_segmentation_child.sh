@@ -15,6 +15,11 @@ conda activate GFF_segmentation
 cd ../scripts/ || exit
 
 python 6.clean_up_segmentation.py
+# ensure that the exit code is 0
+if [ $? -ne 0 ]; then
+    echo "Segmentation failed"
+    exit 1
+fi
 
 cd ../ || exit
 
