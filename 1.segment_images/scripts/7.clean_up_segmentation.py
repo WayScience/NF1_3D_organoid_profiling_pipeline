@@ -14,7 +14,6 @@ import tqdm
 sys.path.append(str(pathlib.Path("../../utils").resolve()))
 from file_checking import check_number_of_files
 
-
 # In[2]:
 
 
@@ -46,7 +45,7 @@ cellprofiler_dir_directories = list(cellprofiler_dir.glob("*"))
 print(
     f"""
       #################################################################################\n
-      ## Checking the number of files in each subdirectory of:\n 
+      ## Checking the number of files in each subdirectory of:\n
       ## {processed_data_dir.absolute()}\n
       #################################################################################
       """
@@ -58,7 +57,7 @@ for file in processed_data_dir_directories:
 print(
     f"""
       #################################################################################\n
-      ## Checking the number of files in each subdirectory of:\n 
+      ## Checking the number of files in each subdirectory of:\n
       ## {normalized_data_dir.absolute()}\n
       #################################################################################
       """
@@ -121,4 +120,3 @@ for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
     if not check_number_of_files(dir, 8):
         with open(jobs_to_rerun_path, "a") as f:
             f.write(f"{dir.name}\n")
-

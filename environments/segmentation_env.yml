@@ -6,7 +6,7 @@ channels:
   - pytorch
 
 dependencies:
-  - conda-forge::python=3.9
+  - conda-forge::python=3.11
   - conda-forge::ipykernel
   - conda-forge::jupyter
   - conda-forge::nbconvert
@@ -31,4 +31,4 @@ dependencies:
       - aicsimageio
       - torch_optimizer
       - nvidia-cudnn-cu11==8.6.0.163
-      - git+https://github.com/facebookresearch/segment-anything.git
+      - git+https://github.com/WayScience/GFF_3D_organoid_image_format_prototype.git

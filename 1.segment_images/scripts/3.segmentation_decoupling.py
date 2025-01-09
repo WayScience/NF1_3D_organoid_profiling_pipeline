@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# ## import libraries 
+# ## import libraries
 
 # In[1]:
 
@@ -57,8 +57,8 @@ if not in_notebook:
     compartment = args.compartment
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/normalized_z/C6-1").resolve(strict=True)
-    compartment = "organoid"
+    input_dir = pathlib.Path("../../data/normalized_z/C4-1/").resolve(strict=True)
+    compartment = "cell"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -73,13 +73,10 @@ elif compartment == "cell":
     reconstruction_dict_path = pathlib.Path(
         mask_path / "cell_reconstruction_dict.npy"
     ).resolve(strict=True)
-elif compartment == "organoid":
-    mask_file_path = pathlib.Path(mask_path / "organoid_masks.tiff").resolve()
-    reconstruction_dict_path = pathlib.Path(
-        mask_path / "organoid_reconstruction_dict.npy"
-    ).resolve(strict=True)
 else:
-    raise ValueError("Invalid compartment, please choose 'nuclei', 'cell', or 'organoid'")
+    raise ValueError(
+        "Invalid compartment, please choose 'nuclei', 'cell', or 'organoid'"
+    )
 
 
 # ## Set up images, paths and functions
@@ -245,7 +242,7 @@ print(np.unique(reconstructed_masks))
 tifffile.imwrite(mask_file_path, reconstructed_masks)
 
 
-# In[9]:
+# In[8]:
 
 
 if in_notebook:
@@ -261,4 +258,3 @@ if in_notebook:
         plt.title("masks")
         plt.axis("off")
         plt.show()
-

@@ -2,13 +2,13 @@
 # coding: utf-8
 
 # # An attempt at an elegant solution to the 2D -> 3D object relation problem.
-# I will use graph theory to solve this problem. 
+# I will use graph theory to solve this problem.
 # The idea is to create a graph where each node represents a 2D object and each edge represents a potential relation between two objects across z or an absolute relation between two objects in the same z.
 # These edges will be weighted based on their z distance.
 # The problem then becomes a shortest path problem where we need to find the shortest path between the start and end nodes.
 # An issue that will arise is figuring out how many nodes might exist in a given path. This will vary and will be a challenge to solve.
 # Some nodes will not start until a certain z level and some nodes will end at a certain z level.
-# 
+#
 # ### To do this we must make the following assumptions:
 # 1. Nodes in the same z level are connected to each other, but will not be used in the shortest path calculation - these are separate objects.
 # 2. The variablility in the distance between the X-Y coordinates across z-slices for the same 3D object is minimal.
@@ -45,7 +45,7 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -79,7 +79,7 @@ else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../processed_data/C6-1/").resolve(strict=True)
     x_y_vector_radius_max_constaint = 10  # pixels
-    compartment = "organoid"
+    compartment = "nucleui"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -90,9 +90,6 @@ if compartment == "nuclei":
 elif compartment == "cell":
     input_image_dir = pathlib.Path(mask_path / "cell_masks.tiff").resolve(strict=True)
     output_image_dir = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
-elif compartment == "organoid":
-    input_image_dir = pathlib.Path(mask_path / "organoid_masks.tiff").resolve(strict=True)
-    output_image_dir = pathlib.Path(mask_path / "organoid_masks.tiff").resolve()
 else:
     raise ValueError("Invalid compartment, please choose either 'nuclei' or 'cell'")
 
@@ -110,13 +107,10 @@ image = image.astype(np.uint8)
 # In[4]:
 
 
-skimage.measure.regionprops_table(image[1,:,:])
+skimage.measure.regionprops_table(image[1, :, :])
 
 
 # In[ ]:
-
-
-
 
 
 # In[5]:
@@ -407,4 +401,3 @@ if in_notebook:
         plt.imshow(new_image[slice])
         plt.title("3D related")
         plt.show()
-

@@ -10,8 +10,6 @@
 
 import argparse
 import pathlib
-import shutil
-import subprocess  # subprocess handling
 import sys
 
 import matplotlib.pyplot as plt
@@ -72,7 +70,7 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 
 else:
-    input_dir = pathlib.Path("../../data/z-stack_images/G8-1/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
     window_size = 3
     clip_limit = 0.1
 
@@ -121,28 +119,28 @@ original_cyto_z_count = cyto.shape[0]
 # In[5]:
 
 
-# # make a 2.5 D max projection image stack with a sliding window of 3 slices
-# image_stack_2_5D = np.empty((0, cyto.shape[1], cyto.shape[2]), dtype=cyto.dtype)
-# for image_index in range(cyto.shape[0]):
-#     image_stack_window = cyto[image_index : image_index + window_size]
-#     if not image_stack_window.shape[0] == window_size:
-#         break
-#     # guassian blur the image stack
-#     image_stack_window = skimage.filters.gaussian(image_stack_window, sigma=1)
-#     # max project the image stack
-#     image_stack_2_5D = np.append(
-#         image_stack_2_5D, np.max(image_stack_window, axis=0)[np.newaxis, :, :], axis=0
-#     )
+# make a 2.5 D max projection image stack with a sliding window of 3 slices
+image_stack_2_5D = np.empty((0, cyto.shape[1], cyto.shape[2]), dtype=cyto.dtype)
+for image_index in range(cyto.shape[0]):
+    image_stack_window = cyto[image_index : image_index + window_size]
+    if not image_stack_window.shape[0] == window_size:
+        break
+    # guassian blur the image stack
+    image_stack_window = skimage.filters.gaussian(image_stack_window, sigma=1)
+    # max project the image stack
+    image_stack_2_5D = np.append(
+        image_stack_2_5D, np.max(image_stack_window, axis=0)[np.newaxis, :, :], axis=0
+    )
 
-# image_stack_2_5D = np.array(image_stack_2_5D)
-# cyto = np.array(image_stack_2_5D)
-# print("2.5D cyto image stack shape:", cyto.shape)
+image_stack_2_5D = np.array(image_stack_2_5D)
+cyto = np.array(image_stack_2_5D)
+print("2.5D cyto image stack shape:", cyto.shape)
 
 
 # Use butterworth FFT filter to remove high frequency noise :)
 imgs = skimage.filters.butterworth(
     cyto,
-    cutoff_frequency_ratio=0.025,
+    cutoff_frequency_ratio=0.1,
     high_pass=False,
     order=5.0,
     squared_butterworth=True,
@@ -243,4 +241,3 @@ if in_notebook:
         plt.imshow(labels[z], cmap="gray")
         plt.title(f"mask: {z}")
         plt.show()
-

@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# ## import libraries 
+# ## import libraries
 
 # In[1]:
 
@@ -61,7 +61,7 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/z-stack_images/F4-1/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
     window_size = 3
     clip_limit = 0.05
 
@@ -153,4 +153,3 @@ for z_stack_mask_index in range(len(labels)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "nuclei_reconstruction_dict.npy", reconstruction_dict)
-

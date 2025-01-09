@@ -43,7 +43,7 @@ except NameError:
 print(in_notebook)
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -70,7 +70,7 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 
 else:
-    input_dir = pathlib.Path("../../data/z-stack_images/C9-1/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
     window_size = 3
     clip_limit = 0.1
 
@@ -260,4 +260,3 @@ if in_notebook:
         plt.imshow(masks_all[z], cmap="gray")
         plt.title(f"mask: {z}")
         plt.show()
-
