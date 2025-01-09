@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
-#SBATCH --time=6:00:00
+#SBATCH --time=10:00:00
 #SBATCH --output=segmentation-%j.out
 
 module load anaconda

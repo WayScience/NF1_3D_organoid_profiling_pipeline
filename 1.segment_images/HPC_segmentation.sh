@@ -2,7 +2,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=amilan
-#SBATCH --qos=normal
+#SBATCH --qos=long
 #SBATCH --account=amc-general
 #SBATCH --time=7-00:00:00
 #SBATCH --output=main_job_submit_output-%j.out
