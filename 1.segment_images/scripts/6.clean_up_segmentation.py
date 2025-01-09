@@ -21,7 +21,7 @@ from file_checking import check_number_of_files
 overwrite = True
 
 
-# In[6]:
+# In[3]:
 
 
 # set path to the processed data dir
@@ -35,7 +35,7 @@ else:
     cellprofiler_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[7]:
+# In[4]:
 
 
 # perform checks for each directory
@@ -52,7 +52,7 @@ print(
       """
 )
 for file in processed_data_dir_directories:
-    check_number_of_files(file, 3)
+    check_number_of_files(file, 5)
 
 
 print(
@@ -67,21 +67,9 @@ for file in normalized_data_dir_directories:
     check_number_of_files(file, 5)
 
 
-print(
-    f"""
-      #################################################################################\n
-      ## Checking the number of files in each subdirectory of:\n 
-      ## {cellprofiler_dir.absolute()}\n
-      #################################################################################
-      """
-)
-for file in cellprofiler_dir_directories:
-    check_number_of_files(file, 0)
-
-
 # ## Copy the normalized images to the cellprofiler images dir
 
-# In[ ]:
+# In[5]:
 
 
 # get the list of dirs in the normalized_data_dir
@@ -98,9 +86,9 @@ for norm_dir in tqdm.tqdm(norm_dirs):
         pass
 
 
-# ## Copy 
+# ## Copy files from processed dir to cellprofiler images dir
 
-# In[9]:
+# In[6]:
 
 
 # get a list of dirs in processed_data
@@ -118,10 +106,19 @@ for well_dir in tqdm.tqdm(dirs):
             shutil.copy(file, new_file_dir)
 
 
-# In[11]:
+# In[7]:
+
+
+jobs_to_rerun_path = pathlib.Path("../rerun_jobs.txt").resolve()
+
+
+# In[8]:
 
 
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
+dirs_in_cellprofiler_dir = sorted(dirs_in_cellprofiler_dir)
 for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
-    check_number_of_files(dir, 5)
+    if not check_number_of_files(dir, 8):
+        with open(jobs_to_rerun_path, "a") as f:
+            f.write(f"{dir.name}\n")
 

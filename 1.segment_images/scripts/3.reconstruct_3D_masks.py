@@ -45,7 +45,7 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -78,7 +78,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../processed_data/raw_z_input/").resolve(strict=True)
-    x_y_vector_radius_max_constaint = 10
+    x_y_vector_radius_max_constaint = 10  # pixels
     compartment = "nuclei"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -322,6 +322,17 @@ if in_notebook:
     ax.set_ylabel("Y Label")
     ax.set_zlabel("Z Label")
     plt.show()
+
+
+# In[ ]:
+
+
+# TODO: add the same view of the raw amd segmented images in volume view
+# TODO: Make a figure describing the algorithm and the workflow
+## Segmentation
+## Graph based object relation
+## TODO: Visualize the Napari viewer with the mask as as channel
+# 2.5D graph based object relation for 3D segmentation subroutine
 
 
 # ## Generate the new image via mask number reassignment

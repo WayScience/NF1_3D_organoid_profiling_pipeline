@@ -32,7 +32,7 @@ except NameError:
 
 # ## parse args and set paths
 
-# In[2]:
+# In[6]:
 
 
 if not in_notebook:
@@ -57,7 +57,7 @@ if not in_notebook:
     compartment = args.compartment
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../examples/raw_z_input/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/normalized_z/C6-1").resolve(strict=True)
     compartment = "nuclei"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -79,7 +79,7 @@ else:
 
 # ## Set up images, paths and functions
 
-# In[3]:
+# In[7]:
 
 
 class DecoupleSlidingWindowMasks:
@@ -167,7 +167,7 @@ class DecoupleSlidingWindowMasks:
         return self.reconstruct_image()
 
 
-# In[4]:
+# In[8]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -185,7 +185,7 @@ original_z_slice_count = len(imgs)
 print("number of z slices in the original image:", original_z_slice_count)
 
 
-# In[5]:
+# In[9]:
 
 
 reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item()
@@ -193,7 +193,7 @@ reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item(
 
 # ## Reverse the sliding window max projection
 
-# In[6]:
+# In[10]:
 
 
 # parallel processing for the cell above
@@ -225,7 +225,7 @@ for index, new_image in results:
 reconstructed_masks = reconstructed_masks.astype(int)
 
 
-# In[7]:
+# In[ ]:
 
 
 # # save the masks
@@ -236,7 +236,7 @@ print(reconstructed_masks[0])
 tifffile.imwrite(mask_file_path, reconstructed_masks)
 
 
-# In[8]:
+# In[12]:
 
 
 if in_notebook:

@@ -26,10 +26,7 @@ if [ "$NOTEBOOK" = False ]; then
     z_stack_dir="../../data/test_dir/"
     mapfile -t input_dirs < <(ls -d "$z_stack_dir"*)
 
-    # subset the input directories for testing
-    # input_dirs="${input_dirs[@]:0:1}"
-
-    total_dirs=$(echo "$input_dirs" | wc -l)
+    input_dirs=$(echo "$input_dirs" | wc -l)
     current_dir=0
     compartments=( "nuclei" "cell" )
 
