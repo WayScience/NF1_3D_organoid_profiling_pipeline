@@ -40,6 +40,7 @@ for dir in "${input_dirs[@]}"; do
     echo -ne "Processing directory $current_dir of $total_dirs\r"
     python 0.segment_nuclei_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.05
     python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1
+    python 2.segment_cytoplasm_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1
 done
 
 cd ../ || exit
