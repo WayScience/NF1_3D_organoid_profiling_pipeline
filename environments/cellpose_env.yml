@@ -1,0 +1,31 @@
+name: GFF_segmentation
+
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+
+dependencies:
+  - conda-forge::python=3.9
+  - conda-forge::ipykernel
+  - conda-forge::jupyter
+  - conda-forge::nbconvert
+  - conda-forge::nb_conda_kernels
+  - conda-forge::pip
+  - conda-forge::numpy<2.0
+  - conda-forge::matplotlib
+  - conda-forge::pandas
+  - conda-forge::scipy
+  - conda-forge::scikit-learn
+  - conda-forge::scikit-image
+  - conda-forge::papermill
+  - conda-forge::opencv
+  - pip:
+      - torch
+      - torchvision
+      - tensorflow
+      - cellpose
+      - tifffile
+      - aicsimageio
+      - torch_optimizer
+      - nvidia-cudnn-cu11==8.6.0.163
