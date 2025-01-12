@@ -17,6 +17,7 @@ cd scripts/ || exit
 
 python 0.update_file_structure.py --HPC True
 python 1.make_z-stack_images.py
+python 3.data_validation.py
 
 cd .. || exit
 

@@ -12,3 +12,4 @@ For nuclei and cells, we take a sliding window of n z-slices, where we perform m
 We then decouple the max-projection to collect a segmentation mask per z-slice.
 We then output the masks across all z-slices per image set as a stacked-TIFF file.
 
+Well F4-2 for the NF0014 group throws an error in cellpose - I will exclude these images from the segmentation process.
