@@ -22,32 +22,32 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 
 cd scripts || exit
 
-python 4.create_cytoplasm_masks.py --input_dir "$dir"
+python 5.create_cytoplasm_masks.py --input_dir "$dir"
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"
     exit 1
 fi
-python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cytoplasm"
+python 6.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cytoplasm"
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"
     exit 1
 fi
-python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "nuclei"
+python 6.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "nuclei"
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"
     exit 1
 fi
-python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cell"
+python 6.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cell"
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"
     exit 1
 fi
 
-python 5.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "organoid"
+python 6.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "organoid"
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"

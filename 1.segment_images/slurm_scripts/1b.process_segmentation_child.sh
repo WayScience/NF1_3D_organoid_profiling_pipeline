@@ -25,13 +25,13 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 cd scripts || exit
 
 # capture exit code for each script
-python 2.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment"
+python 3.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment"
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"
     exit 1
 fi
-python 3.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10
+python 4.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10
 # ensure that the exit code is 0
 if [ $? -ne 0 ]; then
     echo "Segmentation failed"
