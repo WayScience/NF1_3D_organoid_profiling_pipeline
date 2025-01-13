@@ -17,23 +17,23 @@ import pprint
 
 import sys
 
-sys.path.append("../utils")
+sys.path.append("../../utils")
 import cp_parallel
 
 
 # ## Set paths and variables
 
-# In[2]:
+# In[ ]:
 
 
 # set the run type for the parallelization
 run_name = "quality_control"
 
 # set path for pipeline for whole image QC
-path_to_pipeline = pathlib.Path("./pipeline/whole_image_qc.cppipe").resolve(strict=True)
+path_to_pipeline = pathlib.Path("../pipeline/whole_image_qc.cppipe").resolve(strict=True)
 
 # set main output dir for all plates if it doesn't exist
-output_dir = pathlib.Path("./qc_results")
+output_dir = pathlib.Path("../qc_results")
 output_dir.mkdir(exist_ok=True)
 
 # directory where images are located within folders (parent folder is the plate and the child folders are wells containing images)

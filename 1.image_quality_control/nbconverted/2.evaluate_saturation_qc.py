@@ -17,7 +17,7 @@
 
 # ## Import libraries
 
-# In[1]:
+# In[ ]:
 
 
 import pathlib
@@ -25,30 +25,29 @@ import pandas as pd
 import cosmicqc
 import cv2
 import matplotlib.pyplot as plt
-import seaborn as sns
 import re
 
 
 # ## Set paths and variables
 
-# In[2]:
+# In[ ]:
 
 
 # Set the threshold for identifying outliers with z-scoring for all metrics (# of standard deviations away from mean)
 threshold_z = 2
 
 # Directory for figures to be outputted
-figure_dir = pathlib.Path("./qc_figures")
+figure_dir = pathlib.Path("../qc_figures")
 figure_dir.mkdir(exist_ok=True)
 
 # Directory containing the QC results
-qc_results_dir = pathlib.Path("./qc_results")
+qc_results_dir = pathlib.Path("../qc_results")
 
 # Find all Image.csv files for all plates using glob
 image_csv_paths = qc_results_dir.glob("*/Image.csv")
 
 # Path to the template pipeline file to update with proper thresholds for flagging
-pipeline_path = pathlib.Path("pipeline/template_flag_pipeline.cppipe")
+pipeline_path = pathlib.Path("../pipeline/template_flag_pipeline.cppipe")
 
 
 # ## Load in QC results per plate and combine
