@@ -44,14 +44,14 @@ print(f"HPC: {HPC}")
 
 # Define parent and destination directories in a single dictionary
 dir_mapping = {
-    # "NF0014": {
-    #     "parent": pathlib.Path(
-    #         "/media/18tbdrive/GFF_organoid_data/Cell Painting-NF0014 Thawed3-Pilot Drug Screening/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
-    #         if not HPC
-    #         else "/pl/active/koala/GFF_Data/GFF-Raw/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path("../../data/NF0014_raw_images").resolve(),
-    # },
+    "NF0014": {
+        "parent": pathlib.Path(
+            "/media/18tbdrive/GFF_organoid_data/Cell Painting-NF0014 Thawed3-Pilot Drug Screening/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
+            if not HPC
+            else "/pl/active/koala/GFF_Data/GFF-Raw/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
+        ).resolve(strict=True),
+        "destination": pathlib.Path("../../data/NF0014_raw_images").resolve(),
+    },
     "NF0016": {
         "parent": pathlib.Path(
             "/media/18tbdrive/GFF_organoid_data/NF0016 Cell Painting-Pilot Drug Screening-selected/NF0016-Cell Painting Images/NF0016-images copy"
