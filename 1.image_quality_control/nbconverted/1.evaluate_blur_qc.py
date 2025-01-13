@@ -31,7 +31,7 @@ import re
 
 # ## Set paths and variables
 
-# In[ ]:
+# In[2]:
 
 
 # Set the threshold for identifying outliers with z-scoring for all metrics (# of standard deviations away from mean)
@@ -199,35 +199,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[7]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the maximum value of the ImageQuality_PowerLogLogSlope_DNA from the outliers dataframe
-max_value_dna = blur_DNA_outliers['ImageQuality_PowerLogLogSlope_DNA'].max()
-
-# Define the regex pattern to find the relevant section and update the Minimum value
-pattern = re.compile(
-    r'(Which measurement\?:\s*ImageQuality_PowerLogLogSlope_DNA.*?Minimum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(rf'\1{max_value_dna}', pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Minimum value for ImageQuality_PowerLogLogSlope_DNA to {max_value_dna} in the template pipeline file.")
-
-
 # ## Detect blur in Mito channel
 
-# In[8]:
+# In[7]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -253,7 +227,7 @@ blur_Mito_outliers = blur_Mito_outliers.sort_values(
 blur_Mito_outliers.head()
 
 
-# In[9]:
+# In[8]:
 
 
 # Combine PathName and FileName columns to construct full paths for Mito
@@ -308,35 +282,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[10]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the maximum value of the ImageQuality_PowerLogLogSlope_Mito from the outliers dataframe
-max_value_mito = blur_Mito_outliers['ImageQuality_PowerLogLogSlope_Mito'].max()
-
-# Define the regex pattern to find the relevant section and update the Minimum value
-pattern = re.compile(
-    r'(Which measurement\?:\s*ImageQuality_PowerLogLogSlope_Mito.*?Minimum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(rf'\1{max_value_mito}', pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Minimum value for ImageQuality_PowerLogLogSlope_Mito to {max_value_mito} in the template pipeline file.")
-
-
 # ## Detect blur in ER channel
 
-# In[11]:
+# In[9]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -356,7 +304,7 @@ blur_er_outliers = cosmicqc.find_outliers(
 pd.DataFrame(blur_er_outliers).head()
 
 
-# In[12]:
+# In[10]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -412,35 +360,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[13]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the maximum value of the ImageQuality_PowerLogLogSlope_ER from the outliers dataframe
-max_value_er = blur_er_outliers['ImageQuality_PowerLogLogSlope_ER'].max()
-
-# Define the regex pattern to find the relevant section and update the Minimum value
-pattern = re.compile(
-    r'(Which measurement\?:\s*ImageQuality_PowerLogLogSlope_ER.*?Minimum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(rf'\1{max_value_er}', pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Minimum value for ImageQuality_PowerLogLogSlope_ER to {max_value_er} in the template pipeline file.")
-
-
 # ## Detect blur in AGP channel
 
-# In[14]:
+# In[11]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -460,7 +382,7 @@ blur_agp_outliers = cosmicqc.find_outliers(
 pd.DataFrame(blur_agp_outliers).head()
 
 
-# In[15]:
+# In[12]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -516,35 +438,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[16]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the maximum value of the ImageQuality_PowerLogLogSlope_AGP from the outliers dataframe
-max_value_agp = blur_agp_outliers['ImageQuality_PowerLogLogSlope_AGP'].max()
-
-# Define the regex pattern to find the relevant section and update the Minimum value
-pattern = re.compile(
-    r'(Which measurement\?:\s*ImageQuality_PowerLogLogSlope_AGP.*?Minimum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(rf'\1{max_value_agp}', pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Minimum value for ImageQuality_PowerLogLogSlope_AGP to {max_value_agp} in the template pipeline file.")
-
-
 # ## Detect blur in Brightfield channel
 
-# In[17]:
+# In[13]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -564,7 +460,7 @@ blur_brightfield_outliers = cosmicqc.find_outliers(
 pd.DataFrame(blur_brightfield_outliers).head()
 
 
-# In[18]:
+# In[14]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -620,35 +516,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[19]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the maximum value of the ImageQuality_PowerLogLogSlope_Brightfield from the outliers dataframe
-max_value_brightfield = blur_brightfield_outliers['ImageQuality_PowerLogLogSlope_Brightfield'].max()
-
-# Define the regex pattern to find the relevant section and update the Minimum value
-pattern = re.compile(
-    r'(Which measurement\?:\s*ImageQuality_PowerLogLogSlope_Brightfield.*?Minimum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(rf'\1{max_value_brightfield}', pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Minimum value for ImageQuality_PowerLogLogSlope_Brightfield to {max_value_brightfield} in the template pipeline file.")
-
-
 # ## Create parquet file with each plate/well/site combos and boolean for pass/fail blur per channel
 
-# In[20]:
+# In[15]:
 
 
 # Combine all blur outliers dataframes into a single dataframe
@@ -677,7 +547,7 @@ for channel in ['DNA', 'Mito', 'AGP', 'Brightfield', 'ER']:
 unique_combos = unique_combos.reset_index(drop=True)
 
 # Save the unique_combos dataframe to a parquet file
-unique_combos.to_parquet(qc_results_dir / "all_plates_blur_results.parquet")
+unique_combos.to_parquet(qc_results_dir / "all_plates_qc_results.parquet")
 
 # Print the number of rows with at least one Blurry column set to True
 num_blurry_rows = unique_combos.loc[:, 'Blurry_DNA':'Blurry_ER'].any(axis=1).sum()

@@ -17,7 +17,7 @@
 
 # ## Import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import pathlib
@@ -30,7 +30,7 @@ import re
 
 # ## Set paths and variables
 
-# In[ ]:
+# In[2]:
 
 
 # Set the threshold for identifying outliers with z-scoring for all metrics (# of standard deviations away from mean)
@@ -42,6 +42,9 @@ figure_dir.mkdir(exist_ok=True)
 
 # Directory containing the QC results
 qc_results_dir = pathlib.Path("../qc_results")
+
+# Path to the QC results file for all plates (currently contains blur results)
+existing_qc_results_path = pathlib.Path(qc_results_dir / "all_plates_qc_results.parquet")
 
 # Find all Image.csv files for all plates using glob
 image_csv_paths = qc_results_dir.glob("*/Image.csv")
@@ -138,35 +141,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[6]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the minimum value of the ImageQuality_PercentMaximal_DNA from the outliers dataframe
-min_value_dna = saturation_DNA_outliers['ImageQuality_PercentMaximal_DNA'].min()
-
-# Define the regex pattern to find the relevant section and update the Maximum value with min value (anything above this value will be flagged)
-pattern = re.compile(
-    r'(Which measurement\?:ImageQuality_PercentMaximal_DNA.*?Maximum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(lambda m: f"{m.group(1)}{min_value_dna}", pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Maximum value for ImageQuality_PercentMaximal_DNA to {min_value_dna} in the template pipeline file.")
-
-
 # ## Detect over-saturation in Mito channel
 
-# In[7]:
+# In[6]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -192,7 +169,7 @@ saturation_Mito_outliers = saturation_Mito_outliers.sort_values(
 saturation_Mito_outliers.head()
 
 
-# In[8]:
+# In[7]:
 
 
 # Combine PathName and FileName columns to construct full paths for Mito
@@ -247,35 +224,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[9]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the minimum value of the ImageQuality_PercentMaximal_Mito from the outliers dataframe
-min_value_mito = saturation_Mito_outliers['ImageQuality_PercentMaximal_Mito'].min()
-
-# Define the regex pattern to find the relevant section and update the Maximum value with min value (anything above this value will be flagged)
-pattern = re.compile(
-    r'(Which measurement\?:ImageQuality_PercentMaximal_Mito.*?Maximum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(lambda m: f"{m.group(1)}{min_value_mito}", pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Maximum value for ImageQuality_PercentMaximal_Mito to {min_value_mito} in the template pipeline file.")
-
-
 # ## Detect over-saturation in ER channel
 
-# In[10]:
+# In[8]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -295,7 +246,7 @@ saturation_er_outliers = cosmicqc.find_outliers(
 pd.DataFrame(saturation_er_outliers).head()
 
 
-# In[11]:
+# In[9]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -351,35 +302,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[12]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the minimum value of the ImageQuality_PercentMaximal_ER from the outliers dataframe
-min_value_er = saturation_er_outliers['ImageQuality_PercentMaximal_ER'].min()
-
-# Define the regex pattern to find the relevant section and update the Maximum value with min value (anything above this value will be flagged)
-pattern = re.compile(
-    r'(Which measurement\?:ImageQuality_PercentMaximal_ER.*?Maximum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(lambda m: f"{m.group(1)}{min_value_er}", pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Maximum value for ImageQuality_PercentMaximal_ER to {min_value_er} in the template pipeline file.")
-
-
 # ## Detect over-saturation in AGP channel
 
-# In[13]:
+# In[10]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -399,7 +324,7 @@ saturation_agp_outliers = cosmicqc.find_outliers(
 pd.DataFrame(saturation_agp_outliers).head()
 
 
-# In[14]:
+# In[11]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -455,35 +380,9 @@ plt.tight_layout()
 plt.show()
 
 
-# In[15]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the minimum value of the ImageQuality_PercentMaximal_AGP from the outliers dataframe
-min_value_agp = saturation_agp_outliers['ImageQuality_PercentMaximal_AGP'].min()
-
-# Define the regex pattern to find the relevant section and update the Maximum value with min value (anything above this value will be flagged)
-pattern = re.compile(
-    r'(Which measurement\?:ImageQuality_PercentMaximal_AGP.*?Maximum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(lambda m: f"{m.group(1)}{min_value_agp}", pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Maximum value for ImageQuality_PercentMaximal_AGP to {min_value_agp} in the template pipeline file.")
-
-
 # ## Detect over-saturation in Brightfield channel
 
-# In[16]:
+# In[12]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -503,7 +402,7 @@ saturation_brightfield_outliers = cosmicqc.find_outliers(
 pd.DataFrame(saturation_brightfield_outliers).head()
 
 
-# In[17]:
+# In[13]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -559,36 +458,13 @@ plt.tight_layout()
 plt.show()
 
 
-# In[18]:
-
-
-# Read the content of the pipeline file
-with open(pipeline_path, 'r') as file:
-    pipeline_content = file.read()
-
-# Find the minimum value of the ImageQuality_PercentMaximal_Brightfield from the outliers dataframe
-min_value_brightfield = saturation_brightfield_outliers['ImageQuality_PercentMaximal_Brightfield'].min()
-
-# Define the regex pattern to find the relevant section and update the Maximum value with min value (anything above this value will be flagged)
-pattern = re.compile(
-    r'(Which measurement\?:ImageQuality_PercentMaximal_Brightfield.*?Maximum value:\s*)-?\d+(\.\d+)?',
-    re.DOTALL
-)
-
-# Update the pipeline content
-updated_pipeline_content = pattern.sub(lambda m: f"{m.group(1)}{min_value_brightfield}", pipeline_content)
-
-# Write the updated content back to the file
-with open(pipeline_path, 'w') as file:
-    file.write(updated_pipeline_content)
-
-print(f"Updated the Maximum value for ImageQuality_PercentMaximal_Brightfield to {min_value_brightfield} in the template pipeline file.")
-
-
 # ## Create parquet file with each plate/well/site combos and boolean for pass/fail saturation per channel
 
-# In[19]:
+# In[14]:
 
+
+# Load the existing parquet file with blur results
+existing_qc_results = pd.read_parquet(existing_qc_results_path)
 
 # Combine all saturation outliers dataframes into a single dataframe
 saturation_outliers = pd.concat(
@@ -615,18 +491,19 @@ for channel in ['DNA', 'Mito', 'AGP', 'Brightfield', 'ER']:
 # Reset the index on the unique combos dataframe
 unique_combos = unique_combos.reset_index(drop=True)
 
-# Save the unique_combos dataframe to a parquet file
-unique_combos.to_parquet(qc_results_dir / "all_plates_saturation_results.parquet")
+# Merge the new Saturated_ columns onto the existing dataframe
+merged_qc_results = existing_qc_results.merge(
+    unique_combos,
+    on=['Metadata_Plate', 'Metadata_Well', 'Metadata_Site'],
+    how='left'
+)
 
-# Print the number of rows with at least one Saturated column set to True
-num_saturated_rows = unique_combos.loc[:, 'Saturated_DNA':'Saturated_ER'].any(axis=1).sum()
-print(f"Number of organoids detected as poor quality due to saturation (in any channel): {num_saturated_rows}")
+# Save the merged dataframe back to the parquet file
+merged_qc_results.to_parquet(existing_qc_results_path)
 
-# Calculate and print the percentage of organoids detected as containing saturation
-percentage_saturated = (num_saturated_rows / len(unique_combos)) * 100
-print(f"Percentage of organoids detected as poor quality due to saturation: {percentage_saturated:.2f}%")
+# Print the shape of the merged dataframe
+print(merged_qc_results.shape)
 
-# Display the resulting dataframe
-print(unique_combos.shape)
-unique_combos.head()
+# Display the first few rows of the merged dataframe
+merged_qc_results.head()
 
