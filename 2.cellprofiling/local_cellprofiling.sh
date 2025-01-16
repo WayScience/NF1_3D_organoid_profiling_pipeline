@@ -5,7 +5,7 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 
 cd scripts/ || exit
 
-dir="../../data/cellprofiler/raw_z_input"
+dir="../../data/cellprofiler/C10-1/"
 
 python 0.run_cellprofiler_analysis.py --input_dir $dir
 

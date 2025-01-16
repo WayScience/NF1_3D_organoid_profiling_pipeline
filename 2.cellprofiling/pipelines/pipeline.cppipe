@@ -2,7 +2,7 @@ CellProfiler Pipeline: http://www.cellprofiler.org
 Version:5
 DateRevision:426
 GitHash:
-ModuleCount:18
+ModuleCount:20
 HasImagePlaneDetails:False
 
 Images:[module_num:1|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:['To begin creating your project, use the Images module to compile a list of files and/or folders that you want to analyze. You can also specify a set of rules to include only the desired files in your selected folders.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -34,7 +34,7 @@ NamesAndTypes:[module_num:3|svn_version:'Unknown'|variable_revision_number:8|sho
     Match metadata:[]
     Image set matching method:Order
     Set intensity range from:Image metadata
-    Assignments count:7
+    Assignments count:9
     Single images count:0
     Maximum intensity:255.0
     Process as 3D?:Yes
@@ -65,6 +65,12 @@ NamesAndTypes:[module_num:3|svn_version:'Unknown'|variable_revision_number:8|sho
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
+    Select the rule criteria:and (file does contain "TRANS")
+    Name to assign these images:Brightfield
+    Name to assign these objects:Cell
+    Select the image type:Grayscale image
+    Set intensity range from:Image metadata
+    Maximum intensity:255.0
     Select the rule criteria:and (file does contain "nuclei_mask")
     Name to assign these images:nuclei_mask
     Name to assign these objects:Cell
@@ -83,6 +89,12 @@ NamesAndTypes:[module_num:3|svn_version:'Unknown'|variable_revision_number:8|sho
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
+    Select the rule criteria:and (file does contain "organoid_mask")
+    Name to assign these images:organoid_mask
+    Name to assign these objects:Cell
+    Select the image type:Grayscale image
+    Set intensity range from:Image metadata
+    Maximum intensity:255.0
 
 Groups:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_window:False|notes:['The Groups module optionally allows you to split your list of images into image subsets (groups) which will be processed independently of each other. Examples of groupings include screening batches, microtiter plates, time-lapse movies, etc.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Do you want to group your images?:Yes
@@ -91,6 +103,14 @@ Groups:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_windo
     Metadata category:FOV
 
 ConvertImageToObjects:[module_num:5|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input image:organoid_mask
+    Name the output object:Organoids
+    Convert to boolean image:No
+    Preserve original labels:Yes
+    Background label:0
+    Connectivity:0
+
+ConvertImageToObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:nuclei_mask
     Name the output object:nuclei_mask
     Convert to boolean image:No
@@ -98,7 +118,7 @@ ConvertImageToObjects:[module_num:5|svn_version:'Unknown'|variable_revision_numb
     Background label:0
     Connectivity:0
 
-ConvertImageToObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertImageToObjects:[module_num:7|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:cell_mask
     Name the output object:cell_mask
     Convert to boolean image:No
@@ -106,7 +126,7 @@ ConvertImageToObjects:[module_num:6|svn_version:'Unknown'|variable_revision_numb
     Background label:0
     Connectivity:0
 
-ConvertImageToObjects:[module_num:7|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertImageToObjects:[module_num:8|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:cytoplasm_mask
     Name the output object:cytoplasm_mask
     Convert to boolean image:No
@@ -114,33 +134,18 @@ ConvertImageToObjects:[module_num:7|svn_version:'Unknown'|variable_revision_numb
     Background label:0
     Connectivity:0
 
-FilterObjects:[module_num:8|svn_version:'Unknown'|variable_revision_number:10|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the objects to filter:nuclei_mask
-    Name the output objects:Nuclei
-    Select the filtering mode:Image or mask border
-    Select the filtering method:Limits
-    Select the objects that contain the filtered objects:None
-    Select the location of the rules or classifier file:Elsewhere...|
-    Rules or classifier file name:rules.txt
-    Class number:1
-    Measurement count:1
-    Additional object count:2
-    Assign overlapping child to:Both parents
-    Keep removed objects as a separate set?:No
-    Name the objects removed by the filter:RemovedObjects
-    Select the measurement to filter by:AreaShape_Area
-    Filter using a minimum measurement value?:Yes
-    Minimum value:0.0
-    Filter using a maximum measurement value?:Yes
-    Maximum value:1.0
-    Select additional object to relabel:cell_mask
-    Name the relabeled objects:cell_mask_filtered
-    Select additional object to relabel:cytoplasm_mask
-    Name the relabeled objects:cytoplasm_mask_filtered
-    Allow fuzzy feature matching?:No
-
 RelateObjects:[module_num:9|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Parent objects:nuclei_mask
+    Parent objects:Organoids
+    Child objects:nuclei_mask
+    Calculate child-parent distances?:None
+    Calculate per-parent means for all child measurements?:No
+    Calculate distances to other parents?:No
+    Do you want to save the children with parents as a new object set?:Yes
+    Name the output object:Nuclei
+    Parent name:None
+
+RelateObjects:[module_num:10|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+    Parent objects:Nuclei
     Child objects:cell_mask
     Calculate child-parent distances?:None
     Calculate per-parent means for all child measurements?:No
@@ -149,7 +154,7 @@ RelateObjects:[module_num:9|svn_version:'Unknown'|variable_revision_number:5|sho
     Name the output object:Cells
     Parent name:None
 
-RelateObjects:[module_num:10|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+RelateObjects:[module_num:11|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Parent objects:Nuclei
     Child objects:cytoplasm_mask
     Calculate child-parent distances?:None
@@ -159,11 +164,11 @@ RelateObjects:[module_num:10|svn_version:'Unknown'|variable_revision_number:5|sh
     Name the output object:Cytoplasm
     Parent name:None
 
-MeasureColocalization:[module_num:11|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:AGP, DNA, ER, Mito
+MeasureColocalization:[module_num:12|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
+    Select images to measure:AGP, Brightfield, DNA, ER, Mito
     Set threshold as percentage of maximum intensity for the images:15.0
     Select where to measure correlation:Within objects
-    Select objects to measure:Cells, Cytoplasm, Nuclei
+    Select objects to measure:Cells, Cytoplasm, Nuclei, Organoids
     Run all metrics?:Yes
     Calculate correlation and slope metrics?:Yes
     Calculate the Manders coefficients?:Yes
@@ -172,20 +177,33 @@ MeasureColocalization:[module_num:11|svn_version:'Unknown'|variable_revision_num
     Calculate the Manders coefficients using Costes auto threshold?:Yes
     Method for Costes thresholding:Faster
 
-MeasureGranularity:[module_num:12|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:AGP, DNA, ER, Mito
+MeasureGranularity:[module_num:13|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
+    Select images to measure:AGP, Brightfield, DNA, ER, Mito
     Measure within objects?:Yes
-    Select objects to measure:Cells, Cytoplasm, Nuclei
+    Select objects to measure:Cells, Cytoplasm, Nuclei, Organoids
     Subsampling factor for granularity measurements:0.25
     Subsampling factor for background reduction:0.25
     Radius of structuring element:10
     Range of the granular spectrum:16
 
-MeasureObjectIntensity:[module_num:13|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:AGP, DNA, ER, Mito
-    Select objects to measure:Cells, Cytoplasm, Nuclei
+MeasureObjectIntensity:[module_num:14|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
+    Select images to measure:AGP, Brightfield, DNA, ER, Mito
+    Select objects to measure:Cells, Cytoplasm, Nuclei, Organoids
 
-MeasureObjectNeighbors:[module_num:14|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:['Nuclei - Nuclei - Neighbors']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureObjectNeighbors:[module_num:15|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:['Organoid - Organoid - Neighbors']|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
+    Select objects to measure:Organoids
+    Select neighboring objects to measure:Organoids
+    Method to determine neighbors:Expand until adjacent
+    Neighbor distance:5
+    Consider objects discarded for touching image border?:Yes
+    Retain the image of objects colored by numbers of neighbors?:No
+    Name the output image:ObjectNeighborCount
+    Select colormap:Blues
+    Retain the image of objects colored by percent of touching pixels?:No
+    Name the output image:PercentTouching
+    Select colormap:Oranges
+
+MeasureObjectNeighbors:[module_num:16|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Select objects to measure:Nuclei
     Select neighboring objects to measure:Nuclei
     Method to determine neighbors:Expand until adjacent
@@ -198,7 +216,7 @@ MeasureObjectNeighbors:[module_num:14|svn_version:'Unknown'|variable_revision_nu
     Name the output image:PercentTouching
     Select colormap:Oranges
 
-MeasureObjectNeighbors:[module_num:15|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:['Cell - Cell - Neighbors']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureObjectNeighbors:[module_num:17|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:['Cell - Cell - Neighbors']|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Select objects to measure:Cells
     Select neighboring objects to measure:Cells
     Method to determine neighbors:Expand until adjacent
@@ -211,20 +229,20 @@ MeasureObjectNeighbors:[module_num:15|svn_version:'Unknown'|variable_revision_nu
     Name the output image:PercentTouching
     Select colormap:Oranges
 
-MeasureObjectSizeShape:[module_num:16|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select object sets to measure:Cells, Cytoplasm, Nuclei
+MeasureObjectSizeShape:[module_num:18|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
+    Select object sets to measure:Cells, Cytoplasm, Nuclei, Organoids
     Calculate the Zernike features?:Yes
     Calculate the advanced features?:Yes
 
-MeasureTexture:[module_num:17|svn_version:'Unknown'|variable_revision_number:7|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:AGP, DNA, ER, Mito
-    Select objects to measure:Cells, Cytoplasm, Nuclei
+MeasureTexture:[module_num:19|svn_version:'Unknown'|variable_revision_number:7|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
+    Select images to measure:AGP, Brightfield, DNA, ER, Mito
+    Select objects to measure:Cells, Cytoplasm, Nuclei, Organoids
     Enter how many gray levels to measure the texture at:256
     Hidden:1
     Measure whole images or objects?:Both
     Texture scale to measure:3
 
-ExportToDatabase:[module_num:18|svn_version:'Unknown'|variable_revision_number:28|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ExportToDatabase:[module_num:20|svn_version:'Unknown'|variable_revision_number:28|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Database type:SQLite
     Database name:DefaultDB
     Add a prefix to table names?:No
