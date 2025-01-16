@@ -5,15 +5,17 @@
 
 # ## Import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
 import pathlib
-import pprint
 import sys
 import time
 import tracemalloc
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 sys.path.append("../../utils")
 from cp_utils import run_cellprofiler
@@ -46,7 +48,7 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/cellprofiler").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/cellprofiler/C10-1/").resolve(strict=True)
 
 print(f"Input directory: {input_dir}")
 
@@ -59,23 +61,20 @@ print(f"Input directory: {input_dir}")
 # set the run type for the parallelization
 run_name = "analysis"
 
-# set main output dir for all plates
-output_dir = pathlib.Path("../analysis_output")
-output_dir.mkdir(exist_ok=True, parents=True)
-
-# directory where images are located within folders
-images_dir = pathlib.Path("../../data/cellprofiler/raw_z_input/").resolve(strict=True)
 
 path_to_pipeline = pathlib.Path("../pipelines/pipeline.cppipe").resolve(strict=True)
 
-sqlite_name = images_dir.stem
+# set main output dir for all plates
+output_dir = pathlib.Path(f"../analysis_output/{input_dir.stem}").resolve()
+output_dir.mkdir(exist_ok=True, parents=True)
+sqlite_name = input_dir.stem
 
 
 # ## Run analysis pipeline on each plate in parallel
 #
 # This cell is not finished to completion due to how long it would take. It is ran in the python file instead.
 
-# In[ ]:
+# In[4]:
 
 
 start = time.time()
@@ -83,20 +82,21 @@ start = time.time()
 tracemalloc.start()
 
 
-# In[ ]:
+# In[5]:
 
 
 run_cellprofiler(
     path_to_pipeline=str(path_to_pipeline),
     path_to_input=str(input_dir),
     path_to_output=str(output_dir),
-    sqlite_name=sqlite_name,
     analysis_run=True,
-    rename_sqlite_file_bool=sqlite_name,
+    hardcode_sqlite_name="temporary",
+    sqlite_name=sqlite_name,
+    rename_sqlite_file_bool=True,
 )
 
 
-# In[ ]:
+# In[6]:
 
 
 end = time.time()
@@ -105,12 +105,19 @@ end = time.time()
 snapshot = tracemalloc.take_snapshot()
 # peak memory usage
 top_stats = snapshot.statistics("lineno")
-print("[ Top 10 ]")
-for stat in top_stats[:10]:
-    print(stat)
-# total memory usage
-print("[ Total ]")
-pprint.pprint(snapshot.statistics("filename"))
+
+cumulative_mem = 0
+peak_mem = 0
+
+for stat in top_stats:
+    cumulative_mem += stat.size
+    peak_mem = max(peak_mem, stat.size)
+
+print(f"Peak memory usage: {peak_mem / 10**6}MB")
+print(f"Cumulative memory usage: {cumulative_mem / 10**6}MB")
+
+
+# In[7]:
 
 
 # format the time taken into hours, minutes, seconds
