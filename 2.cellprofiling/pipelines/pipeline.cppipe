@@ -260,7 +260,7 @@ ExportToDatabase:[module_num:20|svn_version:'Unknown'|variable_revision_number:2
     Calculate the per-well median values of object measurements?:No
     Calculate the per-well standard deviation values of object measurements?:No
     Export measurements for all objects to the database?:Select...
-    Select the objects:Cells,Cytoplasm,Nuclei
+    Select the objects:Cells,Cytoplasm,Nuclei,Organoids
     Maximum # of characters in a column name:64
     Create one table per object, a single object table or a single object view?:One table per object type
     Enter an image url prepend if you plan to access your files via http:

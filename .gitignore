@@ -168,3 +168,7 @@ data/*
 2.cellprofiling/notebooks/logs/*
 2.cellprofiling/scripts/logs/*
 2.cellprofiling/analysis_output/*
+
+3.processing_image_based_profiles/data/*
+3.processing_image_based_profiles/notebooks/runinfo/*
+3.processing_image_based_profiles/scripts/runinfo/*

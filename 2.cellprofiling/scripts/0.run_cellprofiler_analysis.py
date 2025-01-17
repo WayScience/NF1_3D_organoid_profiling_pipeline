@@ -30,7 +30,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -48,14 +48,14 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/cellprofiler/C10-1/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/cellprofiler/C4-2/").resolve(strict=True)
 
 print(f"Input directory: {input_dir}")
 
 
 # ## Set paths and variables
 
-# In[ ]:
+# In[3]:
 
 
 # set the run type for the parallelization
