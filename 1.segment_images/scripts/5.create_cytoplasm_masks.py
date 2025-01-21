@@ -68,10 +68,11 @@ nuclei_masks = io.imread(nuclei_masks_path)
 cell_masks = io.imread(cell_masks_path)
 
 
-# In[4]:
+# In[ ]:
 
 
 cytoplasm_masks = np.zeros_like(cell_masks)
+# filter masks that are not the background
 for z_slice_index in range(nuclei_masks.shape[0]):
     nuclei_slice_mask = nuclei_masks[z_slice_index]
     cell_slice_mask = cell_masks[z_slice_index]

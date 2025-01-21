@@ -343,17 +343,6 @@ if in_notebook:
     plt.show()
 
 
-# In[15]:
-
-
-# TODO: add the same view of the raw amd segmented images in volume view
-# TODO: Make a figure describing the algorithm and the workflow
-## Segmentation
-## Graph based object relation
-## TODO: Visualize the Napari viewer with the mask as as channel
-# 2.5D graph based object relation for 3D segmentation subroutine
-
-
 # ## Generate the new image via mask number reassignment
 
 # In[16]:
