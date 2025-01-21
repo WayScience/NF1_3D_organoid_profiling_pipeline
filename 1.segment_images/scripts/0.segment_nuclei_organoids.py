@@ -134,7 +134,7 @@ labels, details, _ = model.eval(
 
 # ## Reverse the sliding window max projection
 
-# In[7]:
+# In[ ]:
 
 
 # reverse sliding window max projection
@@ -142,10 +142,14 @@ full_mask_z_stack = []
 reconstruction_dict = {index: [] for index in range(original_z_slice_count)}
 print(f"Decoupling the sliding window max projection of {window_size} slices")
 
+# loop through the sliding window max projected masks and decouple them
 for z_stack_mask_index in range(len(labels)):
     z_stack_decouple = []
+    # make n copies of the mask for sliding window decoupling
+    # where n is the size of the sliding window
     [z_stack_decouple.append(labels[z_stack_mask_index]) for _ in range(window_size)]
     for z_window_index, z_stack_mask in enumerate(z_stack_decouple):
+        # append the masks to the reconstruction_dict
         if not (z_stack_mask_index + z_window_index) >= original_z_slice_count:
             reconstruction_dict[z_stack_mask_index + z_window_index].append(
                 z_stack_mask
