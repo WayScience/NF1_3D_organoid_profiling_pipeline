@@ -1,0 +1,15 @@
+  3D_pipeline[m
+  3d_pipe[m
+  CP_pipe[m
+  cell_segmentation[m
+  cellprofiler[m
+  finalize_segmentation[m
+  inital_cell_segmentation[m
+* [32minital_whole_organoid_segmentation[m
+  initial_nuclei_segmentation[m
+  main[m
+  nuclei_segmentation[m
+  preprocess_z[m
+  process_data[m
+  remove_segmentaion[m
+  z_intensity_correction[m
