@@ -73,26 +73,26 @@ NamesAndTypes:[module_num:3|svn_version:'Unknown'|variable_revision_number:8|sho
     Maximum intensity:255.0
     Select the rule criteria:and (file does contain "nuclei_mask")
     Name to assign these images:nuclei_mask
-    Name to assign these objects:Cell
-    Select the image type:Grayscale image
+    Name to assign these objects:Nuclei
+    Select the image type:Objects
     Set intensity range from:Image metadata
     Maximum intensity:255.0
     Select the rule criteria:and (file does contain "cell_mask")
     Name to assign these images:cell_mask
     Name to assign these objects:Cell
-    Select the image type:Grayscale image
+    Select the image type:Objects
     Set intensity range from:Image metadata
     Maximum intensity:255.0
     Select the rule criteria:and (file does contain "cytoplasm_mask")
     Name to assign these images:cytoplasm_mask
-    Name to assign these objects:Cell
-    Select the image type:Grayscale image
+    Name to assign these objects:Cytoplasm
+    Select the image type:Objects
     Set intensity range from:Image metadata
     Maximum intensity:255.0
     Select the rule criteria:and (file does contain "organoid_mask")
-    Name to assign these images:organoid_mask
-    Name to assign these objects:Cell
-    Select the image type:Grayscale image
+    Name to assign these images:Organoid
+    Name to assign these objects:Organoid
+    Select the image type:Objects
     Set intensity range from:Image metadata
     Maximum intensity:255.0
 
@@ -102,7 +102,7 @@ Groups:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_windo
     Metadata category:Well
     Metadata category:FOV
 
-ConvertImageToObjects:[module_num:5|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertImageToObjects:[module_num:5|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Select the input image:organoid_mask
     Name the output object:Organoids
     Convert to boolean image:No
@@ -110,7 +110,7 @@ ConvertImageToObjects:[module_num:5|svn_version:'Unknown'|variable_revision_numb
     Background label:0
     Connectivity:0
 
-ConvertImageToObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertImageToObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Select the input image:nuclei_mask
     Name the output object:nuclei_objects
     Convert to boolean image:No
@@ -118,7 +118,7 @@ ConvertImageToObjects:[module_num:6|svn_version:'Unknown'|variable_revision_numb
     Background label:0
     Connectivity:0
 
-ConvertImageToObjects:[module_num:7|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertImageToObjects:[module_num:7|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Select the input image:cell_mask
     Name the output object:cell_objects
     Convert to boolean image:No
@@ -126,7 +126,7 @@ ConvertImageToObjects:[module_num:7|svn_version:'Unknown'|variable_revision_numb
     Background label:0
     Connectivity:0
 
-ConvertImageToObjects:[module_num:8|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+ConvertImageToObjects:[module_num:8|svn_version:'Unknown'|variable_revision_number:1|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
     Select the input image:cytoplasm_mask
     Name the output object:cytoplasm_objects
     Convert to boolean image:No
@@ -135,32 +135,32 @@ ConvertImageToObjects:[module_num:8|svn_version:'Unknown'|variable_revision_numb
     Connectivity:0
 
 RelateObjects:[module_num:9|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Parent objects:Organoids
-    Child objects:nuclei_objects
+    Parent objects:Organoid
+    Child objects:Nuclei
     Calculate child-parent distances?:None
     Calculate per-parent means for all child measurements?:No
     Calculate distances to other parents?:No
-    Do you want to save the children with parents as a new object set?:Yes
+    Do you want to save the children with parents as a new object set?:No
     Name the output object:Nuclei
     Parent name:None
 
 RelateObjects:[module_num:10|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Parent objects:Nuclei
-    Child objects:cell_objects
+    Child objects:Cell
     Calculate child-parent distances?:None
     Calculate per-parent means for all child measurements?:No
     Calculate distances to other parents?:No
-    Do you want to save the children with parents as a new object set?:Yes
+    Do you want to save the children with parents as a new object set?:No
     Name the output object:Cells
     Parent name:None
 
 RelateObjects:[module_num:11|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Parent objects:Cells
-    Child objects:cytoplasm_objects
+    Parent objects:Cell
+    Child objects:Cytoplasm
     Calculate child-parent distances?:None
     Calculate per-parent means for all child measurements?:No
     Calculate distances to other parents?:No
-    Do you want to save the children with parents as a new object set?:Yes
+    Do you want to save the children with parents as a new object set?:No
     Name the output object:Cytoplasm
     Parent name:None
 
@@ -259,8 +259,8 @@ ExportToDatabase:[module_num:20|svn_version:'Unknown'|variable_revision_number:2
     Calculate the per-well mean values of object measurements?:No
     Calculate the per-well median values of object measurements?:No
     Calculate the per-well standard deviation values of object measurements?:No
-    Export measurements for all objects to the database?:Select...
-    Select the objects:Cells,Cytoplasm,Nuclei,Organoids
+    Export measurements for all objects to the database?:All
+    Select the objects:Cell,Cytoplasm,Nuclei,Organoid
     Maximum # of characters in a column name:64
     Create one table per object, a single object table or a single object view?:One table per object type
     Enter an image url prepend if you plan to access your files via http:
