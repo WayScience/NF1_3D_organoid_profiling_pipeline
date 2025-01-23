@@ -482,7 +482,7 @@ blur_brightfield_outliers = cosmicqc.find_outliers(
 pd.DataFrame(blur_brightfield_outliers).head()
 
 
-# In[15]:
+# In[17]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -498,17 +498,17 @@ unique_groups = blur_brightfield_outliers.groupby(
 )
 print(len(unique_groups))
 
-# Randomly sample one row per group
-unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=None))
+# Randomly sample one row per group (select random state for best examples)
+unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=1))
 
 # Reset the index for convenience
 unique_samples = unique_samples.reset_index(drop=True)
 
-# Further randomly select 3 unique images
+# Further randomly select 3 unique images (select random state for best examples)
 if len(unique_samples) < 3:
     print("Not enough unique Plate-Well-Site combinations for the requested images.")
 else:
-    selected_images = unique_samples.sample(n=3, random_state=None)
+    selected_images = unique_samples.sample(n=3, random_state=1)
 
 # Create a figure to display images
 plt.figure(figsize=(15, 5))
@@ -543,7 +543,7 @@ plt.show()
 
 # ## Create parquet file with each plate/well/site combos and boolean for pass/fail blur per channel
 
-# In[16]:
+# In[ ]:
 
 
 # Combine all blur outliers dataframes into a single dataframe
@@ -559,22 +559,22 @@ blur_outliers = pd.concat(
     names=["Channel"],
 ).reset_index(level="Channel")
 
-# Create a new dataframe with unique combinations of Metadata_Plate, Metadata_Well, Metadata_Site, and Metadata_Zslice
-unique_combos = concat_qc_df[
+# Create a new dataframe with only Metadata_Plate, Metadata_Well, Metadata_Site, and Metadata_Zslice columns to assign blur flags
+blur_outliers_per_zslice = concat_qc_df[
     ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"]
 ].drop_duplicates()
 
 # Initialize columns for each channel with False
 for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
-    unique_combos[f"Blurry_{channel}"] = False
+    blur_outliers_per_zslice[f"Blurry_{channel}"] = False
 
 # Flag the combos for blur detection
 for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
     blur_combos = blur_outliers[blur_outliers["Channel"] == channel][
         ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"]
     ].drop_duplicates()
-    unique_combos.loc[
-        unique_combos.set_index(
+    blur_outliers_per_zslice.loc[
+        blur_outliers_per_zslice.set_index(
             ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"]
         ).index.isin(
             blur_combos.set_index(
@@ -585,24 +585,24 @@ for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
     ] = True
 
 # Reset the index on the unique combos dataframe
-unique_combos = unique_combos.reset_index(drop=True)
+blur_outliers_per_zslice = blur_outliers_per_zslice.reset_index(drop=True)
 
-# Save the unique_combos dataframe to a parquet file
-unique_combos.to_parquet(qc_results_dir / "all_plates_qc_results.parquet")
+# Save the blur_outliers_per_zslice dataframe to a parquet file
+blur_outliers_per_zslice.to_parquet(qc_results_dir / "all_plates_qc_results.parquet")
 
 # Print the number of rows with at least one Blurry column set to True
-num_blurry_rows = unique_combos.loc[:, "Blurry_DNA":"Blurry_ER"].any(axis=1).sum()
+num_blurry_rows = blur_outliers_per_zslice.loc[:, "Blurry_DNA":"Blurry_ER"].any(axis=1).sum()
 print(
     f"Number of z-slices across all organoids detected as poor quality due to blur (in any channel): {num_blurry_rows}"
 )
 
 # Calculate and print the percentage of organoids detected as containing blur
-percentage_blurry = (num_blurry_rows / len(unique_combos)) * 100
+percentage_blurry = (num_blurry_rows / len(blur_outliers_per_zslice)) * 100
 print(
     f"Percentage of z-slices detected as poor quality due to blur: {percentage_blurry:.2f}%"
 )
 
 # Display the resulting dataframe
-print(unique_combos.shape)
-unique_combos.head()
+print(blur_outliers_per_zslice.shape)
+blur_outliers_per_zslice.head()
 

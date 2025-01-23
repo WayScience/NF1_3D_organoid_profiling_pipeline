@@ -493,7 +493,7 @@ plt.show()
 
 # ## Create parquet file with each plate/well/site combos and boolean for pass/fail saturation per channel
 
-# In[15]:
+# In[ ]:
 
 
 # Load the existing parquet file with blur results
@@ -513,21 +513,21 @@ saturation_outliers = pd.concat(
 ).reset_index(level="Channel")
 
 # Create a new dataframe with unique combinations of Metadata_Plate, Metadata_Well, Metadata_Site, and Metadata_ZSlice
-unique_combos = concat_qc_df[
+saturation_outliers_per_zslice = concat_qc_df[
     ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"]
 ].drop_duplicates()
 
 # Initialize columns for each channel with False
 for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
-    unique_combos[f"Saturated_{channel}"] = False
+    saturation_outliers_per_zslice[f"Saturated_{channel}"] = False
 
 # Flag the combos for saturation detection
 for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
     saturation_combos = saturation_outliers[saturation_outliers["Channel"] == channel][
         ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"]
     ].drop_duplicates()
-    unique_combos.loc[
-        unique_combos.set_index(
+    saturation_outliers_per_zslice.loc[
+        saturation_outliers_per_zslice.set_index(
             ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"]
         ).index.isin(
             saturation_combos.set_index(
@@ -538,11 +538,11 @@ for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
     ] = True
 
 # Reset the index on the unique combos dataframe
-unique_combos = unique_combos.reset_index(drop=True)
+saturation_outliers_per_zslice = saturation_outliers_per_zslice.reset_index(drop=True)
 
 # Merge the new Saturated_ columns onto the existing dataframe
 merged_qc_results = existing_qc_results.merge(
-    unique_combos,
+    saturation_outliers_per_zslice,
     on=["Metadata_Plate", "Metadata_Well", "Metadata_Site", "Metadata_Zslice"],
     how="left",
 )
@@ -552,14 +552,14 @@ merged_qc_results.to_parquet(existing_qc_results_path)
 
 # Print the number of rows with at least one Saturated column set to True
 num_saturated_rows = (
-    unique_combos.loc[:, "Saturated_DNA":"Saturated_ER"].any(axis=1).sum()
+    saturation_outliers_per_zslice.loc[:, "Saturated_DNA":"Saturated_ER"].any(axis=1).sum()
 )
 print(
     f"Number of z-slices across all organoids detected as poor quality due to saturation (in any channel): {num_saturated_rows}"
 )
 
 # Calculate and print the percentage of organoids detected as containing saturation
-percentage_saturated = (num_saturated_rows / len(unique_combos)) * 100
+percentage_saturated = (num_saturated_rows / len(saturation_outliers_per_zslice)) * 100
 print(
     f"Percentage of z-slices detected as poor quality due to saturation: {percentage_saturated:.2f}%"
 )
