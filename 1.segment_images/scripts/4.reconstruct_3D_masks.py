@@ -45,7 +45,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -77,9 +77,9 @@ if not in_notebook:
     compartment = args.compartment
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../processed_data/C6-1/").resolve(strict=True)
+    input_dir = pathlib.Path("../processed_data/C4-2/").resolve(strict=True)
     x_y_vector_radius_max_constaint = 10  # pixels
-    compartment = "nucleui"
+    compartment = "cell"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -108,9 +108,6 @@ image = image.astype(np.uint8)
 
 
 skimage.measure.regionprops_table(image[1, :, :])
-
-
-# In[ ]:
 
 
 # In[5]:
@@ -345,7 +342,7 @@ if in_notebook:
 
 # ## Generate the new image via mask number reassignment
 
-# In[16]:
+# In[15]:
 
 
 # go back through the image and color each mask with the object number based on x and y coordinates for each slice
@@ -359,7 +356,7 @@ for slice in range(image.shape[0]):
         new_image[slice][image[slice] == row["label"]] = row["object_number"]
 
 
-# In[17]:
+# In[16]:
 
 
 # rescale the images so that the max pixel value is 255
@@ -368,7 +365,7 @@ new_image = (new_image / np.max(new_image)) * 255
 new_image = new_image.astype(np.uint8)
 
 
-# In[18]:
+# In[17]:
 
 
 # save the new image
@@ -377,7 +374,7 @@ tifffile.imwrite(output_image_dir, new_image)
 
 # ## Visualize the new image per z-slice
 
-# In[19]:
+# In[18]:
 
 
 # plot the new image masks

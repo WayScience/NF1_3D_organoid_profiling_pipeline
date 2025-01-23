@@ -71,7 +71,7 @@ if not in_notebook:
 
 else:
     input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
-    window_size = 3
+    window_size = 5
     clip_limit = 0.1
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -80,7 +80,7 @@ mask_path.mkdir(exist_ok=True, parents=True)
 
 # ## Set up images, paths and functions
 
-# In[3]:
+# In[ ]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -125,9 +125,9 @@ for image_index in range(cyto.shape[0]):
     image_stack_window = cyto[image_index : image_index + window_size]
     if not image_stack_window.shape[0] == window_size:
         break
-    # guassian blur the image stack
+    # guassian blur the image stack to smooth the global intensity
     image_stack_window = skimage.filters.gaussian(image_stack_window, sigma=1)
-    # max project the image stack
+    # max project the image stack for the sliding window
     image_stack_2_5D = np.append(
         image_stack_2_5D, np.max(image_stack_window, axis=0)[np.newaxis, :, :], axis=0
     )
@@ -162,29 +162,12 @@ if in_notebook:
 # In[6]:
 
 
-# if in_notebook:
-#     # plot the nuclei and the cyto channels
-#     plt.figure(figsize=(10, 10))
-#     plt.subplot(121)
-#     plt.imshow(cyto[9, :, :], cmap="gray")
-#     plt.title("Raw cyto")
-#     plt.axis("off")
-#     plt.subplot(122)
-#     plt.imshow(imgs[9, :, :], cmap="gray")
-#     plt.title(f"Gaussian blur: sigma {sigma}")
-#     plt.axis("off")
-#     plt.show()
-
-
-# In[7]:
-
-
 use_GPU = torch.cuda.is_available()
 # Load the model
 model_name = "cyto3"
 model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
 
-# Perform segmentation
+# Perform segmentation of whole organoids
 labels, details, _ = model.eval(
     imgs,
     channels=[0, 0],
@@ -194,7 +177,7 @@ labels, details, _ = model.eval(
 )
 
 
-# In[8]:
+# In[7]:
 
 
 # reverse sliding window max projection
@@ -226,7 +209,7 @@ full_mask_z_stack = np.array(full_mask_z_stack)
 tifffile.imsave(mask_path / "organoid_mask.tiff", full_mask_z_stack)
 
 
-# In[9]:
+# In[8]:
 
 
 if in_notebook:

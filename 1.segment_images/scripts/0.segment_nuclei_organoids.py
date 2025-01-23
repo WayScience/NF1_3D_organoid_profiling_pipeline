@@ -62,7 +62,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
-    window_size = 3
+    window_size = 5
     clip_limit = 0.05
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -134,7 +134,7 @@ labels, details, _ = model.eval(
 
 # ## Reverse the sliding window max projection
 
-# In[ ]:
+# In[7]:
 
 
 # reverse sliding window max projection

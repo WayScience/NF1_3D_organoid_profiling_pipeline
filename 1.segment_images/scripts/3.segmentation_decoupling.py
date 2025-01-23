@@ -57,7 +57,9 @@ if not in_notebook:
     compartment = args.compartment
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/normalized_z/C4-1/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/NF0014/normalized_z/C4-2/").resolve(
+        strict=True
+    )
     compartment = "cell"
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
