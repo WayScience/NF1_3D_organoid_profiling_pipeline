@@ -482,7 +482,7 @@ blur_brightfield_outliers = cosmicqc.find_outliers(
 pd.DataFrame(blur_brightfield_outliers).head()
 
 
-# In[17]:
+# In[15]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -543,7 +543,7 @@ plt.show()
 
 # ## Create parquet file with each plate/well/site combos and boolean for pass/fail blur per channel
 
-# In[ ]:
+# In[16]:
 
 
 # Combine all blur outliers dataframes into a single dataframe

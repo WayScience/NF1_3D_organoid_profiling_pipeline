@@ -43,6 +43,60 @@ melted_qc_df <- qc_results_df %>%
 dim(melted_qc_df)
 head(melted_qc_df)
 
+# Create paths to the folders with well/site names per plate
+nf0014_organoid_path = "/media/18tbdrive/GFF_organoid_data/Cell Painting-NF0014 Thawed3-Pilot Drug Screening/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
+nf0016_organoid_path = "/media/18tbdrive/GFF_organoid_data/NF0016 Cell Painting-Pilot Drug Screening-selected/NF0016-Cell Painting Images/NF0016-images copy"
+nf0018_organoid_path = "/media/18tbdrive/GFF_organoid_data/NF0018 (T6) Cell Painting-Pilot Drug Screeining-selected/NF0018-Cell Painting Images/NF0018-All Acquisitions"
+
+# List all folders in each path and split by space, taking only the first part
+nf0014_folders <- list.dirs(nf0014_organoid_path, full.names = FALSE, recursive = FALSE)
+nf0014_folders <- sapply(strsplit(nf0014_folders, " "), `[`, 1)
+
+nf0016_folders <- list.dirs(nf0016_organoid_path, full.names = FALSE, recursive = FALSE)
+nf0016_folders <- sapply(strsplit(nf0016_folders, " "), `[`, 1)
+
+nf0018_folders <- list.dirs(nf0018_organoid_path, full.names = FALSE, recursive = FALSE)
+nf0018_folders <- sapply(strsplit(nf0018_folders, " "), `[`, 1)
+
+# Print the first few folder names for each path
+head(nf0014_folders)
+head(nf0016_folders)
+head(nf0018_folders)
+
+# Convert folder lists to dataframes and add Plate prefix
+nf0014_df <- data.frame(Folder = nf0014_folders) %>%
+    separate(Folder, into = c("Metadata_Well", "Metadata_Site"), sep = "-") %>%
+    mutate(Metadata_Plate = "NF0014", Metadata_Site = as.numeric(Metadata_Site))
+
+nf0016_df <- data.frame(Folder = nf0016_folders) %>%
+    separate(Folder, into = c("Metadata_Well", "Metadata_Site"), sep = "-") %>%
+    mutate(Metadata_Plate = "NF0016", Metadata_Site = as.numeric(Metadata_Site))
+
+nf0018_df <- data.frame(Folder = nf0018_folders) %>%
+    separate(Folder, into = c("Metadata_Well", "Metadata_Site"), sep = "-") %>%
+    mutate(Metadata_Plate = "NF0018", Metadata_Site = as.numeric(Metadata_Site))
+
+# Reduce melted_qc_df to get unique combinations of Metadata_Plate, Metadata_Well, and Metadata_Site that were processed with QC
+unique_qc_organoids_df <- melted_qc_df %>%
+    distinct(Metadata_Plate, Metadata_Well, Metadata_Site)
+
+# Combine all nf dataframes into one
+combined_nf_df <- bind_rows(nf0014_df, nf0016_df, nf0018_df)
+
+# Find rows in combined_nf_df that are not in unique_qc_organoids_df
+non_matching_rows <- anti_join(combined_nf_df, unique_qc_organoids_df, by = c("Metadata_Plate", "Metadata_Well", "Metadata_Site"))
+
+# Print the total number of empty folders
+cat("Total number of empty folders:", nrow(non_matching_rows), "\n")
+# Print the number of missing organoids across plates
+missing_across_plates <- non_matching_rows %>%
+    group_by(Metadata_Plate) %>%
+    summarise(missing_count = n())
+
+# Print the breakdown of missing organoids per plate
+cat("Breakdown of missing organoids due to empty folders per plate:\n")
+print(missing_across_plates)
+
 # Extract the condition and channel information from the column names
 conditions_channels <- data.frame(
     Condition = sub("_(.*)", "", condition_cols),
@@ -165,9 +219,9 @@ norm_melted_qc_df <- melted_qc_df %>%
 dim(norm_melted_qc_df)
 head(norm_melted_qc_df)
 
-# Group by Metadata_Zslice, Condition, and Channel, then summarize the number of failed zslices
+# Group by Metadata_Zslice, Condition, Plate, and Channel, then summarize the number of failed zslices
 norm_failed_zslices_per_metadata <- norm_melted_qc_df %>%
-    group_by(Normalized_Zslice, Condition, Channel) %>%
+    group_by(Normalized_Zslice, Condition, Metadata_Plate, Channel) %>%
     summarize(Failed_Count = sum(Failed == TRUE, na.rm = TRUE)) %>%  # Explicitly count TRUE values
     ungroup()
 
@@ -181,14 +235,15 @@ height <- 10
 options(repr.plot.width = width, repr.plot.height = height)
 
 # Create the bar plot using Failed_Count
-histogram_plot <- ggplot(norm_failed_zslices_per_metadata, aes(x = Normalized_Zslice, y = Failed_Count, fill = Condition)) +
+histogram_plot <- ggplot(norm_failed_zslices_per_metadata, aes(x = Normalized_Zslice, y = Failed_Count, fill = Metadata_Plate)) +
     geom_bar(stat = "identity", alpha = 0.5, position = "identity", width = 0.03) +
     facet_grid(Channel ~ Condition) +
     scale_fill_brewer(palette = "Set2") +
     labs(
         title = "Count of failed normalized z-slices per channel across conditions",
         x = "Normalized z-slice",
-        y = "Failed count"
+        y = "Failed count",
+        fill = "Patient ID"
     ) +
     theme_bw() +
     theme(
@@ -196,7 +251,8 @@ histogram_plot <- ggplot(norm_failed_zslices_per_metadata, aes(x = Normalized_Zs
         axis.title = element_text(size = 20),
         axis.text.y = element_text(size = 18),
         axis.text.x = element_text(size = 18, angle = 90, hjust = 1),
-        legend.position = "none",
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 18),
         strip.text = element_text(size = 20)
     )
 
@@ -249,15 +305,6 @@ cat("Number of organoids with more than 1 failing z-slices:", nrow(failed_more_t
 # Print the number of organoids that have 1 failing z-slices
 cat("Number of organoids with 1 failing z-slices:", nrow(failed_1), "\n")
 
-# Load in platemap file
-platemap_df <- read.csv("../../data/metadata/platemap.csv")
-
-# Remove WellRow and WellCol columns
-platemap_df <- platemap_df %>%
-    select(-WellRow, -WellCol)
-
-head(platemap_df)
-
 failed_zslices_per_organoid <- failed_zslices_per_organoid %>%
     left_join(
         failed_1 %>% 
@@ -279,6 +326,15 @@ failed_zslices_per_organoid <- failed_zslices_per_organoid %>%
 # Inspect dimensions and data
 dim(failed_zslices_per_organoid)
 head(failed_zslices_per_organoid)
+
+# Load in platemap file
+platemap_df <- read.csv("../../data/metadata/platemap.csv")
+
+# Remove WellRow and WellCol columns
+platemap_df <- platemap_df %>%
+    select(-WellRow, -WellCol)
+
+head(platemap_df)
 
 # Merge treatment and dose information from platemap_df to unique_failed_organoids
 unique_failed_organoids_treatment <- failed_zslices_per_organoid %>%
@@ -322,10 +378,19 @@ print(treatment_dose_failed_plot)
 # Save plot
 ggsave(file.path(figures_dir, "failed_organoid_count_treatment_dose_number_failed_zslices.png"), plot = treatment_dose_failed_plot, width = width, height = height, dpi = 500)
 
+# Get the total organoid count per plate
+total_organoid_counts <- qc_results_df %>%
+    select(Metadata_Plate, Metadata_Well, Metadata_Site) %>%
+    distinct() %>%
+    group_by(Metadata_Plate) %>%
+    summarise(total_organoid_count = n(), .groups = "drop")
+
 # Get the count of rows with the same treatment, dose, and plate
 treatment_dose_counts <- unique_failed_organoids_treatment %>%
     group_by(Metadata_Plate, Treatment_Dose) %>%
-    summarise(failed_organoid_count = n(), .groups = "drop")
+    summarise(failed_organoid_count = n(), .groups = "drop") %>%
+    left_join(total_organoid_counts, by = "Metadata_Plate") %>%
+    mutate(proportion_failed = failed_organoid_count / total_organoid_count)
 
 # Show the head of the resulting dataframe
 dim(treatment_dose_counts)
@@ -345,7 +410,7 @@ treatment_dose_plot <- ggplot(treatment_dose_counts, aes(x = Treatment_Dose, y =
     labs(
         title = "Count of failed organoids per treatment and dose",
         x = "Treatment_dose",
-        y = "Failed organoid count"
+        y = "Count of failed organoids"
     ) +
     theme_bw() +
     facet_grid(Metadata_Plate ~ .) +
@@ -364,3 +429,36 @@ print(treatment_dose_plot)
 
 # Save plot
 ggsave(file.path(figures_dir, "failed_organoid_count_treatment_dose.png"), plot = treatment_dose_plot, width = width, height = height, dpi = 500)
+
+# Set a single color for all bars
+uniform_color <- "#87CEEB"  # Pastel blue as an example
+
+# Set width and height
+width <- 18
+height <- 10
+options(repr.plot.width = width, repr.plot.height = height)
+
+# Create the bar plot
+treatment_dose_plot <- ggplot(treatment_dose_counts, aes(x = Treatment_Dose, y = proportion_failed, fill = Metadata_Plate)) +
+    geom_bar(stat = "identity", fill = uniform_color) +
+    labs(
+        title = "Proportion of failed organoids per treatment and dose",
+        x = "Treatment_dose",
+        y = "Proportion of failed organoids"
+    ) +
+    theme_bw() +
+    facet_grid(Metadata_Plate ~ .) +
+    theme(
+        plot.title = element_text(size = 24),
+        axis.title = element_text(size = 20),
+        axis.text.y = element_text(size = 18),
+        axis.text.x = element_text(size = 16, angle = 45, hjust = 1),
+        legend.position = "none",
+        strip.text = element_text(size = 18)
+    )
+
+# Show plot
+print(treatment_dose_plot)
+
+# Save plot
+ggsave(file.path(figures_dir, "failed_organoid_proportion_treatment_dose.png"), plot = treatment_dose_plot, width = width, height = height, dpi = 500)
