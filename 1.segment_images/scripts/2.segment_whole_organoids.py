@@ -70,7 +70,9 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 
 else:
-    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
+        strict=True
+    )
     window_size = 5
     clip_limit = 0.1
 
@@ -80,7 +82,7 @@ mask_path.mkdir(exist_ok=True, parents=True)
 
 # ## Set up images, paths and functions
 
-# In[ ]:
+# In[3]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -198,15 +200,8 @@ for z_stack_mask_index in range(len(labels)):
             reconstruction_dict[z_stack_mask_index + z_window_index].append(
                 z_stack_mask
             )
-# for each z stack index, reconstruct the mask
-for z_stack_index in range(original_cyto_z_count):
-    mask = np.max(reconstruction_dict[z_stack_index], axis=0)
-    full_mask_z_stack.append(mask)
-
-full_mask_z_stack = np.array(full_mask_z_stack)
-
-# save the reconstructed image stack to a tiff file
-tifffile.imsave(mask_path / "organoid_mask.tiff", full_mask_z_stack)
+# save the reconstruction_dict to a file for downstream decoupling
+np.save(mask_path / "organoid_reconstruction_dict.npy", reconstruction_dict)
 
 
 # In[8]:
@@ -221,6 +216,6 @@ if in_notebook:
         plt.imshow(imgs[z], cmap="gray")
         plt.title(f"raw: {z}")
         plt.subplot(122)
-        plt.imshow(labels[z], cmap="gray")
+        plt.imshow(labels[z])
         plt.title(f"mask: {z}")
         plt.show()

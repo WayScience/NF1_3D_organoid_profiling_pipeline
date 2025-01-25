@@ -11,16 +11,33 @@
 
 
 import argparse
-import multiprocessing
+import itertools
 import pathlib
-from multiprocessing import Pool
+import sys
 
 import matplotlib.pyplot as plt
 
 # Import dependencies
 import numpy as np
+import pandas as pd
+import skimage
 import tifffile
+import tqdm
 from skimage import io
+
+sys.path.append("../../utils")
+from segmentation_decoupling import (
+    check_coordinate_inside_box,
+    compare_masks_for_merged,
+    euclidian_2D_distance,
+    extract_unique_masks,
+    get_combinations_of_indices,
+    get_dimensionality,
+    get_larger_bbox,
+    get_number_of_unique_labels,
+    merge_sets,
+    reassemble_each_mask,
+)
 
 # check if in a jupyter notebook
 try:
@@ -51,16 +68,24 @@ if not in_notebook:
         default="none",
         help="Compartment to segment. Options are 'nuclei', 'cell', and 'organoid'",
     )
+    parser.add_argument(
+        "--window_size",
+        type=int,
+        default=5,
+        help="Window size for the median filter",
+    )
 
     args = parser.parse_args()
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
     compartment = args.compartment
+    window_size = args.window_size
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../../data/NF0014/normalized_z/C4-2/").resolve(
         strict=True
     )
-    compartment = "cell"
+    compartment = "organoid"
+    window_size = 5
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -70,11 +95,19 @@ if compartment == "nuclei":
     reconstruction_dict_path = pathlib.Path(
         mask_path / "nuclei_reconstruction_dict.npy"
     ).resolve(strict=True)
+    distance_threshold = 20
 elif compartment == "cell":
     mask_file_path = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
     reconstruction_dict_path = pathlib.Path(
         mask_path / "cell_reconstruction_dict.npy"
     ).resolve(strict=True)
+    distance_threshold = 50
+elif compartment == "organoid":
+    mask_file_path = pathlib.Path(mask_path / "organoid_masks.tiff").resolve()
+    reconstruction_dict_path = pathlib.Path(
+        mask_path / "organoid_reconstruction_dict.npy"
+    ).resolve(strict=True)
+    distance_threshold = 100
 else:
     raise ValueError(
         "Invalid compartment, please choose 'nuclei', 'cell', or 'organoid'"
@@ -84,94 +117,6 @@ else:
 # ## Set up images, paths and functions
 
 # In[3]:
-
-
-class DecoupleSlidingWindowMasks:
-    def __init__(self, lambda_IOU_threshold: int = 0.8, image_stack: np.array = None):
-        self.lambda_IOU_threshold = lambda_IOU_threshold
-        self.image_stack = image_stack
-        self.mask_indices_dict = {
-            "unique_mask": [],
-            "mask_indices": [],
-            "psuedo_slice": [],
-        }
-        self.overlap_dict = {"unique_mask": [], "mask_indices": [], "psuedo_slice": []}
-
-    def get_unique_masks(self):
-
-        # find each unqiue mask identity via pixel value
-        unique_masks = np.unique(self.image_stack)
-        # loop through each unique mask identity
-        for unique_mask in unique_masks:
-            # loop through each mask image
-            for psuedo_slice in range(len(self.image_stack)):
-                # find where the unique mask identity is in the mask image
-                tmp_image = self.image_stack[psuedo_slice]
-                mask_indices = np.where(tmp_image == unique_mask)
-                # if the mask identity is in the mask image
-                self.mask_indices_dict["unique_mask"].append(unique_mask)
-                self.mask_indices_dict["mask_indices"].append(mask_indices)
-                self.mask_indices_dict["psuedo_slice"].append(psuedo_slice)
-
-    def check_overlap(self):
-        # check for which masks overlap with each other across psuedo slices
-        for mask_index, mask_indices in enumerate(
-            self.mask_indices_dict["mask_indices"]
-        ):
-            for mask_index_2, mask_indices_2 in enumerate(
-                self.mask_indices_dict["mask_indices"]
-            ):
-                if mask_index != mask_index_2:
-                    # set some variables pertaining to the masks
-                    unique_mask_num = self.mask_indices_dict["unique_mask"][mask_index]
-                    unique_mask_num_2 = self.mask_indices_dict["unique_mask"][
-                        mask_index_2
-                    ]
-                    psuedo_slice = self.mask_indices_dict["psuedo_slice"][mask_index]
-                    psuedo_slice_2 = self.mask_indices_dict["psuedo_slice"][
-                        mask_index_2
-                    ]
-                    # check if the masks overlap
-                    intersection = np.intersect1d(mask_indices, mask_indices_2)
-                    union = np.union1d(mask_indices, mask_indices_2)
-                    try:
-                        IOU = len(intersection) / len(union)
-                    except ZeroDivisionError:
-                        continue
-                    IOU = len(intersection) / len(union)
-                    if IOU > self.lambda_IOU_threshold:
-                        # keep the larger mask
-                        mask_area = sum([len(x) for x in mask_indices])
-                        mask_area_2 = sum([len(x) for x in mask_indices_2])
-                        if mask_area > mask_area_2:
-                            self.overlap_dict["unique_mask"].append(unique_mask_num)
-                            self.overlap_dict["mask_indices"].append(mask_indices)
-                            self.overlap_dict["psuedo_slice"].append(psuedo_slice)
-                        elif mask_area < mask_area_2:
-                            self.overlap_dict["unique_mask"].append(unique_mask_num_2)
-                            self.overlap_dict["mask_indices"].append(mask_indices_2)
-                            self.overlap_dict["psuedo_slice"].append(psuedo_slice_2)
-                        else:
-                            print("Mask areas are equal, picking the first mask")
-                            self.overlap_dict["unique_mask"].append(unique_mask_num)
-                            self.overlap_dict["mask_indices"].append(mask_indices)
-                            self.overlap_dict["psuedo_slice"].append(psuedo_slice)
-
-    def reconstruct_image(self):
-        new_image = np.zeros(self.image_stack[0].shape)
-        # replace the overlapping masks with the new mask and its identity
-        for mask_index, mask_indices in enumerate(self.overlap_dict["mask_indices"]):
-            # replace pixel values with unique mask identity at the mask indices
-            new_image[mask_indices] = self.overlap_dict["unique_mask"][mask_index]
-        return new_image
-
-    def decouple_masks(self):
-        self.get_unique_masks()
-        self.check_overlap()
-        return self.reconstruct_image()
-
-
-# In[4]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -187,11 +132,12 @@ for f in files:
         imgs = io.imread(f)
 imgs = np.array(imgs)
 original_imgs = imgs.copy()
+original_img_shape = imgs.shape
 original_z_slice_count = len(imgs)
 print("number of z slices in the original image:", original_z_slice_count)
 
 
-# In[5]:
+# In[4]:
 
 
 reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item()
@@ -199,64 +145,62 @@ reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item(
 
 # ## Reverse the sliding window max projection
 
+# In[ ]:
+
+
+masks_dict = {}
+for zslice, arrays in tqdm.tqdm(enumerate(reconstruction_dict)):
+    df = extract_unique_masks(reconstruction_dict[zslice])
+
+    merged_df = get_combinations_of_indices(df, distance_threshold=distance_threshold)
+    # combine dfs for each window index
+    for window_index in range(window_size + 1):
+        merged_df = merge_sets(merged_df)
+    if not merged_df.empty:
+        merged_df.loc[:, "slice"] = zslice
+        reassembled_masks = reassemble_each_mask(
+            merged_df, original_img_shape=original_imgs.shape
+        )
+        masks_dict[zslice] = reassembled_masks
+    else:
+        print(f"Warning: merged_df is empty for zslice {zslice}")
+
+    reassembled_masks = reassemble_each_mask(
+        merged_df, original_img_shape=original_imgs.shape
+    )
+    masks_dict[zslice] = reassembled_masks
+
+
 # In[6]:
 
 
-# parallel processing for the cell above
-
-
-# set the number of cores to use
-num_cores = multiprocessing.cpu_count() - 2
-
-
-def call_mask_decoupling(z_stack_index, z_stack_mask):
-    decouple = DecoupleSlidingWindowMasks(
-        lambda_IOU_threshold=0.8, image_stack=z_stack_mask
-    )
-    new_image = decouple.decouple_masks()
-    return z_stack_index, new_image
-
-
-# process each z slice in parallel
-with Pool(num_cores) as p:
-    results = p.starmap(call_mask_decoupling, reconstruction_dict.items())
-
-# reconstruct the masks into a single image (z-stack)
-reconstructed_masks = np.zeros(
-    (original_z_slice_count, original_imgs.shape[1], original_imgs.shape[2])
+# convert the masks_dict to a numpy array
+masks = np.zeros(
+    (original_z_slice_count, original_img_shape[1], original_img_shape[2]),
+    dtype=np.uint16,
 )
-for index, new_image in results:
-    reconstructed_masks[index] = new_image
-# cast the reconstructed masks to int8
-reconstructed_masks = reconstructed_masks.astype(np.uint8)
+masks = np.array(list(masks_dict.values()))
+if get_number_of_unique_labels(masks) > 255:
+    masks = masks.astype(np.uint16)
+else:
+    masks = masks.astype(np.uint8)
+
+# save the masks
+tifffile.imwrite(mask_file_path, masks)
 
 
 # In[7]:
 
 
-# # save the masks
-print(reconstructed_masks.shape)
-print(reconstructed_masks.dtype)
-print(reconstructed_masks[0])
-print(reconstructed_masks.max())
-print(np.unique(reconstructed_masks))
-# save the masks as tiff
-tifffile.imwrite(mask_file_path, reconstructed_masks)
-
-
-# In[8]:
-
-
 if in_notebook:
-    # show each z slice of the image and masks
-    for z in range(reconstructed_masks.shape[0]):
-        fig = plt.figure(figsize=(10, 5))
-        plt.subplot(121)
-        plt.imshow(original_imgs[z, :, :], cmap="gray")
-        plt.title("image")
+    for zslice in range(masks.shape[0]):
+        plt.figure(figsize=(10, 10))
+        plt.subplot(1, 2, 1)
+        plt.imshow(original_imgs[zslice], cmap="gray")
+        plt.title(f"original z slice {zslice}")
         plt.axis("off")
-        plt.subplot(122)
-        plt.imshow(reconstructed_masks[z], cmap="gray")
-        plt.title("masks")
+        plt.subplot(1, 2, 2)
+        plt.imshow(masks[zslice], cmap="nipy_spectral")
+        plt.title(f"segmented z slice {zslice}")
         plt.axis("off")
         plt.show()

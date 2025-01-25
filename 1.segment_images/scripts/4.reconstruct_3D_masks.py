@@ -26,6 +26,7 @@
 
 import argparse
 import pathlib
+import sys
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -36,6 +37,11 @@ import skimage.io as io
 import tifffile
 from cellpose import core, models, utils
 from rich.pretty import pprint
+
+sys.path.append("../../utils")
+import nviz
+from nviz.image_meta import extract_z_slice_number_from_filename, generate_ome_xml
+from segmentation_decoupling import euclidian_2D_distance
 
 # check if in a jupyter notebook
 try:
@@ -78,20 +84,26 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../processed_data/C4-2/").resolve(strict=True)
-    x_y_vector_radius_max_constaint = 10  # pixels
-    compartment = "cell"
+    compartment = "organoid"
 
-mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
-mask_path.mkdir(exist_ok=True, parents=True)
-
+mask_dir = pathlib.Path(f"../processed_data/{str(input_dir.stem)}").resolve(strict=True)
 if compartment == "nuclei":
-    input_image_dir = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve(strict=True)
-    output_image_dir = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve()
+    input_image_dir = pathlib.Path(mask_dir / "nuclei_masks.tiff").resolve(strict=True)
+    x_y_vector_radius_max_constaint = 5  # pixels
 elif compartment == "cell":
-    input_image_dir = pathlib.Path(mask_path / "cell_masks.tiff").resolve(strict=True)
-    output_image_dir = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
+    input_image_dir = pathlib.Path(mask_dir / "cell_masks.tiff").resolve(strict=True)
+    x_y_vector_radius_max_constaint = 15  # pixels
+elif compartment == "organoid":
+    input_image_dir = pathlib.Path(mask_dir / "organoid_masks.tiff").resolve(
+        strict=True
+    )
+    x_y_vector_radius_max_constaint = 50  # pixels
 else:
-    raise ValueError("Invalid compartment, please choose either 'nuclei' or 'cell'")
+    raise ValueError(
+        "Invalid compartment, please choose either 'nuclei', 'cell', or 'organoid'"
+    )
+
+output_image_dir = input_image_dir
 
 
 # ## Extract masks and masks centers (XY coordinates) from the input image
@@ -100,25 +112,17 @@ else:
 
 
 image = tifffile.imread(input_image_dir)
-# image = (image - image.min()) / (image.max() - image.min()) * 255
-image = image.astype(np.uint8)
+if np.unique(image).max() > 255:
+    image = image.astype(np.uint16)
+else:
+    image = image.astype(np.uint8)
 
 
 # In[4]:
 
 
-skimage.measure.regionprops_table(image[1, :, :])
-
-
-# In[5]:
-
-
-image = tifffile.imread(input_image_dir)
-image = (image - image.min()) / (image.max() - image.min()) * 255
-image = image.astype(np.uint8)
-
 cordinates = {
-    "label": [],
+    "original_label": [],
     "slice": [],
     "centroid-0": [],
     "centroid-1": [],
@@ -134,16 +138,49 @@ for slice in range(image.shape[0]):
         props["centroid-0"],
         props["centroid-1"],
     )
-    if len(label) > 1:
+    if len(label) > 0:
         for i in range(len(label)):
-            cordinates["label"].append(label[i])
+            cordinates["original_label"].append(label[i])
             cordinates["slice"].append(slice)
             cordinates["centroid-0"].append(centroid1[i])
             cordinates["centroid-1"].append(centroid2[i])
 
+
 coordinates_df = pd.DataFrame(cordinates)
 coordinates_df["unique_id"] = coordinates_df.index
-coordinates_df
+coordinates_df.head()
+
+
+# In[5]:
+
+
+cordinates = {
+    "original_label": [],
+    "slice": [],
+    "centroid-0": [],
+    "centroid-1": [],
+}
+
+for slice in range(image.shape[0]):
+    props = skimage.measure.regionprops_table(
+        image[slice, :, :], properties=["label", "centroid"]
+    )
+
+    label, centroid1, centroid2 = (
+        props["label"],
+        props["centroid-0"],
+        props["centroid-1"],
+    )
+    if len(label) > 0:
+        for i in range(len(label)):
+            cordinates["original_label"].append(label[i])
+            cordinates["slice"].append(slice)
+            cordinates["centroid-0"].append(centroid1[i])
+            cordinates["centroid-1"].append(centroid2[i])
+
+
+coordinates_df = pd.DataFrame(cordinates)
+coordinates_df["unique_id"] = coordinates_df.index
 
 
 # ## Plot the coordinates of the masks in the XY plane
@@ -164,226 +201,134 @@ if in_notebook:
     plt.show()
 
 
-# ## Create a graph where each node is a 2D object and each edge is a potential relation between two objects across z or an absolute relation between two objects in the same z.
-
 # In[7]:
 
 
-# construct a graph of nodes and edges from the df
-# where the nodes are the centroids of the cells
-# and the edges are the distance between the centroids
-
-# create a graph
-G = nx.Graph()
-
-# add nodes
-for index, row in coordinates_df.iterrows():
-    G.add_node(row["unique_id"], pos=(row["unique_id"], row["slice"]))
-
-# connect the nodes across slices
-for slice in coordinates_df["slice"].unique():
-    nodes = coordinates_df[coordinates_df["slice"] == slice]
-    nodes_next_slice = coordinates_df[coordinates_df["slice"] == slice + 1]
-    # get the edge between all nodes in the same slice
-    for index, row in nodes.iterrows():
-        for index2, row2 in nodes_next_slice.iterrows():
-            # check if the edge already exists
-            if G.has_edge(row["unique_id"], row2["unique_id"]):
-                continue
-            elif G.has_edge(row2["unique_id"], row["unique_id"]):
-                continue
-            else:
-                distance = np.sqrt(
-                    (row["centroid-0"] - row2["centroid-0"]) ** 2
-                    + (row["centroid-1"] - row2["centroid-1"]) ** 2
+# generate distance pairs for each slice
+x_y_vector_radius_max_constaint = 50
+distance_pairs = []
+for i in range(coordinates_df.shape[0]):
+    for j in range(coordinates_df.shape[0]):
+        if i != j:
+            coordinate_pair1 = coordinates_df.loc[
+                i, ["centroid-0", "centroid-1"]
+            ].values
+            coordinate_pair2 = coordinates_df.loc[
+                j, ["centroid-0", "centroid-1"]
+            ].values
+            distance = euclidian_2D_distance(coordinate_pair1, coordinate_pair2)
+            if distance < x_y_vector_radius_max_constaint:
+                distance_pairs.append(
+                    {
+                        "slice1": coordinates_df.loc[i, "slice"],
+                        "slice2": coordinates_df.loc[j, "slice"],
+                        "index1": i,
+                        "index2": j,
+                        "distance": distance,
+                        "coordinates1": (coordinate_pair1[0], coordinate_pair1[1]),
+                        "coordinates2": (coordinate_pair2[0], coordinate_pair2[1]),
+                        "pass": True,
+                        "original_label1": coordinates_df.loc[i, "original_label"],
+                        "original_label2": coordinates_df.loc[j, "original_label"],
+                    }
                 )
-                if distance < x_y_vector_radius_max_constaint:
-                    G.add_edge(row["unique_id"], row2["unique_id"], weight=distance)
+            else:
+                distance_pairs.append(
+                    {
+                        "slice1": coordinates_df.loc[i, "slice"],
+                        "slice2": coordinates_df.loc[j, "slice"],
+                        "index1": i,
+                        "index2": j,
+                        "distance": distance,
+                        "coordinates1": (coordinate_pair1[0], coordinate_pair1[1]),
+                        "coordinates2": (coordinate_pair2[0], coordinate_pair2[1]),
+                        "pass": False,
+                        "original_label1": coordinates_df.loc[i, "original_label"],
+                        "original_label2": coordinates_df.loc[j, "original_label"],
+                    }
+                )
+df = pd.DataFrame(distance_pairs)
+df["indexes"] = df["index1"].astype(str) + "-" + df["index2"].astype(str)
+df = df[df["pass"] == True]
+df["index_comparison"] = df["index1"].astype(str) + "," + df["index2"].astype(str)
+df.head()
 
 
 # In[8]:
 
 
-# Visualization of the graph for 3D data
-# draw the graph
-pos = nx.get_node_attributes(G, "pos")
+index_sets = df["index_comparison"]
+list_of_sets = [set(map(int, x.split(","))) for x in index_sets]
+for i in list_of_sets:
+    for j in list_of_sets:
+        if i != j and len(i.intersection(j)) > 0:
+            i.update(j)
+            list_of_sets.remove(j)
 
-nx.draw(G, pos, with_labels=True, connectionstyle="arc3,rad=0.2", arrows=True)
-# make edges curved
-edge_pos = nx.spring_layout(G)
-if in_notebook:
-    plt.show()
+merged_sets_dict = {}
+for i in range(len(list_of_sets)):
+    merged_sets_dict[i] = list_of_sets[i]
+for row in df.iterrows():
+    for num_set in merged_sets_dict:
+        if int(row[1]["index1"]) in merged_sets_dict[num_set]:
+            df.at[row[0], "label"] = num_set + 1
+df.head()
 
-
-# ## Sovle the graph for the shortest path between the start and end nodes.
 
 # In[9]:
 
 
-# Assuming G is your graph and df is your original DataFrame
+# get the original label for each index and slice and return the new label
+return_dict = {
+    "slice": [],
+    "index": [],
+    "original_label": [],
+    "new_label": [],
+}
+for row in df.iterrows():
+    return_dict["slice"].append(row[1]["slice1"])
+    return_dict["index"].append(row[1]["index1"])
+    return_dict["original_label"].append(row[1]["original_label1"])
+    return_dict["new_label"].append(row[1]["label"])
 
-# Create a list to store the results
-results = []
-
-# Loop through the nodes and calculate longest paths with the shortest distances in a unidirectional way
-for node1 in G.nodes:
-    for node2 in G.nodes:
-        if node1 != node2:
-            # get the slices of the nodes
-            slice1 = coordinates_df[coordinates_df["unique_id"] == node1][
-                "slice"
-            ].values[0]
-            slice2 = coordinates_df[coordinates_df["unique_id"] == node2][
-                "slice"
-            ].values[0]
-            if slice1 > slice2:
-                continue
-            try:
-                path = nx.shortest_path(G, node1, node2)
-                distance = nx.shortest_path_length(G, node1, node2, weight="weight")
-                results.append([node1, node2, path, distance])
-            except nx.NetworkXNoPath:
-                results.append([node1, node2, None, None])
-
-# Convert the results to a DataFrame
-results_df = pd.DataFrame(results, columns=["node1", "node2", "path", "distance"])
-results_df.head()
+    return_dict["slice"].append(row[1]["slice2"])
+    return_dict["index"].append(row[1]["index2"])
+    return_dict["original_label"].append(row[1]["original_label2"])
+    return_dict["new_label"].append(row[1]["label"])
+return_df = pd.DataFrame(return_dict)
+print(return_df.shape)
+# drop duplicate rows
+return_df = return_df.drop_duplicates()
+print(return_df.shape)
+return_df.head()
 
 
 # In[10]:
 
 
-# drop rows with no path
-results_df = results_df.dropna()
-print(results_df.shape)
-results_df.head()
+new_mask_image = np.zeros_like(image)
+# mask label reassignment
+for slice in range(image.shape[0]):
+    mask = image[slice, :, :]
+    tmp_df = return_df[return_df["slice"] == slice]
+    for i in range(tmp_df.shape[0]):
+        mask[mask == tmp_df.iloc[i]["original_label"]] = tmp_df.iloc[i]["new_label"]
 
+    new_mask_image[slice, :, :] = mask
+# save the new image
+tifffile.imwrite(output_image_dir, new_mask_image)
 
-# ## Clean up the graph solve output to get the final path.
 
 # In[11]:
 
 
-# drop a row if the path is contained in another path
-# this is because we are only interested in the longest path with the shortest distance
-# and not the subpaths
-# ex. remove path pf [0, 1] if there is a path of [0, 1, 2]
-rows_to_drop = []
-# iterate over each row
-for index, row in results_df.iterrows():
-    # iterate over each row
-    for index2, row2 in results_df.iterrows():
-        # check if the path is a subset of another path
-        if len(row["path"]) < len(row2["path"]):
-            if set(row["path"]).issubset(row2["path"]):
-                rows_to_drop.append(index)
-        elif len(row["path"]) > len(row2["path"]):
-            if set(row2["path"]).issubset(row["path"]):
-                rows_to_drop.append(index2)
-        else:
-            continue
-results_df.drop(index=rows_to_drop, inplace=True)
-print(results_df.shape)
-results_df.head()
-
-
-# In[12]:
-
-
-# add an object number to each row
-results_df.reset_index(drop=True, inplace=True)
-results_df["object_number"] = results_df.index
-results_df.drop(columns=["node1", "node2"], inplace=True)
-# un group the path column
-results_df = results_df.explode("path")
-results_df.rename(columns={"path": "node"}, inplace=True)
-
-
-# In[13]:
-
-
-# # get the x and y coordinates of each node from the original df
-results_df["coorinate-0"] = results_df["node"].apply(
-    lambda x: coordinates_df[coordinates_df["unique_id"] == x]["centroid-0"].values[0]
-)
-results_df["coorinate-1"] = results_df["node"].apply(
-    lambda x: coordinates_df[coordinates_df["unique_id"] == x]["centroid-1"].values[0]
-)
-results_df["slice"] = results_df["node"].apply(
-    lambda x: coordinates_df[coordinates_df["unique_id"] == x]["slice"].values[0]
-)
-results_df["label"] = results_df["node"].apply(
-    lambda x: coordinates_df[coordinates_df["unique_id"] == x]["label"].values[0]
-)
-print(results_df.shape)
-results_df
-
-
-# ## Plot paths output
-
-# In[14]:
-
-
-if in_notebook:
-    # plot the data in 3D with tracks
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    ax.scatter(
-        results_df["coorinate-0"],
-        results_df["coorinate-1"],
-        results_df["slice"],
-        c=results_df["object_number"],
-    )
-    ax.set_xlabel("X Label")
-    ax.set_ylabel("Y Label")
-    ax.set_zlabel("Z Label")
+for slice in range(new_mask_image.shape[0]):
+    plt.subplot(1, 2, 1)
+    plt.imshow(image[slice, :, :])
+    plt.title(f"Original {slice}")
+    plt.axis("off")
+    plt.subplot(1, 2, 2)
+    plt.imshow(new_mask_image[slice, :, :])
+    plt.title(f"New {slice}")
+    plt.axis("off")
     plt.show()
-
-
-# ## Generate the new image via mask number reassignment
-
-# In[15]:
-
-
-# go back through the image and color each mask with the object number based on x and y coordinates for each slice
-# create a new image with the same shape as the original image
-new_image = np.zeros_like(image)
-# iterate over each slice
-for slice in range(image.shape[0]):
-    # relate the object number to each mask
-    for index, row in results_df[results_df["slice"] == slice].iterrows():
-        # replace the mask label with the object number
-        new_image[slice][image[slice] == row["label"]] = row["object_number"]
-
-
-# In[16]:
-
-
-# rescale the images so that the max pixel value is 255
-new_image = (new_image / np.max(new_image)) * 255
-# conver image to uint8 int
-new_image = new_image.astype(np.uint8)
-
-
-# In[17]:
-
-
-# save the new image
-tifffile.imwrite(output_image_dir, new_image)
-
-
-# ## Visualize the new image per z-slice
-
-# In[18]:
-
-
-# plot the new image masks
-if in_notebook:
-    for slice in range(new_image.shape[0]):
-        plt.subplot(1, 2, 1)
-        plt.imshow(image[slice])
-        plt.title("Original")
-        plt.subplot(1, 2, 2)
-        plt.imshow(new_image[slice])
-        plt.title("3D related")
-        plt.show()

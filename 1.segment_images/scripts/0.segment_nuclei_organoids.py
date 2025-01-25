@@ -61,7 +61,9 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
+        strict=True
+    )
     window_size = 5
     clip_limit = 0.05
 
@@ -157,3 +159,28 @@ for z_stack_mask_index in range(len(labels)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "nuclei_reconstruction_dict.npy", reconstruction_dict)
+
+
+# In[8]:
+
+
+if in_notebook:
+    plot = plt.figure(figsize=(10, 5))
+    for z in range(len(labels)):
+        plt.figure(figsize=(10, 10))
+        plt.subplot(131)
+        plt.imshow(imgs[z], cmap="gray")
+        plt.title(f"raw: {z}")
+        plt.axis("off")
+
+        plt.subplot(132)
+        plt.imshow(labels[z])
+        plt.title(f"mask: {z}")
+        plt.axis("off")
+
+        plt.subplot(133)
+        plt.imshow(imgs[z], cmap="Blues")
+        plt.imshow(labels[z], alpha=0.5, cmap="gray")
+        plt.title(f"overlay: {z}")
+        plt.axis("off")
+        plt.show()

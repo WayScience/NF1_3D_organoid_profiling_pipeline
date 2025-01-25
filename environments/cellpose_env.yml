@@ -6,7 +6,7 @@ channels:
   - pytorch
 
 dependencies:
-  - conda-forge::python=3.9
+  - conda-forge::python=3.11
   - conda-forge::ipykernel
   - conda-forge::jupyter
   - conda-forge::nbconvert
@@ -29,3 +29,5 @@ dependencies:
       - aicsimageio
       - torch_optimizer
       - nvidia-cudnn-cu11==8.6.0.163
+      - git+https://github.com/royerlab/ultrack.git@b6883ab6801bbc8fd76e8f8bce69254f484f7066
+      - git+https://github.com/WayScience/nViz.git

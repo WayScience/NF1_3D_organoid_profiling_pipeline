@@ -73,7 +73,7 @@ else:
     input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
         strict=True
     )
-    window_size = 2
+    window_size = 3
     clip_limit = 0.1
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -192,7 +192,7 @@ for z in range(nuclei.shape[0]):
 
 # ## Cellpose
 
-# In[ ]:
+# In[8]:
 
 
 # model_type='cyto' or 'nuclei' or 'cyto2' or 'cyto3'
@@ -214,14 +214,14 @@ for img in imgs:
 print(len(masks_all_dict))
 
 
-# In[ ]:
+# In[9]:
 
 
 masks_all = masks_all_dict["masks"]
 imgs = masks_all_dict["imgs"]
 
 
-# In[ ]:
+# In[10]:
 
 
 # reverse sliding window max projection
@@ -249,7 +249,7 @@ print(f"Saving the decoupled masks of size {len(reconstruction_dict)}")
 np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
 
 
-# In[ ]:
+# In[11]:
 
 
 if in_notebook:

@@ -20,7 +20,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -48,10 +48,10 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/z-stack_images/raw_z_input/").resolve(
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
         strict=True
     )
-    compartment = "nuclei"
+    compartment = "organoid"
     mask_input_dir = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve(
         strict=True
     )
@@ -66,7 +66,7 @@ mask_files = sorted(mask_input_dir.glob("*"))
 
 # ## Load images
 
-# In[3]:
+# In[ ]:
 
 
 for f in img_files:
@@ -79,6 +79,13 @@ for f in img_files:
     elif compartment == "cytoplasm":
         if "555" in str(f.stem):
             img_path = f
+    elif compartment == "organoid":
+        if "555" in str(f.stem):
+            img_path = f
+    else:
+        raise ValueError(
+            "Invalid compartment, please choose either 'nuclei','cell', 'cytoplasm', or 'organoid"
+        )
 
 for f in mask_files:
 
@@ -102,16 +109,31 @@ for f in mask_files:
             output_mask_file_path = pathlib.Path(
                 output_path / "cytoplasm_mask_output.gif"
             )
+    elif compartment == "organoid":
+        if "organoid" in str(f.stem) and "mask" in str(f.stem):
+            mask_input_dir = f
+            output_img_file_path = pathlib.Path(output_path / "organoid_img_output.gif")
+            output_mask_file_path = pathlib.Path(
+                output_path / "organoid_mask_output.gif"
+            )
     else:
-        raise ValueError("Invalid compartment, please choose either 'nuclei' or 'cell'")
+        raise ValueError(
+            "Invalid compartment, please choose either 'nuclei','cell', 'cytoplasm', or 'organoid"
+        )
 
 # read in the cell masks
 img = io.imread(img_path)
 mask = io.imread(mask_input_dir)
 
-# scale the images to unit8
-img = (img / 255).astype("uint8") * 8
-mask = (mask).astype("uint8") * 16
+# increase contrast of the image for visualization
+img = skimage.exposure.rescale_intensity(img, out_range=(0, 255))
+mask = skimage.exposure.rescale_intensity(mask, out_range=(0, 255))
+
+img = img.astype("uint8")
+if np.unique(mask) < 255:
+    mask = mask.astype("uint8")
+else:
+    mask = mask.astype("uint16")
 
 
 # ### Cell image visualization
@@ -119,20 +141,27 @@ mask = (mask).astype("uint8") * 16
 # In[4]:
 
 
+duration = 0.001
+loop = 0
+
+
+# In[5]:
+
+
 frames = [img[i] for i in range(img.shape[0])]
 
 # Write the frames to a GIF
-imageio.mimsave(output_img_file_path, frames, duration=0.1, loop=10)
+imageio.mimsave(output_img_file_path, frames, duration=duration, loop=loop)
 
 
 # ### Cell segmentation visualization
 
-# In[5]:
+# In[6]:
 
 
 frames = [mask[i] for i in range(mask.shape[0])]
 
 # Write the frames to a GIF
 imageio.mimsave(
-    output_mask_file_path, frames, duration=0.1, loop=10
+    output_mask_file_path, frames, duration=duration, loop=loop
 )  # duration is the time between frames in seconds

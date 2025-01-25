@@ -15,7 +15,7 @@ mapfile -t input_dirs < <(ls -d "$z_stack_dir"/*)
 total_dirs=$(echo "${input_dirs[@]}" | wc -w)
 echo "Total directories: $total_dirs"
 current_dir=0
-compartments=( "nuclei" "cell" )
+compartments=( "nuclei" "cell" "organoid" )
 
 # loop through all input directories
 for dir in "${input_dirs[@]}"; do
