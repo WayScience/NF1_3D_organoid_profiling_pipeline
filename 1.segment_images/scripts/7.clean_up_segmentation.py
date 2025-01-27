@@ -70,41 +70,41 @@ for file in normalized_data_dir_directories:
 
 # ## Copy the normalized images to the cellprofiler images dir
 
-# In[5]:
+# In[ ]:
 
 
-# # get the list of dirs in the normalized_data_dir
-# norm_dirs = [x for x in normalized_data_dir.iterdir() if x.is_dir()]
-# # copy each dir and files to cellprofiler_dir
-# for norm_dir in tqdm.tqdm(norm_dirs):
-#     dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
-#     if dest_dir.exists() and overwrite:
-#         shutil.rmtree(dest_dir)
-#         shutil.copytree(norm_dir, dest_dir)
-#     elif not dest_dir.exists():
-#         shutil.copytree(norm_dir, dest_dir)
-#     else:
-#         pass
+# get the list of dirs in the normalized_data_dir
+norm_dirs = [x for x in normalized_data_dir.iterdir() if x.is_dir()]
+# copy each dir and files to cellprofiler_dir
+for norm_dir in tqdm.tqdm(norm_dirs):
+    dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
+    if dest_dir.exists() and overwrite:
+        shutil.rmtree(dest_dir)
+        shutil.copytree(norm_dir, dest_dir)
+    elif not dest_dir.exists():
+        shutil.copytree(norm_dir, dest_dir)
+    else:
+        pass
 
 
 # ## Copy files from processed dir to cellprofiler images dir
 
-# In[6]:
+# In[ ]:
 
 
-# # get a list of dirs in processed_data
-# dirs = [x for x in processed_data_dir.iterdir() if x.is_dir()]
-# file_extensions = {".tif", ".tiff"}
-# # get a list of files in each dir
-# for well_dir in tqdm.tqdm(dirs):
-#     files = [x for x in well_dir.iterdir() if x.is_file()]
-#     for file in files:
-#         if file.suffix in file_extensions:
-#             # copy each of the raw files to the cellprofiler_dir for feature extraction
-#             new_file_dir = pathlib.Path(
-#                 cellprofiler_dir, well_dir.name, file.stem + file.suffix
-#             )
-#             shutil.copy(file, new_file_dir)
+# get a list of dirs in processed_data
+dirs = [x for x in processed_data_dir.iterdir() if x.is_dir()]
+file_extensions = {".tif", ".tiff"}
+# get a list of files in each dir
+for well_dir in tqdm.tqdm(dirs):
+    files = [x for x in well_dir.iterdir() if x.is_file()]
+    for file in files:
+        if file.suffix in file_extensions:
+            # copy each of the raw files to the cellprofiler_dir for feature extraction
+            new_file_dir = pathlib.Path(
+                cellprofiler_dir, well_dir.name, file.stem + file.suffix
+            )
+            shutil.copy(file, new_file_dir)
 
 
 # In[7]:
@@ -115,15 +115,15 @@ if jobs_to_rerun_path.exists():
     jobs_to_rerun_path.unlink()
 
 
-# In[8]:
+# In[ ]:
 
 
-# dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
-# dirs_in_cellprofiler_dir = sorted(dirs_in_cellprofiler_dir)
-# for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
-#     if not check_number_of_files(dir, 9):
-#         with open(jobs_to_rerun_path, "a") as f:
-#             f.write(f"{dir.name}\n")
+dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
+dirs_in_cellprofiler_dir = sorted(dirs_in_cellprofiler_dir)
+for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
+    if not check_number_of_files(dir, 9):
+        with open(jobs_to_rerun_path, "a") as f:
+            f.write(f"{dir.name}\n")
 
 
 # In[9]:
