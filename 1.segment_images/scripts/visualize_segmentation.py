@@ -207,5 +207,23 @@ with tiff.TiffWriter(output_path, bigtiff=True) as tif:
 view_ometiff_with_napari(
     ometiff_path=output_path,
     scaling_values=scaling_values,
-    headless=True,
+    headless=False,
 )
+
+
+# In[ ]:
+
+
+import vispy
+
+vispy.use("pyqt5")
+print(vispy.sys_info())
+
+
+# In[ ]:
+
+
+import vispy
+
+vispy.use("pyside2")
+print(vispy.sys_info())

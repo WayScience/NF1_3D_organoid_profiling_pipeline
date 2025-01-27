@@ -118,7 +118,7 @@ original_cyto_image = cyto.copy()
 original_cyto_z_count = cyto.shape[0]
 
 
-# In[5]:
+# In[ ]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -156,7 +156,7 @@ if in_notebook:
     plt.axis("off")
     plt.subplot(122)
     plt.imshow(imgs[9, :, :], cmap="gray")
-    plt.title(f"Butterworth filtered cyto")
+    plt.title("Butterworth filtered cyto")
     plt.axis("off")
     plt.show()
 

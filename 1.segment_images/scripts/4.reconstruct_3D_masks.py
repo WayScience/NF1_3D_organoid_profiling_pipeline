@@ -185,19 +185,19 @@ coordinates_df["unique_id"] = coordinates_df.index
 
 # ## Plot the coordinates of the masks in the XY plane
 
-# In[6]:
+# In[ ]:
 
 
-# plot the data
-fig, ax = plt.subplots()
-plt.scatter(
-    coordinates_df["centroid-0"],
-    coordinates_df["centroid-1"],
-    c=coordinates_df["unique_id"],
-)
-plt.xlabel("centroid-0")
-plt.ylabel("centroid-1")
 if in_notebook:
+    # plot the data
+    fig, ax = plt.subplots()
+    plt.scatter(
+        coordinates_df["centroid-0"],
+        coordinates_df["centroid-1"],
+        c=coordinates_df["unique_id"],
+    )
+    plt.xlabel("centroid-0")
+    plt.ylabel("centroid-1")
     plt.show()
 
 
@@ -319,16 +319,17 @@ for slice in range(image.shape[0]):
 tifffile.imwrite(output_image_dir, new_mask_image)
 
 
-# In[11]:
+# In[ ]:
 
 
-for slice in range(new_mask_image.shape[0]):
-    plt.subplot(1, 2, 1)
-    plt.imshow(image[slice, :, :])
-    plt.title(f"Original {slice}")
-    plt.axis("off")
-    plt.subplot(1, 2, 2)
-    plt.imshow(new_mask_image[slice, :, :])
-    plt.title(f"New {slice}")
-    plt.axis("off")
-    plt.show()
+if in_notebook:
+    for slice in range(new_mask_image.shape[0]):
+        plt.subplot(1, 2, 1)
+        plt.imshow(image[slice, :, :])
+        plt.title(f"Original {slice}")
+        plt.axis("off")
+        plt.subplot(1, 2, 2)
+        plt.imshow(new_mask_image[slice, :, :])
+        plt.title(f"New {slice}")
+        plt.axis("off")
+        plt.show()
