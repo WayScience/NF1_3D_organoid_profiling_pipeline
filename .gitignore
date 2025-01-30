@@ -169,3 +169,7 @@ data/*
 
 # Ignore experiment files from QC results
 *Experiment*.csv
+2.cellprofiling/analysis_output/*
+3.processing_image_based_profiles/data/*
+3.processing_image_based_profiles/notebooks/runinfo/*
+
