@@ -274,7 +274,9 @@ def get_combinations_of_indices(
     list_of_dfs = []
     for index1 in range(len(df)):
         for index2 in range(1 + index1, len(df)):
-            new_df = compare_masks_for_merged(df, index1, index2, distance_threshold=10)
+            new_df = compare_masks_for_merged(
+                df, index1, index2, distance_threshold=distance_threshold
+            )
             list_of_dfs.append(new_df)
     dfs = pd.concat(list_of_dfs).reset_index(drop=True)
 
@@ -320,8 +322,14 @@ def merge_sets(merged_df: pd.DataFrame) -> pd.DataFrame:
     for i in list_of_sets:
         for j in list_of_sets:
             if i != j and len(i.intersection(j)) > 0:
-                i.update(j)
-                list_of_sets.remove(j)
+                # add the longer set to the shorter set
+                if len(i) > len(j):
+                    j.update(i)
+                    list_of_sets.remove(i)
+                elif len(j) > len(i):
+                    i.update(j)
+                    list_of_sets.remove(j)
+
     merged_sets_dict = {}
     for i in range(len(list_of_sets)):
         merged_sets_dict[i] = list_of_sets[i]
@@ -373,7 +381,7 @@ def reassemble_each_mask(df, original_img_shape) -> np.ndarray:
     for index, mask in dict_of_masks.items():
         # set the pixels in the reassembled masks to the index value
         for m in mask:
-            reassembled_masks[m] = index + 1
+            reassembled_masks[m] = index + 1  # add 1 such that none qill equal zero
     return reassembled_masks
 
 

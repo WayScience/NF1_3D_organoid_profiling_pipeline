@@ -24,6 +24,7 @@ from cellpose import models
 
 cellpose_io.logger_setup()
 import torch
+import tqdm
 from cellpose.io import imread
 from PIL import Image
 from skimage import io
@@ -73,8 +74,8 @@ else:
     input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
         strict=True
     )
-    window_size = 5
-    clip_limit = 0.1
+    window_size = 4
+    clip_limit = 0.2
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -118,7 +119,7 @@ original_cyto_image = cyto.copy()
 original_cyto_z_count = cyto.shape[0]
 
 
-# In[ ]:
+# In[5]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -169,14 +170,22 @@ use_GPU = torch.cuda.is_available()
 model_name = "cyto3"
 model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
 
-# Perform segmentation of whole organoids
-labels, details, _ = model.eval(
-    imgs,
-    channels=[0, 0],
-    z_axis=0,
-    stitch_threshold=0.8,
-    diameter=750,
-)
+output_dict = {
+    "slice": [],
+    "labels": [],
+    "details": [],
+}
+for slice in tqdm.tqdm(range(imgs.shape[0])):
+    # Perform segmentation of whole organoids
+    labels, details, _ = model.eval(
+        imgs[slice, :, :],
+        channels=[1, 0],
+        z_axis=0,
+        diameter=750,
+    )
+    output_dict["slice"].append(slice)
+    output_dict["labels"].append(labels)
+    output_dict["details"].append(details)
 
 
 # In[7]:
@@ -189,11 +198,14 @@ print(f"Decoupling the sliding window max projection of {window_size} slices")
 
 # decouple the sliding window max projection based on window size
 # each slice in a stack
-for z_stack_mask_index in range(len(labels)):
+for z_stack_mask_index in range(len(output_dict["labels"])):
     # temoporary list to hold the decoupled z stack
     z_stack_decouple = []
     # decouple
-    [z_stack_decouple.append(labels[z_stack_mask_index]) for _ in range(window_size)]
+    [
+        z_stack_decouple.append(output_dict["labels"][z_stack_mask_index])
+        for _ in range(window_size)
+    ]
     # dull out the decouple slice to the correct z index
     for z_window_index, z_stack_mask in enumerate(z_stack_decouple):
         if not (z_stack_mask_index + z_window_index) >= original_cyto_z_count:
@@ -210,12 +222,12 @@ np.save(mask_path / "organoid_reconstruction_dict.npy", reconstruction_dict)
 if in_notebook:
     # masks, flows, styles, diams
     plot = plt.figure(figsize=(10, 5))
-    for z in range(len(labels)):
+    for z in range(len(output_dict["labels"])):
         plt.figure(figsize=(10, 10))
         plt.subplot(121)
         plt.imshow(imgs[z], cmap="gray")
         plt.title(f"raw: {z}")
         plt.subplot(122)
-        plt.imshow(labels[z])
+        plt.imshow(output_dict["labels"][z])
         plt.title(f"mask: {z}")
         plt.show()

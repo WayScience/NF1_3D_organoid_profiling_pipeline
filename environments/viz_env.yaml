@@ -11,10 +11,5 @@ dependencies:
   - conda-forge::nb_conda_kernels
   - conda-forge::pip
   - conda-forge::numpy<2.0
-  - conda-forge::matplotlib
-  - conda-forge::pandas
-  - conda-forge::scikit-image
   - pip:
-      - tifffile
-      - git+https://github.com/WayScience/nViz.git@4509719a0587767fee79023ae783bcc7876fd68d
-      - napari[pyside2]
+      - git+https://github.com/WayScience/nViz.git@ccec77ac402f430334ad4f95d21f455d67437a2e

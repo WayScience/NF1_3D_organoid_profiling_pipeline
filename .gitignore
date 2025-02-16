@@ -166,10 +166,12 @@ cython_debug/
 data/*
 1.segment_images/examples/raw_z_input/*
 1.segment_images/processed_data/*
+1.segment_images/notebooks/output.zarr
 
 # Ignore experiment files from QC results
 *Experiment*.csv
 2.cellprofiling/analysis_output/*
+
 3.processing_image_based_profiles/data/*
 3.processing_image_based_profiles/notebooks/runinfo/*
 

@@ -21,27 +21,23 @@
 
 # ## Imports
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
 import pathlib
 import sys
 
-import matplotlib.pyplot as plt
-import networkx as nx
+# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import skimage
 import skimage.io as io
 import tifffile
-from cellpose import core, models, utils
-from rich.pretty import pprint
-
-sys.path.append("../../utils")
 from nviz.image import image_set_to_arrays
 from nviz.image_meta import extract_z_slice_number_from_filename, generate_ome_xml
 from nviz.view import view_ometiff_with_napari
+
+sys.path.append("../../utils")
 from segmentation_decoupling import euclidian_2D_distance
 
 # check if in a jupyter notebook
@@ -52,7 +48,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -107,7 +103,16 @@ else:
 output_image_dir = input_image_dir
 
 
-# In[ ]:
+# In[3]:
+
+
+import vispy
+
+vispy.use("pyqt5")
+print(vispy.sys_info())
+
+
+# In[4]:
 
 
 image_dir = "../../data/NF0014/zstack_images/C4-2/"
@@ -123,7 +128,7 @@ channel_map = {
 scaling_values = [1, 0.1, 0.1]
 
 
-# In[ ]:
+# In[5]:
 
 
 frame_zstacks = image_set_to_arrays(
@@ -186,7 +191,7 @@ with tiff.TiffWriter(output_path, bigtiff=True) as tif:
     tif.write(combined_data, description=ome_xml, photometric="minisblack")
 
 
-# In[ ]:
+# In[6]:
 
 
 # import shutil
@@ -201,7 +206,7 @@ with tiff.TiffWriter(output_path, bigtiff=True) as tif:
 # )
 
 
-# In[ ]:
+# In[7]:
 
 
 view_ometiff_with_napari(
@@ -209,21 +214,3 @@ view_ometiff_with_napari(
     scaling_values=scaling_values,
     headless=False,
 )
-
-
-# In[ ]:
-
-
-import vispy
-
-vispy.use("pyqt5")
-print(vispy.sys_info())
-
-
-# In[ ]:
-
-
-import vispy
-
-vispy.use("pyside2")
-print(vispy.sys_info())

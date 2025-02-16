@@ -185,7 +185,7 @@ coordinates_df["unique_id"] = coordinates_df.index
 
 # ## Plot the coordinates of the masks in the XY plane
 
-# In[ ]:
+# In[6]:
 
 
 if in_notebook:
@@ -205,7 +205,7 @@ if in_notebook:
 
 
 # generate distance pairs for each slice
-x_y_vector_radius_max_constaint = 50
+# x_y_vector_radius_max_constaint = 50
 distance_pairs = []
 for i in range(coordinates_df.shape[0]):
     for j in range(coordinates_df.shape[0]):
@@ -319,7 +319,7 @@ for slice in range(image.shape[0]):
 tifffile.imwrite(output_image_dir, new_mask_image)
 
 
-# In[ ]:
+# In[11]:
 
 
 if in_notebook:

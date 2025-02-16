@@ -101,13 +101,13 @@ elif compartment == "cell":
     reconstruction_dict_path = pathlib.Path(
         mask_path / "cell_reconstruction_dict.npy"
     ).resolve(strict=True)
-    distance_threshold = 50
+    distance_threshold = 20
 elif compartment == "organoid":
     mask_file_path = pathlib.Path(mask_path / "organoid_masks.tiff").resolve()
     reconstruction_dict_path = pathlib.Path(
         mask_path / "organoid_reconstruction_dict.npy"
     ).resolve(strict=True)
-    distance_threshold = 100
+    distance_threshold = 50
 else:
     raise ValueError(
         "Invalid compartment, please choose 'nuclei', 'cell', or 'organoid'"
@@ -145,7 +145,7 @@ reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item(
 
 # ## Reverse the sliding window max projection
 
-# In[ ]:
+# In[5]:
 
 
 masks_dict = {}
