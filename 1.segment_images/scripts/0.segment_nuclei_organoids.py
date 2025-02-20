@@ -141,13 +141,6 @@ for slice in tqdm.tqdm(range(imgs.shape[0])):
     output_dict["labels"].append(labels)
     output_dict["details"].append(details)
 
-# # Perform segmentation
-# labels, details, _ = model.eval(
-#     imgs, diameter=75, channels=[0, 0], z_axis=0, stitch_threshold=0.8
-# )
-
-
-# <img src="../notebook_imgs/Sliding_window_unaggregate.jpg" alt="image" width="300"/>
 
 # ## Reverse the sliding window max projection
 

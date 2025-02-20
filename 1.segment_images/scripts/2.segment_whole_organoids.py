@@ -18,13 +18,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import tifffile
-from cellpose import core
-from cellpose import io as cellpose_io
-from cellpose import models
-
-cellpose_io.logger_setup()
 import torch
 import tqdm
+from cellpose import core, models
 from cellpose.io import imread
 from PIL import Image
 from skimage import io
@@ -75,7 +71,7 @@ else:
         strict=True
     )
     window_size = 4
-    clip_limit = 0.2
+    clip_limit = 0.05
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
@@ -109,9 +105,16 @@ for f in files:
     else:
         print(f"Unknown channel: {f}")
 
-cyto = np.max([cyto1, cyto2, cyto3], axis=0)
+cyto = np.max(
+    [
+        # cyto1,
+        cyto2,
+        cyto3,
+    ],
+    axis=0,
+)
 # pick which channels to use for cellpose
-cyto = skimage.exposure.equalize_adapthist(cyto1, clip_limit=clip_limit)
+# cyto = skimage.exposure.equalize_adapthist(cyto, clip_limit=clip_limit)
 
 
 original_cyto_image = cyto.copy()
@@ -140,12 +143,60 @@ cyto = np.array(image_stack_2_5D)
 print("2.5D cyto image stack shape:", cyto.shape)
 
 
+# In[6]:
+
+
+butterworth_optimization = True
+if butterworth_optimization:
+    img_to_optimize = cyto[9]
+    optimization_steps = 5
+    # optimize the butterworth filter for the cyto image
+    search_space_cutoff_freq = np.linspace(0.01, 0.5, optimization_steps)
+    search_space_order = np.linspace(1, 10, optimization_steps)
+    # create a list of optimzation parameter pairs
+    optimization_parameter_pairs = []
+    for cutoff_freq_option in search_space_cutoff_freq:
+        for order_option in search_space_order:
+            optimization_parameter_pairs.append((cutoff_freq_option, order_option))
+    print(
+        f"Optimizing the butterworth filter for {len(optimization_parameter_pairs)} pairs"
+    )
+    optimized_images = []
+    # loop through the optimization pairs to find the best pararmeters
+    for cutoff_freq_option, order_option in tqdm.tqdm(optimization_parameter_pairs):
+        optimized_images.append(
+            skimage.filters.butterworth(
+                img_to_optimize,
+                cutoff_frequency_ratio=cutoff_freq_option,
+                high_pass=False,
+                order=order_option,
+                squared_butterworth=True,
+            )
+        )
+    if in_notebook:
+        print("Optimization complete - plotting the results")
+        # visualize the optimized images in a grid
+        fig, ax = plt.subplots(optimization_steps, optimization_steps, figsize=(20, 20))
+        for i in range(optimization_steps):
+            for j in range(optimization_steps):
+                ax[i, j].imshow(optimized_images[i * optimization_steps + j])
+                ax[i, j].axis("off")
+                # add the cutoff frequency and order to the plot
+                ax[i, j].set_title(
+                    f"Freq: {search_space_cutoff_freq[i]:.2f}, Order: {search_space_order[j]:.2f}"
+                )
+        plt.show()
+
+
+# In[7]:
+
+
 # Use butterworth FFT filter to remove high frequency noise :)
 imgs = skimage.filters.butterworth(
     cyto,
-    cutoff_frequency_ratio=0.1,
+    cutoff_frequency_ratio=0.5,
     high_pass=False,
-    order=5.0,
+    order=1,
     squared_butterworth=True,
 )
 if in_notebook:
@@ -162,7 +213,7 @@ if in_notebook:
     plt.show()
 
 
-# In[6]:
+# In[8]:
 
 
 use_GPU = torch.cuda.is_available()
@@ -188,7 +239,7 @@ for slice in tqdm.tqdm(range(imgs.shape[0])):
     output_dict["details"].append(details)
 
 
-# In[7]:
+# In[9]:
 
 
 # reverse sliding window max projection
@@ -216,7 +267,7 @@ for z_stack_mask_index in range(len(output_dict["labels"])):
 np.save(mask_path / "organoid_reconstruction_dict.npy", reconstruction_dict)
 
 
-# In[8]:
+# In[10]:
 
 
 if in_notebook:

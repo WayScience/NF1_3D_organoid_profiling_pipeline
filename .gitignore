@@ -167,6 +167,10 @@ data/*
 1.segment_images/examples/raw_z_input/*
 1.segment_images/processed_data/*
 1.segment_images/notebooks/output.zarr
+1.segment_images/animations/mp4/*
+1.segment_images/animations/test/mp4/*
+1.segment_images/animations/gif/*
+
 
 # Ignore experiment files from QC results
 *Experiment*.csv

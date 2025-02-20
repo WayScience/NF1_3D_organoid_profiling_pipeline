@@ -18,12 +18,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import tifffile
-from cellpose import core
-from cellpose import io as cellpose_io
-from cellpose import models
-
-cellpose_io.logger_setup()
 import torch
+from cellpose import core, models
 from cellpose.io import imread
 from PIL import Image
 from skimage import io

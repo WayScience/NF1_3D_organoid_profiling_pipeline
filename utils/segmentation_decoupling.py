@@ -297,8 +297,19 @@ def get_combinations_of_indices(
     return merged_df
 
 
+def merge_sets(list_of_sets: list) -> list:
+    counter = 0
+    for i, set1 in enumerate(list_of_sets):
+        for j, set2 in enumerate(list_of_sets):
+            if i != j and len(set1.intersection(set2)) > 0:
+                set1.update(set2)
+                list_of_sets.remove(set2)
+                counter += 1
+    return list_of_sets, counter
+
+
 # if 0 merges with 1 and 0 merges with 2, then 1 and 2 are merged
-def merge_sets(merged_df: pd.DataFrame) -> pd.DataFrame:
+def merge_sets_df(merged_df: pd.DataFrame) -> pd.DataFrame:
     """
     This function merges the sets of masks
 
@@ -312,23 +323,15 @@ def merge_sets(merged_df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         The dataframe containing the merged masks
     """
-
     if merged_df.shape[0] < 2:
         merged_df["label"] = 1
         return merged_df
     index_sets = merged_df["index_comparison"]
     # convert to list of sets
     list_of_sets = [set(map(int, x.split(","))) for x in index_sets]
-    for i in list_of_sets:
-        for j in list_of_sets:
-            if i != j and len(i.intersection(j)) > 0:
-                # add the longer set to the shorter set
-                if len(i) > len(j):
-                    j.update(i)
-                    list_of_sets.remove(i)
-                elif len(j) > len(i):
-                    i.update(j)
-                    list_of_sets.remove(j)
+    counter = 1
+    while counter > 0:
+        list_of_sets, counter = merge_sets(list_of_sets)
 
     merged_sets_dict = {}
     for i in range(len(list_of_sets)):
@@ -337,14 +340,19 @@ def merge_sets(merged_df: pd.DataFrame) -> pd.DataFrame:
     for row in merged_df.iterrows():
         for num_set in merged_sets_dict:
             if int(row[1]["index1"]) in merged_sets_dict[num_set]:
-                merged_df.at[row[0], "label"] = num_set
+                merged_df.at[row[0], "label"] = num_set + 1
     list_of_dfs = []
-    for unique_label in merged_df["label"].unique():
-        tmp_df = merged_df[merged_df["label"] == unique_label]
-        # keep one row that has the largest area
-        largest_area_index = tmp_df["area"].idxmax()
-        tmp_df = tmp_df.loc[largest_area_index]
-        list_of_dfs.append(tmp_df)
+    # if nan values are present in the label column, then set to 0
+    merged_df["label"] = merged_df["label"].fillna(0)
+    if len(merged_df["label"].unique()) < 1:
+        merged_df["label"] = 0
+    else:
+        for unique_label in merged_df["label"].unique():
+            tmp_df = merged_df[merged_df["label"] == unique_label]
+            # keep one row that has the largest area
+            largest_area_index = tmp_df["area"].idxmax()
+            tmp_df = tmp_df.loc[largest_area_index]
+            list_of_dfs.append(tmp_df)
     merged_df = pd.DataFrame(list_of_dfs)
 
     return merged_df
@@ -381,7 +389,7 @@ def reassemble_each_mask(df, original_img_shape) -> np.ndarray:
     for index, mask in dict_of_masks.items():
         # set the pixels in the reassembled masks to the index value
         for m in mask:
-            reassembled_masks[m] = index + 1  # add 1 such that none qill equal zero
+            reassembled_masks[m] = index + 1  # add 1 such that none will equal zero
     return reassembled_masks
 
 

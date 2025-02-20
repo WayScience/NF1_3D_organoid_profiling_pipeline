@@ -70,26 +70,26 @@ for file in normalized_data_dir_directories:
 
 # ## Copy the normalized images to the cellprofiler images dir
 
-# In[ ]:
+# In[5]:
 
 
-# # get the list of dirs in the normalized_data_dir
-# norm_dirs = [x for x in normalized_data_dir.iterdir() if x.is_dir()]
-# # copy each dir and files to cellprofiler_dir
-# for norm_dir in tqdm.tqdm(norm_dirs):
-#     dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
-#     if dest_dir.exists() and overwrite:
-#         shutil.rmtree(dest_dir)
-#         shutil.copytree(norm_dir, dest_dir)
-#     elif not dest_dir.exists():
-#         shutil.copytree(norm_dir, dest_dir)
-#     else:
-#         pass
+# get the list of dirs in the normalized_data_dir
+norm_dirs = [x for x in normalized_data_dir.iterdir() if x.is_dir()]
+# copy each dir and files to cellprofiler_dir
+for norm_dir in tqdm.tqdm(norm_dirs):
+    dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
+    if dest_dir.exists() and overwrite:
+        shutil.rmtree(dest_dir)
+        shutil.copytree(norm_dir, dest_dir)
+    elif not dest_dir.exists():
+        shutil.copytree(norm_dir, dest_dir)
+    else:
+        pass
 
 
 # ## Copy files from processed dir to cellprofiler images dir
 
-# In[ ]:
+# In[6]:
 
 
 # get a list of dirs in processed_data
@@ -115,7 +115,7 @@ if jobs_to_rerun_path.exists():
     jobs_to_rerun_path.unlink()
 
 
-# In[ ]:
+# In[8]:
 
 
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]

@@ -1,24 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # An attempt at an elegant solution to the 2D -> 3D object relation problem.
-# I will use graph theory to solve this problem.
-# The idea is to create a graph where each node represents a 2D object and each edge represents a potential relation between two objects across z or an absolute relation between two objects in the same z.
-# These edges will be weighted based on their z distance.
-# The problem then becomes a shortest path problem where we need to find the shortest path between the start and end nodes.
-# An issue that will arise is figuring out how many nodes might exist in a given path. This will vary and will be a challenge to solve.
-# Some nodes will not start until a certain z level and some nodes will end at a certain z level.
-#
-# ### To do this we must make the following assumptions:
-# 1. Nodes in the same z level are connected to each other, but will not be used in the shortest path calculation - these are separate objects.
-# 2. The variablility in the distance between the X-Y coordinates across z-slices for the same 3D object is minimal.
-#     - This will be a learned or assumed value - probably initialized as apriori knowledge.
-# 3. The distance between the X-Y coordinates across z-slices for different 3D objects is significant.
-# 4. Given the assumption of 1 and 2, we do not need to calculate the shortes path between all nodes, only the nodes that are within a certain distance of each other in the X-Y plane across z-slices.
-# 5. The total number of objects in a 2D slice cannot be greater than the total number of objects in the 3D object.
-# 6. The largest number of objects across all 2D slices will not necessarily be the same as the number of objects in the 3D object.
-# 7. The node path has to be continuous and cannot skip nodes.
-
 # ## Imports
 
 # In[1]:
@@ -84,23 +66,23 @@ else:
 
     compartment = "organoid"
 
-if compartment == "nuclei":
-    input_image_dir = pathlib.Path(input_dir / "nuclei_masks.tiff").resolve(strict=True)
-    x_y_vector_radius_max_constaint = 5  # pixels
-elif compartment == "cell":
-    input_image_dir = pathlib.Path(input_dir / "cell_masks.tiff").resolve(strict=True)
-    x_y_vector_radius_max_constaint = 15  # pixels
-elif compartment == "organoid":
-    input_image_dir = pathlib.Path(input_dir / "organoid_masks.tiff").resolve(
-        strict=True
-    )
-    x_y_vector_radius_max_constaint = 50  # pixels
-else:
-    raise ValueError(
-        "Invalid compartment, please choose either 'nuclei', 'cell', or 'organoid'"
-    )
+# if compartment == "nuclei":
+#     input_image_dir = pathlib.Path(input_dir / "nuclei_masks.tiff").resolve(strict=True)
+#     x_y_vector_radius_max_constaint = 5  # pixels
+# elif compartment == "cell":
+#     input_image_dir = pathlib.Path(input_dir / "cell_masks.tiff").resolve(strict=True)
+#     x_y_vector_radius_max_constaint = 15  # pixels
+# elif compartment == "organoid":
+#     input_image_dir = pathlib.Path(input_dir / "organoid_masks.tiff").resolve(
+#         strict=True
+#     )
+#     x_y_vector_radius_max_constaint = 50  # pixels
+# else:
+#     raise ValueError(
+#         "Invalid compartment, please choose either 'nuclei', 'cell', or 'organoid'"
+#     )
 
-output_image_dir = input_image_dir
+# output_image_dir = input_image_dir
 
 
 # In[3]:

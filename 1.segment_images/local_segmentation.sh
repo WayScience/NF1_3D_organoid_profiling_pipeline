@@ -8,7 +8,7 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 
 cd scripts/ || exit
 # get all input directories in specified directory
-# z_stack_dir="../../data/z-stack_images"
+# z_stack_dir="../../data/NF0014/z-stack_images"
 z_stack_dir="../../data/NF0014/test_dir/"
 mapfile -t input_dirs < <(ls -d "$z_stack_dir"/*)
 
@@ -27,19 +27,18 @@ for dir in "${input_dirs[@]}"; do
     python 0.segment_nuclei_organoids.py --input_dir "$dir" --window_size 2 --clip_limit 0.05 >> segmentation.log
     echo "Completed Nuclei Segmentation"
     echo "Segmenting Cells"
-    python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 4 --clip_limit 0.1 >> segmentation.log
+    python 1.segment_cells_organoids.py --input_dir "$dir" --window_size 3 --clip_limit 0.1 >> segmentation.log
     echo "Completed Cell Segmentation"
     echo "Segmenting Organoids"
-    python 2.segment_whole_organoids.py --input_dir "$dir" --window_size 5 --clip_limit 0.1 >> segmentation.log
+    python 2.segment_whole_organoids.py --input_dir "$dir" --window_size 4 --clip_limit 0.1 >> segmentation.log
     echo "Completed Organoid Segmentation"
     for compartment in "${compartments[@]}"; do
         echo "Decoupling $compartment"
         python 3.segmentation_decoupling.py --input_dir "$dir" --compartment "$compartment" >> segmentation.log
         python 4.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10 >> segmentation.log
-        python 6.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "$compartment" >> segmentation.log
     done
     python 5.create_cytoplasm_masks.py --input_dir "$dir" >> segmentation.log
-    python 6.make_cell_segmentation_videos.py --input_dir "$dir" --compartment "cytoplasm" >> segmentation.log
+    python 6.animate_segmentation_and_raw_signal.py --input_dir "$dir" >> segmentation.log
 done
 echo "Cleaning up segmentation files"
 python 7.clean_up_segmentation.py >> segmentation.log

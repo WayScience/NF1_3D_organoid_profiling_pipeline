@@ -13,3 +13,5 @@ dependencies:
   - conda-forge::numpy<2.0
   - pip:
       - git+https://github.com/WayScience/nViz.git@ccec77ac402f430334ad4f95d21f455d67437a2e
+      - napari_animation
+      - moviepy==1.0.3

@@ -36,6 +36,7 @@ from segmentation_decoupling import (
     get_larger_bbox,
     get_number_of_unique_labels,
     merge_sets,
+    merge_sets_df,
     reassemble_each_mask,
 )
 
@@ -84,30 +85,36 @@ else:
     input_dir = pathlib.Path("../../data/NF0014/normalized_z/C4-2/").resolve(
         strict=True
     )
-    compartment = "organoid"
-    window_size = 5
+    compartment = "cell"
+    window_size = 3
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 if compartment == "nuclei":
-    mask_file_path = pathlib.Path(mask_path / "nuclei_masks.tiff").resolve()
     reconstruction_dict_path = pathlib.Path(
         mask_path / "nuclei_reconstruction_dict.npy"
     ).resolve(strict=True)
-    distance_threshold = 20
+    mask_output_file_path = pathlib.Path(
+        mask_path / "nuclei_masks_decoupled.tiff"
+    ).resolve()
+    distance_threshold = 10
 elif compartment == "cell":
-    mask_file_path = pathlib.Path(mask_path / "cell_masks.tiff").resolve()
     reconstruction_dict_path = pathlib.Path(
         mask_path / "cell_reconstruction_dict.npy"
     ).resolve(strict=True)
-    distance_threshold = 20
+    mask_output_file_path = pathlib.Path(
+        mask_path / "cell_masks_decoupled.tiff"
+    ).resolve()
+    distance_threshold = 10
 elif compartment == "organoid":
-    mask_file_path = pathlib.Path(mask_path / "organoid_masks.tiff").resolve()
     reconstruction_dict_path = pathlib.Path(
         mask_path / "organoid_reconstruction_dict.npy"
     ).resolve(strict=True)
-    distance_threshold = 50
+    mask_output_file_path = pathlib.Path(
+        mask_path / "organoid_masks_decoupled.tiff"
+    ).resolve()
+    distance_threshold = 40
 else:
     raise ValueError(
         "Invalid compartment, please choose 'nuclei', 'cell', or 'organoid'"
@@ -151,11 +158,10 @@ reconstruction_dict = np.load(reconstruction_dict_path, allow_pickle=True).item(
 masks_dict = {}
 for zslice, arrays in tqdm.tqdm(enumerate(reconstruction_dict)):
     df = extract_unique_masks(reconstruction_dict[zslice])
-
     merged_df = get_combinations_of_indices(df, distance_threshold=distance_threshold)
     # combine dfs for each window index
-    for window_index in range(window_size + 1):
-        merged_df = merge_sets(merged_df)
+    # for window_index in range(window_size + 1):
+    merged_df = merge_sets_df(merged_df)
     if not merged_df.empty:
         merged_df.loc[:, "slice"] = zslice
         reassembled_masks = reassemble_each_mask(
@@ -164,11 +170,7 @@ for zslice, arrays in tqdm.tqdm(enumerate(reconstruction_dict)):
         masks_dict[zslice] = reassembled_masks
     else:
         print(f"Warning: merged_df is empty for zslice {zslice}")
-
-    reassembled_masks = reassemble_each_mask(
-        merged_df, original_img_shape=original_imgs.shape
-    )
-    masks_dict[zslice] = reassembled_masks
+        masks_dict[zslice] = reconstruction_dict[zslice][0]
 
 
 # In[6]:
@@ -186,7 +188,7 @@ else:
     masks = masks.astype(np.uint8)
 
 # save the masks
-tifffile.imwrite(mask_file_path, masks)
+tifffile.imwrite(mask_output_file_path, masks)
 
 
 # In[7]:

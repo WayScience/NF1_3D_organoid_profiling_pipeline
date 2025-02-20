@@ -84,26 +84,37 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     input_dir = pathlib.Path("../processed_data/C4-2/").resolve(strict=True)
-    compartment = "organoid"
+    compartment = "cell"
 
 mask_dir = pathlib.Path(f"../processed_data/{str(input_dir.stem)}").resolve(strict=True)
 if compartment == "nuclei":
-    input_image_dir = pathlib.Path(mask_dir / "nuclei_masks.tiff").resolve(strict=True)
-    x_y_vector_radius_max_constaint = 5  # pixels
-elif compartment == "cell":
-    input_image_dir = pathlib.Path(mask_dir / "cell_masks.tiff").resolve(strict=True)
-    x_y_vector_radius_max_constaint = 15  # pixels
-elif compartment == "organoid":
-    input_image_dir = pathlib.Path(mask_dir / "organoid_masks.tiff").resolve(
+    input_image_dir = pathlib.Path(mask_dir / "nuclei_masks_decoupled.tiff").resolve(
         strict=True
     )
-    x_y_vector_radius_max_constaint = 50  # pixels
+    x_y_vector_radius_max_constaint = 10  # pixels
+    output_image_dir = pathlib.Path(
+        mask_dir / "nuclei_masks_reconstructed.tiff"
+    ).resolve()
+elif compartment == "cell":
+    input_image_dir = pathlib.Path(mask_dir / "cell_masks_decoupled.tiff").resolve(
+        strict=True
+    )
+    x_y_vector_radius_max_constaint = 40  # pixels
+    output_image_dir = pathlib.Path(
+        mask_dir / "cell_masks_reconstructed.tiff"
+    ).resolve()
+elif compartment == "organoid":
+    input_image_dir = pathlib.Path(mask_dir / "organoid_masks_decoupled.tiff").resolve(
+        strict=True
+    )
+    x_y_vector_radius_max_constaint = 1000  # pixels
+    output_image_dir = pathlib.Path(
+        mask_dir / "organoid_masks_reconstructed.tiff"
+    ).resolve()
 else:
     raise ValueError(
         "Invalid compartment, please choose either 'nuclei', 'cell', or 'organoid'"
     )
-
-output_image_dir = input_image_dir
 
 
 # ## Extract masks and masks centers (XY coordinates) from the input image
@@ -112,10 +123,6 @@ output_image_dir = input_image_dir
 
 
 image = tifffile.imread(input_image_dir)
-if np.unique(image).max() > 255:
-    image = image.astype(np.uint16)
-else:
-    image = image.astype(np.uint8)
 
 
 # In[4]:
@@ -151,41 +158,9 @@ coordinates_df["unique_id"] = coordinates_df.index
 coordinates_df.head()
 
 
-# In[5]:
-
-
-cordinates = {
-    "original_label": [],
-    "slice": [],
-    "centroid-0": [],
-    "centroid-1": [],
-}
-
-for slice in range(image.shape[0]):
-    props = skimage.measure.regionprops_table(
-        image[slice, :, :], properties=["label", "centroid"]
-    )
-
-    label, centroid1, centroid2 = (
-        props["label"],
-        props["centroid-0"],
-        props["centroid-1"],
-    )
-    if len(label) > 0:
-        for i in range(len(label)):
-            cordinates["original_label"].append(label[i])
-            cordinates["slice"].append(slice)
-            cordinates["centroid-0"].append(centroid1[i])
-            cordinates["centroid-1"].append(centroid2[i])
-
-
-coordinates_df = pd.DataFrame(cordinates)
-coordinates_df["unique_id"] = coordinates_df.index
-
-
 # ## Plot the coordinates of the masks in the XY plane
 
-# In[6]:
+# In[5]:
 
 
 if in_notebook:
@@ -201,7 +176,45 @@ if in_notebook:
     plt.show()
 
 
+# In[6]:
+
+
+# make a 3D graph of each x-y center of mass
+# Create a new figure
+fig = plt.figure()
+
+# Add a 3D subplot
+ax = fig.add_subplot(111, projection="3d")
+ax.scatter(
+    coordinates_df["centroid-0"],
+    coordinates_df["centroid-1"],
+    coordinates_df["slice"],
+    c=coordinates_df["unique_id"],
+)
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.set_zlabel("Z")
+plt.show()
+
+
 # In[7]:
+
+
+# plot the centroid for x-y, x-z, and y-z
+fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+ax[0].scatter(coordinates_df["centroid-0"], coordinates_df["centroid-1"])
+ax[0].set_xlabel("centroid-0")
+ax[0].set_ylabel("centroid-1")
+ax[1].scatter(coordinates_df["centroid-0"], coordinates_df["slice"])
+ax[1].set_xlabel("centroid-0")
+ax[1].set_ylabel("slice")
+ax[2].scatter(coordinates_df["centroid-1"], coordinates_df["slice"])
+ax[2].set_xlabel("centroid-1")
+ax[2].set_ylabel("slice")
+plt.show()
+
+
+# In[8]:
 
 
 # generate distance pairs for each slice
@@ -254,72 +267,106 @@ df["index_comparison"] = df["index1"].astype(str) + "," + df["index2"].astype(st
 df.head()
 
 
-# In[8]:
+# In[9]:
 
 
-index_sets = df["index_comparison"]
-list_of_sets = [set(map(int, x.split(","))) for x in index_sets]
-for i in list_of_sets:
-    for j in list_of_sets:
-        if i != j and len(i.intersection(j)) > 0:
-            i.update(j)
-            list_of_sets.remove(j)
+# create a graph where each node is a unique centroid and each edge is a distance between centroids
+# edges between nodes with the same slice are not allowed
+# edge weight is the distance between the nodes (euclidian distance)
+G = nx.Graph()
+for row in df.iterrows():
+
+    G.add_node(
+        row[1]["index1"], slice=row[1]["slice1"], coordinates=row[1]["coordinates1"]
+    )
+    G.add_node(
+        row[1]["index2"], slice=row[1]["slice2"], coordinates=row[1]["coordinates2"]
+    )
+    G.add_edge(
+        row[1]["index1"],
+        row[1]["index2"],
+        weight=row[1]["distance"],
+        original_label1=row[1]["original_label1"],
+        original_label2=row[1]["original_label2"],
+    )
+
+# plot the graph with each slice being on a different row
+pos = nx.spring_layout(G)
+edge_labels = nx.get_edge_attributes(G, "weight")
+
+# solve the the shortest path problem
+# find the longest paths in the graph with the smallest edge weights
+# this will find the longest paths between centroids closest to each other
+# the longest path is the path with the most edges
+longest_paths = []
+for path in nx.all_pairs_shortest_path(G):
+    longest_path = []
+    for key in path[1].keys():
+        if len(path[1][key]) > len(longest_path):
+            longest_path = path[1][key]
+    longest_paths.append(longest_path)
+
+
+# In[10]:
+
+
+def merge_sets(list_of_sets: list) -> list:
+    for i, set1 in enumerate(list_of_sets):
+        for j, set2 in enumerate(list_of_sets):
+            if i != j and len(set1.intersection(set2)) > 0:
+                set1.update(set2)
+    return list_of_sets
+
+
+# In[11]:
+
+
+list_of_sets = [set(x) for x in longest_paths]
+merged_sets = merge_sets(list_of_sets)
+
+
+# In[12]:
+
 
 merged_sets_dict = {}
 for i in range(len(list_of_sets)):
     merged_sets_dict[i] = list_of_sets[i]
-for row in df.iterrows():
+
+
+# In[13]:
+
+
+coordinates_df.head()
+
+
+# In[14]:
+
+
+for row in coordinates_df.iterrows():
     for num_set in merged_sets_dict:
-        if int(row[1]["index1"]) in merged_sets_dict[num_set]:
-            df.at[row[0], "label"] = num_set + 1
-df.head()
+        if int(row[1]["unique_id"]) in merged_sets_dict[num_set]:
+            coordinates_df.at[row[0], "label"] = num_set
+# drop nan
+coordinates_df = coordinates_df.dropna()
 
 
-# In[9]:
-
-
-# get the original label for each index and slice and return the new label
-return_dict = {
-    "slice": [],
-    "index": [],
-    "original_label": [],
-    "new_label": [],
-}
-for row in df.iterrows():
-    return_dict["slice"].append(row[1]["slice1"])
-    return_dict["index"].append(row[1]["index1"])
-    return_dict["original_label"].append(row[1]["original_label1"])
-    return_dict["new_label"].append(row[1]["label"])
-
-    return_dict["slice"].append(row[1]["slice2"])
-    return_dict["index"].append(row[1]["index2"])
-    return_dict["original_label"].append(row[1]["original_label2"])
-    return_dict["new_label"].append(row[1]["label"])
-return_df = pd.DataFrame(return_dict)
-print(return_df.shape)
-# drop duplicate rows
-return_df = return_df.drop_duplicates()
-print(return_df.shape)
-return_df.head()
-
-
-# In[10]:
+# In[15]:
 
 
 new_mask_image = np.zeros_like(image)
 # mask label reassignment
 for slice in range(image.shape[0]):
     mask = image[slice, :, :]
-    tmp_df = return_df[return_df["slice"] == slice]
+    tmp_df = coordinates_df[coordinates_df["slice"] == slice]
     for i in range(tmp_df.shape[0]):
-        mask[mask == tmp_df.iloc[i]["original_label"]] = tmp_df.iloc[i]["new_label"]
+        mask[mask == tmp_df.iloc[i]["original_label"]] = tmp_df.iloc[i]["label"]
 
     new_mask_image[slice, :, :] = mask
 # save the new image
 tifffile.imwrite(output_image_dir, new_mask_image)
 
 
-# In[11]:
+# In[16]:
 
 
 if in_notebook:
