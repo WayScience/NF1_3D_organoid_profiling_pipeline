@@ -38,7 +38,6 @@ for dir in "${input_dirs[@]}"; do
         python 4.reconstruct_3D_masks.py --input_dir "$dir" --compartment "$compartment" --radius_constraint 10 >> segmentation.log
     done
     python 5.create_cytoplasm_masks.py --input_dir "$dir" >> segmentation.log
-    python 6.animate_segmentation_and_raw_signal.py --input_dir "$dir" >> segmentation.log
 done
 echo "Cleaning up segmentation files"
 python 7.clean_up_segmentation.py >> segmentation.log
@@ -48,5 +47,7 @@ cd ../ || exit
 
 # deactivate cellprofiler environment
 conda deactivate
+
+source local_make_gifs.sh
 
 echo "Segmentation complete"

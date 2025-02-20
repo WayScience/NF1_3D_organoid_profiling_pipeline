@@ -47,16 +47,18 @@ if not in_notebook:
     args = parser.parse_args()
     image_dir = pathlib.Path(args.image_dir).resolve(strict=True)
     label_dir = pathlib.Path(f"../processed_data/{image_dir.name}").resolve(strict=True)
-    mp4_file_dir = pathlib.Path("../animations/mp4/").resolve()
-    gif_file_dir = pathlib.Path("../animations/gif/").resolve()
+    mp4_file_dir = pathlib.Path("../animations/mp4/well_fov/").resolve()
+    gif_file_dir = pathlib.Path("../animations/gif/well_fov/").resolve()
 else:
     print("Running in a notebook")
     image_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
         strict=True
     )
     label_dir = pathlib.Path(f"../processed_data/{image_dir.name}").resolve(strict=True)
-    mp4_file_dir = pathlib.Path("../animations/test/mp4/").resolve()
-    gif_file_dir = pathlib.Path("../animations/test/gif/").resolve()
+    mp4_file_dir = pathlib.Path("../animations/test/mp4/well_fov/").resolve()
+    gif_file_dir = pathlib.Path("../animations/test/gif/well_fov/").resolve()
+
+well_fov = image_dir.name
 
 
 mp4_file_dir.mkdir(parents=True, exist_ok=True)

@@ -179,39 +179,41 @@ if in_notebook:
 # In[6]:
 
 
-# make a 3D graph of each x-y center of mass
-# Create a new figure
-fig = plt.figure()
+if in_notebook:
+    # make a 3D graph of each x-y center of mass
+    # Create a new figure
+    fig = plt.figure()
 
-# Add a 3D subplot
-ax = fig.add_subplot(111, projection="3d")
-ax.scatter(
-    coordinates_df["centroid-0"],
-    coordinates_df["centroid-1"],
-    coordinates_df["slice"],
-    c=coordinates_df["unique_id"],
-)
-ax.set_xlabel("X")
-ax.set_ylabel("Y")
-ax.set_zlabel("Z")
-plt.show()
+    # Add a 3D subplot
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(
+        coordinates_df["centroid-0"],
+        coordinates_df["centroid-1"],
+        coordinates_df["slice"],
+        c=coordinates_df["unique_id"],
+    )
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    plt.show()
 
 
 # In[7]:
 
 
-# plot the centroid for x-y, x-z, and y-z
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-ax[0].scatter(coordinates_df["centroid-0"], coordinates_df["centroid-1"])
-ax[0].set_xlabel("centroid-0")
-ax[0].set_ylabel("centroid-1")
-ax[1].scatter(coordinates_df["centroid-0"], coordinates_df["slice"])
-ax[1].set_xlabel("centroid-0")
-ax[1].set_ylabel("slice")
-ax[2].scatter(coordinates_df["centroid-1"], coordinates_df["slice"])
-ax[2].set_xlabel("centroid-1")
-ax[2].set_ylabel("slice")
-plt.show()
+if in_notebook:
+    # plot the centroid for x-y, x-z, and y-z
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    ax[0].scatter(coordinates_df["centroid-0"], coordinates_df["centroid-1"])
+    ax[0].set_xlabel("centroid-0")
+    ax[0].set_ylabel("centroid-1")
+    ax[1].scatter(coordinates_df["centroid-0"], coordinates_df["slice"])
+    ax[1].set_xlabel("centroid-0")
+    ax[1].set_ylabel("slice")
+    ax[2].scatter(coordinates_df["centroid-1"], coordinates_df["slice"])
+    ax[2].set_xlabel("centroid-1")
+    ax[2].set_ylabel("slice")
+    plt.show()
 
 
 # In[8]:
