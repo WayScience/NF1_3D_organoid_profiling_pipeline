@@ -20,6 +20,7 @@ import numpy as np
 import skimage
 import tifffile
 import torch
+import tqdm
 from cellpose import core, models
 from skimage import io
 
@@ -61,8 +62,10 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
-    window_size = 3
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
+        strict=True
+    )
+    window_size = 2
     clip_limit = 0.05
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -124,17 +127,24 @@ use_GPU = torch.cuda.is_available()
 model_name = "nuclei"
 model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
 
-# Perform segmentation
-labels, details, _ = model.eval(
-    imgs, diameter=75, channels=[0, 0], z_axis=0, stitch_threshold=0.8
-)
+output_dict = {
+    "slice": [],
+    "labels": [],
+    "details": [],
+}
+for slice in tqdm.tqdm(range(imgs.shape[0])):
+    # Perform segmentation
+    output_dict["slice"].append(slice)
+    labels, details, _ = model.eval(
+        imgs[slice, :, :], diameter=75, channels=[0, 0], z_axis=0
+    )
+    output_dict["labels"].append(labels)
+    output_dict["details"].append(details)
 
-
-# <img src="../notebook_imgs/Sliding_window_unaggregate.jpg" alt="image" width="300"/>
 
 # ## Reverse the sliding window max projection
 
-# In[ ]:
+# In[7]:
 
 
 # reverse sliding window max projection
@@ -143,11 +153,14 @@ reconstruction_dict = {index: [] for index in range(original_z_slice_count)}
 print(f"Decoupling the sliding window max projection of {window_size} slices")
 
 # loop through the sliding window max projected masks and decouple them
-for z_stack_mask_index in range(len(labels)):
+for z_stack_mask_index in range(len(output_dict["labels"])):
     z_stack_decouple = []
     # make n copies of the mask for sliding window decoupling
     # where n is the size of the sliding window
-    [z_stack_decouple.append(labels[z_stack_mask_index]) for _ in range(window_size)]
+    [
+        z_stack_decouple.append(output_dict["labels"][z_stack_mask_index])
+        for _ in range(window_size)
+    ]
     for z_window_index, z_stack_mask in enumerate(z_stack_decouple):
         # append the masks to the reconstruction_dict
         if not (z_stack_mask_index + z_window_index) >= original_z_slice_count:
@@ -157,3 +170,28 @@ for z_stack_mask_index in range(len(labels)):
 
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "nuclei_reconstruction_dict.npy", reconstruction_dict)
+
+
+# In[8]:
+
+
+if in_notebook:
+    plot = plt.figure(figsize=(10, 5))
+    for z in range(len(output_dict["labels"])):
+        plt.figure(figsize=(10, 10))
+        plt.subplot(131)
+        plt.imshow(imgs[z], cmap="gray")
+        plt.title(f"raw: {z}")
+        plt.axis("off")
+
+        plt.subplot(132)
+        plt.imshow(output_dict["labels"][z])
+        plt.title(f"mask: {z}")
+        plt.axis("off")
+
+        plt.subplot(133)
+        plt.imshow(imgs[z], cmap="Blues")
+        plt.imshow(output_dict["labels"][z], alpha=0.5, cmap="gray")
+        plt.title(f"overlay: {z}")
+        plt.axis("off")
+        plt.show()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[9]:
 
 
 import argparse
@@ -21,7 +21,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[10]:
 
 
 if not in_notebook:
@@ -42,7 +42,7 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/z-stack_images/raw_z_input/").resolve(
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
         strict=True
     )
     mask_input_dir = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve(
@@ -55,20 +55,22 @@ output_path.mkdir(parents=True, exist_ok=True)
 output_file_path = pathlib.Path(output_path / "cytoplasm_mask.tiff").resolve()
 
 
-# In[3]:
+# In[11]:
 
 
 # get all the masks
-nuclei_masks_path = pathlib.Path(mask_input_dir / "nuclei_masks.tiff").resolve(
-    strict=True
-)
-cell_masks_path = pathlib.Path(mask_input_dir / "cell_masks.tiff").resolve(strict=True)
+nuclei_masks_path = pathlib.Path(
+    mask_input_dir / "nuclei_masks_reconstructed.tiff"
+).resolve(strict=True)
+cell_masks_path = pathlib.Path(
+    mask_input_dir / "cell_masks_reconstructed.tiff"
+).resolve(strict=True)
 
 nuclei_masks = io.imread(nuclei_masks_path)
 cell_masks = io.imread(cell_masks_path)
 
 
-# In[ ]:
+# In[12]:
 
 
 cytoplasm_masks = np.zeros_like(cell_masks)
@@ -81,13 +83,13 @@ for z_slice_index in range(nuclei_masks.shape[0]):
     cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
 
-# In[ ]:
+# In[13]:
 
 
 tifffile.imwrite(output_file_path, cytoplasm_masks)
 
 
-# In[6]:
+# In[14]:
 
 
 if in_notebook:
