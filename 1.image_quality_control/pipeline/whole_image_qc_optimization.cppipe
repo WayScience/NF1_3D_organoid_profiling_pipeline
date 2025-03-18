@@ -18,7 +18,7 @@ Metadata:[module_num:2|svn_version:'Unknown'|variable_revision_number:6|show_win
     Metadata extraction method:Extract from file/folder names
     Metadata source:Folder name
     Regular expression to extract from file name:^(?P<Plate>.*)_(?P<Well>[A-P][0-9]{2})_s(?P<Site>[0-9])_w(?P<ChannelNumber>[0-9])
-    Regular expression to extract from folder name:(?P<Plate>NF[0-9]{4})_raw_images/(?P<Well>[C-G]{1}[0-9]{1,2})-(?P<Site>[0-9]{1})
+    Regular expression to extract from folder name:(?P<Well>[A-Z]{1}[0-9]{1})-(?P<FOV>[0-9]{1})-\((?P<AGP_LED_power>[0-9]{1,2})-(?P<AGP_exposure_time>[0-9]{3})\)-\((?P<Mito_LED_power>[0-9]{1,2})-(?P<Mito_exposure_time>[0-9]{3})\)
     Extract metadata from:All images
     Select the filtering criteria:and (file does contain "")
     Metadata file location:Elsewhere...|
@@ -88,7 +88,7 @@ Groups:[module_num:4|svn_version:'Unknown'|variable_revision_number:2|show_windo
     grouping metadata count:1
     Metadata category:Plate
 
-MeasureImageQuality:[module_num:5|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:['To measure image quality, we measure for blur, using the defaults.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureImageQuality:[module_num:5|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:['To measure image quality, we only measure for blur on all images (without inversion).']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Calculate metrics for which images?:All loaded images
     Image count:1
     Scale count:1
@@ -116,7 +116,7 @@ ImageMath:[module_num:6|svn_version:'Unknown'|variable_revision_number:5|show_wi
     Set values greater than 1 equal to 1?:Yes
     Replace invalid values with 0?:Yes
     Ignore the image masks?:No
-    Name the output image:InvertBrightfield
+    Name the output image:Inverted_Brightfield
     Image or measurement?:Image
     Select the first image:Brightfield
     Multiply the first image by:1.0
@@ -126,12 +126,12 @@ ImageMath:[module_num:6|svn_version:'Unknown'|variable_revision_number:5|show_wi
     Multiply the second image by:1.0
     Measurement:
 
-MeasureImageQuality:[module_num:7|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:['For saturation, we must select inverted brightfield to measure along with the other channels.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
+MeasureImageQuality:[module_num:7|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:['To measure saturation for brightfield specifically, we must invert the images prior to measuring. All other images are the same, but so we must only specifiy the inverted brightfield.']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Calculate metrics for which images?:Select...
     Image count:1
     Scale count:1
     Threshold count:1
-    Select the images to measure:AGP, DNA, ER, InvertBrightfield, Mito
+    Select the images to measure:AGP, DNA, ER, Inverted_Brightfield, Mito
     Include the image rescaling value?:Yes
     Calculate blur metrics?:No
     Spatial scale for blur measurements:20

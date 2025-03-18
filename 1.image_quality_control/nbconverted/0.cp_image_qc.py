@@ -37,7 +37,7 @@ output_dir = pathlib.Path("../qc_results")
 output_dir.mkdir(exist_ok=True)
 
 # directory where images are located within folders (parent folder is the plate and the child folders are wells containing images)
-images_dir = pathlib.Path("../data/raw_images").resolve(strict=True)
+images_dir = pathlib.Path("../../data/raw_images").resolve(strict=True)
 
 # list for plate names based on folders to use to create dictionary
 plate_names = []
@@ -64,7 +64,7 @@ plate_info_dictionary = {
         "path_to_output": pathlib.Path(f"{output_dir}/{name}_qc_results"),
         "path_to_pipeline": path_to_pipeline,
     }
-    for name in plate_names
+    for name in plate_names if name != "NF0017"
 }
 
 # view the dictionary to assess that all info is added correctly
