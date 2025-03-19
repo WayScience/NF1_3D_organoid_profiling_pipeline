@@ -43,34 +43,6 @@ melted_qc_df <- qc_results_df %>%
 dim(melted_qc_df)
 head(melted_qc_df)
 
-# Filter the dataframe for specific rows
-filtered_df <- melted_qc_df %>%
-    filter(Metadata_Plate == "NF0016", Metadata_Well == "D2", Metadata_Site == 3)
-
-# Summarize the number of failed z-slices for each condition and channel
-failed_summary <- filtered_df %>%
-    group_by(Condition, Channel) %>%
-    summarize(Failed_Count = sum(Failed == TRUE, na.rm = TRUE)) %>%
-    ungroup()
-
-# Show the summary
-dim(failed_summary)
-failed_summary
-
-# Filter the dataframe for specific rows
-filtered_df <- melted_qc_df %>%
-    filter(Metadata_Plate == "NF0016", Metadata_Well == "F11", Metadata_Site == 3)
-
-# Summarize the number of failed z-slices for each condition and channel
-failed_summary <- filtered_df %>%
-    group_by(Condition, Channel) %>%
-    summarize(Failed_Count = sum(Failed == TRUE, na.rm = TRUE)) %>%
-    ungroup()
-
-# Show the summary
-dim(failed_summary)
-failed_summary
-
 # Create paths to the folders with well/site names per plate
 nf0014_organoid_path = "/media/18tbdrive/GFF_organoid_data/Cell Painting-NF0014 Thawed3-Pilot Drug Screening/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
 nf0016_organoid_path = "/media/18tbdrive/GFF_organoid_data/NF0016 Cell Painting-Pilot Drug Screening-selected/NF0016-Cell Painting Images/NF0016-images copy"

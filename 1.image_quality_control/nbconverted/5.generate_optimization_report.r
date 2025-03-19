@@ -87,7 +87,8 @@ count_zslices_channel <- ggplot(count_failed_qc, aes(x = Channel, y = Failed_cou
     labs(
         title = "Counts of z-slices that failed at least one condition",
         x = "Channel",
-        y = "Count"
+        y = "Count",
+        fill = "Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)"
     ) +
     theme_bw() +
     theme(
@@ -131,7 +132,8 @@ bar_plot <- ggplot(failed_zslices_per_metadata, aes(x = Metadata_Zslice, y = Fai
     labs(
         title = "Count of failed z-slices per channel across conditions",
         x = "Z-slice",
-        y = "Count"
+        y = "Count",
+        fill = "Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)"
     ) +
     theme_bw() +
     theme(
@@ -190,14 +192,14 @@ options(repr.plot.width = width, repr.plot.height = height)
 
 # Create the bar plot using Failed_Count
 histogram_plot <- ggplot(norm_failed_zslices_per_metadata, aes(x = Normalized_Zslice, y = Failed_Count, fill = Condition_combo)) +
-    geom_bar(stat = "identity", alpha = 0.5, position = "identity", width = 0.03) +
+    geom_bar(stat = "identity", alpha = 0.5, position = "stack", width = 0.03) +
     facet_grid(Channel ~ QC_type) +
     scale_fill_brewer(palette = "Set2") +
     labs(
         title = "Count of failed normalized z-slices per channel across conditions",
         x = "Normalized z-slice",
         y = "Failed count",
-        fill = "Patient ID"
+        fill = "Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)"
     ) +
     theme_bw() +
     theme(
@@ -205,7 +207,7 @@ histogram_plot <- ggplot(norm_failed_zslices_per_metadata, aes(x = Normalized_Zs
         axis.title = element_text(size = 20),
         axis.text.y = element_text(size = 18),
         axis.text.x = element_text(size = 18, angle = 90, hjust = 1),
-        legend.title = element_text(size = 20),
+        legend.title = element_text(size = 19),
         legend.text = element_text(size = 18),
         strip.text = element_text(size = 20)
     )

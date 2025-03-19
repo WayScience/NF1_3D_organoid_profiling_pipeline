@@ -125,7 +125,7 @@ print(plate_df.shape)
 plate_df.head(2)
 
 
-# In[25]:
+# In[4]:
 
 
 # Set a larger font context for the plot
@@ -189,6 +189,7 @@ g = sns.displot(
 # Customize the plot
 g.set_titles("Channel: {col_name}")
 g.set_axis_labels("PowerLogLogSlope", "Density")
+g._legend.set_title("Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)") 
 g.tight_layout()
 
 # Save the plot
@@ -198,7 +199,7 @@ plt.savefig(figure_dir / "optimize_conditions_blur_density_distribution.png", dp
 plt.show()
 
 
-# In[18]:
+# In[5]:
 
 
 # Step 1: Select only the columns containing "PercentMaximal" and keep Unique_conditions
@@ -238,18 +239,13 @@ g = sns.FacetGrid(long_df, col="Unique_conditions", hue="Channel",
 g.map(sns.violinplot, "Channel", "Sqrt_PercentMaximal", order=["Mito", "AGP"], inner="stick")
 
 # Adjust titles, labels, and legend
-g.set_titles("Conditions: {col_name}", size=18)
-g.set_axis_labels("Channel", "Sqrt(PercentMaximal)", size=14)
-g.set_yticklabels(size=12)
-g.set_xticklabels(size=12)
-g.add_legend(title="Channel")
+g.set_titles("Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)\n{col_name}", size=18)
+g.set_axis_labels("Channel", "Sqrt(PercentMaximal)", size=18)
+g.set_xticklabels(size=16)
+g.figure.subplots_adjust(hspace=0.4)  # Increase spacing between rows
 
-# Adjust legend title font size
-g.legend.set_title("Channel", prop={'size': 20})  # Adjust title font size
-
-# Adjust legend label font size
-for label in g.legend.texts:
-    label.set_fontsize(18)  # Adjust label font size
+# Add channel ticks back
+g.set(xticks=[0, 1], xticklabels=["Mito", "AGP"])
 
 # Save the plot
 plt.savefig(figure_dir / "optimize_conditions_saturation_violin_distribution.png", dpi=500)
@@ -261,7 +257,7 @@ plt.show()
 
 # ## Blur outlier detection
 
-# In[4]:
+# In[6]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -287,7 +283,7 @@ blur_Mito_outliers = blur_Mito_outliers.sort_values(
 blur_Mito_outliers.head()
 
 
-# In[5]:
+# In[7]:
 
 
 # Combine PathName and FileName columns to construct full paths for Mito
@@ -352,7 +348,7 @@ plt.show()
 
 # ## Saturation outlier detection
 
-# In[6]:
+# In[8]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -378,7 +374,7 @@ saturation_Mito_outliers = saturation_Mito_outliers.sort_values(
 saturation_Mito_outliers.head()
 
 
-# In[7]:
+# In[9]:
 
 
 # Combine PathName and FileName columns to construct full paths for Mito
@@ -445,7 +441,7 @@ plt.show()
 
 # ## Detect blur in AGP channel
 
-# In[8]:
+# In[10]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -465,7 +461,7 @@ blur_agp_outliers = cosmicqc.find_outliers(
 pd.DataFrame(blur_agp_outliers).head()
 
 
-# In[9]:
+# In[11]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -532,7 +528,7 @@ plt.show()
 
 # ## Saturation outlier detection
 
-# In[10]:
+# In[12]:
 
 
 # Identify metadata columns (columns that do not start with 'ImageQuality')
@@ -552,7 +548,7 @@ saturation_agp_outliers = cosmicqc.find_outliers(
 pd.DataFrame(saturation_agp_outliers).head()
 
 
-# In[ ]:
+# In[13]:
 
 
 # Combine PathName and FileName columns to construct full paths
@@ -622,7 +618,7 @@ plt.show()
 
 # ## Create dataframe for each plate/well/site/condition combos and boolean for pass/fail blur per channel
 
-# In[ ]:
+# In[14]:
 
 
 # Combine all blur outliers dataframes into a single dataframe
@@ -712,7 +708,7 @@ blur_outliers_per_zslice.head()
 
 # ## Create parquet file with each plate/well/site/condition combos and boolean for pass/fail per channel adding saturation to the already generated blur dataframe
 
-# In[ ]:
+# In[15]:
 
 
 # Combine all saturation outliers dataframes into a single dataframe

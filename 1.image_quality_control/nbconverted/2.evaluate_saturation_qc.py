@@ -372,7 +372,7 @@ unique_groups = saturation_agp_outliers.groupby(
 print(len(unique_groups))
 
 # Randomly sample one row per group
-unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=None))
+unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=0))
 
 # Reset the index for convenience
 unique_samples = unique_samples.reset_index(drop=True)
@@ -381,7 +381,7 @@ unique_samples = unique_samples.reset_index(drop=True)
 if len(unique_samples) < 3:
     print("Not enough unique Plate-Well-Site combinations for the requested images.")
 else:
-    selected_images = unique_samples.sample(n=3, random_state=None)
+    selected_images = unique_samples.sample(n=3, random_state=0)
 
 # Create a figure to display images
 plt.figure(figsize=(15, 5))
