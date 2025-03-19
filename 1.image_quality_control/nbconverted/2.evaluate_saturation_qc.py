@@ -73,6 +73,10 @@ qc_dfs = []
 for path in image_csv_paths:
     # Load only the required columns by filtering columns with specified prefixes
     plate_df = pd.read_csv(path, usecols=lambda col: col.startswith(prefixes))
+
+    # Skip processing NF0017
+    if "NF0017" in str(path):
+        continue
     
     # Check for NaNs in the Metadata_Plate, Metadata_Well, and Metadata_Site columns
     if plate_df[["Metadata_Plate", "Metadata_Well", "Metadata_Site"]].isna().any().any():
@@ -368,7 +372,7 @@ unique_groups = saturation_agp_outliers.groupby(
 print(len(unique_groups))
 
 # Randomly sample one row per group
-unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=None))
+unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=0))
 
 # Reset the index for convenience
 unique_samples = unique_samples.reset_index(drop=True)
@@ -377,7 +381,7 @@ unique_samples = unique_samples.reset_index(drop=True)
 if len(unique_samples) < 3:
     print("Not enough unique Plate-Well-Site combinations for the requested images.")
 else:
-    selected_images = unique_samples.sample(n=3, random_state=None)
+    selected_images = unique_samples.sample(n=3, random_state=0)
 
 # Create a figure to display images
 plt.figure(figsize=(15, 5))
@@ -425,7 +429,7 @@ saturation_brightfield_outliers = cosmicqc.find_outliers(
     df=concat_qc_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "ImageQuality_PercentMaximal_Brightfield": 10,
+        "ImageQuality_PercentMaximal_InvertBrightfield": 2,
     },
 )
 
@@ -454,11 +458,11 @@ unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_stat
 # Reset the index for convenience
 unique_samples = unique_samples.reset_index(drop=True)
 
-# Further randomly select 3 unique images
-if len(unique_samples) < 3:
+# Further randomly select 1 unique images
+if len(unique_samples) < 1:
     print("Not enough unique Plate-Well-Site combinations for the requested images.")
 else:
-    selected_images = unique_samples.sample(n=3, random_state=0)
+    selected_images = unique_samples.sample(n=1, random_state=0)
 
 # Create a figure to display images
 plt.figure(figsize=(15, 5))

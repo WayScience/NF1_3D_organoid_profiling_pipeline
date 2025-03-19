@@ -70,6 +70,10 @@ for path in image_csv_paths:
     # Load only the required columns by filtering columns with specified prefixes
     plate_df = pd.read_csv(path, usecols=lambda col: col.startswith(prefixes))
     
+    # Skip processing NF0017
+    if "NF0017" in str(path):
+        continue
+
     # Check for NaNs in the Metadata_Plate, Metadata_Well, and Metadata_Site columns
     if plate_df[["Metadata_Plate", "Metadata_Well", "Metadata_Site"]].isna().any().any():
         print(f"NaNs detected in {path} in Metadata_Plate, Metadata_Well, or Metadata_Site columns")
@@ -149,6 +153,9 @@ g = sns.displot(
 g.set_titles("Plate: {col_name}")
 g.set_axis_labels("PowerLogLogSlope", "Density")
 g.tight_layout()
+
+# Save the plot
+plt.savefig(figure_dir / "blur_density_distribution.png", dpi=500)
 
 # Show the plot
 plt.show()
@@ -499,7 +506,7 @@ unique_groups = blur_brightfield_outliers.groupby(
 print(len(unique_groups))
 
 # Randomly sample one row per group (select random state for best examples)
-unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=1))
+unique_samples = unique_groups.apply(lambda group: group.sample(n=1, random_state=0))
 
 # Reset the index for convenience
 unique_samples = unique_samples.reset_index(drop=True)
@@ -508,7 +515,7 @@ unique_samples = unique_samples.reset_index(drop=True)
 if len(unique_samples) < 3:
     print("Not enough unique Plate-Well-Site combinations for the requested images.")
 else:
-    selected_images = unique_samples.sample(n=3, random_state=1)
+    selected_images = unique_samples.sample(n=3, random_state=0)
 
 # Create a figure to display images
 plt.figure(figsize=(15, 5))
