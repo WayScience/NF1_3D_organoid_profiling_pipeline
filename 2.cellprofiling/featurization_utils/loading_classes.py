@@ -74,7 +74,7 @@ class ImageSetLoader:
         ----------
         image_set_path : pathlib.Path
             Path to the image set directory.
-        spacing : tuple
+        anisotropy_spacing : tuple
             The anisotropy spacing of the images. In the format (z_spacing, y_spacing, x_spacing).
         channel_mapping : dict
             A dictionary mapping channel names to their corresponding image file names.
