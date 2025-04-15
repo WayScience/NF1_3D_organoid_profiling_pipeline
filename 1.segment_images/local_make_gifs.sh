@@ -20,9 +20,11 @@ touch segmentation.log
 # loop through all input directories
 for dir in "${input_dirs[@]}"; do
     dir=${dir%*/}
+    # get the base name of the directory
+    well_fov=$(basename "$dir")
     current_dir=$((current_dir + 1))
     echo -ne "Processing directory $current_dir of $total_dirs\r"
-    python 6.animate_segmentation_and_raw_signal.py --image_dir "$dir" >> segmentation.log
+    python 6.animate_segmentation_and_raw_signal.py --well_fov "$well_fov" >> segmentation.log
 done
 
 cd ../ || exit

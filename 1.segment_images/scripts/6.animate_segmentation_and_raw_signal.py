@@ -38,28 +38,27 @@ if not in_notebook:
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
 
     parser.add_argument(
-        "--image_dir",
+        "--well_fov",
         type=str,
         help="Path to the input directory containing the tiff images",
         required=True,
     )
 
     args = parser.parse_args()
-    image_dir = pathlib.Path(args.image_dir).resolve(strict=True)
-    label_dir = pathlib.Path(f"../processed_data/{image_dir.name}").resolve(strict=True)
-    mp4_file_dir = pathlib.Path("../animations/mp4/well_fov/").resolve()
-    gif_file_dir = pathlib.Path("../animations/gif/well_fov/").resolve()
+    well_fov = args.well_fov
+
 else:
     print("Running in a notebook")
-    image_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
-        strict=True
-    )
-    label_dir = pathlib.Path(f"../processed_data/{image_dir.name}").resolve(strict=True)
-    mp4_file_dir = pathlib.Path("../animations/test/mp4/well_fov/").resolve()
-    gif_file_dir = pathlib.Path("../animations/test/gif/well_fov/").resolve()
+    well_fov = "C4-2"
 
-well_fov = image_dir.name
-
+image_dir = pathlib.Path(f"../../data/NF0014/zstack_images/{well_fov}/").resolve(
+    strict=True
+)
+label_dir = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve(
+    strict=True
+)
+mp4_file_dir = pathlib.Path(f"../animations/mp4/{well_fov}/").resolve()
+gif_file_dir = pathlib.Path(f"../animations/gif/{well_fov}/").resolve()
 
 mp4_file_dir.mkdir(parents=True, exist_ok=True)
 gif_file_dir.mkdir(parents=True, exist_ok=True)
@@ -108,7 +107,7 @@ def animate_view(
     animation.animate(output_path_name, canvas_only=True)
 
 
-# In[5]:
+# In[ ]:
 
 
 channel_map = {
@@ -151,6 +150,7 @@ for channel, stack in frame_zstacks["images"].items():
 # Collect label data
 if label_dir:
     for compartment_name, stack in frame_zstacks["labels"].items():
+        print(compartment_name, stack.shape)
         if len(stack.shape) != dim:
             if len(stack.shape) == 3:
                 stack = np.expand_dims(stack, axis=0)
@@ -163,7 +163,7 @@ images_data = np.stack(images_data, axis=0)
 # In[8]:
 
 
-if labels_data:
+if label_dir:
     labels_data = np.stack(labels_data, axis=0)
     combined_data = np.concatenate((images_data, labels_data), axis=0)
     combined_channel_names = channel_names + label_names
@@ -239,7 +239,7 @@ for layer_name in layer_names:
     viewer.layers[layer_name].visible = False
 
 
-# In[12]:
+# In[ ]:
 
 
 for layer_name in layer_names:
@@ -248,7 +248,22 @@ for layer_name in layer_names:
         save_name = layer_name.split(".tif")[0]
     else:
         save_name = layer_name
-    save_path = pathlib.Path(f"{mp4_file_dir}/{save_name}_animation.mp4")
+
+    # map the layer name to the channel name
+    if "Nuclei" in layer_name:
+        save_name = "DNA"
+    elif "Endoplasmic" in layer_name:
+        save_name = "ER"
+    elif "AGP" in layer_name:
+        save_name = "AGP"
+    elif "Mitochondria" in layer_name:
+        save_name = "mitochondria"
+    elif "Brightfield" in layer_name:
+        save_name = "brightfield"
+    else:
+        save_name = layer_name
+
+    save_path = pathlib.Path(f"{mp4_file_dir}/{well_fov}_{save_name}_animation.mp4")
     if "640" in layer_name:
         # increase contrast for the mitochondria
         viewer.layers[layer_name].contrast_limits = (0, 20000)

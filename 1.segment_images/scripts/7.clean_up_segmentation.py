@@ -24,12 +24,13 @@ overwrite = True
 
 
 # set path to the processed data dir
-processed_data_dir = pathlib.Path("../processed_data").resolve(strict=True)
-normalized_data_dir = pathlib.Path("../../data/NF0014/normalized_z").resolve(
+processed_data_dir = pathlib.Path("../../data/NF0014/processed_data").resolve(
     strict=True
 )
+raw_input_dir = pathlib.Path("../../data/NF0014/zstack_images").resolve(strict=True)
+
 # normalized_data_dir = pathlib.Path("../../data/test_dir").resolve(strict=True)
-cellprofiler_dir = pathlib.Path("../../data/cellprofiler").resolve()
+cellprofiler_dir = pathlib.Path("../../data/NF0014/cellprofiler").resolve()
 if cellprofiler_dir.exists():
     shutil.rmtree(cellprofiler_dir)
 else:
@@ -41,7 +42,7 @@ else:
 
 # perform checks for each directory
 processed_data_dir_directories = list(processed_data_dir.glob("*"))
-normalized_data_dir_directories = list(normalized_data_dir.glob("*"))
+normalized_data_dir_directories = list(raw_input_dir.glob("*"))
 cellprofiler_dir_directories = list(cellprofiler_dir.glob("*"))
 
 print(
@@ -53,14 +54,14 @@ print(
       """
 )
 for file in processed_data_dir_directories:
-    check_number_of_files(file, 6)
+    check_number_of_files(file, 10)
 
 
 print(
     f"""
       #################################################################################\n
       ## Checking the number of files in each subdirectory of:\n
-      ## {normalized_data_dir.absolute()}\n
+      ## {raw_input_dir.absolute()}\n
       #################################################################################
       """
 )
@@ -74,7 +75,7 @@ for file in normalized_data_dir_directories:
 
 
 # get the list of dirs in the normalized_data_dir
-norm_dirs = [x for x in normalized_data_dir.iterdir() if x.is_dir()]
+norm_dirs = [x for x in raw_input_dir.iterdir() if x.is_dir()]
 # copy each dir and files to cellprofiler_dir
 for norm_dir in tqdm.tqdm(norm_dirs):
     dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
@@ -121,7 +122,7 @@ if jobs_to_rerun_path.exists():
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
 dirs_in_cellprofiler_dir = sorted(dirs_in_cellprofiler_dir)
 for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
-    if not check_number_of_files(dir, 9):
+    if not check_number_of_files(dir, 12):
         with open(jobs_to_rerun_path, "a") as f:
             f.write(f"{dir.name}\n")
 
@@ -130,7 +131,7 @@ for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
 
 
 # move an example to the example dir
-example_dir = pathlib.Path("../processed_data/C4-2/gifs/").resolve(strict=True)
+example_dir = pathlib.Path("../animations/gif/C4-2").resolve(strict=True)
 final_example_dir = pathlib.Path("../examples/segmentation_output/C4-2/gifs").resolve()
 if final_example_dir.exists():
     shutil.rmtree(final_example_dir)

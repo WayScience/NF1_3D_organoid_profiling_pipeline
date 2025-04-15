@@ -34,7 +34,10 @@ except NameError:
 
 # ## parse args and set paths
 
-# In[2]:
+# If if a notebook run the hardcoded paths.
+# However, if this is run as a script, the paths are set by the parsed arguments.
+
+# In[ ]:
 
 
 if not in_notebook:
@@ -43,7 +46,7 @@ if not in_notebook:
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
 
     parser.add_argument(
-        "--input_dir",
+        "--well_fov",
         type=str,
         help="Path to the input directory containing the tiff images",
     )
@@ -59,16 +62,18 @@ if not in_notebook:
     args = parser.parse_args()
     window_size = args.window_size
     clip_limit = args.clip_limit
-    input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
+    well_fov = args.well_fov
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
-        strict=True
-    )
+    well_fov = "C4-2"
     window_size = 2
     clip_limit = 0.05
 
-mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
+
+input_dir = pathlib.Path(f"../../data/NF0014/resliced_images/{well_fov}").resolve(
+    strict=True
+)
+mask_path = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 

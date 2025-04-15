@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[9]:
+# In[1]:
 
 
 import argparse
@@ -21,7 +21,7 @@ except NameError:
     in_notebook = False
 
 
-# In[10]:
+# In[2]:
 
 
 if not in_notebook:
@@ -30,32 +30,31 @@ if not in_notebook:
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
 
     parser.add_argument(
-        "--input_dir",
+        "--well_fov",
         type=str,
         help="Path to the input directory containing the tiff images",
     )
 
     args = parser.parse_args()
-    input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
-    mask_input_dir = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve(
-        strict=True
-    )
+    well_fov = args.well_fov
+    mask_input_dir = pathlib.Path(f"../processed_data/{well_fov}").resolve(strict=True)
 else:
     print("Running in a notebook")
-    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
-        strict=True
-    )
-    mask_input_dir = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve(
-        strict=True
-    )
+    well_fov = "C4-2"
 
 
-output_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
+input_dir = pathlib.Path(f"../../data/NF0014/zstack_images/{well_fov}/").resolve(
+    strict=True
+)
+mask_input_dir = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve(
+    strict=True
+)
+output_path = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve()
 output_path.mkdir(parents=True, exist_ok=True)
 output_file_path = pathlib.Path(output_path / "cytoplasm_mask.tiff").resolve()
 
 
-# In[11]:
+# In[3]:
 
 
 # get all the masks
@@ -70,7 +69,7 @@ nuclei_masks = io.imread(nuclei_masks_path)
 cell_masks = io.imread(cell_masks_path)
 
 
-# In[12]:
+# In[4]:
 
 
 cytoplasm_masks = np.zeros_like(cell_masks)
@@ -83,13 +82,13 @@ for z_slice_index in range(nuclei_masks.shape[0]):
     cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
 
-# In[13]:
+# In[5]:
 
 
 tifffile.imwrite(output_file_path, cytoplasm_masks)
 
 
-# In[14]:
+# In[6]:
 
 
 if in_notebook:
