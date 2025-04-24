@@ -221,3 +221,4 @@ data/*
 3.processing_image_based_profiles/data/*
 3.processing_image_based_profiles/notebooks/runinfo/*
 3.processing_image_based_profiles/scripts/runinfo/*
+3.processing_image_based_profiles/results/*

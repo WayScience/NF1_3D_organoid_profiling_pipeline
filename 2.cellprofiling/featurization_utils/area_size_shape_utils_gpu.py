@@ -10,18 +10,18 @@ from loading_classes import ImageSetLoader, ObjectLoader
 
 
 def calulate_surface_area(
-    label_object: cupy.array,
-    props: cupy.array,
+    label_object: numpy.array,
+    props: numpy.array,
     spacing: tuple,
 ) -> list:
     """
     This function calculates the surface area of each object in a 3D image using the marching cubes algorithm.
-    Also obviously implemented in cupy.
+    Also obviously implemented in numpy.
     Parameters
     ----------
-    label_object : cupy.array
+    label_object : numpy.array
         This is an array of the segmented objects of a given compartment.
-    props : cupy.array
+    props : numpy.array
         This is the output of the regionprops function, which contains information about the objects.
     spacing : tuple
         This is the spacing of the image in each dimension (z, y, x).
@@ -36,7 +36,6 @@ def calulate_surface_area(
     # but we need to expand the slice out by one voxel in each direction, or surface area freaks out
     surface_areas = []
     for index, label in enumerate(props["label"]):
-
         volume = label_object[
             max(props["bbox-0"][index] - 1, 0) : min(
                 props["bbox-3"][index] + 1, label_object.shape[0]
@@ -49,13 +48,13 @@ def calulate_surface_area(
             ),
         ]
         volume_truths = volume > 0
-        verts, faces, _normals, _values = cucim.skimage.measure.marching_cubes(
+        verts, faces, _normals, _values = skimage.measure.marching_cubes(
             volume_truths,
             method="lewiner",
             spacing=spacing,
             level=0,
         )
-        surface_areas.append(cucim.skimage.measure.mesh_surface_area(verts, faces))
+        surface_areas.append(skimage.measure.mesh_surface_area(verts, faces))
     return surface_areas
 
 
@@ -80,7 +79,7 @@ def measure_3D_area_size_shape_gpu(
         A dictionary containing the area, size, and shape of the objects in the image.
     """
     label_object = cupy.asarray(object_loader.objects)
-    spacing = image_set_loader.spacing
+    spacing = image_set_loader.anisotropy_spacing
     unique_objects = object_loader.object_ids
     desired_properties = [
         "area",
@@ -112,18 +111,18 @@ def measure_3D_area_size_shape_gpu(
         "EXTENT": props["extent"].get(),
         "EULER.NUMBER": props["euler_number"].get(),
         "EQUIVALENT.DIAMETER": props["equivalent_diameter"].get(),
+        "SURFACE.AREA": [],
     }
     try:
+        label_object = label_object.get()
         features_to_record["SURFACE.AREA"] = calulate_surface_area(
             label_object=label_object,
             props=props,
             spacing=spacing,
         )
-        features_to_record["SURFACE.AREA"] = features_to_record["SURFACE.AREA"].get()
     except:
-        features_to_record["SURFACE.AREA"] = numpy.array([numpy.nan])
-        # extend the array to match the number of objects in numpy
-        features_to_record["SURFACE.AREA"] = numpy.repeat(
-            features_to_record["SURFACE.AREA"], len(props["label"])
+        features_to_record["SURFACE.AREA"].extend(
+            [numpy.nan] * len(features_to_record["object_id"])
         )
+
     return features_to_record

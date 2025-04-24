@@ -4,9 +4,13 @@
 # In[ ]:
 
 
+import argparse
+import os
 import pathlib
 import sys
 import time
+
+import psutil
 
 sys.path.append("../featurization_utils")
 import itertools
@@ -24,6 +28,7 @@ from colocalization_utils_gpu import (
     prepare_two_images_for_colocalization_gpu,
 )
 from loading_classes import ImageSetLoader, ObjectLoader, TwoObjectLoader
+from resource_profiling_util import get_mem_and_time_profiling
 
 try:
     cfg = get_ipython().config
@@ -40,10 +45,29 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
-# In[2]:
+# In[ ]:
 
 
-image_set_path = pathlib.Path("../../data/NF0014/cellprofiler/C4-2/")
+if not in_notebook:
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "--well_fov",
+        type=str,
+        default="None",
+        help="Well and field of view to process, e.g. 'A01_1'",
+    )
+
+    args = argparser.parse_args()
+    well_fov = args.well_fov
+    if well_fov == "None":
+        raise ValueError(
+            "Please provide a well and field of view to process, e.g. 'A01_1'"
+        )
+
+    image_set_path = pathlib.Path(f"../../data/NF0014/cellprofiler/{well_fov}/")
+else:
+    well_fov = "C4-2"
+    image_set_path = pathlib.Path(f"../../data/NF0014/cellprofiler/{well_fov}/")
 
 
 # In[3]:
@@ -67,7 +91,7 @@ channel_mapping = {
 
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
-    spacing=(1, 0.1, 0.1),
+    anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
 )
 
@@ -79,10 +103,12 @@ image_set_loader = ImageSetLoader(
 channel_combinations = list(itertools.combinations(image_set_loader.image_names, 2))
 
 
-# In[6]:
+# In[ ]:
 
 
 start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
 # In[ ]:
@@ -97,12 +123,17 @@ for compartment in tqdm(
         leave=False,
         position=1,
     ):
+        output_dir = pathlib.Path(
+            f"../results/{image_set_loader.image_set_name}/Colocalization_{compartment}_{channel1}.{channel2}_features"
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
         coloc_loader = TwoObjectLoader(
             image_set_loader=image_set_loader,
             compartment=compartment,
             channel1=channel1,
             channel2=channel2,
         )
+        list_of_dfs = []
         for object_id in tqdm(
             coloc_loader.object_ids,
             desc="Processing object IDs",
@@ -125,21 +156,25 @@ for compartment in tqdm(
             )
             coloc_df = pd.DataFrame(colocalization_features, index=[0])
             coloc_df.columns = [
-                f"{compartment}_{channel1}.{channel2}_{col}" for col in coloc_df.columns
+                f"Colocalization_{compartment}_{channel1}.{channel2}_{col}"
+                for col in coloc_df.columns
             ]
-            coloc_df["object_id"] = object_id
-            coloc_df["channel1"] = channel1
-            coloc_df["channel2"] = channel2
-            coloc_df["compartment"] = compartment
-            coloc_df["image_set"] = image_set_loader.image_set_name
-        output_file = pathlib.Path(
-            f"../results/{image_set_loader.image_set_name}/Colocalization_{compartment}_{channel1}.{channel2}_features.parquet"
-        )
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        coloc_df.to_parquet(output_file)
+            coloc_df.insert(0, "object_id", object_id)
+            coloc_df.insert(1, "image_set", image_set_loader.image_set_name)
+            coloc_df.to_parquet(output_dir / f"object_{object_id}.parquet")
 
 
-# In[8]:
+# In[ ]:
 
 
-print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
+end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+end_time = time.time()
+get_mem_and_time_profiling(
+    start_mem=start_mem,
+    end_mem=end_mem,
+    start_time=start_time,
+    end_time=end_time,
+    process_name="Colocalization",
+    well_fov=well_fov,
+    CPU_GPU="GPU",
+)

@@ -131,6 +131,7 @@ def measure_3D_number_of_neighbors(
             props_label["bbox-4"][0],
             props_label["bbox-5"][0],
         )
+        original_bbox = (z_min, y_min, x_min, z_max, y_max, x_max)
 
         new_z_min, new_z_max = neighbors_expand_box(
             min_coor=image_global_min_coord_z,
@@ -155,12 +156,27 @@ def measure_3D_number_of_neighbors(
         )
         bbox = (new_z_min, new_y_min, new_x_min, new_z_max, new_y_max, new_x_max)
         croppped_neighbor_image = crop_3D_image(image=label_object, bbox=bbox)
+        self_cropped_neighbor_image = crop_3D_image(
+            image=label_object, bbox=original_bbox
+        )
+        # find all the unique values in the cropped image of the object of interest
+        # this is the number of neighbors in the cropped image
+        n_neighbors_adjacent = (
+            len(
+                numpy.unique(
+                    self_cropped_neighbor_image[self_cropped_neighbor_image > 0]
+                )
+            )
+            - 1
+        )
 
+        # find all the unique values in the expanded cropped image of the object of interest
+        # this gives the number of neighbors in a n distance of the object
         n_neighbors_by_distance = (
             len(numpy.unique(croppped_neighbor_image[croppped_neighbor_image > 0])) - 1
         )
         neighbors_out_dict["object_id"].append(label)
-        neighbors_out_dict["NEIGHBORS_ADJACENT"].append(n_neighbors_by_distance)
+        neighbors_out_dict["NEIGHBORS_ADJACENT"].append(n_neighbors_adjacent)
         neighbors_out_dict[f"NEIGHBORS_{distance_threshold}"].append(
             n_neighbors_by_distance
         )

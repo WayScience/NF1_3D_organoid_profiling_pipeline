@@ -4,9 +4,13 @@
 # In[ ]:
 
 
+import argparse
+import os
 import pathlib
 import sys
 import time
+
+import psutil
 
 sys.path.append("../featurization_utils")
 import numpy as np
@@ -14,6 +18,7 @@ import pandas as pd
 import skimage
 from area_size_shape_utils_gpu import measure_3D_area_size_shape_gpu
 from loading_classes import ImageSetLoader, ObjectLoader
+from resource_profiling_util import get_mem_and_time_profiling
 
 try:
     cfg = get_ipython().config
@@ -26,13 +31,32 @@ else:
     from tqdm import tqdm
 
 
-# In[2]:
-
-
-image_set_path = pathlib.Path("../../data/NF0014/cellprofiler/C4-2/")
-
-
 # In[ ]:
+
+
+if not in_notebook:
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "--well_fov",
+        type=str,
+        default="None",
+        help="Well and field of view to process, e.g. 'A01_1'",
+    )
+
+    args = argparser.parse_args()
+    well_fov = args.well_fov
+    if well_fov == "None":
+        raise ValueError(
+            "Please provide a well and field of view to process, e.g. 'A01_1'"
+        )
+
+    image_set_path = pathlib.Path(f"../../data/NF0014/cellprofiler/{well_fov}/")
+else:
+    well_fov = "C4-2"
+    image_set_path = pathlib.Path(f"../../data/NF0014/cellprofiler/{well_fov}/")
+
+
+# In[3]:
 
 
 channel_n_compartment_mapping = {
@@ -48,21 +72,22 @@ channel_n_compartment_mapping = {
 }
 
 
-# In[ ]:
+# In[4]:
 
 
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
-    spacing=(1, 0.1, 0.1),
+    anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
 )
-image_set_loader.image_set_dict.keys()
 
 
 # In[5]:
 
 
 start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
 # In[6]:
@@ -92,10 +117,13 @@ for compartment in tqdm(
         final_df = pd.DataFrame(size_shape_dict)
 
         # prepend compartment and channel to column names
-        final_df.columns = [
-            f"{compartment}_{channel}_{col}" for col in final_df.columns
-        ]
-        final_df["image_set"] = image_set_loader.image_set_name
+        for col in final_df.columns:
+            if col not in ["object_id"]:
+                final_df.rename(
+                    columns={col: f"Area.Size.Shape_{compartment}_{channel}_{col}"},
+                    inplace=True,
+                )
+        final_df.insert(1, "image_set", image_set_loader.image_set_name)
 
         output_file = pathlib.Path(
             f"../results/{image_set_loader.image_set_name}/AreaSize_Shape_{compartment}_{channel}_features.parquet"
@@ -105,7 +133,17 @@ for compartment in tqdm(
         final_df.head()
 
 
-# In[7]:
+# In[ ]:
 
 
-print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
+end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+end_time = time.time()
+get_mem_and_time_profiling(
+    start_mem=start_mem,
+    end_mem=end_mem,
+    start_time=start_time,
+    end_time=end_time,
+    process_name="AreaSizeShape",
+    well_fov=well_fov,
+    CPU_GPU="GPU",
+)

@@ -71,8 +71,8 @@ class ObjectGranularityRecord:
 
 def measure_3D_granularity(
     object_loader: ObjectLoader,
-    radius: int = 20,
-    granular_spectrum_length: int = 5,
+    radius: int = 10,
+    granular_spectrum_length: int = 16,
     subsample_size: float = 0.25,
     image_name: str = "image",
 ) -> Dict[str, float]:
@@ -101,10 +101,6 @@ def measure_3D_granularity(
 
     image_object = object_loader.image
     label_object = object_loader.label_image
-    radius = 10
-    granular_spectrum_length = 16
-    subsample_size = 0.25
-    image_name = "nuclei"
 
     pixels = image_object.copy()
     mask = label_object.copy()
@@ -151,10 +147,10 @@ def measure_3D_granularity(
     pixels -= back_pixels
     pixels[pixels < 0] = 0
 
-    object_records = [
+    object_records = (
         ObjectGranularityRecord(object_loader, object_index)
         for _, object_index in enumerate(object_loader.object_ids)
-    ]
+    )
 
     startmean = numpy.mean(pixels[mask])
     ero = pixels.copy()
@@ -172,6 +168,7 @@ def measure_3D_granularity(
         ero_mask = numpy.zeros_like(ero)
         ero_mask[mask == True] = ero[mask == True]
         ero = skimage.morphology.erosion(ero_mask, footprint=footprint)
+
         rec = skimage.morphology.reconstruction(ero, pixels, footprint=footprint)
         currentmean = numpy.mean(rec[mask])
         gs = (prevmean - currentmean) * 100 / startmean
@@ -281,16 +278,40 @@ def measure_3D_granularity_gpu(
     back_pixels_mask[back_mask == True] = back_pixels[back_mask == True]
     back_pixels_mask = cupy.asarray(back_pixels_mask)
 
-    back_pixels = cucim.skimage.morphology.erosion(
-        back_pixels_mask, footprint=footprint
-    )
+    # getting a jitify runtime error
+    # bad fix and workaround -> I do not like converting between numpy and cupy
+    # too much overhead...
+    # convert to numpy array
+    # run the skimage erosion
+    # convert back to cupy array
+    # the cucim version of skimage does not work with jitify for erosion or dilation
+    back_pixels_mask = back_pixels_mask.get()
+    footprint = footprint.get()
+    back_pixels = skimage.morphology.erosion(back_pixels_mask, footprint=footprint)
+    back_pixels_mask = cupy.asarray(back_pixels_mask)
+    back_pixels = cupy.asarray(back_pixels)
+    footprint = cupy.asarray(footprint)
+
+    # bad workaround but yet here we are with features
 
     back_pixels_mask = cupy.zeros_like(back_pixels)
     back_pixels_mask[back_mask == True] = back_pixels[back_mask == True]
 
-    back_pixels = cucim.skimage.morphology.dilation(
-        back_pixels_mask, footprint=footprint
-    )
+    # getting a jitify runtime error
+    # bad fix and workaround
+    # convert to numpy array
+    # run the skimage erosion
+    # convert back to cupy array
+    # the cucim version of skimage does not work with jitify for erosion or dilation
+
+    back_pixels_mask = back_pixels_mask.get()
+    footprint = footprint.get()
+    back_pixels = skimage.morphology.dilation(back_pixels_mask, footprint=footprint)
+    back_pixels_mask = cupy.asarray(back_pixels_mask)
+    back_pixels = cupy.asarray(back_pixels)
+    footprint = cupy.asarray(footprint)
+    # bad workaround but yet here we are with features
+
     k, i, j = cupy.mgrid[0 : new_shape[0], 0 : new_shape[1], 0 : new_shape[2]].astype(
         cupy.float32
     )
@@ -315,16 +336,30 @@ def measure_3D_granularity_gpu(
     startmean = max(startmean, cupy.finfo(float).eps)
     footprint = cucim.skimage.morphology.ball(1, dtype=bool)
     feature_measurments = {}
-    objects_records = [
+    objects_records = (
         ObjectGranularityRecord(object_loader=object_loader, object_index=object_id)
         for object_id in object_loader.object_ids
-    ]
+    )
     object_measurements = {"object_id": [], "feature": [], "value": []}
     for i in tqdm.tqdm(range(1, granular_spectrum_length + 1)):
         prevmean = currentmean
         ero_mask = cupy.zeros_like(ero)
         ero_mask[mask == True] = ero[mask == True]
-        ero = cucim.skimage.morphology.erosion(ero_mask, footprint=footprint)
+        # getting a jitify runtime error
+        # bad fix and workaround
+        # convert to numpy array
+        # run the skimage erosion
+        # convert back to cupy array
+        # the cucim version of skimage does not work with jitify for erosion or dilation
+
+        ero_mask = ero_mask.get()
+        footprint = footprint.get()
+        ero = skimage.morphology.erosion(ero_mask, footprint=footprint)
+        ero = cupy.asarray(ero)
+        ero_mask = cupy.asarray(ero_mask)
+        footprint = cupy.asarray(footprint)
+        # bad workaround but yet here we are with features
+
         rec = cucim.skimage.morphology.reconstruction(
             ero,
             pixels,

@@ -29,7 +29,6 @@ def calulate_surface_area(
     # but we need to expand the slice out by one voxel in each direction, or surface area freaks out
     surface_areas = []
     for index, label in enumerate(props["label"]):
-
         volume = label_object[
             max(props["bbox-0"][index] - 1, 0) : min(
                 props["bbox-3"][index] + 1, label_object.shape[0]
@@ -74,7 +73,7 @@ def measure_3D_area_size_shape(
         A dictionary containing the area, size, and shape of the objects in the image.
     """
     label_object = object_loader.objects
-    spacing = image_set_loader.spacing
+    spacing = image_set_loader.anisotropy_spacing
     unique_objects = object_loader.object_ids
     desired_properties = [
         "area",
