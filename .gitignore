@@ -212,13 +212,17 @@ data/*
 1.segment_images/animations/test/mp4/*
 1.segment_images/animations/gif/*
 1.segment_images/rerun_jobs.txt
+2.segment_images/animations/mp4/*
+2.segment_images/animations/test/mp4/*
+2.segment_images/animations/gif/*
+2.segment_images/rerun_jobs.txt
 
 # Ignore experiment files from QC results
 *Experiment*.csv
-2.cellprofiling/analysis_output/*
-2.cellprofiling/results/*
+3.cellprofiling/analysis_output/*
+3.cellprofiling/results/*
 
-3.processing_image_based_profiles/data/*
-3.processing_image_based_profiles/notebooks/runinfo/*
-3.processing_image_based_profiles/scripts/runinfo/*
-3.processing_image_based_profiles/results/*
+4.processing_image_based_profiles/data/*
+4.processing_image_based_profiles/notebooks/runinfo/*
+4.processing_image_based_profiles/scripts/runinfo/*
+4.processing_image_based_profiles/results/*
