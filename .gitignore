@@ -226,3 +226,4 @@ data/*
 4.processing_image_based_profiles/notebooks/runinfo/*
 4.processing_image_based_profiles/scripts/runinfo/*
 4.processing_image_based_profiles/results/*
+.nextflow*

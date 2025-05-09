@@ -50,7 +50,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[3]:
+# In[ ]:
 
 
 channel_n_compartment_mapping = {
@@ -66,7 +66,15 @@ channel_n_compartment_mapping = {
 }
 
 
-# In[4]:
+# In[ ]:
+
+
+start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+
+
+# In[ ]:
 
 
 start_time = time.time()

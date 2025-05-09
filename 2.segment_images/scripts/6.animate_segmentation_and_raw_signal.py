@@ -29,13 +29,19 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     print("Running as script")
     # set up arg parser
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
+
+    parser.add_argument(
+        "--patient",
+        type=str,
+        help="Patient ID",
+    )
 
     parser.add_argument(
         "--well_fov",
@@ -46,15 +52,17 @@ if not in_notebook:
 
     args = parser.parse_args()
     well_fov = args.well_fov
+    patient = args.patient
 
 else:
     print("Running in a notebook")
     well_fov = "C4-2"
+    patient = "NF0014"
 
-image_dir = pathlib.Path(f"../../data/NF0014/zstack_images/{well_fov}/").resolve(
+image_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}/").resolve(
     strict=True
 )
-label_dir = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve(
+label_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve(
     strict=True
 )
 mp4_file_dir = pathlib.Path(f"../animations/mp4/{well_fov}/").resolve()

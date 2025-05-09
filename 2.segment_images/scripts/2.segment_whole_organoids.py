@@ -40,12 +40,18 @@ except NameError:
 print(in_notebook)
 
 
-# In[ ]:
+# In[6]:
 
 
 if not in_notebook:
     # set up arg parser
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
+
+    parser.add_argument(
+        "--patient",
+        type=str,
+        help="Patient ID to use for the segmentation",
+    )
 
     parser.add_argument(
         "--well_fov",
@@ -65,24 +71,28 @@ if not in_notebook:
     window_size = args.window_size
     clip_limit = args.clip_limit
     well_fov = args.well_fov
+    patient = args.patient
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C3-2"
     window_size = 4
     clip_limit = 0.05
+    patient = "NF0016"
 
 
-input_dir = pathlib.Path(f"../../data/NF0014/resliced_images/{well_fov}").resolve(
+input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(
     strict=True
 )
 
-mask_path = pathlib.Path(f"../../data/NF0014/processed_data/{input_dir.stem}").resolve()
+mask_path = pathlib.Path(
+    f"../../data/{patient}/processed_data/{input_dir.stem}"
+).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 
 # ## Set up images, paths and functions
 
-# In[3]:
+# In[7]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -90,7 +100,7 @@ files = sorted(input_dir.glob("*"))
 files = [str(x) for x in files if x.suffix in image_extensions]
 
 
-# In[4]:
+# In[8]:
 
 
 # find the cytoplasmic channels in the image set
@@ -151,7 +161,11 @@ print("2.5D cyto image stack shape:", cyto.shape)
 
 butterworth_optimization = True
 if butterworth_optimization:
-    img_to_optimize = cyto[9]
+    # get the median most image from the cyto image stack
+    # this is the image that will be used for the butterworth filter optimization
+    # get the median image from the cyto image stack
+    middle_index = int(cyto.shape[0] / 2)
+    img_to_optimize = cyto[middle_index]
     optimization_steps = 5
     # optimize the butterworth filter for the cyto image
     search_space_cutoff_freq = np.linspace(0.01, 0.5, optimization_steps)
@@ -206,11 +220,11 @@ if in_notebook:
     # plot the nuclei and the cyto channels
     plt.figure(figsize=(10, 10))
     plt.subplot(121)
-    plt.imshow(cyto[9, :, :], cmap="gray")
+    plt.imshow(cyto[middle_index, :, :], cmap="gray")
     plt.title("Raw cyto")
     plt.axis("off")
     plt.subplot(122)
-    plt.imshow(imgs[9, :, :], cmap="gray")
+    plt.imshow(imgs[middle_index, :, :], cmap="gray")
     plt.title("Butterworth filtered cyto")
     plt.axis("off")
     plt.show()

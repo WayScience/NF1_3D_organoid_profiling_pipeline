@@ -64,6 +64,14 @@ channel_n_compartment_mapping = {
 }
 
 
+# In[ ]:
+
+
+start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+
+
 # In[4]:
 
 

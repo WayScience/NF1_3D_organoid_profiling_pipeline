@@ -81,6 +81,14 @@ channel_mapping = {
 # In[4]:
 
 
+start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+
+
+# In[ ]:
+
+
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),

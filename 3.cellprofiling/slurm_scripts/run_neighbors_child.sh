@@ -29,4 +29,4 @@ python "$git_root"/3.cellprofiling/scripts/neighbors.py \
 end=$(date +%s)
 echo "Time taken to run the featurization: (($end-$start_timestamp))"
 
-conda deactivate
+# conda deactivate

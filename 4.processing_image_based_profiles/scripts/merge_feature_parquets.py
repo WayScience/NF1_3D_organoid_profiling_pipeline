@@ -4,30 +4,60 @@
 # In[1]:
 
 
+import argparse
 import pathlib
 import pprint
 import sqlite3
+from contextlib import closing
 
 import duckdb
 import pandas as pd
 
+try:
+    cfg = get_ipython().config
+    in_notebook = True
+except NameError:
+    in_notebook = False
+
+
 # In[2]:
 
 
-well_fov = "C4-2"
+if not in_notebook:
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "--well_fov",
+        type=str,
+        required=True,
+        help="Well and field of view to process, e.g. 'A01_1'",
+    )
+    argparser.add_argument(
+        "--patient",
+        type=str,
+        required=True,
+        help="Patient ID to process, e.g. 'P01'",
+    )
+    args = argparser.parse_args()
+    well_fov = args.well_fov
+    patient = args.patient
+else:
+    well_fov = "C4-2"
+    patient = "NF0014"
 
-result_path = pathlib.Path(f"../../2.cellprofiling/results/{well_fov}/").resolve(
-    strict=True
-)
-database_path = pathlib.Path(f"../results/converted_profiles/{well_fov}").resolve()
+
+result_path = pathlib.Path(
+    f"../../data/{patient}/extracted_features/{well_fov}"
+).resolve(strict=True)
+database_path = pathlib.Path(f"../../data/{patient}/converted_profiles/").resolve()
 database_path.mkdir(parents=True, exist_ok=True)
 # create the sqlite database
 sqlite_path = database_path / f"{well_fov}.sqlite"
 
 
-# get a list of all parquets in the directory
-parquet_files = list(result_path.glob("*.parquet"))
+# get a list of all parquets in the directory recursively
+parquet_files = list(result_path.rglob("*.parquet"))
 parquet_files.sort()
+print(len(parquet_files), "parquet files found")
 
 
 # In[3]:
@@ -70,7 +100,7 @@ feature_types_dict = {
 for file in parquet_files:
     for compartment in feature_types_dict.keys():
         for feature_type in feature_types_dict[compartment].keys():
-            if compartment in file.name and feature_type in file.name:
+            if compartment in str(file) and feature_type in str(file):
                 feature_types_dict[compartment][feature_type].append(file)
 pprint.pprint(feature_types_dict)
 
@@ -151,31 +181,32 @@ for compartment in feature_types_dict.keys():
 # In[5]:
 
 
-conn = sqlite3.connect(sqlite_path)
-# merge all the feature types into one dataframe
-for compartment in merged_df_dict.keys():
-    merged_df = pd.DataFrame(
-        {
-            "object_id": [],
-            "image_set": [],
-        }
-    )
-    for feature_type, feature_type_df in merged_df_dict[compartment].items():
-        if len(feature_type_df) > 0:
-            merged_df = pd.merge(
-                merged_df,
-                feature_type_df,
-                on=["object_id", "image_set"],
-                how="outer",
-            )
-        else:
-            print(f"Dataframe {feature_type} is empty")
-            continue
+with closing(sqlite3.connect(sqlite_path)) as cx:
+    # with cx:
+    # conn = sqlite3.connect(sqlite_path)
+    # merge all the feature types into one dataframe
+    for compartment in merged_df_dict.keys():
+        merged_df = pd.DataFrame(
+            {
+                "object_id": [],
+                "image_set": [],
+            }
+        )
+        for feature_type, feature_type_df in merged_df_dict[compartment].items():
+            if len(feature_type_df) > 0:
+                merged_df = pd.merge(
+                    merged_df,
+                    feature_type_df,
+                    on=["object_id", "image_set"],
+                    how="outer",
+                )
+            else:
+                print(f"Dataframe {feature_type} is empty")
+                continue
 
-    merged_df.to_sql(
-        f"{compartment}",
-        conn,
-        if_exists="replace",
-        index=False,
-    )
-conn.close()
+        merged_df.to_sql(
+            f"{compartment}",
+            cx,
+            if_exists="replace",
+            index=False,
+        )

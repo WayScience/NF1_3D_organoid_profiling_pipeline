@@ -25,6 +25,78 @@ from resource_profiling_util import get_mem_and_time_profiling
 # In[ ]:
 
 
+def process_combination(
+    args: tuple[str, str],
+    image_set_loader: ImageSetLoader,
+    output_parent_path: pathlib.Path,
+):
+    """
+    Process a single combination of compartment and channel.
+
+    Parameters
+    ----------
+    args : tuple
+        Args that contain the compartment and channel.
+        Ordered as (compartment, channel).
+        Yes, order matters here.
+        channel : str
+            The channel name.
+        compartment : str
+            The compartment name.
+    image_set_loader : Class ImageSetLoader
+        This contains the image information needed to retreive the objects.
+    output_parent_path : pathlib.Path
+        The parent path to save the output files to.
+        This is used to create the output directory if it doesn't exist.
+    Returns
+    -------
+    str
+        A string indicating the compartment and channel that was processed.
+    """
+    compartment, channel = args
+    object_loader = ObjectLoader(
+        image_set_loader.image_set_dict[channel],
+        image_set_loader.image_set_dict[compartment],
+        channel,
+        compartment,
+    )
+    object_measurements = measure_3D_granularity(
+        object_loader=object_loader,
+        radius=10,  # radius of the sphere to use for granularity measurement
+        granular_spectrum_length=16,  # usually 16 but 2 is used for testing for now
+        subsample_size=0.25,  # subsample to 25% of the image to reduce computation time
+        image_name=channel,
+    )
+    final_df = pd.DataFrame(object_measurements)
+    # get the mean of each value in the array
+    # melt the dataframe to wide format
+    final_df = final_df.pivot_table(
+        index=["object_id"], columns=["feature"], values=["value"]
+    )
+    final_df.columns = final_df.columns.droplevel()
+    final_df = final_df.reset_index()
+    # prepend compartment and channel to column names
+    for col in final_df.columns:
+        if col == "object_id":
+            continue
+        else:
+            final_df.rename(
+                columns={col: f"Granularity_{compartment}_{channel}_{col}"},
+                inplace=True,
+            )
+    final_df.insert(0, "image_set", image_set_loader.image_set_name)
+    output_file = pathlib.Path(
+        output_parent_path / f"Granularity_{compartment}_{channel}_features.parquet"
+    )
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    final_df.to_parquet(output_file)
+
+    return f"Processed {compartment} - {channel}"
+
+
+# In[ ]:
+
+
 if not in_notebook:
     arguments_dict = parse_featurization_args()
     patient = arguments_dict["patient"]
@@ -49,7 +121,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[3]:
+# In[ ]:
 
 
 channel_mapping = {
@@ -65,7 +137,15 @@ channel_mapping = {
 }
 
 
-# In[4]:
+# In[ ]:
+
+
+start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+
+
+# In[ ]:
 
 
 start_time = time.time()

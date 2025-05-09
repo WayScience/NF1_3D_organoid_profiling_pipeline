@@ -109,8 +109,8 @@ def measure_3D_number_of_neighbors(
 
     neighbors_out_dict = {
         "object_id": [],
-        "NEIGHBORS_ADJACENT": [],
-        f"NEIGHBORS_{distance_threshold}": [],
+        "Neighbors_adjacent": [],
+        f"Neighbors_{distance_threshold}": [],
     }
     for index, label in enumerate(labels):
         selected_label_object = label_object.copy()
@@ -176,8 +176,8 @@ def measure_3D_number_of_neighbors(
             len(numpy.unique(croppped_neighbor_image[croppped_neighbor_image > 0])) - 1
         )
         neighbors_out_dict["object_id"].append(label)
-        neighbors_out_dict["NEIGHBORS_ADJACENT"].append(n_neighbors_adjacent)
-        neighbors_out_dict[f"NEIGHBORS_{distance_threshold}"].append(
+        neighbors_out_dict["Neighbors_adjacent"].append(n_neighbors_adjacent)
+        neighbors_out_dict[f"Neighbors_{distance_threshold}"].append(
             n_neighbors_by_distance
         )
 

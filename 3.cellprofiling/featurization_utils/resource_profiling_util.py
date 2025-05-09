@@ -13,8 +13,10 @@ def get_mem_and_time_profiling(
     end_time: time.time,
     end_mem: psutil.Process(os.getpid()).memory_info().rss / 1024**2,
     well_fov: str,
+    patient_id: str,
     feature_type: str,
     CPU_GPU: str,
+    output_file_dir: pathlib.Path,
 ) -> bool:
     """
     Function to get memory and time profiling for the run. This function will
@@ -31,10 +33,14 @@ def get_mem_and_time_profiling(
         Memory usage when the function ended running.
     well_fov : str
         Well and field of view for the run.
+    patient_id : str
+        Patient ID for the run.
     feature_type : str
         Feature type for the run.
     CPU_GPU : str
         Whether the run was done on CPU or GPU.
+    output_file_dir : pathlib.Path
+        Directory to save the run stats file.
 
     Returns
     -------
@@ -60,13 +66,11 @@ def get_mem_and_time_profiling(
             "mem_usage": [(end_mem - start_mem)],
             "gpu": [CPU_GPU],
             "well_fov": [well_fov],
+            "patient_id": [patient_id],
             "feature_type": [feature_type],
         }
     )
     # save the run stats to a file
-    run_stats_file = pathlib.Path(
-        f"../results/run_stats/{well_fov}_{feature_type}_{CPU_GPU}.parquet"
-    )
-    run_stats_file.parent.mkdir(parents=True, exist_ok=True)
-    run_stats.to_parquet(run_stats_file)
+    output_file_dir.parent.mkdir(parents=True, exist_ok=True)
+    run_stats.to_parquet(output_file_dir)
     return True

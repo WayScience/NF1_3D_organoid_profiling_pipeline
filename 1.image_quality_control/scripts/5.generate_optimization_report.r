@@ -58,7 +58,6 @@ na_counts
 dim(qc_results_df)
 head(qc_results_df)
 
-
 qc_type_cols <- grep("Blurry|Saturated", colnames(qc_results_df), value = TRUE)
 
 # Assuming qc_results_df is your dataframe and condition_cols is a vector of column names
@@ -87,7 +86,6 @@ failed_condition_combos <- melted_qc_df %>%
 
 # Print the result
 print(failed_condition_combos)
-
 
 # Count unique AGP_condition and Mito_condition combinations
 unique_combos_count <- melted_qc_df %>%
@@ -149,7 +147,6 @@ failed_zslices_per_metadata <- melted_qc_df %>%
 dim(failed_zslices_per_metadata)
 head(failed_zslices_per_metadata)
 
-
 # Calculate the maximum Failed_Count across the entire dataset
 max_failed_count <- max(failed_zslices_per_metadata$Failed_Count, na.rm = TRUE)
 
@@ -187,7 +184,6 @@ print(bar_plot)
 # Save plot
 ggsave(file.path(figures_dir, "optimization_failed_zslice_count_channel_and_condition.png"), plot = bar_plot, width = width, height = height, dpi = 500)
 
-
 # Step 1: Remove duplicates for z-slices per organoid (Plate, Well, Site, Zslice, Condition combo)
 unique_zslices <- melted_qc_df %>%
     distinct(Metadata_Plate, Metadata_Well, Metadata_Site, Metadata_Zslice, Condition_combo) %>%
@@ -220,7 +216,6 @@ norm_failed_zslices_per_metadata <- norm_melted_qc_df %>%
 # Show dimension and head of the resulting dataframe
 dim(norm_failed_zslices_per_metadata)
 head(norm_failed_zslices_per_metadata)
-
 
 # Set width and height
 width <- 15

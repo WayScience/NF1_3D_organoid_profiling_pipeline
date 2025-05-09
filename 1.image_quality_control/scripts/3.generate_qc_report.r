@@ -63,7 +63,6 @@ na_counts
 dim(qc_results_df)
 head(qc_results_df)
 
-
 condition_cols <- grep("Blurry|Saturated", colnames(qc_results_df), value = TRUE)
 
 # Assuming qc_results_df is your dataframe and condition_cols is a vector of column names
@@ -144,7 +143,6 @@ failed_zslices_per_metadata <- melted_qc_df %>%
 dim(failed_zslices_per_metadata)
 head(failed_zslices_per_metadata)
 
-
 # Calculate the maximum Failed_Count across the entire dataset
 max_failed_count <- max(failed_zslices_per_metadata$Failed_Count, na.rm = TRUE)
 
@@ -181,7 +179,6 @@ print(bar_plot)
 # Save plot
 ggsave(file.path(figures_dir, "failed_zslice_count_channel_and_condition.png"), plot = bar_plot, width = width, height = height, dpi = 500)
 
-
 # Step 1: Remove duplicates for z-slices per organoid (Plate, Well, Site, Zslice)
 unique_zslices <- melted_qc_df %>%
     distinct(Metadata_Plate, Metadata_Well, Metadata_Site, Metadata_Zslice) %>%
@@ -214,7 +211,6 @@ norm_failed_zslices_per_metadata <- norm_melted_qc_df %>%
 # Show dimension and head of the resulting dataframe
 dim(norm_failed_zslices_per_metadata)
 head(norm_failed_zslices_per_metadata)
-
 
 # Set width and height
 width <- 15
@@ -274,7 +270,6 @@ cat("Percentage of unique organoids that would fail:", round(percentage_failed, 
 dim(unique_failed_organoids)
 head(unique_failed_organoids)
 
-
 # Count the number of failing z-slices per organoid
 failed_zslices_per_organoid <- failed_zslices_df %>%
   group_by(Metadata_Plate, Metadata_Well, Metadata_Site) %>%
@@ -292,7 +287,6 @@ cat("Number of organoids with more than 1 failing z-slices:", nrow(failed_more_t
 
 # Print the number of organoids that have 1 failing z-slices
 cat("Number of organoids with 1 failing z-slices:", nrow(failed_1), "\n")
-
 
 failed_zslices_per_organoid <- failed_zslices_per_organoid %>%
     left_join(
@@ -316,7 +310,6 @@ failed_zslices_per_organoid <- failed_zslices_per_organoid %>%
 dim(failed_zslices_per_organoid)
 head(failed_zslices_per_organoid)
 
-
 # Load in platemap file
 platemap_df <- read.csv("../../data/metadata/platemap.csv")
 
@@ -325,7 +318,6 @@ platemap_df <- platemap_df %>%
     select(-WellRow, -WellCol)
 
 head(platemap_df)
-
 
 # Merge treatment and dose information from platemap_df to unique_failed_organoids
 unique_failed_organoids_treatment <- failed_zslices_per_organoid %>%
@@ -338,7 +330,6 @@ unique_failed_organoids_treatment <- unique_failed_organoids_treatment %>%
 # Show the head of the merged dataframe
 dim(unique_failed_organoids_treatment)
 head(unique_failed_organoids_treatment)
-
 
 # Set width and height
 width <- 18
@@ -369,7 +360,6 @@ print(treatment_dose_failed_plot)
 
 # Save plot
 ggsave(file.path(figures_dir, "failed_organoid_count_treatment_dose_number_failed_zslices.png"), plot = treatment_dose_failed_plot, width = width, height = height, dpi = 500)
-
 
 # Get the total organoid count per plate
 total_organoid_counts <- qc_results_df %>%
@@ -457,4 +447,3 @@ print(treatment_dose_plot)
 
 # Save plot
 ggsave(file.path(figures_dir, "failed_organoid_proportion_treatment_dose.png"), plot = treatment_dose_plot, width = width, height = height, dpi = 500)
-

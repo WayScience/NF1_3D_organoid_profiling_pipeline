@@ -51,13 +51,19 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     print("Running as script")
     # set up arg parser
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
+
+    parser.add_argument(
+        "--patient",
+        type=str,
+        help="The patient ID",
+    )
 
     parser.add_argument(
         "--well_fov",
@@ -81,13 +87,15 @@ if not in_notebook:
     well_fov = args.well_fov
     x_y_vector_radius_max_constaint = args.radius_constraint
     compartment = args.compartment
+    patient = args.patient
 else:
     print("Running in a notebook")
     well_fov = "C4-2"
     compartment = "nuclei"
+    patient = "NF0014"
 
-input_dir = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve()
-mask_dir = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve()
+input_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
 if compartment == "nuclei":
     input_image_dir = pathlib.Path(mask_dir / "nuclei_masks_decoupled.tiff").resolve(
         strict=True

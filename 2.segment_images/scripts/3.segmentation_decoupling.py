@@ -59,6 +59,12 @@ if not in_notebook:
     parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
 
     parser.add_argument(
+        "--patient",
+        type=str,
+        help="Patient ID",
+    )
+
+    parser.add_argument(
         "--well_fov",
         type=str,
         help="Path to the input directory containing the tiff images",
@@ -80,18 +86,20 @@ if not in_notebook:
     well_fov = args.well_fov
     compartment = args.compartment
     window_size = args.window_size
+    patient = args.patient
 else:
     print("Running in a notebook")
     print("Running in a notebook")
     well_fov = "C4-2"
     compartment = "nuclei"
     window_size = 2
+    patient = "NF0014"
 
-input_dir = pathlib.Path(f"../../data/NF0014/resliced_images/{well_fov}").resolve(
+input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(
     strict=True
 )
 
-mask_path = pathlib.Path(f"../../data/NF0014/processed_data/{well_fov}").resolve()
+mask_path = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 if compartment == "nuclei":
