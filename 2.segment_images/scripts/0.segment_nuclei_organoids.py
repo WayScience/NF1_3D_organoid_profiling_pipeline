@@ -37,7 +37,7 @@ except NameError:
 # If if a notebook run the hardcoded paths.
 # However, if this is run as a script, the paths are set by the parsed arguments.
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -73,7 +73,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014"
-    well_fov = "C4-2"
+    well_fov = "C2-2"
     window_size = 2
     clip_limit = 0.05
 

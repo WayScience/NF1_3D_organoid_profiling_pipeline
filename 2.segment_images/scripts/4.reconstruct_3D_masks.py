@@ -51,7 +51,7 @@ except NameError:
     in_notebook = False
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -90,8 +90,8 @@ if not in_notebook:
     patient = args.patient
 else:
     print("Running in a notebook")
-    well_fov = "C4-2"
-    compartment = "nuclei"
+    well_fov = "G11-2"
+    compartment = "organoid"
     patient = "NF0014"
 
 input_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()

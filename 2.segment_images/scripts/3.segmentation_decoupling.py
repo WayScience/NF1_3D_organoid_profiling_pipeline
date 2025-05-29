@@ -50,7 +50,7 @@ except NameError:
 
 # ## parse args and set paths
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -90,8 +90,8 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     print("Running in a notebook")
-    well_fov = "C4-2"
-    compartment = "nuclei"
+    well_fov = "G11-2"
+    compartment = "organoid"
     window_size = 2
     patient = "NF0014"
 
