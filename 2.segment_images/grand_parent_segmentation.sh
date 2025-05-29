@@ -14,7 +14,7 @@ conda activate GFF_segmentation
 
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
-patient_array=( "NF0014" "NF0016" "NF0018" "NF0021" "SARCO219" )
+patient_array=( "NF0014" "NF0016" "NF0018" "NF0021" "SARCO219" "SARCO361" )
 
 for patient in "${patient_array[@]}"; do
     number_of_jobs=$(squeue -u $USER | wc -l)
