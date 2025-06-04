@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -10,7 +10,6 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import skimage.io as io
 import tifffile
 
 # check if in a jupyter notebook
@@ -65,19 +64,19 @@ output_path.mkdir(parents=True, exist_ok=True)
 output_file_path = pathlib.Path(output_path / "cytoplasm_mask.tiff").resolve()
 
 
-# In[3]:
+# In[ ]:
 
 
 # get all the masks
 nuclei_masks_path = pathlib.Path(
-    mask_input_dir / "nuclei_masks_reconstructed.tiff"
+    mask_input_dir / "nuclei_masks_reconstructed_corrected.tiff"
 ).resolve(strict=True)
-cell_masks_path = pathlib.Path(
-    mask_input_dir / "cell_masks_reconstructed.tiff"
-).resolve(strict=True)
+cell_masks_path = pathlib.Path(mask_input_dir / "cell_masks_watershed.tiff").resolve(
+    strict=True
+)
 
-nuclei_masks = io.imread(nuclei_masks_path)
-cell_masks = io.imread(cell_masks_path)
+nuclei_masks = tifffile.imread(nuclei_masks_path)
+cell_masks = tifffile.imread(cell_masks_path)
 
 
 # In[4]:

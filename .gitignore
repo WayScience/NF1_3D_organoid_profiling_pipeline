@@ -226,4 +226,7 @@ data/*
 4.processing_image_based_profiles/notebooks/runinfo/*
 4.processing_image_based_profiles/scripts/runinfo/*
 4.processing_image_based_profiles/results/*
+pipeline_trials/.nextflow/*
+pipeline_trials/work/*
+pipeline_trials/.nextflow.log*
 .nextflow*

@@ -21,8 +21,6 @@ import tifffile
 import torch
 import tqdm
 from cellpose import core, models
-from cellpose.io import imread
-from PIL import Image
 from skimage import io
 
 use_GPU = torch.cuda.is_available()
