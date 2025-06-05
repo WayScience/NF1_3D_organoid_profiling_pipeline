@@ -147,11 +147,6 @@ def measure_3D_granularity(
     pixels -= back_pixels
     pixels[pixels < 0] = 0
 
-    object_records = (
-        ObjectGranularityRecord(object_loader, object_index)
-        for _, object_index in enumerate(object_loader.object_ids)
-    )
-
     startmean = numpy.mean(pixels[mask])
     ero = pixels.copy()
 
@@ -164,6 +159,11 @@ def measure_3D_granularity(
     feature_measurments = {}
     object_measurements = {"object_id": [], "feature": [], "value": []}
     for i in range(1, granular_spectrum_length + 1):
+        object_records = (
+            ObjectGranularityRecord(object_loader, object_index)
+            for _, object_index in enumerate(object_loader.object_ids)
+        )  # create object records for each object in the image but with a generator
+
         prevmean = currentmean
         ero_mask = numpy.zeros_like(ero)
         ero_mask[mask == True] = ero[mask == True]
@@ -336,12 +336,13 @@ def measure_3D_granularity_gpu(
     startmean = max(startmean, cupy.finfo(float).eps)
     footprint = cucim.skimage.morphology.ball(1, dtype=bool)
     feature_measurments = {}
-    objects_records = (
-        ObjectGranularityRecord(object_loader=object_loader, object_index=object_id)
-        for object_id in object_loader.object_ids
-    )
+
     object_measurements = {"object_id": [], "feature": [], "value": []}
     for i in tqdm.tqdm(range(1, granular_spectrum_length + 1)):
+        objects_records = (
+            ObjectGranularityRecord(object_loader=object_loader, object_index=object_id)
+            for object_id in object_loader.object_ids
+        )
         prevmean = currentmean
         ero_mask = cupy.zeros_like(ero)
         ero_mask[mask == True] = ero[mask == True]
@@ -368,6 +369,7 @@ def measure_3D_granularity_gpu(
         currentmean = cupy.mean(rec[mask])
         gs = (prevmean - currentmean) * 100 / startmean
         feature = granularity_feature(i)
+
         feature_measurments[feature] = gs
         # Restore the reconstructed image to the shape of the
         # original image so we can match against object labels
@@ -396,4 +398,5 @@ def measure_3D_granularity_gpu(
             object_measurements["object_id"].append(object_record.object_index)
             object_measurements["feature"].append(feature)
             object_measurements["value"].append(gss.get())
+
     return object_measurements
