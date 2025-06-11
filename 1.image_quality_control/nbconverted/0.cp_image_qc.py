@@ -23,27 +23,30 @@ import cp_parallel
 
 # ## Set paths and variables
 
-# In[ ]:
+# In[2]:
 
 
 # set the run type for the parallelization
 run_name = "quality_control"
 
 # set path for pipeline for whole image QC
-path_to_pipeline = pathlib.Path("../pipeline/whole_image_qc.cppipe").resolve(strict=True)
+path_to_pipeline = pathlib.Path("../pipeline/whole_image_qc.cppipe").resolve(
+    strict=True
+)
 
 # set main output dir for all plates if it doesn't exist
 output_dir = pathlib.Path("../qc_results")
 output_dir.mkdir(exist_ok=True)
 
 # directory where images are located within folders (parent folder is the plate and the child folders are wells containing images)
-images_dir = pathlib.Path("../../data/raw_images").resolve(strict=True)
+images_dir = pathlib.Path("../../data").resolve(strict=True)
 
-# list for plate names based on folders to use to create dictionary
+# filter plate names to include only those starting with 'NF' or 'SACR'
 plate_names = []
-# iterate through 0.download_data and append plate names from folder names that contain image data from that plate
 for file_path in images_dir.iterdir():
-    plate_names.append(str(file_path.stem.split("_")[0]))
+    plate_name = str(file_path.stem.split("_")[0])
+    if plate_name.startswith("NF") or plate_name.startswith("SACR"):
+        plate_names.append(plate_name)
 
 print("There are a total of", len(plate_names), "plates. The names of the plates are:")
 for plate in plate_names:
@@ -55,16 +58,24 @@ for plate in plate_names:
 # In[3]:
 
 
+# filter plate names to include only those that haven't been processed (output directory doesn't exist or is empty)
+unprocessed_plate_names = [
+    name
+    for name in plate_names
+    if not (output_dir / f"{name}_qc_results").exists()
+    or not any((output_dir / f"{name}_qc_results").iterdir())
+]
+
 # create plate info dictionary with all parts of the CellProfiler CLI command
 plate_info_dictionary = {
     name: {
-        "path_to_images": pathlib.Path(list(images_dir.rglob(f"{name}_raw_images"))[0]).resolve(
-            strict=True
-        ),
+        "path_to_images": pathlib.Path(
+            list(images_dir.rglob(f"{name}/raw_images"))[0]
+        ).resolve(strict=True),
         "path_to_output": pathlib.Path(f"{output_dir}/{name}_qc_results"),
         "path_to_pipeline": path_to_pipeline,
     }
-    for name in plate_names if name != "NF0017"
+    for name in unprocessed_plate_names
 }
 
 # view the dictionary to assess that all info is added correctly

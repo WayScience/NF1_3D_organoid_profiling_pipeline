@@ -50,6 +50,9 @@ figure_dir.mkdir(exist_ok=True)
 # Directory containing the QC results
 qc_results_dir = pathlib.Path("../qc_results")
 
+# Directory for output flags for optimization plate
+qc_output_dir = pathlib.Path("../qc_flag_files")
+
 # Path to Image.csv file for optimization plate
 image_csv_path = pathlib.Path(f"{qc_results_dir}/NF0017_qc_results/Image.csv")
 
@@ -138,7 +141,7 @@ sns.set_context(
         "axes.labelsize": 14,
         "xtick.labelsize": 12,
         "ytick.labelsize": 12,
-        "legend.fontsize": 11, 
+        "legend.fontsize": 11,
         "legend.title_fontsize": 12,
     },
 )
@@ -189,7 +192,9 @@ g = sns.displot(
 # Customize the plot
 g.set_titles("Channel: {col_name}")
 g.set_axis_labels("PowerLogLogSlope", "Density")
-g._legend.set_title("Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)") 
+g._legend.set_title(
+    "Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)"
+)
 g.tight_layout()
 
 # Save the plot
@@ -215,9 +220,7 @@ long_df = filtered_df.melt(
 )
 
 # Step 3: Clean up the channel names
-long_df["Channel"] = long_df["Channel"].str.replace(
-    "ImageQuality_PercentMaximal_", ""
-)
+long_df["Channel"] = long_df["Channel"].str.replace("ImageQuality_PercentMaximal_", "")
 
 # Drop rows with missing or non-numeric values
 long_df = long_df.dropna(subset=["PercentMaximal"])
@@ -232,14 +235,30 @@ long_df["Sqrt_PercentMaximal"] = np.sqrt(long_df["PercentMaximal"])
 channel_colors = {"Mito": "purple", "AGP": "red"}
 
 # Step 6: Create a FacetGrid to facet by Unique_conditions and Channel, with 3 per row
-g = sns.FacetGrid(long_df, col="Unique_conditions", hue="Channel", 
-                  height=5, aspect=1.5, palette=channel_colors, col_wrap=3)
+g = sns.FacetGrid(
+    long_df,
+    col="Unique_conditions",
+    hue="Channel",
+    height=5,
+    aspect=1.5,
+    palette=channel_colors,
+    col_wrap=3,
+)
 
 # Step 7: Plot the violin plot for each facet using the transformed data
-g.map(sns.violinplot, "Channel", "Sqrt_PercentMaximal", order=["Mito", "AGP"], inner="stick")
+g.map(
+    sns.violinplot,
+    "Channel",
+    "Sqrt_PercentMaximal",
+    order=["Mito", "AGP"],
+    inner="stick",
+)
 
 # Adjust titles, labels, and legend
-g.set_titles("Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)\n{col_name}", size=18)
+g.set_titles(
+    "Imaging conditions:\n(AGP channel)-(Mito channel)\n(LED power-Exposure time)\n{col_name}",
+    size=18,
+)
 g.set_axis_labels("Channel", "Sqrt(PercentMaximal)", size=18)
 g.set_xticklabels(size=16)
 g.figure.subplots_adjust(hspace=0.4)  # Increase spacing between rows
@@ -248,7 +267,9 @@ g.figure.subplots_adjust(hspace=0.4)  # Increase spacing between rows
 g.set(xticks=[0, 1], xticklabels=["Mito", "AGP"])
 
 # Save the plot
-plt.savefig(figure_dir / "optimize_conditions_saturation_violin_distribution.png", dpi=500)
+plt.savefig(
+    figure_dir / "optimize_conditions_saturation_violin_distribution.png", dpi=500
+)
 
 plt.show()
 
@@ -792,7 +813,7 @@ merged_qc_results = blur_outliers_per_zslice.merge(
 )
 
 # Save the qc outliers per zslice dataframe to a parquet file
-merged_qc_results.to_parquet(qc_results_dir / "NF0017_qc_results_optimization.parquet")
+merged_qc_results.to_parquet(qc_output_dir / "NF0017_qc_flags.parquet")
 
 # Print the number of rows with at least one Saturated column set to True
 num_saturated_rows = (

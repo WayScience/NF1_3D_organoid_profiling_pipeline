@@ -26,16 +26,21 @@ import cosmicqc
 import cv2
 import matplotlib.pyplot as plt
 import seaborn as sns
-import re
 
 
 # ## Set paths and variables
 
-# In[2]:
+# In[ ]:
 
 
-# Set the threshold for identifying outliers with z-scoring for all metrics (# of standard deviations away from mean)
-threshold_z = 2
+# Base metadata columns that are constant across channels
+base_metadata_columns = [
+    "Metadata_Plate",
+    "Metadata_Well",
+    "Metadata_Site",
+    "Metadata_Zslice",
+    "Metadata_zslice_total",
+]
 
 # Directory for figures to be outputted
 figure_dir = pathlib.Path("../qc_figures")
@@ -43,6 +48,11 @@ figure_dir.mkdir(exist_ok=True)
 
 # Directory containing the QC results
 qc_results_dir = pathlib.Path("../qc_results")
+
+# Directory for output file with flags
+qc_output_dir = pathlib.Path("../qc_flag_files")
+# Ensure the QC results directory exists
+qc_output_dir.mkdir(exist_ok=True)
 
 # Find all Image.csv files for all plates using glob
 image_csv_paths = qc_results_dir.glob("*/Image.csv")
@@ -69,21 +79,28 @@ qc_dfs = []
 for path in image_csv_paths:
     # Load only the required columns by filtering columns with specified prefixes
     plate_df = pd.read_csv(path, usecols=lambda col: col.startswith(prefixes))
-    
+
     # Skip processing NF0017
     if "NF0017" in str(path):
         continue
 
     # Check for NaNs in the Metadata_Plate, Metadata_Well, and Metadata_Site columns
-    if plate_df[["Metadata_Plate", "Metadata_Well", "Metadata_Site"]].isna().any().any():
-        print(f"NaNs detected in {path} in Metadata_Plate, Metadata_Well, or Metadata_Site columns")
-    
+    if (
+        plate_df[["Metadata_Plate", "Metadata_Well", "Metadata_Site"]]
+        .isna()
+        .any()
+        .any()
+    ):
+        print(
+            f"NaNs detected in {path} in Metadata_Plate, Metadata_Well, or Metadata_Site columns"
+        )
+
     # Fill NaNs for specific conditions
     if "NF0018_qc_results" in str(path):
         plate_df["Metadata_Plate"] = plate_df["Metadata_Plate"].fillna("NF0018")
         plate_df["Metadata_Well"] = plate_df["Metadata_Well"].fillna("E5")
         plate_df["Metadata_Site"] = plate_df["Metadata_Site"].fillna(3)
-    
+
     qc_dfs.append(plate_df)
 
 
@@ -167,20 +184,24 @@ plt.show()
 
 # ## Detect blur in DNA channel
 
-# In[6]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    col for col in concat_qc_df.columns if not col.startswith("ImageQuality")
+channel = "DNA"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
+
 
 # Find large nuclei outliers for the current plate
 blur_DNA_outliers = cosmicqc.find_outliers(
     df=concat_qc_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "ImageQuality_PowerLogLogSlope_DNA": -2,
+        "ImageQuality_PowerLogLogSlope_DNA": -1.75,
     },
 )
 
@@ -228,12 +249,15 @@ plt.show()
 
 # ## Detect blur in Mito channel
 
-# In[8]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    col for col in concat_qc_df.columns if not col.startswith("ImageQuality")
+channel = "Mito"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
 
 # Find large nuclei outliers for the current plate
@@ -241,7 +265,7 @@ blur_Mito_outliers = cosmicqc.find_outliers(
     df=concat_qc_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "ImageQuality_PowerLogLogSlope_Mito": -3,
+        "ImageQuality_PowerLogLogSlope_Mito": -2,
     },
 )
 
@@ -311,12 +335,15 @@ plt.show()
 
 # ## Detect blur in ER channel
 
-# In[10]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    col for col in concat_qc_df.columns if not col.startswith("ImageQuality")
+channel = "ER"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
 
 # Find large nuclei outliers for the current plate
@@ -390,12 +417,15 @@ plt.show()
 
 # ## Detect blur in AGP channel
 
-# In[12]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    col for col in concat_qc_df.columns if not col.startswith("ImageQuality")
+channel = "AGP"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
 
 # Find large nuclei outliers for the current plate
@@ -469,12 +499,15 @@ plt.show()
 
 # ## Detect blur in Brightfield channel
 
-# In[14]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    col for col in concat_qc_df.columns if not col.startswith("ImageQuality")
+channel = "Brightfield"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
 
 # Find large nuclei outliers for the current plate
@@ -595,10 +628,12 @@ for channel in ["DNA", "Mito", "AGP", "Brightfield", "ER"]:
 blur_outliers_per_zslice = blur_outliers_per_zslice.reset_index(drop=True)
 
 # Save the blur_outliers_per_zslice dataframe to a parquet file
-blur_outliers_per_zslice.to_parquet(qc_results_dir / "all_plates_qc_results.parquet")
+blur_outliers_per_zslice.to_parquet(qc_output_dir / "all_plates_qc_results.parquet")
 
 # Print the number of rows with at least one Blurry column set to True
-num_blurry_rows = blur_outliers_per_zslice.loc[:, "Blurry_DNA":"Blurry_ER"].any(axis=1).sum()
+num_blurry_rows = (
+    blur_outliers_per_zslice.loc[:, "Blurry_DNA":"Blurry_ER"].any(axis=1).sum()
+)
 print(
     f"Number of z-slices across all organoids detected as poor quality due to blur (in any channel): {num_blurry_rows}"
 )

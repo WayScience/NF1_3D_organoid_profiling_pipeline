@@ -43,10 +43,11 @@ figure_dir.mkdir(exist_ok=True)
 # Directory containing the QC results
 qc_results_dir = pathlib.Path("../qc_results")
 
+# Directory with output flag results
+qc_output_dir = pathlib.Path("../qc_flag_files")
+
 # Path to the QC results file for all plates (currently contains blur results)
-existing_qc_results_path = pathlib.Path(
-    qc_results_dir / "all_plates_qc_results.parquet"
-)
+existing_qc_results_path = pathlib.Path(qc_output_dir / "all_plates_qc_results.parquet")
 
 # Find all Image.csv files for all plates using glob
 image_csv_paths = qc_results_dir.glob("*/Image.csv")
@@ -77,17 +78,24 @@ for path in image_csv_paths:
     # Skip processing NF0017
     if "NF0017" in str(path):
         continue
-    
+
     # Check for NaNs in the Metadata_Plate, Metadata_Well, and Metadata_Site columns
-    if plate_df[["Metadata_Plate", "Metadata_Well", "Metadata_Site"]].isna().any().any():
-        print(f"NaNs detected in {path} in Metadata_Plate, Metadata_Well, or Metadata_Site columns")
-    
+    if (
+        plate_df[["Metadata_Plate", "Metadata_Well", "Metadata_Site"]]
+        .isna()
+        .any()
+        .any()
+    ):
+        print(
+            f"NaNs detected in {path} in Metadata_Plate, Metadata_Well, or Metadata_Site columns"
+        )
+
     # Fill NaNs for specific conditions
     if "NF0018_qc_results" in str(path):
         plate_df["Metadata_Plate"] = plate_df["Metadata_Plate"].fillna("NF0018")
         plate_df["Metadata_Well"] = plate_df["Metadata_Well"].fillna("E5")
         plate_df["Metadata_Site"] = plate_df["Metadata_Site"].fillna(3)
-    
+
     qc_dfs.append(plate_df)
 
 
@@ -551,12 +559,17 @@ merged_qc_results = existing_qc_results.merge(
     how="left",
 )
 
-# Save the merged dataframe back to the parquet file
-merged_qc_results.to_parquet(existing_qc_results_path)
+# Save the merged dataframe back as individual plate parquet file
+for plate, df_plate in merged_qc_results.groupby("Metadata_Plate"):
+    df_plate.to_parquet(qc_output_dir / f"{plate}_qc_flags.parquet", index=False)
+    # Drop merged qc results from blur
+    existing_qc_results_path.unlink(missing_ok=True)
 
 # Print the number of rows with at least one Saturated column set to True
 num_saturated_rows = (
-    saturation_outliers_per_zslice.loc[:, "Saturated_DNA":"Saturated_ER"].any(axis=1).sum()
+    saturation_outliers_per_zslice.loc[:, "Saturated_DNA":"Saturated_ER"]
+    .any(axis=1)
+    .sum()
 )
 print(
     f"Number of z-slices across all organoids detected as poor quality due to saturation (in any channel): {num_saturated_rows}"
