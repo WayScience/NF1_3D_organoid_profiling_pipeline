@@ -30,11 +30,17 @@ import seaborn as sns
 
 # ## Set paths and variables
 
-# In[2]:
+# In[ ]:
 
 
-# Set the threshold for identifying outliers with z-scoring for all metrics (# of standard deviations away from mean)
-threshold_z = 2
+# Base metadata columns that are constant across channels
+base_metadata_columns = [
+    "Metadata_Plate",
+    "Metadata_Well",
+    "Metadata_Site",
+    "Metadata_Zslice",
+    "Metadata_zslice_total",
+]
 
 # Directory for figures to be outputted
 figure_dir = pathlib.Path("../qc_figures")
@@ -178,19 +184,17 @@ plt.show()
 
 # ## Detect blur in DNA channel
 
-# In[6]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    "Metadata_Plate",
-    "Metadata_Well",
-    "Metadata_Site",
-    "Metadata_Zslice",
-    "Metadata_zslice_total",
-    "PathName_DNA",
-    "FileName_DNA",
+channel = "DNA"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
+
 
 # Find large nuclei outliers for the current plate
 blur_DNA_outliers = cosmicqc.find_outliers(
@@ -245,18 +249,15 @@ plt.show()
 
 # ## Detect blur in Mito channel
 
-# In[8]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    "Metadata_Plate",
-    "Metadata_Well",
-    "Metadata_Site",
-    "Metadata_Zslice",
-    "Metadata_zslice_total",
-    "PathName_Mito",
-    "FileName_Mito",
+channel = "Mito"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
 
 # Find large nuclei outliers for the current plate
@@ -334,20 +335,16 @@ plt.show()
 
 # ## Detect blur in ER channel
 
-# In[10]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    "Metadata_Plate",
-    "Metadata_Well",
-    "Metadata_Site",
-    "Metadata_Zslice",
-    "Metadata_zslice_total",
-    "PathName_ER",
-    "FileName_ER",
+channel = "ER"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
-
 
 # Find large nuclei outliers for the current plate
 blur_er_outliers = cosmicqc.find_outliers(
@@ -420,20 +417,16 @@ plt.show()
 
 # ## Detect blur in AGP channel
 
-# In[12]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    "Metadata_Plate",
-    "Metadata_Well",
-    "Metadata_Site",
-    "Metadata_Zslice",
-    "Metadata_zslice_total",
-    "PathName_AGP",
-    "FileName_AGP",
+channel = "AGP"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
-
 
 # Find large nuclei outliers for the current plate
 blur_agp_outliers = cosmicqc.find_outliers(
@@ -506,20 +499,16 @@ plt.show()
 
 # ## Detect blur in Brightfield channel
 
-# In[14]:
+# In[ ]:
 
 
-# Identify metadata columns (columns that do not start with 'ImageQuality')
-metadata_columns = [
-    "Metadata_Plate",
-    "Metadata_Well",
-    "Metadata_Site",
-    "Metadata_Zslice",
-    "Metadata_zslice_total",
-    "PathName_Brightfield",
-    "FileName_Brightfield",
+channel = "Brightfield"
+
+# Add the dynamic PathName and FileName for the channel
+metadata_columns = base_metadata_columns + [
+    f"PathName_{channel}",
+    f"FileName_{channel}",
 ]
-
 
 # Find large nuclei outliers for the current plate
 blur_brightfield_outliers = cosmicqc.find_outliers(

@@ -23,7 +23,7 @@ import cp_parallel
 
 # ## Set paths and variables
 
-# In[3]:
+# In[2]:
 
 
 # set the run type for the parallelization
@@ -48,12 +48,6 @@ for file_path in images_dir.iterdir():
     if plate_name.startswith("NF") or plate_name.startswith("SACR"):
         plate_names.append(plate_name)
 
-# # list for plate names based on folders to use to create dictionary
-# plate_names = []
-# # iterate through 0.download_data and append plate names from folder names that contain image data from that plate
-# for file_path in images_dir.iterdir():
-#     plate_names.append(str(file_path.stem.split("_")[0]))
-
 print("There are a total of", len(plate_names), "plates. The names of the plates are:")
 for plate in plate_names:
     print(plate)
@@ -61,7 +55,7 @@ for plate in plate_names:
 
 # ## Generate dictionary with plate info to run CellProfiler
 
-# In[7]:
+# In[3]:
 
 
 # filter plate names to include only those that haven't been processed (output directory doesn't exist or is empty)
