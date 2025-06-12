@@ -187,10 +187,12 @@ class ObjectLoader:
         self.label_image = label_image
         self.channel = channel_name
         self.compartment = compartment_name
-        self.objects = skimage.measure.label(label_image)
-        self.object_ids = numpy.unique(self.objects)
+        # get the labeled image objects
+        # this is a 3D image, so the objects are labeled in 3D
+        # self.objects = skimage.measure.label(label_image)
+        self.object_ids = numpy.unique(label_image)
         # drop the 0 label
-        self.object_ids = self.object_ids[1:]
+        self.object_ids = [x for x in self.object_ids if x != 0]
 
 
 class TwoObjectLoader:

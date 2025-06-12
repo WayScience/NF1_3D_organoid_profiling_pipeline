@@ -173,8 +173,9 @@ for compartment in tqdm(
             ]
             coloc_df.insert(0, "object_id", object_id)
             coloc_df.insert(1, "image_set", image_set_loader.image_set_name)
-
-            coloc_df.to_parquet(output_dir / f"object_{object_id}.parquet")
+            list_of_dfs.append(coloc_df)
+        coloc_df = pd.concat(list_of_dfs, ignore_index=True)
+        coloc_df.to_parquet(output_dir / f"object_{object_id}.parquet")
 
 
 # In[ ]:

@@ -52,7 +52,7 @@ class ObjectGranularityRecord:
 
     def __init__(self, object_loader, object_index):
         self.object_index = object_index
-        self.labels = object_loader.objects.copy()
+        self.labels = object_loader.label_image.copy()
         # select the object
         self.labels[self.labels != object_index] = 0
         self.image = object_loader.image.copy()

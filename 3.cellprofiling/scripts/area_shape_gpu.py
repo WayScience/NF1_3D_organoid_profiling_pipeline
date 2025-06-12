@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -31,7 +31,7 @@ else:
     from tqdm import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -67,7 +67,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[3]:
 
 
 channel_n_compartment_mapping = {
@@ -83,7 +83,7 @@ channel_n_compartment_mapping = {
 }
 
 
-# In[ ]:
+# In[4]:
 
 
 start_time = time.time()
@@ -91,7 +91,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[ ]:
+# In[5]:
 
 
 image_set_loader = ImageSetLoader(
@@ -107,41 +107,35 @@ image_set_loader = ImageSetLoader(
 for compartment in tqdm(
     image_set_loader.compartments, desc="Processing compartments", position=0
 ):
-    for channel in tqdm(
-        image_set_loader.image_names,
-        desc="Processing channels",
-        leave=False,
-        position=1,
-    ):
-        object_loader = ObjectLoader(
-            image_set_loader.image_set_dict[channel],
-            image_set_loader.image_set_dict[compartment],
-            channel,
-            compartment,
-        )
+    channel = "DNA"
+    object_loader = ObjectLoader(
+        image_set_loader.image_set_dict[channel],
+        image_set_loader.image_set_dict[compartment],
+        channel,
+        compartment,
+    )
 
-        # area, size, shape
-        size_shape_dict = measure_3D_area_size_shape_gpu(
-            image_set_loader=image_set_loader,
-            object_loader=object_loader,
-        )
-        final_df = pd.DataFrame(size_shape_dict)
+    # area, size, shape
+    size_shape_dict = measure_3D_area_size_shape_gpu(
+        image_set_loader=image_set_loader,
+        object_loader=object_loader,
+    )
+    final_df = pd.DataFrame(size_shape_dict)
 
-        # prepend compartment and channel to column names
-        for col in final_df.columns:
-            if col not in ["object_id"]:
-                final_df.rename(
-                    columns={col: f"Area.Size.Shape_{compartment}_{channel}_{col}"},
-                    inplace=True,
-                )
-        final_df.insert(1, "image_set", image_set_loader.image_set_name)
+    # prepend compartment and channel to column names
+    for col in final_df.columns:
+        if col not in ["object_id"]:
+            final_df.rename(
+                columns={col: f"Area.Size.Shape_{compartment}_{col}"},
+                inplace=True,
+            )
+    final_df.insert(1, "image_set", image_set_loader.image_set_name)
 
-        output_file = pathlib.Path(
-            output_parent_path
-            / f"AreaSize_Shape_{compartment}_{channel}_features.parquet"
-        )
-        final_df.to_parquet(output_file)
-        final_df.head()
+    output_file = pathlib.Path(
+        output_parent_path / f"AreaSize_Shape_{compartment}_features.parquet"
+    )
+    final_df.to_parquet(output_file)
+    final_df.head()
 
 
 # In[ ]:

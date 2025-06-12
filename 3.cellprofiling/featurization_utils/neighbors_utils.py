@@ -97,7 +97,7 @@ def measure_3D_number_of_neighbors(
     Dict[str, list]
         A dictionary containing the object ID and the number of neighbors for each object.
     """
-    label_object = object_loader.objects
+    label_object = object_loader.label_image
     labels = object_loader.object_ids
     # set image global min and max coordinates
     image_global_min_coord_z = 0

@@ -90,9 +90,9 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     print("Running in a notebook")
-    well_fov = "G11-2"
+    well_fov = "C2-1"
     compartment = "organoid"
-    window_size = 2
+    window_size = 4
     patient = "NF0014"
 
 input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(

@@ -73,8 +73,8 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014"
-    well_fov = "C2-2"
-    window_size = 2
+    well_fov = "F3-1"
+    window_size = 3
     clip_limit = 0.05
 
 

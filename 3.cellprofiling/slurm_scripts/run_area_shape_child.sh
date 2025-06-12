@@ -11,9 +11,9 @@ echo "AreaSizeShape feature extraction for patient: $patient, WellFOV: $well_fov
 echo "Running featurization for $patient $well_fov"
 
 
-# module load miniforge
-# conda init bash
-# conda activate GFF_featurization
+module load miniforge
+conda init bash
+conda activate GFF_featurization
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then

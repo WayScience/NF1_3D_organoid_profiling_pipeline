@@ -46,7 +46,7 @@ def measure_3D_intensity_CPU(
         The keys are the measurement names and the values are the corresponding values.
     """
     image_object = object_loader.image
-    label_object = object_loader.objects
+    label_object = object_loader.label_image
     labels = object_loader.object_ids
     ranges = len(labels)
 
@@ -62,7 +62,7 @@ def measure_3D_intensity_CPU(
         selected_image_object = image_object.copy()
 
         selected_label_object[selected_label_object != label] = 0
-        selected_image_object[selected_label_object == 0] = 0
+        # selected_image_object[selected_label_object == 0] = 0
         non_zero_pixels_object = selected_image_object[selected_image_object > 0]
 
         mask_outlines = get_outline(selected_label_object)
@@ -187,7 +187,7 @@ def measure_3D_intensity_gpu(
         A dictionary containing the measurements for each object.
     """
     image_object = object_loader.image
-    label_object = object_loader.objects
+    label_object = object_loader.label_image
     labels = object_loader.object_ids
     ranges = len(labels)
 

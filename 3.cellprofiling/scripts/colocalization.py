@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -86,7 +86,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[ ]:
+# In[6]:
 
 
 image_set_loader = ImageSetLoader(
@@ -176,7 +176,13 @@ else:
     coloc_df.to_parquet(output_dir)
 
 
-# In[ ]:
+# In[10]:
+
+
+results
+
+
+# In[11]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

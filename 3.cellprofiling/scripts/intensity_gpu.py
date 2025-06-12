@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -36,7 +36,7 @@ else:
     from tqdm import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -72,7 +72,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[3]:
 
 
 channel_n_compartment_mapping = {
@@ -88,7 +88,7 @@ channel_n_compartment_mapping = {
 }
 
 
-# In[ ]:
+# In[4]:
 
 
 start_time = time.time()
@@ -96,7 +96,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[ ]:
+# In[5]:
 
 
 image_set_loader = ImageSetLoader(
@@ -104,6 +104,12 @@ image_set_loader = ImageSetLoader(
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
 )
+
+
+# In[6]:
+
+
+image_set_loader.image_set_dict.keys()
 
 
 # In[ ]:

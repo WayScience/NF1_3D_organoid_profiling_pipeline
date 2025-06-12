@@ -43,6 +43,8 @@ stats_path = pathlib.Path(
 ).resolve(strict=True)
 output_path = pathlib.Path(f"../../data/{patient}/converted_profiles/").resolve()
 output_path.mkdir(parents=True, exist_ok=True)
+stats_output_path = pathlib.Path(f"../../data/{patient}/profiling_stats/").resolve()
+stats_output_path.mkdir(parents=True, exist_ok=True)
 
 stats_files = list(stats_path.glob("*.parquet"))
 stats_files.sort()
@@ -55,7 +57,8 @@ df = pd.concat(
     [pd.read_parquet(stats_file) for stats_file in stats_files],
     ignore_index=True,
 )
-df.to_parquet(output_path / f"{patient}_cell_stats.parquet", index=False)
+
+df.to_parquet(f"{stats_output_path}/{patient}_cell_stats.parquet", index=False)
 df["feature_type_and_gpu"] = (
     df["feature_type"].astype(str) + "_" + df["gpu"].astype(str)
 )
@@ -68,7 +71,7 @@ df.head()
 
 # ## Preliminary plots - will finalize in R later
 
-# In[ ]:
+# In[5]:
 
 
 # plot the memory and time for each feature type

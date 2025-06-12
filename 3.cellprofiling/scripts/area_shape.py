@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -50,7 +50,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[3]:
 
 
 channel_n_compartment_mapping = {
@@ -66,7 +66,7 @@ channel_n_compartment_mapping = {
 }
 
 
-# In[ ]:
+# In[4]:
 
 
 start_time = time.time()
@@ -74,7 +74,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[ ]:
+# In[5]:
 
 
 start_time = time.time()
@@ -92,7 +92,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[ ]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -144,7 +144,7 @@ final_df.to_parquet(output_file, index=False)
 final_df.head()
 
 
-# In[ ]:
+# In[7]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

@@ -7,9 +7,9 @@ processor_type=$5
 
 echo "Granularity feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 
-# module load miniforge
-# conda init bash
-# conda activate GFF_featurization
+module load miniforge
+conda init bash
+conda activate GFF_featurization
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -94,7 +94,7 @@ def process_combination(
     return f"Processed {compartment} - {channel}"
 
 
-# In[3]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -121,7 +121,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[ ]:
 
 
 channel_mapping = {
@@ -137,7 +137,7 @@ channel_mapping = {
 }
 
 
-# In[5]:
+# In[ ]:
 
 
 start_time = time.time()
@@ -145,7 +145,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[6]:
+# In[ ]:
 
 
 start_time = time.time()
@@ -163,7 +163,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[7]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -208,7 +208,7 @@ output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
 
 
-# In[8]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
@@ -227,12 +227,4 @@ get_mem_and_time_profiling(
     output_file_dir=pathlib.Path(
         f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_{channel}_{compartment}_Granularity_{processor_type}.parquet"
     ),
-)
-
-
-# In[9]:
-
-
-pd.read_parquet(
-    "../../data/NF0014/extracted_features/C4-2/Granularity_Nuclei_Mito_features.parquet"
 )

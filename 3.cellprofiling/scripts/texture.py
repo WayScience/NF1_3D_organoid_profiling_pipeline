@@ -45,7 +45,7 @@ output_parent_path = pathlib.Path(
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[3]:
+# In[4]:
 
 
 channel_mapping = {
@@ -61,7 +61,7 @@ channel_mapping = {
 }
 
 
-# In[ ]:
+# In[5]:
 
 
 start_time = time.time()
@@ -69,7 +69,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[4]:
+# In[6]:
 
 
 start_time = time.time()
@@ -88,7 +88,7 @@ image_set_loader = ImageSetLoader(
 image_set_loader.image_set_dict.keys()
 
 
-# In[ ]:
+# In[7]:
 
 
 object_loader = ObjectLoader(

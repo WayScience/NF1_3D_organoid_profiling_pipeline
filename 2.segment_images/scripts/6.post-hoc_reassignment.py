@@ -74,6 +74,8 @@ def remove_edge_cases(
 ) -> np.ndarray:
     """
     Remove masks that are image edge cases
+    In this case - the edge literally means the edge of the image
+    This is useful to remove masks that are not fully contained within the image
 
     Parameters
     ----------
@@ -213,8 +215,9 @@ def mask_label_reassignment(
 # get the organoid masks
 # cell_mask_path = mask_dir / "cell_masks_reconstructed_corrected.tiff"
 cell_mask_path = mask_dir / "cell_masks_watershed.tiff"
-nuclei_mask_output_path = mask_dir / "nuclei_masks_reassigned.tiff"
 nuclei_mask_path = mask_dir / "nuclei_masks_reconstructed_corrected.tiff"
+nuclei_mask_output_path = mask_dir / "nuclei_masks_reassigned.tiff"
+
 cell_mask = tifffile.imread(cell_mask_path)
 nuclei_mask = tifffile.imread(nuclei_mask_path)
 
@@ -255,7 +258,7 @@ nuclei_df["label"] = nuclei_mask[
     nuclei_df["centroid-2"].astype(int),
 ]
 nuclei_df = nuclei_df[nuclei_df["label"] > 0].reset_index(drop=True)
-nuclei_df["new_label"] = nuclei_df["label"]
+nuclei_df["new_label"] = nuclei_df["label"].copy()
 
 
 # In[7]:
@@ -318,6 +321,13 @@ nuclei_and_cell_df.head()
 # In[12]:
 
 
+nuclei_and_cell_df[["label_nuclei", "new_label", "label_cell"]].head()
+nuclei_df
+
+
+# In[13]:
+
+
 print(
     f"Number of nuclei: {len(nuclei_df)}\n"
     f"Number of cells: {len(cell_df)}\n"
@@ -325,7 +335,7 @@ print(
 )
 
 
-# In[13]:
+# In[14]:
 
 
 # remove the edge cases
@@ -339,7 +349,7 @@ nuclei_mask = remove_edge_cases(
 )
 
 
-# In[14]:
+# In[15]:
 
 
 # reassign the labels of the cell mask

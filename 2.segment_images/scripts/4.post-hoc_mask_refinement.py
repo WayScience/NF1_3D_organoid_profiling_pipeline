@@ -14,7 +14,7 @@
 # ![Segmentation errors](../media/3D_segmentations_correction_events.png)
 #
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -71,14 +71,14 @@ if not in_notebook:
     patient = args.patient
 else:
     print("Running in a notebook")
-    well_fov = "C2-2"
-    compartment = "organoid"
+    well_fov = "C5-2"
+    compartment = "nuclei"
     patient = "NF0014"
 
 mask_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
 
 
-# In[ ]:
+# In[3]:
 
 
 if compartment == "nuclei":
@@ -157,6 +157,19 @@ def calculate_overlap(
 
 
 def merge_sets(list_of_sets: list) -> list:
+    """
+    Merge sets in a list of sets if they have any intersection.
+
+    Parameters
+    ----------
+    list_of_sets : list
+        A list of sets to be merged.
+
+    Returns
+    -------
+    list
+        A list of sets after merging those that intersect.
+    """
     for i, set1 in enumerate(list_of_sets):
         for j, set2 in enumerate(list_of_sets):
             if i != j and len(set1.intersection(set2)) > 0:
@@ -188,7 +201,26 @@ def missing_slice_check(
     window_min: int = 0,
     window_max: int = 2,
     interpolated_rows_to_add: List[int] = [],
-):
+) -> List[pd.DataFrame]:
+    """
+    Check for missing slices in the object information DataFrame and add interpolated rows if necessary.
+
+    Parameters
+    ----------
+    object_information_df : pd.DataFrame
+        The DataFrame containing object information with 'z' and 'label' columns.
+    window_min : int, optional
+        The minimum window size for checking missing slices, by default 0
+    window_max : int, optional
+        The maximum window size for checking missing slices, by default 2
+    interpolated_rows_to_add : List[int], optional
+        A list to store rows to be added for interpolation, by default []
+
+    Returns
+    -------
+    List[pd.DataFrame]
+        A list of DataFrames containing rows to be added for interpolation.
+    """
     max_z = object_information_df["z"].max()
     min_z = object_information_df["z"].min()
     if max_z - min_z > 1:
@@ -223,7 +255,26 @@ def add_min_max_boundry_slices(
     global_min_z: int,
     global_max_z: int,
     interpolated_rows_to_add: List[pd.DataFrame] = [],
-):
+) -> List[pd.DataFrame]:
+    """
+    Add slices to the object information DataFrame that are one slice away from the global min and max z slices.
+
+    Parameters
+    ----------
+    object_information_df : pd.DataFrame
+        The DataFrame containing object information with 'z' and 'label' columns.
+    global_min_z : int
+        The global minimum z slice.
+    global_max_z : int
+        The global maximum z slice.
+    interpolated_rows_to_add : List[pd.DataFrame], optional
+        A list to store rows to be added for interpolation, by default []
+
+    Returns
+    -------
+    List[pd.DataFrame]
+        A list of DataFrames containing rows to be added for interpolation at the min and max z slices.
+    """
     # find labels that are 1 slice away from the min or max and extend the label
     for i, row in object_information_df.iterrows():
         # check if the z slice is one away from the min or max (global min and max)
@@ -248,6 +299,21 @@ def add_masks_where_missing(
     new_mask_image: np.ndarray,
     interpolated_rows_to_add_df: pd.DataFrame,
 ) -> np.ndarray:
+    """
+    Add masks to the new mask image where the slices are missing based on the interpolated rows.
+
+    Parameters
+    ----------
+    new_mask_image : np.ndarray
+        The new mask image to which the slices will be added.
+    interpolated_rows_to_add_df : pd.DataFrame
+        The DataFrame containing the rows to be added for interpolation, with columns 'added_z', 'added_new_label', and 'zslice_to_copy'.
+
+    Returns
+    -------
+    np.ndarray
+        The new mask image with the added slices.
+    """
     for slice in interpolated_rows_to_add_df["added_z"].unique():
         # get the rows that correspond to the slice
         tmp_df = interpolated_rows_to_add_df[
@@ -270,7 +336,7 @@ def add_masks_where_missing(
 
 # #### Constants
 
-# In[6]:
+# In[5]:
 
 
 sliding_window_context = 3
@@ -282,13 +348,13 @@ z_slices = [x for x in range(global_min_z, global_max_z)]
 
 # ### Loop through the slices in a sliding window fashion and correct the segmentation
 
-# In[7]:
+# In[6]:
 
 
 new_mask_image = mask.copy()
 
 
-# In[ ]:
+# In[7]:
 
 
 for z in z_slices[: -(sliding_window_context - 1)]:
@@ -409,5 +475,11 @@ for z in z_slices[: -(sliding_window_context - 1)]:
         new_mask_image=new_mask_image,
         interpolated_rows_to_add_df=interpolated_rows_to_add_df,
     )
+    print("writing the mask for z slice", z)
 
+
+# In[8]:
+
+
+if not mask_output_path.exists():
     tifffile.imwrite(mask_output_path, new_mask_image)

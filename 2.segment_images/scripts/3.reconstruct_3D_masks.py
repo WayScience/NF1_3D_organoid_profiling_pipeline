@@ -82,7 +82,7 @@ if not in_notebook:
     patient = args.patient
 else:
     print("Running in a notebook")
-    well_fov = "G11-2"
+    well_fov = "C2-1"
     compartment = "organoid"
     patient = "NF0014"
 
@@ -320,7 +320,7 @@ def calculate_mask_iou(mask1: np.ndarray, mask2: np.ndarray) -> bool:
     return iou
 
 
-# In[ ]:
+# In[10]:
 
 
 # generate distance pairs for each slice
@@ -338,51 +338,46 @@ distance_pairs = {
     "original_label2": [],
 }
 
-for i in tqdm.tqdm(range(coordinates_df.shape[0])):
-    for j in range(coordinates_df.shape[0]):
-        if i != j:
-            coordinate_pair1 = coordinates_df.loc[
-                i, ["centroid-0", "centroid-1"]
-            ].values
-            coordinate_pair2 = coordinates_df.loc[
-                j, ["centroid-0", "centroid-1"]
-            ].values
-            distance = euclidian_2D_distance(coordinate_pair1, coordinate_pair2)
+distance_pairs_list = [
+    {
+        "slice1": coordinates_df.loc[i, "slice"],
+        "slice2": coordinates_df.loc[j, "slice"],
+        "index1": i,
+        "index2": j,
+        "distance": euclidian_2D_distance(
+            coordinates_df.loc[i, ["centroid-0", "centroid-1"]].values,
+            coordinates_df.loc[j, ["centroid-0", "centroid-1"]].values,
+        ),
+        "coordinates1": tuple(
+            coordinates_df.loc[i, ["centroid-0", "centroid-1"]].values
+        ),
+        "coordinates2": tuple(
+            coordinates_df.loc[j, ["centroid-0", "centroid-1"]].values
+        ),
+        "pass": True,
+        "original_label1": coordinates_df.loc[i, "original_label"],
+        "original_label2": coordinates_df.loc[j, "original_label"],
+    }
+    for i in range(coordinates_df.shape[0])
+    for j in range(coordinates_df.shape[0])
+    if i != j
+    and euclidian_2D_distance(
+        coordinates_df.loc[i, ["centroid-0", "centroid-1"]].values,
+        coordinates_df.loc[j, ["centroid-0", "centroid-1"]].values,
+    )
+    < x_y_vector_radius_max_constraint
+]
 
-            # mask1 = np.zeros_like(image[0, :, :], dtype=bool)
-            # mask2 = np.zeros_like(image[0, :, :], dtype=bool)
-            # mask1[image[0, :, :] == coordinates_df.loc[i, "original_label"]] = True
-            # mask2[image[0, :, :] == coordinates_df.loc[j, "original_label"]] = True
-
-            if distance < x_y_vector_radius_max_constraint:
-                distance_pairs["slice1"].append(coordinates_df.loc[i, "slice"])
-                distance_pairs["slice2"].append(coordinates_df.loc[j, "slice"])
-                distance_pairs["index1"].append(i)
-                distance_pairs["index2"].append(j)
-                distance_pairs["distance"].append(distance)
-                distance_pairs["coordinates1"].append(
-                    (coordinate_pair1[0], coordinate_pair1[1])
-                )
-                distance_pairs["coordinates2"].append(
-                    (coordinate_pair2[0], coordinate_pair2[1])
-                )
-                distance_pairs["pass"].append(True)
-                distance_pairs["original_label1"].append(
-                    coordinates_df.loc[i, "original_label"]
-                )
-                distance_pairs["original_label2"].append(
-                    coordinates_df.loc[j, "original_label"]
-                )
-
-
-df = pd.DataFrame.from_dict(distance_pairs)
-df["indexes"] = df["index1"].astype(str) + "-" + df["index2"].astype(str)
-df = df[df["pass"] == True]
-df["index_comparison"] = df["index1"].astype(str) + "," + df["index2"].astype(str)
-df.head()
+# Convert to DataFrame (if needed)
+df = pd.DataFrame(distance_pairs_list)
+if not df.empty:
+    df["indexes"] = df["index1"].astype(str) + "-" + df["index2"].astype(str)
+    df = df[df["pass"] == True]
+    df["index_comparison"] = df["index1"].astype(str) + "," + df["index2"].astype(str)
+    df.head()
 
 
-# In[10]:
+# In[11]:
 
 
 # create a graph where each node is a unique centroid and each edge is a distance between centroids
@@ -409,16 +404,7 @@ pos = nx.spring_layout(G)
 edge_labels = nx.get_edge_attributes(G, "weight")
 
 
-# In[ ]:
-
-
-# solve the graph to find the longest path with the shortest distance between nodes
-# also we need a constraint of about 10 um of total path length (a path length of 10 slices)
-# solve the graph to group the nodes into clusters based on the distance between them and their coordinates
-# longest_paths = nx.algorithms.community.greedy_modularity_communities(G)
-
-
-# In[ ]:
+# In[12]:
 
 
 # solve the the shortest path problem
@@ -426,7 +412,7 @@ edge_labels = nx.get_edge_attributes(G, "weight")
 # this will find the longest paths between centroids closest to each other
 # the longest path is the path with the most edges
 longest_paths = []
-for path in nx.all_pairs_shortest_path(G, cutoff=10):  #
+for path in nx.all_pairs_shortest_path(G, cutoff=10):
     longest_path = []
     for key in path[1].keys():
         if len(path[1][key]) > len(longest_path):
