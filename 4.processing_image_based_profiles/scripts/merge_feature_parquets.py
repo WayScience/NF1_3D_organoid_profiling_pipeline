@@ -143,6 +143,65 @@ merged_df_dict = {
         "Texture": [],
     },
 }
+for compartment in feature_types_dict.keys():
+    for feature_type in feature_types_dict[compartment].keys():
+        if len(feature_types_dict[compartment][feature_type]) > 0:
+            for file in feature_types_dict[compartment][feature_type]:
+                # check if the file exists
+                if not file.exists():
+                    print(f"File {file} does not exist")
+                    continue
+                # check if the file is a parquet file
+                if not file.name.endswith(".parquet"):
+                    print(f"File {file} is not a parquet file")
+                    continue
+
+                # add the dataframe to the dictionary
+                merged_df_dict[compartment][feature_type].append(file)
+        else:
+            print(
+                f"No files found for {compartment} {feature_type}. Please check the directory."
+            )
+
+
+# In[5]:
+
+
+# create a record for each compartment
+merged_df_dict = {
+    "Organoid": {
+        "AreaSize_Shape": [],
+        "Colocalization": [],
+        "Intensity": [],
+        "Granularity": [],
+        "Neighbor": [],
+        "Texture": [],
+    },
+    "Cell": {
+        "AreaSize_Shape": [],
+        "Colocalization": [],
+        "Intensity": [],
+        "Granularity": [],
+        "Neighbor": [],
+        "Texture": [],
+    },
+    "Nuclei": {
+        "AreaSize_Shape": [],
+        "Colocalization": [],
+        "Intensity": [],
+        "Granularity": [],
+        "Neighbor": [],
+        "Texture": [],
+    },
+    "Cytoplasm": {
+        "AreaSize_Shape": [],
+        "Colocalization": [],
+        "Intensity": [],
+        "Granularity": [],
+        "Neighbor": [],
+        "Texture": [],
+    },
+}
 
 for compartment in feature_types_dict.keys():
     for feature_type in feature_types_dict[compartment].keys():
@@ -178,7 +237,7 @@ for compartment in feature_types_dict.keys():
         )
 
 
-# In[5]:
+# In[6]:
 
 
 with closing(sqlite3.connect(sqlite_path)) as cx:
