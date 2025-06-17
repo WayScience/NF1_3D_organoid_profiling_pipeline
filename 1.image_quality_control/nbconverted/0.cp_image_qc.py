@@ -41,11 +41,11 @@ output_dir.mkdir(exist_ok=True)
 # directory where images are located within folders (parent folder is the plate and the child folders are wells containing images)
 images_dir = pathlib.Path("../../data").resolve(strict=True)
 
-# filter plate names to include only those starting with 'NF' or 'SACR'
+# filter plate names to include only those starting with 'NF' or 'SARCO'
 plate_names = []
 for file_path in images_dir.iterdir():
     plate_name = str(file_path.stem.split("_")[0])
-    if plate_name.startswith("NF") or plate_name.startswith("SACR"):
+    if plate_name.startswith("NF") or plate_name.startswith("SARCO"):
         plate_names.append(plate_name)
 
 print("There are a total of", len(plate_names), "plates. The names of the plates are:")
