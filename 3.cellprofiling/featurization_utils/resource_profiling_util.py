@@ -15,6 +15,8 @@ def get_mem_and_time_profiling(
     well_fov: str,
     patient_id: str,
     feature_type: str,
+    channel: str,
+    compartment: str,
     CPU_GPU: str,
     output_file_dir: pathlib.Path,
 ) -> bool:
@@ -37,6 +39,10 @@ def get_mem_and_time_profiling(
         Patient ID for the run.
     feature_type : str
         Feature type for the run.
+    channel : str
+        Channel for the run.
+    compartment : str
+        Compartment for the run.
     CPU_GPU : str
         Whether the run was done on CPU or GPU.
     output_file_dir : pathlib.Path
@@ -50,11 +56,18 @@ def get_mem_and_time_profiling(
 
     end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
     end_time = time.time()
-    print(f"Memory usage: {end_mem - start_mem:.2f} MB")
-    print("Texture time:")
-    print("--- %s seconds ---" % (end_time - start_time))
-    print("--- %s minutes ---" % ((end_time - start_time) / 60))
-    print("--- %s hours ---" % ((end_time - start_time) / 3600))
+    print(f"""
+        Memory and time profiling for the run:\n
+        Patient ID: {patient_id}\n
+        Well and FOV: {well_fov}\n
+        Feature type: {feature_type}\n
+        CPU/GPU: {CPU_GPU}")\n
+        Memory usage: {end_mem - start_mem:.2f} MB\n
+        Time:\n
+        --- %s seconds --- % {(end_time - start_time)}\n
+        --- %s minutes --- % {((end_time - start_time) / 60)}\n
+        --- %s hours --- % {((end_time - start_time) / 3600)}
+    """)
     # make a df of the run stats
     run_stats = pd.DataFrame(
         {
@@ -68,6 +81,8 @@ def get_mem_and_time_profiling(
             "well_fov": [well_fov],
             "patient_id": [patient_id],
             "feature_type": [feature_type],
+            "channel": [channel],
+            "compartment": [compartment],
         }
     )
     # save the run stats to a file
