@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[11]:
 
 
 import argparse
@@ -22,7 +22,7 @@ except NameError:
     in_notebook = False
 
 
-# In[2]:
+# In[12]:
 
 
 if not in_notebook:
@@ -50,7 +50,7 @@ else:
     overwrite = False
 
 
-# In[3]:
+# In[13]:
 
 
 # set path to the processed data dir
@@ -65,7 +65,7 @@ if overwrite:
     cellprofiler_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[14]:
 
 
 # perform checks for each directory
@@ -75,7 +75,7 @@ cellprofiler_dir_directories = list(cellprofiler_dir.glob("*"))
 
 # ## Copy the normalized images to the cellprofiler images dir
 
-# In[5]:
+# In[15]:
 
 
 # get the list of dirs in the normalized_data_dir
@@ -94,7 +94,7 @@ for norm_dir in tqdm.tqdm(norm_dirs):
 
 # ## Copy files from processed dir to cellprofiler images dir
 
-# In[6]:
+# In[16]:
 
 
 masks_names_to_copy_over = [
@@ -105,7 +105,7 @@ masks_names_to_copy_over = [
 ]
 
 
-# In[7]:
+# In[17]:
 
 
 # get a list of dirs in processed_data
@@ -129,7 +129,7 @@ for well_dir in tqdm.tqdm(dirs):
                         shutil.copy(file, new_file_dir)
 
 
-# In[8]:
+# In[18]:
 
 
 jobs_to_rerun_path = pathlib.Path("../rerun_jobs.txt").resolve()
@@ -137,7 +137,7 @@ if jobs_to_rerun_path.exists():
     jobs_to_rerun_path.unlink()
 
 
-# In[9]:
+# In[19]:
 
 
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
@@ -149,7 +149,7 @@ for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
             f.write(f"{patient}_{dir.name}\n")
 
 
-# In[10]:
+# In[20]:
 
 
 # move an example to the example dir

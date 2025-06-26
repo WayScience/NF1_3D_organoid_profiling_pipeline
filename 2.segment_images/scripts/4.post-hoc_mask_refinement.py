@@ -20,6 +20,7 @@
 import argparse
 import pathlib
 import sys
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -71,8 +72,8 @@ if not in_notebook:
     patient = args.patient
 else:
     print("Running in a notebook")
-    well_fov = "C5-2"
-    compartment = "nuclei"
+    well_fov = "G9-2"
+    compartment = "organoid"
     patient = "NF0014"
 
 mask_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
@@ -100,9 +101,6 @@ mask = tifffile.imread(mask_path)
 # ### Functions for refinement
 
 # In[4]:
-
-
-from typing import List, Tuple
 
 
 def calculate_bbox_area(bbox: Tuple[int, int, int, int]) -> int:
@@ -332,6 +330,37 @@ def add_masks_where_missing(
     return new_mask_image
 
 
+def organoid_label_reordering(
+    label_image: np.ndarray,
+) -> np.ndarray:
+    """
+    Reorder the labels in the label image to ensure they are sequential starting from 1.
+
+    Parameters
+    ----------
+    label_image : np.ndarray
+        The label image where labels need to be reordered.
+
+    Returns
+    -------
+    np.ndarray
+        The label image with reordered labels.
+    """
+    unique_labels = np.unique(label_image)
+    # remove the background label (0)
+    unique_labels = unique_labels[unique_labels != 0]
+    # get the number of unique labels
+    # create a mapping from old label to new label
+    label_mapping = {
+        old_label: new_label
+        for new_label, old_label in enumerate(unique_labels, start=1)
+    }
+    label_image_corrected = np.copy(label_image)
+    for old_label, new_label in label_mapping.items():
+        label_image_corrected[label_image == old_label] = new_label
+    return label_image_corrected
+
+
 # ### Set data flow objects, constants and parameters
 
 # #### Constants
@@ -479,6 +508,13 @@ for z in z_slices[: -(sliding_window_context - 1)]:
 
 
 # In[8]:
+
+
+# reorder the organoid labels
+new_mask_image = organoid_label_reordering(new_mask_image)
+
+
+# In[9]:
 
 
 if not mask_output_path.exists():
