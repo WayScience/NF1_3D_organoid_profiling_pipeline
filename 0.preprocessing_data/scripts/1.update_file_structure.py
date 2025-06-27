@@ -50,7 +50,7 @@ else:
     # comment out depending on whose computer you are on
     # mike's computer
     raw_image_dir_local = pathlib.Path(
-        "/home/lippincm/Desktop/18TB/NF1_Patient_organoids/"
+        "/home/lippincm/Desktop/20TB_A/NF1_Patient_organoids/"
     ).resolve(strict=True)
     # Jenna's computer
     # raw_image_dir_local = pathlib.Path("/media/18tbdrive/GFF_organoid_data/Cell Painting-NF0014 Thawed3-Pilot Drug Screening")
@@ -102,6 +102,22 @@ dir_mapping = {
             else f"{raw_image_dir_hpc}/NF0021-T1/NF0021-T1 Combined"
         ).resolve(strict=True),
         "destination": pathlib.Path("../../data/NF0021/raw_images").resolve(),
+    },
+    "NF0030": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir_local}/NF0030 Cell Painting/NF0030 Cell Painting/NF0030-Cell Painting Images/Combined"
+            if not HPC
+            else f"{raw_image_dir_hpc}/NF0030 Cell Painting/NF0030-Cell Painting Images/Combined"
+        ).resolve(strict=True),
+        "destination": pathlib.Path("../../data/NF0030/raw_images").resolve(),
+    },
+    "NF0040": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir_local}/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040)-Cell Painting Images/Combined"
+            if not HPC
+            else f"{raw_image_dir_hpc}/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040)-Cell Painting Images/Combined"
+        ).resolve(strict=True),
+        "destination": pathlib.Path("../../data/NF0040/raw_images").resolve(),
     },
     "SACRO219": {
         "parent": pathlib.Path(
@@ -206,7 +222,7 @@ def has_equal_images_per_channel(
 
 # Run this cell through the script
 
-# In[6]:
+# In[ ]:
 
 
 # Function to process a single nested directory
@@ -283,7 +299,7 @@ for key, paths in dir_mapping.items():
 
 # ## NF0016 specific preprocessing
 
-# In[7]:
+# In[ ]:
 
 
 parent_dir_NF0016 = pathlib.Path("../../data/NF0016/raw_images").resolve(strict=True)
@@ -296,7 +312,7 @@ for parent_dir in parent_dir_NF0016:
     file_dir_NF0016.extend(list(parent_dir.glob("*")))
 
 
-# In[8]:
+# In[ ]:
 
 
 # rename the files in the parent dir
@@ -317,7 +333,7 @@ for parent_dir in parent_dir_NF0016:
 
 # ## NF0018 specific preprocessing
 
-# In[9]:
+# In[ ]:
 
 
 parent_dir_NF0018 = pathlib.Path("../../data/NF0018/raw_images").resolve(strict=True)
@@ -330,7 +346,7 @@ for parent_dir in parent_dir_NF0018:
     file_dir_NF0018.extend(list(parent_dir.glob("*")))
 
 
-# In[10]:
+# In[ ]:
 
 
 # rename the files in the parent dir
