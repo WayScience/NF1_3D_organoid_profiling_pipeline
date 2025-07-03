@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
+import gc
 import os
 import pathlib
 import time
@@ -19,7 +20,28 @@ from loading_classes import ImageSetLoader, ObjectLoader
 from resource_profiling_util import get_mem_and_time_profiling
 from texture_utils import measure_3D_texture
 
-# In[2]:
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
+sys.path.append(f"{root_dir}/3.cellprofiling/featurization_utils/")
+
+from featurization_parsable_arguments import parse_featurization_args
+from loading_classes import ImageSetLoader, ObjectLoader
+from resource_profiling_util import get_mem_and_time_profiling
+from texture_utils import measure_3D_texture
+
+# In[ ]:
 
 
 if not in_notebook:
@@ -88,7 +110,7 @@ image_set_loader = ImageSetLoader(
 image_set_loader.image_set_dict.keys()
 
 
-# In[6]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -128,7 +150,7 @@ output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
 
 
-# In[7]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

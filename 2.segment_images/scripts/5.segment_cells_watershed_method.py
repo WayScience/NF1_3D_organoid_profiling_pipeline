@@ -23,7 +23,22 @@ try:
 except NameError:
     in_notebook = False
 
-print(in_notebook)
+# Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
 
 
 # In[ ]:
@@ -58,27 +73,29 @@ if not in_notebook:
     patient = args.patient
 
 else:
-    well_fov = "C5-2"
+    well_fov = "C4-2"
     patient = "NF0014"
     clip_limit = 0.03
 
-input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(
+input_dir = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}").resolve(
     strict=True
 )
 
-mask_path = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_path = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve()
 mask_output = mask_path / "cell_masks_watershed.tiff"
 mask_path.mkdir(exist_ok=True, parents=True)
 nuclei_mask = tifffile.imread(
     pathlib.Path(
-        f"../../data/{patient}/processed_data/{well_fov}/nuclei_masks_reconstructed_corrected.tiff"
+        f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}/nuclei_masks_reconstructed_corrected.tiff"
     )
 )
 
 
 # ## Set up images, paths and functions
 
-# In[ ]:
+# In[3]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -86,7 +103,7 @@ files = sorted(input_dir.glob("*"))
 files = [str(x) for x in files if x.suffix in image_extensions]
 
 
-# In[ ]:
+# In[4]:
 
 
 # find the cytoplasmic channels in the image set
@@ -98,28 +115,28 @@ for f in files:
 cyto = skimage.exposure.equalize_adapthist(cyto2, clip_limit=clip_limit)
 
 
-# In[ ]:
+# In[5]:
 
 
 # gaussian filter to smooth the image
 cyto = skimage.filters.gaussian(cyto, sigma=1.0)
 
 
-# In[ ]:
+# In[6]:
 
 
 # scale the pixels to max 255
 nuclei_mask = (nuclei_mask / nuclei_mask.max() * 255).astype(np.uint8)
 
 
-# In[ ]:
+# In[7]:
 
 
 # generate the elevation map using the Sobel filter
 elevation_map = sobel(cyto)
 
 
-# In[ ]:
+# In[8]:
 
 
 # set up seeded watersheding where the nuclei masks are used as seeds
@@ -131,7 +148,7 @@ labels = skimage.segmentation.watershed(
 )
 
 
-# In[ ]:
+# In[9]:
 
 
 # change the largest label (by area) to 0
@@ -140,21 +157,21 @@ largest_label = unique[np.argmax(counts)]
 labels[labels == largest_label] = 0
 
 
-# In[ ]:
+# In[10]:
 
 
 print(f"There are {len(np.unique(nuclei_mask))} nuclei in the mask")
 print(f"There are {len(np.unique(labels))} cell masks in the watershed segmentation")
 
 
-# In[ ]:
+# In[11]:
 
 
 # save the labels as a tiff file
 tifffile.imwrite(mask_output, labels)
 
 
-# In[ ]:
+# In[12]:
 
 
 if in_notebook:

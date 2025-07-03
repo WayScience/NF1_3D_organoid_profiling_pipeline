@@ -4,21 +4,17 @@
 # The goal of this notebook is to reassign segmentation labels based on the objects that they are contained in.
 # This will mean that the segmentation label id of the cell will match that of the nucleus that it is contained in.
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
 import pathlib
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import skimage
 import tifffile
-
-sys.path.append("../../utils")
-
 
 # check if in a jupyter notebook
 try:
@@ -27,8 +23,25 @@ try:
 except NameError:
     in_notebook = False
 
+# Get the current working directory
+cwd = pathlib.Path.cwd()
 
-# In[2]:
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
+
+# In[ ]:
 
 
 if not in_notebook:
@@ -62,7 +75,9 @@ else:
     well_fov = "C4-2"
     patient = "NF0014"
 
-mask_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve()
 
 
 # In[3]:

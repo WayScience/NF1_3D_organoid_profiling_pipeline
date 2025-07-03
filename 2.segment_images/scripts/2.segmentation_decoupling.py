@@ -7,7 +7,7 @@
 
 # ## import libraries
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -25,7 +25,31 @@ import tifffile
 import tqdm
 from skimage import io
 
-sys.path.append("../../utils")
+# check if in a jupyter notebook
+try:
+    cfg = get_ipython().config
+    in_notebook = True
+except NameError:
+    in_notebook = False
+
+# Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
+sys.path.append(f"{root_dir}/utils")
 from segmentation_decoupling import (
     check_coordinate_inside_box,
     compare_masks_for_merged,
@@ -40,17 +64,9 @@ from segmentation_decoupling import (
     reassemble_each_mask,
 )
 
-# check if in a jupyter notebook
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-
 # ## parse args and set paths
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -95,11 +111,13 @@ else:
     window_size = 4
     patient = "NF0014"
 
-input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(
+input_dir = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}").resolve(
     strict=True
 )
 
-mask_path = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_path = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 if compartment == "nuclei":

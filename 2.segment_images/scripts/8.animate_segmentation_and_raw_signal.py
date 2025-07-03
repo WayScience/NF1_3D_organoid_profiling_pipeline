@@ -3,7 +3,7 @@
 
 # ## Imports
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -27,6 +27,23 @@ try:
     in_notebook = True
 except NameError:
     in_notebook = False
+
+    # Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
 
 
 # In[ ]:
@@ -59,14 +76,18 @@ else:
     well_fov = "C4-2"
     patient = "NF0014"
 
-image_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}/").resolve(
-    strict=True
-)
-label_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve(
-    strict=True
-)
-mp4_file_dir = pathlib.Path(f"../animations/mp4/{well_fov}/").resolve()
-gif_file_dir = pathlib.Path(f"../animations/gif/{well_fov}/").resolve()
+image_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/zstack_images/{well_fov}/"
+).resolve(strict=True)
+label_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve(strict=True)
+mp4_file_dir = pathlib.Path(
+    f"{root_dir}/2.segment_images/animations/mp4/{well_fov}/"
+).resolve()
+gif_file_dir = pathlib.Path(
+    f"{root_dir}/2.segment_images/animations/gif/{well_fov}/"
+).resolve()
 
 mp4_file_dir.mkdir(parents=True, exist_ok=True)
 gif_file_dir.mkdir(parents=True, exist_ok=True)

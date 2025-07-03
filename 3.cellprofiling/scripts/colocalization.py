@@ -4,6 +4,7 @@
 # In[1]:
 
 
+import itertools
 import os
 import pathlib
 import time
@@ -98,7 +99,7 @@ coloc_loader = TwoObjectLoader(
 
 output_dir = pathlib.Path(
     output_parent_path
-    / f"Colocalization_{compartment}_{channel1}.{channel2}_features.parquet"
+    / f"Colocalization_{compartment}_{channel1}.{channel2}_{processor_type}_features.parquet"
 )
 list_of_dfs = []
 for object_id in coloc_loader.object_ids:

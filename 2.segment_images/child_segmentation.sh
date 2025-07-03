@@ -11,6 +11,11 @@ module load anaconda
 conda init
 conda activate GFF_segmentation_nuclei
 
+git_root=$(git rev-parse --show-toplevel)
+if [ -z "$git_root" ]; then
+    echo "Error: Could not find the git root directory."
+    exit 1
+fi
 
 patient=$1
 well_fov=$2

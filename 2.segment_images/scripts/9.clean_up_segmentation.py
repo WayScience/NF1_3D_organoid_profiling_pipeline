@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[11]:
+# In[1]:
 
 
 import argparse
@@ -12,17 +12,39 @@ import sys
 import numpy as np
 import tqdm
 
-sys.path.append(str(pathlib.Path("../../utils").resolve()))
-from file_checking import check_number_of_files
-
+try:
+    cfg = get_ipython().config
+    in_notebook = True
+except NameError:
+    in_notebook = False
+    # check if in a jupyter notebook
 try:
     cfg = get_ipython().config
     in_notebook = True
 except NameError:
     in_notebook = False
 
+# Get the current working directory
+cwd = pathlib.Path.cwd()
 
-# In[12]:
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
+sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
+from file_checking import check_number_of_files
+
+# In[2]:
 
 
 if not in_notebook:
@@ -36,128 +58,93 @@ if not in_notebook:
         required=True,
         help="patient name, e.g. 'P01'",
     )
-
     argparser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="overwrite existing directories",
+        "--well_fov",
+        type=str,
+        help="Path to the input directory containing the tiff images",
     )
 
     args = argparser.parse_args()
     patient = args.patient
+    well_fov = args.well_fov
 else:
     patient = "NF0014"
-    overwrite = False
+    well_fov = "D2-3"
 
 
-# In[13]:
+# In[3]:
 
 
 # set path to the processed data dir
-processed_data_dir = pathlib.Path(f"../../data/{patient}/processed_data").resolve(
-    strict=True
-)
-zstack_dir = pathlib.Path(f"../../data/{patient}/zstack_images/").resolve(strict=True)
-cellprofiler_dir = pathlib.Path(f"../../data/{patient}/cellprofiler").resolve()
-if overwrite:
-    if cellprofiler_dir.exists():
-        shutil.rmtree(cellprofiler_dir)
-    cellprofiler_dir.mkdir(parents=True, exist_ok=True)
+segmentation_data_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve(strict=True)
+zstack_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/zstack_images/{well_fov}"
+).resolve(strict=True)
 
 
-# In[14]:
+# In[ ]:
 
 
 # perform checks for each directory
-processed_data_dir_directories = list(processed_data_dir.glob("*"))
-cellprofiler_dir_directories = list(cellprofiler_dir.glob("*"))
-
-
-# ## Copy the normalized images to the cellprofiler images dir
-
-# In[15]:
-
-
-# get the list of dirs in the normalized_data_dir
-norm_dirs = [x for x in zstack_dir.iterdir() if x.is_dir()]
-# copy each dir and files to cellprofiler_dir
-for norm_dir in tqdm.tqdm(norm_dirs):
-    dest_dir = pathlib.Path(cellprofiler_dir, norm_dir.name)
-    if dest_dir.exists() and overwrite:
-        shutil.rmtree(dest_dir)
-        shutil.copytree(norm_dir, dest_dir)
-    elif not dest_dir.exists():
-        shutil.copytree(norm_dir, dest_dir)
-    else:
-        pass
+segmentation_data_files = list(segmentation_data_dir.glob("*"))
 
 
 # ## Copy files from processed dir to cellprofiler images dir
 
-# In[16]:
+# In[5]:
 
 
-masks_names_to_copy_over = [
-    "cell_masks_watershed.tiff",
-    "cytoplasm_mask.tiff",
-    "nuclei_masks_reassigned.tiff",
-    "organoid_masks_reconstructed.tiff",
-]
+masks_names_to_keep_dict = {
+    "cell_masks_watershed.tiff": "cell_masks.tiff",
+    "cytoplasm_mask.tiff": "cytoplasm_masks.tiff",
+    "nuclei_masks_reassigned.tiff": "nuclei_masks.tiff",
+    "organoid_masks_reconstructed.tiff": "organoid_masks.tiff",
+}
 
 
-# In[17]:
+# In[6]:
 
 
-# get a list of dirs in processed_data
-dirs = [x for x in processed_data_dir.iterdir() if x.is_dir()]
-file_extensions = {".tif", ".tiff"}
-# get a list of files in each dir
-for well_dir in tqdm.tqdm(dirs):
-    files = [x for x in well_dir.iterdir() if x.is_file()]
-    for file in files:
-        if file.suffix in file_extensions:
-            for mask_name in masks_names_to_copy_over:
-                # check if the file is one of the masks
-                if mask_name in file.name:
-                    # copy the mask to the cellprofiler_dir
-                    new_file_dir = pathlib.Path(
-                        cellprofiler_dir, well_dir.name, file.name
-                    )
-                    if new_file_dir.exists() and overwrite:
-                        shutil.copy(file, new_file_dir)
-                    elif not new_file_dir.exists():
-                        shutil.copy(file, new_file_dir)
+# remove files that are not in the list of masks to keep
+for file in tqdm.tqdm(segmentation_data_files):
+    # check if the file is in the masks_names_to_keep_dict as a key or value
+    if (
+        file.name not in masks_names_to_keep_dict.keys()
+        and file.name not in masks_names_to_keep_dict.values()
+    ):
+        # if not, remove the file
+        file.unlink()
+        print(f"Removed file: {file.name}")
+    else:
+        # rename the file to the new name
+        if file.name in masks_names_to_keep_dict.keys():
+            new_name = masks_names_to_keep_dict[file.name]
+            new_file_path = segmentation_data_dir / new_name
+            if not new_file_path.exists():
+                file.rename(new_file_path)
+                print(f"Renamed file: {file.name} to {new_name}")
+            else:
+                print(f"File {new_name} already exists, skipping rename.")
+        else:
+            print(f"File {file.name} already exists, skipping rename.")
 
 
-# In[18]:
+# In[ ]:
 
 
-jobs_to_rerun_path = pathlib.Path("../rerun_jobs.txt").resolve()
-if jobs_to_rerun_path.exists():
-    jobs_to_rerun_path.unlink()
+# regrab the segmentation data files after renaming
+segmentation_data_files = list(segmentation_data_dir.glob("*"))
 
 
-# In[19]:
+# In[8]:
 
 
-dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
-dirs_in_cellprofiler_dir = sorted(dirs_in_cellprofiler_dir)
-for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
-    if not check_number_of_files(dir, 9):  # 5 raw images, 4 masks
-        pass
-        with open(jobs_to_rerun_path, "a") as f:
-            f.write(f"{patient}_{dir.name}\n")
-
-
-# In[20]:
-
-
-# move an example to the example dir
-example_dir = pathlib.Path("../animations/gif/C4-2").resolve()
-if example_dir.exists():
-    final_example_dir = pathlib.Path(
-        "../examples/segmentation_output/C4-2/gifs"
-    ).resolve()
-    if final_example_dir.exists():
-        shutil.rmtree(final_example_dir)
-    shutil.copytree(example_dir, final_example_dir)
+# copy the masks to the zstack directory
+for file in tqdm.tqdm(segmentation_data_files):
+    for original_name, new_name in masks_names_to_keep_dict.items():
+        if file.name == new_name:
+            destination = zstack_dir / new_name
+            shutil.copy(file, destination)
+            print(f"Copied file: {file} to {destination}")

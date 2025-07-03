@@ -11,10 +11,8 @@
 # Some of the outcomes are not correct and need to be corrected.
 # While others might be correct or incorrect but there is not logical way to determine if they are correct or not.
 # These cases are not corrected.
-# ![Segmentation errors](../media/3D_segmentations_correction_events.png)
-#
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -27,10 +25,6 @@ import pandas as pd
 import skimage
 import tifffile
 
-sys.path.append("../../utils")
-
-from segmentation_decoupling import euclidian_2D_distance
-
 # check if in a jupyter notebook
 try:
     cfg = get_ipython().config
@@ -38,8 +32,28 @@ try:
 except NameError:
     in_notebook = False
 
+# Get the current working directory
+cwd = pathlib.Path.cwd()
 
-# In[2]:
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
+sys.path.append(f"{root_dir}/utils")
+
+from segmentation_decoupling import euclidian_2D_distance
+
+# In[ ]:
 
 
 if not in_notebook:
@@ -76,7 +90,9 @@ else:
     compartment = "organoid"
     patient = "NF0014"
 
-mask_dir = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve()
 
 
 # In[3]:
@@ -100,7 +116,7 @@ mask = tifffile.imread(mask_path)
 
 # ### Functions for refinement
 
-# In[4]:
+# In[ ]:
 
 
 def calculate_bbox_area(bbox: Tuple[int, int, int, int]) -> int:
@@ -330,7 +346,7 @@ def add_masks_where_missing(
     return new_mask_image
 
 
-def organoid_label_reordering(
+def reorder_organoid_labels(
     label_image: np.ndarray,
 ) -> np.ndarray:
     """
@@ -349,7 +365,9 @@ def organoid_label_reordering(
     unique_labels = np.unique(label_image)
     # remove the background label (0)
     unique_labels = unique_labels[unique_labels != 0]
-    # get the number of unique labels
+    # exit early if there are no labels (only background)
+    if len(unique_labels) == 0:
+        return label_image
     # create a mapping from old label to new label
     label_mapping = {
         old_label: new_label
@@ -507,11 +525,11 @@ for z in z_slices[: -(sliding_window_context - 1)]:
     print("writing the mask for z slice", z)
 
 
-# In[8]:
+# In[ ]:
 
 
 # reorder the organoid labels
-new_mask_image = organoid_label_reordering(new_mask_image)
+new_mask_image = reorder_organoid_labels(new_mask_image)
 
 
 # In[9]:

@@ -1,19 +1,20 @@
 #!/bin/bash
 
 conda activate gff_preprocessing_env
+git_root=$(git rev-parse --show-toplevel)
+if [ -z "$git_root" ]; then
+    echo "Error: Could not find the git root directory."
+    exit 1
+fi
 
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
-cd scripts/ || exit
+python "$git_root"/0.preprocessing_data/scripts/0.patient_specific_preprocessing.py
+python "$git_root"/0.preprocessing_data/scripts/1.update_file_structure.py
+python "$git_root"/0.preprocessing_data/scripts/2.make_z-stack_images.py
 
-# python 0.update_file_structure.py
-python 0.patient_specific_preprocessing.py
-python 1.update_file_structure.py
-python 2.make_z-stack_images.py
-
-
-cd .. || exit
 
 conda deactivate
 
 echo "Preprocessing complete"
+

@@ -7,7 +7,7 @@
 
 # ## import libraries
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -31,13 +31,30 @@ try:
 except NameError:
     in_notebook = False
 
+# Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
 
 # ## parse args and set paths
 
 # If if a notebook run the hardcoded paths.
 # However, if this is run as a script, the paths are set by the parsed arguments.
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -78,10 +95,12 @@ else:
     clip_limit = 0.05
 
 
-input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(
+input_dir = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}").resolve(
     strict=True
 )
-mask_path = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_path = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
 

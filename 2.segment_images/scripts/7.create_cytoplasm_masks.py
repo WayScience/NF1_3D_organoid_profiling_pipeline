@@ -19,8 +19,25 @@ try:
 except NameError:
     in_notebook = False
 
+# Get the current working directory
+cwd = pathlib.Path.cwd()
 
-# In[2]:
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
+
+
+# In[ ]:
 
 
 if not in_notebook:
@@ -43,9 +60,6 @@ if not in_notebook:
     args = parser.parse_args()
     well_fov = args.well_fov
     patient = args.patient
-    mask_input_dir = pathlib.Path(
-        f"../../data/{patient}/processed_data/{well_fov}"
-    ).resolve(strict=True)
 
 else:
     print("Running in a notebook")
@@ -53,13 +67,15 @@ else:
     patient = "NF0014"
 
 
-input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}/").resolve(
-    strict=True
-)
-mask_input_dir = pathlib.Path(
-    f"../../data/{patient}/processed_data/{well_fov}"
+input_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/zstack_images/{well_fov}/"
 ).resolve(strict=True)
-output_path = pathlib.Path(f"../../data/{patient}/processed_data/{well_fov}").resolve()
+mask_input_dir = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve(strict=True)
+output_path = pathlib.Path(
+    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+).resolve()
 output_path.mkdir(parents=True, exist_ok=True)
 output_file_path = pathlib.Path(output_path / "cytoplasm_mask.tiff").resolve()
 

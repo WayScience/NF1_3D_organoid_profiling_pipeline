@@ -12,15 +12,19 @@ module load anaconda
 conda init bash
 conda activate GFF_segmentation
 
-jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
+git_root=$(git rev-parse --show-toplevel)
+if [ -z "$git_root" ]; then
+    echo "Error: Could not find the git root directory."
+    exit 1
+fi
 
 patient_array=( "NF0014" "NF0016" "NF0018" "NF0021" "SARCO219" "SARCO361" )
 
 for patient in "${patient_array[@]}"; do
-    number_of_jobs=$(squeue -u $USER | wc -l)
-    while [ $number_of_jobs -gt 990 ]; do
+    number_of_jobs=$(squeue -u "$USER" | wc -l)
+    while [ "$number_of_jobs" -gt 990 ]; do
         sleep 1s
-        number_of_jobs=$(squeue -u $USER | wc -l)
+        number_of_jobs=$(squeue -u "$USER" | wc -l)
     done
 
     sbatch \
@@ -31,7 +35,7 @@ for patient in "${patient_array[@]}"; do
         --account=amc-general \
         --time=7-00:00:00 \
         --output=segmentation_parent-%j.out \
-        parent_segmentation.sh "$patient"
+        "${git_root}"/2.segment_images/parent_segmentation.sh "$patient"
 
 done
 

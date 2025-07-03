@@ -5,7 +5,7 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -35,7 +35,22 @@ try:
 except NameError:
     in_notebook = False
 
-print(in_notebook)
+# Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
 
 
 # In[2]:
@@ -136,7 +151,7 @@ def test_segment_with_diameter():
 test_segment_with_diameter()
 
 
-# In[3]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -176,12 +191,12 @@ else:
     patient = "NF0014"
 
 
-input_dir = pathlib.Path(f"../../data/{patient}/zstack_images/{well_fov}").resolve(
+input_dir = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}").resolve(
     strict=True
 )
 
 mask_path = pathlib.Path(
-    f"../../data/{patient}/processed_data/{input_dir.stem}"
+    f"{root_dir}/data/{patient}/segmentation_masks/{input_dir.stem}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 

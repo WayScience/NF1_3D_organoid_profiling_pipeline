@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -24,6 +24,8 @@ from resource_profiling_util import get_mem_and_time_profiling
 
 # In[ ]:
 
+# Get the current working directory
+cwd = pathlib.Path.cwd()
 
 def process_combination(
     args: tuple[str, str],
@@ -163,7 +165,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[6]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -208,7 +210,7 @@ output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
 
 
-# In[7]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

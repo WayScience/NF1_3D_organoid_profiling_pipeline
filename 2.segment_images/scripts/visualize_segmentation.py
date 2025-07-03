@@ -3,7 +3,7 @@
 
 # ## Imports
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -89,7 +89,7 @@ def animate_view(
     animation.animate(output_path_name, canvas_only=True)
 
 
-# In[4]:
+# In[ ]:
 
 
 if not in_notebook:

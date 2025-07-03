@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -92,7 +92,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[6]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -144,7 +144,7 @@ final_df.to_parquet(output_file, index=False)
 final_df.head()
 
 
-# In[7]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

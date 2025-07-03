@@ -8,8 +8,8 @@ processor_type=$5
 
 echo "AreaSizeShape feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 
-echo "Running featurization for $patient $well_fov"
 
+echo "AreaSizeShape feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: $use_GPU"
 
 module load miniforge
 conda init bash

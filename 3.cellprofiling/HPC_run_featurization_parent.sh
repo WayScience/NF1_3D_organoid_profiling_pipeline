@@ -68,6 +68,22 @@ if [ "$feature" == "Texture" ] ; then
             "$channel"
 fi
 
+if [ "$feature" == "Texture" ] ; then
+    echo "Running texture feature extraction"
+    sbatch \
+        --nodes=1 \
+        --ntasks=2 \
+        --partition=amilan \
+        --qos=normal \
+        --account=amc-general \
+        --time=24:00:00 \
+        --output=texture_child-%j.out \
+        "$git_root"/3.cellprofiling/slurm_scripts/run_texture_child.sh \
+            "$patient" \
+            "$well_fov" \
+            "$compartment" \
+            "$channel"
+fi
 
 # AreaSizeShape feature extraction
 if [ "$feature" == "AreaSizeShape" ] ; then
