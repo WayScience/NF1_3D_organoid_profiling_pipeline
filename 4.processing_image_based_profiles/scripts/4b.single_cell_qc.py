@@ -28,19 +28,19 @@ path_to_patients = pathlib.Path(
 )
 
 dfs = []
-for folder in path_to_patients.iterdir():
+for patient_folder in path_to_patients.iterdir():
     single_cell_file = (
-        folder / "image_based_profiles/1.combined_profiles" / "sc.parquet"
+        patient_folder / "image_based_profiles/1.combined_profiles" / "sc.parquet"
     )
     organoid_flags_file = (
-        folder
+        patient_folder
         / "image_based_profiles/1a.qc_profiles"
         / "organoid_flagged_outliers.parquet"
     )
 
     if single_cell_file.exists():
         sc_df = pd.read_parquet(single_cell_file)
-        sc_df["patient_id"] = folder.name
+        sc_df["patient_id"] = patient_folder.name
 
         # Default QC flags
         sc_df["cqc.organoid_flagged"] = False

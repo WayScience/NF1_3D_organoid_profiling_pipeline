@@ -23,13 +23,13 @@ path_to_patients = pathlib.Path(
 
 # Get all organoid profiles per patient folder and concatenate them
 dfs = []
-for folder in path_to_patients.iterdir():
+for patient_folder in path_to_patients.iterdir():
     organoid_file = (
-        folder / "image_based_profiles/1.combined_profiles" / "organoid.parquet"
+        patient_folder / "image_based_profiles/1.combined_profiles" / "organoid.parquet"
     )
     if organoid_file.exists():
         df = pd.read_parquet(organoid_file)
-        df["patient_id"] = folder.name
+        df["patient_id"] = patient_folder.name
         # Group by image_set and count organoids
         organoid_counts = (
             df.groupby("image_set")["object_id"].count().rename("organoid_count")
