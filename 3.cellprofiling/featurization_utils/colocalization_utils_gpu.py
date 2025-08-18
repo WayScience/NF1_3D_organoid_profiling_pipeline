@@ -510,12 +510,8 @@ def measure_3D_colocalization_gpu(
     mean1 = cupyx.scipy.ndimage.mean(cropped_image_1)
     mean2 = cupyx.scipy.ndimage.mean(cropped_image_2)
     # get the image1 number of voxels
-    # num_voxels1 = cupyx.scipy.ndimage.sum(cropped_image_1 > 0)
-    # num_voxels2 = cupyx.scipy.ndimage.sum(cropped_image_2 > 0)
-    # std1 = cupy.sqrt(cupyx.scipy.ndimage.sum((cropped_image_1 - mean1) ** 2)/num_voxels1)
-    # std2 = cupy.sqrt(cupyx.scipy.ndimage.sum((cropped_image_2 - mean2) ** 2)/num_voxels2)
-    std1 = cupy.std(cropped_image_1)
-    std2 = cupy.std(cropped_image_2)
+    std1 = cupy.sqrt(cupyx.scipy.ndimage.sum((cropped_image_1 - mean1) ** 2))
+    std2 = cupy.sqrt(cupyx.scipy.ndimage.sum((cropped_image_2 - mean2) ** 2))
     x = cropped_image_1 - mean1
     y = cropped_image_2 - mean2
     corr = cupyx.scipy.ndimage.sum(x * y / (std1 * std2))

@@ -4,7 +4,9 @@
 # In[1]:
 
 
+import argparse
 import itertools
+import multiprocessing
 import os
 import pathlib
 import time
@@ -142,11 +144,21 @@ for object_id in coloc_loader.object_ids:
         f"Colocalization_{compartment}_{channel1}.{channel2}_{col}"
         for col in coloc_df.columns
     ]
+    # retype the columns to float32
+    for col in coloc_df.columns:
+        if col not in ["object_id", "image_set"]:
+            coloc_df[col] = coloc_df[col].astype("float32")
     coloc_df.insert(0, "object_id", object_id)
     coloc_df.insert(1, "image_set", image_set_loader.image_set_name)
     list_of_dfs.append(coloc_df)
-coloc_df = pd.concat(list_of_dfs, ignore_index=True)
-coloc_df.to_parquet(output_dir)
+if len(list_of_dfs) == 0:
+    print("No objects found for colocalization.")
+    # write an empty DataFrame to the output file
+    coloc_df = pd.DataFrame(columns=["object_id", "image_set"])
+    coloc_df.to_parquet(output_dir)
+else:
+    coloc_df = pd.concat(list_of_dfs, ignore_index=True)
+    coloc_df.to_parquet(output_dir)
 
 
 # In[5]:
@@ -255,3 +267,4 @@ get_mem_and_time_profiling(
         f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_Colocalization_{channel1}.{channel2}_{compartment}_{processor_type}.parquet"
     ),
 )
+

@@ -3,54 +3,50 @@ repos:
     rev: v0.9.0 # Insert the latest tag here
 
     hooks:
-      - id: pre-commit-update
+    -   id: pre-commit-update
         args: [--exclude, black, --keep, isort]
     # Formats import order
 -   repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
-      - id: isort
+    -   id: isort
         name: isort (python)
         args: ["--profile", "black", "--filter-files"]
 
     #Code formatter for both python files and jupyter notebooks
-  - repo: https://github.com/astral-sh/ruff-pre-commit
+-   repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
 
-    rev: v0.12.2
+    rev: v0.12.9
     hooks:
       # Run the formatter.
-      - id: ruff-format
+    -   id: ruff-format
 
-  - repo: https://github.com/nbQA-dev/nbQA
+-   repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
-      - id: nbqa-isort
+    -   id: nbqa-isort
         additional_dependencies: [isort==5.6.4]
         args: [--profile=black]
 
     # remove unused imports
-  - repo: https://github.com/hadialqattan/pycln.git
+-   repo: https://github.com/hadialqattan/pycln.git
     rev: v2.5.0
     hooks:
-      - id: pycln
+    -   id: pycln
 
     # additional hooks found with in the pre-commit lib
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-      - id: trailing-whitespace # removes trailing white spaces
-      - id: mixed-line-ending # removes mixed end of line
+    -   id: trailing-whitespace # removes trailing white spaces
+    -   id: mixed-line-ending # removes mixed end of line
         args:
-          - --fix=lf
-  - repo: https://github.com/pre-commit/mirrors-prettier # for nextflow (js) files
-    rev: v3.1.0 # Use the sha or tag you want to point at
-    hooks:
-      - id: prettier
+        -   --fix=lf
 
-  - repo: local
+-   repo: local
     hooks:
-      - id: shellcheck
+    -   id: shellcheck
         name: shellcheck
         description: Test shell scripts with shellcheck
         entry: shellcheck

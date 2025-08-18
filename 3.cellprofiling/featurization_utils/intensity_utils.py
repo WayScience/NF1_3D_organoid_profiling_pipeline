@@ -62,17 +62,27 @@ def measure_3D_intensity_CPU(
         selected_image_object = image_object.copy()
 
         selected_label_object[selected_label_object != label] = 0
-        # selected_image_object[selected_label_object == 0] = 0
+        selected_label_object[selected_label_object > 0] = (
+            1  # binarize the label for volume calcs
+        )
+        selected_image_object[selected_label_object != 1] = 0
         non_zero_pixels_object = selected_image_object[selected_image_object > 0]
-
+        if non_zero_pixels_object.size == 0:
+            non_zero_pixels_object = numpy.array([0], dtype=numpy.float32)
         mask_outlines = get_outline(selected_label_object)
-        mesh_z, mesh_y, mesh_x = numpy.mgrid[
-            0 : selected_image_object.shape[0],
-            0 : selected_image_object.shape[1],
-            0 : selected_image_object.shape[2],
-        ]
 
-        ranges = len(numpy.unique(selected_label_object))
+        # Extract only coordinates where object exists
+        z_indices, y_indices, x_indices = numpy.where(selected_label_object > 0)
+        min_z, max_z = numpy.min(z_indices), numpy.max(z_indices)
+        min_y, max_y = numpy.min(y_indices), numpy.max(y_indices)
+        min_x, max_x = numpy.min(x_indices), numpy.max(x_indices)
+
+        # Create coordinate grids only for the bounding box
+        mesh_z, mesh_y, mesh_x = numpy.mgrid[
+            min_z : max_z + 1,  # + 1 to include the max index
+            min_y : max_y + 1,
+            min_x : max_x + 1,
+        ]
 
         # calculate the integrated intensity
         integrated_intensity = scipy.ndimage.sum(
@@ -98,7 +108,7 @@ def measure_3D_intensity_CPU(
         median_intensity = numpy.median(non_zero_pixels_object)
         # max intensity location
         max_z, max_y, max_x = scipy.ndimage.maximum_position(
-            image_object,
+            selected_image_object,
         )  # z, y, x
         cm_x = scipy.ndimage.mean(mesh_x)
         cm_y = scipy.ndimage.mean(mesh_y)
@@ -119,11 +129,11 @@ def measure_3D_intensity_CPU(
         # mean aboslute deviation
         mad_intensity = numpy.mean(numpy.abs(non_zero_pixels_object - mean_intensity))
         edge_count = scipy.ndimage.sum(mask_outlines)
-        integrated_intensity_edge = numpy.sum(image_object[mask_outlines > 0])
+        integrated_intensity_edge = numpy.sum(selected_image_object[mask_outlines > 0])
         mean_intensity_edge = integrated_intensity_edge / edge_count
-        std_intensity_edge = numpy.std(image_object[mask_outlines > 0])
-        min_intensity_edge = numpy.min(image_object[mask_outlines > 0])
-        max_intensity_edge = numpy.max(image_object[mask_outlines > 0])
+        std_intensity_edge = numpy.std(selected_image_object[mask_outlines > 0])
+        min_intensity_edge = numpy.min(selected_image_object[mask_outlines > 0])
+        max_intensity_edge = numpy.max(selected_image_object[mask_outlines > 0])
         measurements_dict = {
             "INTEGRATED.INTENSITY": integrated_intensity,
             "VOLUME": volume,
@@ -160,9 +170,9 @@ def measure_3D_intensity_CPU(
         }
 
         for feature_name, value in measurements_dict.items():
-            if value.dtype != numpy.int64:
-                value = value.item()
-            output_dict["object_id"].append(label)
+            if value.dtype != numpy.float32:
+                value = numpy.float32(value)
+            output_dict["object_id"].append(numpy.int32(label))
             output_dict["feature_name"].append(feature_name)
             output_dict["channel"].append(object_loader.channel)
             output_dict["compartment"].append(object_loader.compartment)
@@ -194,7 +204,6 @@ def measure_3D_intensity_gpu(
     image_object = cupy.asarray(image_object)
     label_object = cupy.asarray(label_object)
     labels = cupy.asarray(labels)
-    ranges = len(labels)
 
     output_dict = {
         "object_id": [],
@@ -206,22 +215,25 @@ def measure_3D_intensity_gpu(
     for index, label in enumerate(labels):
         selected_label_object = label_object.copy()
         selected_image_object = image_object.copy()
-
         selected_label_object[selected_label_object != label] = 0
-        selected_image_object[selected_label_object == 0] = 0
+        selected_label_object[selected_label_object > 0] = (
+            1  # binarize the label for volume calcs
+        )
+        selected_image_object[selected_label_object != 1] = 0
         non_zero_pixels_object = selected_image_object[selected_image_object > 0]
-
-        selected_label_object = selected_label_object.get()
-        mask_outlines = get_outline(selected_label_object)
-        selected_label_object = cupy.asarray(selected_label_object)
+        mask_outlines = get_outline(selected_label_object.get())
         mask_outlines = cupy.asarray(mask_outlines)
-        mesh_z, mesh_y, mesh_x = cupy.mgrid[
-            0 : selected_image_object.shape[0],
-            0 : selected_image_object.shape[1],
-            0 : selected_image_object.shape[2],
-        ]
 
-        ranges = len(cupy.unique(selected_label_object))
+        # Extract only coordinates where object exists
+        z_indices, y_indices, x_indices = cupy.where(selected_label_object > 0)
+        min_z, max_z = cupy.min(z_indices), cupy.max(z_indices)
+        min_y, max_y = cupy.min(y_indices), cupy.max(y_indices)
+        min_x, max_x = cupy.min(x_indices), cupy.max(x_indices)
+
+        # Create coordinate grids only for the bounding box
+        mesh_z, mesh_y, mesh_x = cupy.mgrid[
+            min_z : max_z + 1, min_y : max_y + 1, min_x : max_x + 1
+        ]
 
         # calculate the integrated intensity
         integrated_intensity = cupyx.scipy.ndimage.sum(
@@ -247,7 +259,7 @@ def measure_3D_intensity_gpu(
         median_intensity = cupy.median(non_zero_pixels_object)
         # max intensity location
         max_z, max_y, max_x = cupyx.scipy.ndimage.maximum_position(
-            image_object,
+            selected_image_object,
         )  # z, y, x
         cm_x = cupyx.scipy.ndimage.mean(mesh_x)
         cm_y = cupyx.scipy.ndimage.mean(mesh_y)
@@ -268,11 +280,11 @@ def measure_3D_intensity_gpu(
         # mean aboslute deviation
         mad_intensity = cupy.mean(cupy.abs(non_zero_pixels_object - mean_intensity))
         edge_count = cupyx.scipy.ndimage.sum(mask_outlines)
-        integrated_intensity_edge = cupy.sum(image_object[mask_outlines > 0])
+        integrated_intensity_edge = cupy.sum(selected_image_object[mask_outlines > 0])
         mean_intensity_edge = integrated_intensity_edge / edge_count
-        std_intensity_edge = cupy.std(image_object[mask_outlines > 0])
-        min_intensity_edge = cupy.min(image_object[mask_outlines > 0])
-        max_intensity_edge = cupy.max(image_object[mask_outlines > 0])
+        std_intensity_edge = cupy.std(selected_image_object[mask_outlines > 0])
+        min_intensity_edge = cupy.min(selected_image_object[mask_outlines > 0])
+        max_intensity_edge = cupy.max(selected_image_object[mask_outlines > 0])
         measurements_dict = {
             "INTEGRATED.INTENSITY": integrated_intensity.get(),
             "VOLUME": volume.get(),
@@ -309,9 +321,9 @@ def measure_3D_intensity_gpu(
         }
 
         for feature_name, value in measurements_dict.items():
-            output_dict["object_id"].append(label.get().item())
+            output_dict["object_id"].append(numpy.int32(label.get().item()))
             output_dict["feature_name"].append(feature_name)
             output_dict["channel"].append(object_loader.channel)
             output_dict["compartment"].append(object_loader.compartment)
-            output_dict["value"].append(numpy.int64(value))
+            output_dict["value"].append(numpy.float32(value))
     return output_dict

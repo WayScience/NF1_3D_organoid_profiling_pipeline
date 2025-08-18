@@ -25,13 +25,10 @@ def calulate_surface_area(
         A list of surface areas for each object in the image.
     """
 
-    # this seems less elegant than you might wish, given that regionprops returns a slice,
-    # but we need to expand the slice out by one voxel in each direction, or surface area freaks out
-
     volume = label_object[
-        max(props["bbox-0"] - 1, 0) : min(props["bbox-3"] + 1, label_object.shape[0]),
-        max(props["bbox-1"] - 1, 0) : min(props["bbox-4"] + 1, label_object.shape[1]),
-        max(props["bbox-2"] - 1, 0) : min(props["bbox-5"] + 1, label_object.shape[2]),
+        max(props["bbox-0"][0], 0) : min(props["bbox-3"][0], label_object.shape[0]),
+        max(props["bbox-1"][0], 0) : min(props["bbox-4"][0], label_object.shape[1]),
+        max(props["bbox-2"][0], 0) : min(props["bbox-5"][0], label_object.shape[2]),
     ]
     volume_truths = volume > 0
     verts, faces, _normals, _values = skimage.measure.marching_cubes(

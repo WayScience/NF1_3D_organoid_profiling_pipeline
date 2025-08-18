@@ -7,7 +7,7 @@
 
 # ## import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -54,7 +54,7 @@ if root_dir is None:
 # If if a notebook run the hardcoded paths.
 # However, if this is run as a script, the paths are set by the parsed arguments.
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -90,7 +90,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014"
-    well_fov = "F3-1"
+    well_fov = "E10-2"
     window_size = 3
     clip_limit = 0.05
 
@@ -151,7 +151,7 @@ print("2.5D image stack shape:", image_stack_2_5D.shape)
 
 # ## Cellpose
 
-# In[6]:
+# In[ ]:
 
 
 use_GPU = torch.cuda.is_available()
@@ -167,7 +167,9 @@ output_dict = {
 for slice in tqdm.tqdm(range(imgs.shape[0])):
     # Perform segmentation
     output_dict["slice"].append(slice)
-    labels, details, _ = model.eval(imgs[slice, :, :], diameter=75, channels=[0, 0])
+    labels, details, _ = model.eval(
+        imgs[slice, :, :], channels=[0, 0]
+    )  # no diamter needed for CP 4.0
     output_dict["labels"].append(labels)
     output_dict["details"].append(details)
 

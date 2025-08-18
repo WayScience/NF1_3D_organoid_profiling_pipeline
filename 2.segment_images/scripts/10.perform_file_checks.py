@@ -43,7 +43,7 @@ if root_dir is None:
 sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
 from file_checking import check_number_of_files
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -64,7 +64,7 @@ else:
     patient = "NF0014"
 
 
-# In[3]:
+# In[ ]:
 
 
 # set path to the processed data dir
@@ -76,7 +76,7 @@ zstack_dir = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/").resolve(
 )
 
 
-# In[4]:
+# In[ ]:
 
 
 # perform checks for each directory

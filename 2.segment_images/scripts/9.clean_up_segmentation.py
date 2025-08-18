@@ -68,8 +68,8 @@ if not in_notebook:
     patient = args.patient
     well_fov = args.well_fov
 else:
-    patient = "NF0014"
-    well_fov = "D2-3"
+    patient = "NF0030"
+    well_fov = "D2-1"
 
 
 # In[3]:
@@ -84,7 +84,7 @@ zstack_dir = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 # perform checks for each directory
@@ -131,7 +131,7 @@ for file in tqdm.tqdm(segmentation_data_files):
             print(f"File {file.name} already exists, skipping rename.")
 
 
-# In[ ]:
+# In[7]:
 
 
 # regrab the segmentation data files after renaming
