@@ -43,7 +43,6 @@ repos:
     -   id: mixed-line-ending # removes mixed end of line
         args:
         -   --fix=lf
-
 -   repo: local
     hooks:
     -   id: shellcheck
