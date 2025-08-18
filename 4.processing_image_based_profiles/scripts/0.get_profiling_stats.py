@@ -4,7 +4,6 @@
 # In[ ]:
 
 
-import argparse
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -38,66 +37,92 @@ if root_dir is None:
 # In[2]:
 
 
-if not in_notebook:
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "--patient",
-        type=str,
-        required=True,
-        help="Patient ID to process, e.g. 'P01'",
-    )
-    args = argparser.parse_args()
-    patient = args.patient
-else:
-    patient = "NF0014"
+patient_data_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
+    strict=True
+)
+patients = pd.read_csv(patient_data_path, header=None, names=["patient_ID"])[
+    "patient_ID"
+].tolist()
 
 
 # In[ ]:
 
 
-stats_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/extracted_features/run_stats/"
-).resolve(strict=True)
-output_path = pathlib.Path(f"{root_dir}/data/{patient}/converted_profiles/").resolve()
-output_path.mkdir(parents=True, exist_ok=True)
-stats_output_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/profiling_stats/"
-).resolve()
+stats_files = []
+for patient in patients:
+    stats_path = pathlib.Path(
+        f"{root_dir}/data/{patient}/extracted_features/run_stats/"
+    ).resolve(strict=True)
+    output_path = pathlib.Path(
+        f"{root_dir}/data/{patient}/converted_profiles/"
+    ).resolve()
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    for file_path in stats_path.glob("*.parquet"):
+        if file_path.is_file():
+            stats_files.append(file_path)
+stats_files.sort()
+print(f"Found {len(stats_files)} stats files for {len(patients)} patients.")
+
+
+# In[ ]:
+
+
+def safe_read_parquet(stats_file):
+    """Safely read a Parquet file and handle errors.
+    This is primarily to continue through code in the event of corrupted files."""
+
+    try:
+        return pd.read_parquet(stats_file)
+    except ValueError as e:
+        print(f"Error reading {stats_file}: {e}")
+        return None
+
+
+# In[ ]:
+
+
+dataframes = []
+for stats_file in stats_files:
+    df_temp = safe_read_parquet(stats_file)
+    if df_temp is not None:
+        dataframes.append(df_temp)
+if dataframes:
+    df = pd.concat(dataframes, ignore_index=True)
+else:
+    df = pd.DataFrame()
+stats_output_path = pathlib.Path(f"{root_dir}/data/all_patient_profiles/").resolve()
 stats_output_path.mkdir(parents=True, exist_ok=True)
 
-stats_files = list(stats_path.glob("*.parquet"))
-stats_files.sort()
+
+# In[ ]:
 
 
-# In[4]:
-
-
-df = pd.concat(
-    [pd.read_parquet(stats_file) for stats_file in stats_files],
-    ignore_index=True,
-)
-
-df.to_parquet(f"{stats_output_path}/{patient}_cell_stats.parquet", index=False)
-df["feature_type_and_gpu"] = (
-    df["feature_type"].astype(str) + "_" + df["gpu"].astype(str)
-)
-df["feature_type_and_gpu"] = df["feature_type_and_gpu"].str.replace("None", "CPU")
-df["feature_type_and_gpu"] = df["feature_type_and_gpu"].str.replace("True", "GPU")
+# comment out for now as we only used CPU
+# df["feature_type_and_gpu"] = (
+#     df["feature_type"].astype(str) + "_" + df["gpu"].astype(str)
+# )
+# df["feature_type_and_gpu"] = df["feature_type_and_gpu"].str.replace("None", "CPU")
+# df["feature_type_and_gpu"] = df["feature_type_and_gpu"].str.replace("True", "GPU")
 df["time_taken_minutes"] = df["time_taken"] / 60
 df["mem_usage_GB"] = df["mem_usage"] / (1024)
+df.to_parquet(
+    f"{stats_output_path}/all_patient_featurization_stats.parquet", index=False
+)
+
 df.head()
 
 
 # ## Preliminary plots - will finalize in R later
 
-# In[5]:
+# In[ ]:
 
 
 # plot the memory and time for each feature type
 if in_notebook:
     sns.barplot(
         data=df,
-        x="feature_type_and_gpu",
+        x="feature_type",
         y="time_taken_minutes",
         hue="feature_type",
         palette="Set2",
@@ -113,7 +138,7 @@ if in_notebook:
 
     sns.barplot(
         data=df,
-        x="feature_type_and_gpu",
+        x="feature_type",
         y="mem_usage_GB",
         hue="feature_type",
         palette="Set2",

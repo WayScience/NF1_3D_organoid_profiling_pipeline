@@ -97,7 +97,7 @@ cells_table = cells_table[cells_table["object_id"].isin(intersection_set)]
 cytoplasm_table = cytoplasm_table[cytoplasm_table["object_id"].isin(intersection_set)]
 
 
-# In[6]:
+# In[ ]:
 
 
 # connect to DuckDB and register the tables
