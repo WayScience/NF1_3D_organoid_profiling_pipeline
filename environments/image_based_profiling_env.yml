@@ -19,3 +19,4 @@ dependencies:
   - conda-forge::duckdb
   - pip:
       - cytotable
+      - coSMicQC>=0.1.5

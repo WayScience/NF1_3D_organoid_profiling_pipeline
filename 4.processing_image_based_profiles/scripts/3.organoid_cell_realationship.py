@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -14,6 +14,23 @@ try:
     in_notebook = True
 except NameError:
     in_notebook = False
+
+# Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+
+# Check if a Git root directory was found
+if root_dir is None:
+    raise FileNotFoundError("No Git root directory found.")
 
 
 # In[2]:
@@ -83,22 +100,22 @@ def centroid_within_bbox_detection(
 
 # ### Pathing
 
-# In[4]:
+# In[ ]:
 
 
 # input paths
 sc_profile_path = pathlib.Path(
-    f"../../data/{patient}/image_based_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
+    f"{root_dir}/data/{patient}/image_based_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
 organoid_profile_path = pathlib.Path(
-    f"../../data/{patient}/image_based_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
+    f"{root_dir}/data/{patient}/image_based_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
 # output paths
 sc_profile_output_path = pathlib.Path(
-    f"../../data/{patient}/image_based_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
+    f"{root_dir}/data/{patient}/image_based_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
 ).resolve()
 organoid_profile_output_path = pathlib.Path(
-    f"../../data/{patient}/image_based_profiles/{well_fov}/organoid_profiles_{well_fov}_related.parquet"
+    f"{root_dir}/data/{patient}/image_based_profiles/{well_fov}/organoid_profiles_{well_fov}_related.parquet"
 ).resolve()
 
 
@@ -118,13 +135,13 @@ print(f"Organoid profile shape: {organoid_profile_df.shape}")
 sc_profile_df.insert(2, "parent_organoid", -1)
 
 
-# In[7]:
+# In[ ]:
 
 
 x_y_z_sc_colnames = [
     x
     for x in sc_profile_df.columns
-    if "Area" in x and "center" in x.lower() and "Nuclei" in x
+    if "area" in x.lower() and "center" in x.lower() and "nuclei" in x.lower()
 ]
 print(
     f"The nuclei centroids in the single-cell profile are in the columns:\n{x_y_z_sc_colnames}"
@@ -215,3 +232,4 @@ organoid_profile_df.head()
 
 sc_profile_df.to_parquet(sc_profile_output_path, index=False)
 sc_profile_df.head()
+
