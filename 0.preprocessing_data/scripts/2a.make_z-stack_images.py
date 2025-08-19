@@ -34,13 +34,13 @@ else:
 
 list_of_patients = [  # will be in a separate file in the future
     "NF0014",
-    # "NF0016",
-    # "NF0018",
-    # "NF0021",
-    # "NF0030",
-    # "NF0040",
-    # "SARCO219",
-    # "SARCO361",
+    "NF0016",
+    "NF0018",
+    "NF0021",
+    "NF0030",
+    "NF0040",
+    "SARCO219",
+    "SARCO361",
 ]
 
 
