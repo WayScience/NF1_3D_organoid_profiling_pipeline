@@ -94,7 +94,7 @@ organoid_profile_output_path = pathlib.Path(
 ).resolve()
 
 
-# In[5]:
+# In[6]:
 
 
 sc_profile_df = pd.read_parquet(sc_profile_path)
@@ -103,7 +103,7 @@ print(f"Single-cell profile shape: {sc_profile_df.shape}")
 print(f"Organoid profile shape: {organoid_profile_df.shape}")
 
 
-# In[6]:
+# In[7]:
 
 
 # initialize the parent organoid column
@@ -166,7 +166,7 @@ for organoid_index, organoid_row in organoid_profile_df.iterrows():
 
 # ### Add single-cell counts for each organoid
 
-# In[10]:
+# In[ ]:
 
 
 organoid_sc_counts = (
@@ -191,7 +191,29 @@ organoid_profile_df.insert(2, "single_cell_count", sc_count)
 # This will help with file-based checking and merging.
 #
 
-# In[11]:
+# In[ ]:
+
+
+if organoid_profile_df.empty:
+    # add a row with Na values
+    organoid_profile_df.loc[len(organoid_profile_df)] = [None] * len(
+        organoid_profile_df.columns
+    )
+    organoid_profile_df["image_set"] = well_fov
+
+
+# In[12]:
+
+
+if sc_profile_df.empty:
+    # add a row with Na values
+    sc_profile_df.loc[len(sc_profile_df)] = [None] * len(sc_profile_df.columns)
+    sc_profile_df["image_set"] = well_fov
+
+
+# ### Save the profiles
+
+# In[13]:
 
 
 if organoid_profile_df.empty:
