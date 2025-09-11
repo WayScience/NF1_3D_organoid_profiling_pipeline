@@ -17,8 +17,6 @@ python "$git_root/1.image_quality_control/scripts/0.cp_image_qc.py"
 
 echo "CellProfiler runs have finished!"
 
-echo "CellProfiler runs have finished!"
-
 # deactivate the CellProfiler environment
 conda deactivate
 # activate the preprocessing environment

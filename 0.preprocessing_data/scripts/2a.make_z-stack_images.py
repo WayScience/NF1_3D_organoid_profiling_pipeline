@@ -5,21 +5,32 @@
 
 # ## Import libraries
 
-# In[1]:
+# In[ ]:
 
 
 import pathlib
 import pprint
+import sys
 
 import numpy as np
+import pandas as pd
 import tifffile as tiff
 
-# check if in a jupyter notebook
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
+# Get the current working directory
+cwd = pathlib.Path.cwd()
+
+if (cwd / ".git").is_dir():
+    root_dir = cwd
+else:
+    root_dir = None
+    for parent in cwd.parents:
+        if (parent / ".git").is_dir():
+            root_dir = parent
+            break
+sys.path.append(str(root_dir / "utils"))
+from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
+
+root_dir, in_notebook = init_notebook()
 
 if in_notebook:
     import tqdm.notebook as tqdm
@@ -32,44 +43,61 @@ else:
 # In[ ]:
 
 
-list_of_patients = [  # will be in a separate file in the future
-    "NF0014",
-    "NF0016",
-    "NF0018",
-    "NF0021",
-    "NF0030",
-    "NF0040",
-    "SARCO219",
-    "SARCO361",
-]
+bandicoot_path = pathlib.Path("~/mnt/bandicoot").resolve()
+if bandicoot_path.exists():
+    bandicoot = True
+else:
+    bandicoot = False
 
 
-# In[3]:
+# In[ ]:
+
+
+raw_image_dir, output_base_dir = avoid_path_crash_bandicoot(bandicoot_path)
+
+
+# In[ ]:
+
+
+# # patient_ids
+# patient_id_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
+#     strict=True
+# )
+# list_of_patients = pd.read_csv(patient_id_file_path, header=None)[0].tolist()
+
+list_of_patients = ["NF0035_T1"]
+
+
+# In[ ]:
 
 
 patient_input_dict = {}
 for patient in list_of_patients:
     patient_input_dict[patient] = {
-        "raw_images": pathlib.Path(f"../../data/{patient}/raw_images").resolve(),
-        "zstack_output": pathlib.Path(f"../../data/{patient}/zstack_images").resolve(),
+        "raw_images": pathlib.Path(
+            f"{raw_image_dir}/data/{patient}/raw_images"
+        ).resolve(),
+        "zstack_output": pathlib.Path(
+            f"{raw_image_dir}/data/{patient}/zstack_images"
+        ).resolve(),
     }
 pprint.pprint(patient_input_dict)
 
 
-# In[4]:
+# In[ ]:
 
 
 # Image extensions that we are looking to copy
 image_extensions = {".tif", ".tiff"}
 
 
-# In[5]:
+# In[ ]:
 
 
-unlisted_images = {"patient": ["NF0014"], "image_set": ["F11-3"]}
+unlisted_images = {"patient": ["NF0014_T1"], "image_set": ["F11-3"]}
 
 
-# In[6]:
+# In[ ]:
 
 
 image_extensions = {".tif", ".tiff"}
@@ -83,7 +111,7 @@ channel_images
 
 # ## Create list of the well-site folders
 
-# In[7]:
+# In[ ]:
 
 
 # loop through patients, well_fovs, and each channel

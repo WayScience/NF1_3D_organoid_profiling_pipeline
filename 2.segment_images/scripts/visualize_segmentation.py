@@ -88,6 +88,10 @@ def animate_view(
 
     animation.animate(output_path_name, canvas_only=True)
 
+image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+
+sys.path.append(f"{root_dir}/utils")
+from segmentation_decoupling import euclidian_2D_distance
 
 # In[ ]:
 

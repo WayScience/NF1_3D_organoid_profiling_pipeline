@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
-import gc
 import os
 import pathlib
 import time
@@ -22,18 +21,17 @@ from texture_utils import measure_3D_texture
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from arg_parsing_utils import check_for_missing_args, parse_args
+from notebook_init_utils import bandicoot_check, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
-
+root_dir, in_notebook = init_notebook()
 sys.path.append(f"{root_dir}/3.cellprofiling/featurization_utils/")
 
 from featurization_parsable_arguments import parse_featurization_args
@@ -41,7 +39,7 @@ from loading_classes import ImageSetLoader, ObjectLoader
 from resource_profiling_util import get_mem_and_time_profiling
 from texture_utils import measure_3D_texture
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:

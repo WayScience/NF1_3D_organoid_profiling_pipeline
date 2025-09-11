@@ -19,7 +19,6 @@ except NameError:
 
 from loading_classes import ImageSetLoader
 
-
 # In[2]:
 
 

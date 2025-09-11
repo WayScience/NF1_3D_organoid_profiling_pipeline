@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
-import argparse
 import pathlib
 import shutil
 import sys
@@ -12,75 +11,52 @@ import sys
 import numpy as np
 import tqdm
 
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-    # check if in a jupyter notebook
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-# Get the current working directory
 cwd = pathlib.Path.cwd()
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from arg_parsing_utils import check_for_missing_args, parse_args
+from notebook_init_utils import bandicoot_check, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
+root_dir, in_notebook = init_notebook()
+
+image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
 
 sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
 from file_checking import check_number_of_files
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
-    argparser = argparse.ArgumentParser(
-        description="set up directories for the analysis of the data"
+    args = parse_args()
+    well_fov = args["well_fov"]
+    patient = args["patient"]
+    check_for_missing_args(
+        well_fov=well_fov,
+        patient=patient,
     )
-
-    argparser.add_argument(
-        "--patient",
-        type=str,
-        required=True,
-        help="patient name, e.g. 'P01'",
-    )
-    argparser.add_argument(
-        "--well_fov",
-        type=str,
-        help="Path to the input directory containing the tiff images",
-    )
-
-    args = argparser.parse_args()
-    patient = args.patient
-    well_fov = args.well_fov
 else:
-    patient = "NF0030"
+    patient = "NF0014_T1"
     well_fov = "D2-1"
 
 
-# In[3]:
+# In[ ]:
 
 
 # set path to the processed data dir
 segmentation_data_dir = pathlib.Path(
-    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
 ).resolve(strict=True)
 zstack_dir = pathlib.Path(
-    f"{root_dir}/data/{patient}/zstack_images/{well_fov}"
+    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}"
 ).resolve(strict=True)
 
 

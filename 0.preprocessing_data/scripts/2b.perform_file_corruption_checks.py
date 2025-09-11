@@ -5,49 +5,41 @@
 
 # ## Import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import pathlib
 import pprint
+import sys
 
 import numpy as np
+import pandas as pd
 import tifffile as tiff
 
-# check if in a jupyter notebook
-
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-    # Get the current working directory
+# Get the current working directory
 cwd = pathlib.Path.cwd()
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
-
+root_dir, in_notebook = init_notebook()
 if in_notebook:
     import tqdm.notebook as tqdm
 else:
     import tqdm
 
 
-# In[ ]:
+# In[2]:
 
-# Create max projections per well-fov-patient to evaluate the size of the files (small = corrupted)
+
 def max_z_projection(patient: str, well_fov: str) -> None:
     """
     Create a maximum intensity projection of the z-stack images for a given patient and well_fov.
@@ -116,27 +108,33 @@ def max_z_projection(patient: str, well_fov: str) -> None:
 # In[ ]:
 
 
-list_of_patients = [  # will be in a separate file in the future
-    "NF0014",
-    "NF0016",
-    "NF0018",
-    "NF0021",
-    "NF0030",
-    "NF0040",
-    "SARCO219",
-    "SARCO361",
-]
+bandicoot_path = pathlib.Path("~/mnt/bandicoot").resolve()
+raw_image_dir, output_base_dir = avoid_path_crash_bandicoot(bandicoot_path)
 
 
-# In[ ]:
+# In[4]:
+
+
+# patient_ids
+# patient_id_file_path = pathlib.Path(f"{raw_image_dir}/data/patient_IDs.txt").resolve(
+#     strict=True
+# )
+# list_of_patients = pd.read_csv(patient_id_file_path, header=None)[0].tolist()
+
+list_of_patients = ["NF0035_T1"]
+
+
+# In[5]:
 
 
 patient_input_dict = {}
 for patient in list_of_patients:
     patient_input_dict[patient] = {
-        "raw_images": pathlib.Path(f"{root_dir}/data/{patient}/raw_images").resolve(),
+        "raw_images": pathlib.Path(
+            f"{raw_image_dir}/data/{patient}/raw_images"
+        ).resolve(),
         "zstack_output": pathlib.Path(
-            f"{root_dir}/data/{patient}/zstack_images"
+            f"{output_base_dir}/data/{patient}/zstack_images"
         ).resolve(),
     }
 pprint.pprint(patient_input_dict)
@@ -149,7 +147,7 @@ pprint.pprint(patient_input_dict)
 # This is done by checking if the size of the channel images for a given well-fov is the same as the size of the channel images for the other well-fovs.
 # If the size is different, then the file is corrupted.
 
-# In[ ]:
+# In[6]:
 
 
 patient_well_fovs_to_fix = []
@@ -185,7 +183,7 @@ pprint.pprint(patient_well_fovs_to_fix)
 # ## With the list of corrupted files, recreate the z-stack images
 # This is the point where the z-stack images are created from the individual z-slice images for each FOV per well.
 
-# In[ ]:
+# In[7]:
 
 
 for patient_well_fov in patient_well_fovs_to_fix:

@@ -7,11 +7,11 @@
 
 # ## import libraries
 
-# In[1]:
+# In[ ]:
 
 
-import argparse
 import pathlib
+import sys
 
 import matplotlib.pyplot as plt
 
@@ -24,29 +24,23 @@ import tqdm
 from cellpose import core, models
 from skimage import io
 
-# check if in a jupyter notebook
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-# Get the current working directory
 cwd = pathlib.Path.cwd()
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from arg_parsing_utils import check_for_missing_args, parse_args
+from notebook_init_utils import bandicoot_check, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
+root_dir, in_notebook = init_notebook()
+
+image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
 
 
 # ## parse args and set paths
@@ -54,52 +48,34 @@ if root_dir is None:
 # If if a notebook run the hardcoded paths.
 # However, if this is run as a script, the paths are set by the parsed arguments.
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
-    print("Running as script")
-    # set up arg parser
-    parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
-
-    parser.add_argument(
-        "--patient",
-        type=str,
-        help="Patient ID to use for the segmentation",
+    args = parse_args()
+    window_size = args["window_size"]
+    clip_limit = args["clip_limit"]
+    well_fov = args["well_fov"]
+    patient = args["patient"]
+    check_for_missing_args(
+        well_fov=well_fov,
+        patient=patient,
+        window_size=window_size,
+        clip_limit=clip_limit,
     )
-
-    parser.add_argument(
-        "--well_fov",
-        type=str,
-        help="Path to the input directory containing the tiff images",
-    )
-    parser.add_argument(
-        "--window_size", type=int, help="Size of the window to use for the segmentation"
-    )
-    parser.add_argument(
-        "--clip_limit",
-        type=float,
-        help="Clip limit for the adaptive histogram equalization",
-    )
-
-    args = parser.parse_args()
-    window_size = args.window_size
-    clip_limit = args.clip_limit
-    well_fov = args.well_fov
-    patient = args.patient
 else:
     print("Running in a notebook")
-    patient = "NF0014"
+    patient = "NF0014_T1"
     well_fov = "E10-2"
     window_size = 3
     clip_limit = 0.05
 
 
-input_dir = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}").resolve(
-    strict=True
-)
+input_dir = pathlib.Path(
+    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}"
+).resolve(strict=True)
 mask_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 

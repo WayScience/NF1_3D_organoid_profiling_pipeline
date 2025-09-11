@@ -6,6 +6,7 @@
 
 import os
 import pathlib
+import sys
 
 import pandas as pd
 from arg_parsing_utils import parse_args
@@ -94,7 +95,7 @@ organoid_profile_output_path = pathlib.Path(
 ).resolve()
 
 
-# In[6]:
+# In[5]:
 
 
 sc_profile_df = pd.read_parquet(sc_profile_path)
@@ -103,7 +104,7 @@ print(f"Single-cell profile shape: {sc_profile_df.shape}")
 print(f"Organoid profile shape: {organoid_profile_df.shape}")
 
 
-# In[7]:
+# In[6]:
 
 
 # initialize the parent organoid column
@@ -166,7 +167,7 @@ for organoid_index, organoid_row in organoid_profile_df.iterrows():
 
 # ### Add single-cell counts for each organoid
 
-# In[ ]:
+# In[10]:
 
 
 organoid_sc_counts = (
@@ -191,7 +192,7 @@ organoid_profile_df.insert(2, "single_cell_count", sc_count)
 # This will help with file-based checking and merging.
 #
 
-# In[ ]:
+# In[11]:
 
 
 if organoid_profile_df.empty:
@@ -205,13 +206,8 @@ if organoid_profile_df.empty:
 # In[12]:
 
 
-if sc_profile_df.empty:
-    # add a row with Na values
-    sc_profile_df.loc[len(sc_profile_df)] = [None] * len(sc_profile_df.columns)
-    sc_profile_df["image_set"] = well_fov
+print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
-
-# ### Save the profiles
 
 # In[13]:
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -25,20 +25,24 @@ cwd = pathlib.Path.cwd()
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from arg_parsing_utils import parse_args
+from notebook_init_utils import bandicoot_check, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
+root_dir, in_notebook = init_notebook()
+
+profile_base_dir = bandicoot_check(
+    pathlib.Path("~/mnt/bandicoot/NF1_organoid_data").resolve(), root_dir
+)
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -160,7 +164,7 @@ for compartment in feature_types_dict.keys():
                         continue
 
 
-# In[ ]:
+# In[5]:
 
 
 final_df_dict = {

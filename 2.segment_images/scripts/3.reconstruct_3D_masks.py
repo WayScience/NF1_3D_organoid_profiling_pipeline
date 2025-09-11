@@ -21,10 +21,9 @@
 
 # ## Imports
 
-# In[1]:
+# In[ ]:
 
 
-import argparse
 import pathlib
 import sys
 
@@ -36,76 +35,51 @@ import skimage
 import tifffile
 import tqdm
 
-# check if in a jupyter notebook
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-# Get the current working directory
 cwd = pathlib.Path.cwd()
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from arg_parsing_utils import check_for_missing_args, parse_args
+from notebook_init_utils import bandicoot_check, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
+root_dir, in_notebook = init_notebook()
 
+image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
 
-sys.path.append(f"{root_dir}/utils")
 from segmentation_decoupling import euclidian_2D_distance
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
-    print("Running as script")
-    # set up arg parser
-    parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
+    args = parse_args()
 
-    parser.add_argument(
-        "--patient",
-        type=str,
-        help="The patient ID",
+    well_fov = args["well_fov"]
+    patient = args["patient"]
+    compartment = args["compartment"]
+    check_for_missing_args(
+        well_fov=well_fov,
+        patient=patient,
+        compartment=compartment,
     )
-
-    parser.add_argument(
-        "--well_fov",
-        type=str,
-        help="Path to the input directory containing the tiff images",
-    )
-
-    parser.add_argument(
-        "--compartment",
-        type=str,
-        default="none",
-        help="The compartment to segment",
-    )
-
-    args = parser.parse_args()
-    well_fov = args.well_fov
-    compartment = args.compartment
-    patient = args.patient
 else:
     print("Running in a notebook")
     well_fov = "C10-1"
     compartment = "nuclei"
-    patient = "NF0021"
+    patient = "NF0014_T1"
 
 input_dir = pathlib.Path(
-    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
 ).resolve()
 mask_dir = pathlib.Path(
-    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
 ).resolve()
 if compartment == "nuclei":
     input_image_dir = pathlib.Path(mask_dir / "nuclei_masks_decoupled.tiff").resolve(

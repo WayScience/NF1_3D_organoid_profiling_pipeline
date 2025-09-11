@@ -7,7 +7,7 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
+jupyter nbconvert --to=script --FilesWriter.build_directory="$git_root"/0.preprocessing_data/scripts/ "$git_root"/0.preprocessing_data/notebooks/*.ipynb
 
 python "$git_root"/0.preprocessing_data/scripts/0.patient_specific_preprocessing.py
 python "$git_root"/0.preprocessing_data/scripts/1.update_file_structure.py

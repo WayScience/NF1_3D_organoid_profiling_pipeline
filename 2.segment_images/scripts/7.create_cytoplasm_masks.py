@@ -4,80 +4,58 @@
 # In[ ]:
 
 
-import argparse
 import pathlib
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tifffile
 
-# check if in a jupyter notebook
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-# Get the current working directory
 cwd = pathlib.Path.cwd()
 
 if (cwd / ".git").is_dir():
     root_dir = cwd
-
 else:
     root_dir = None
     for parent in cwd.parents:
         if (parent / ".git").is_dir():
             root_dir = parent
             break
+sys.path.append(str(root_dir / "utils"))
+from arg_parsing_utils import check_for_missing_args, parse_args
+from notebook_init_utils import bandicoot_check, init_notebook
 
-# Check if a Git root directory was found
-if root_dir is None:
-    raise FileNotFoundError("No Git root directory found.")
+root_dir, in_notebook = init_notebook()
+
+image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
 
 
 # In[ ]:
 
 
 if not in_notebook:
-    print("Running as script")
-    # set up arg parser
-    parser = argparse.ArgumentParser(description="Segment the nuclei of a tiff image")
-
-    parser.add_argument(
-        "--patient",
-        type=str,
-        help="Patient ID",
+    args = parse_args()
+    well_fov = args["well_fov"]
+    patient = args["patient"]
+    check_for_missing_args(
+        well_fov=well_fov,
+        patient=patient,
     )
-
-    parser.add_argument(
-        "--well_fov",
-        type=str,
-        help="Path to the input directory containing the tiff images",
-    )
-
-    args = parser.parse_args()
-    well_fov = args.well_fov
-    patient = args.patient
 
 else:
     print("Running in a notebook")
     well_fov = "C4-2"
-    patient = "NF0014"
+    patient = "NF0014_T1"
 
 
 input_dir = pathlib.Path(
-    f"{root_dir}/data/{patient}/zstack_images/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}/"
 ).resolve(strict=True)
 mask_input_dir = pathlib.Path(
-    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
 ).resolve(strict=True)
-output_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/segmentation_masks/{well_fov}"
-).resolve()
-output_path.mkdir(parents=True, exist_ok=True)
-output_file_path = pathlib.Path(output_path / "cytoplasm_mask.tiff").resolve()
+output_file_path = pathlib.Path(mask_input_dir / "cytoplasm_mask.tiff").resolve()
 
 
 # In[ ]:
@@ -95,7 +73,7 @@ nuclei_masks = tifffile.imread(nuclei_masks_path)
 cell_masks = tifffile.imread(cell_masks_path)
 
 
-# In[4]:
+# In[ ]:
 
 
 cytoplasm_masks = np.zeros_like(cell_masks)
@@ -108,13 +86,13 @@ for z_slice_index in range(nuclei_masks.shape[0]):
     cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
 
-# In[5]:
+# In[ ]:
 
 
 tifffile.imwrite(output_file_path, cytoplasm_masks)
 
 
-# In[6]:
+# In[ ]:
 
 
 if in_notebook:
