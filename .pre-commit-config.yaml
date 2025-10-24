@@ -16,7 +16,7 @@ repos:
     #Code formatter for both python files and jupyter notebooks
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.13.0
+    rev: v0.14.2
     hooks:
       # Run the formatter.
     -   id: ruff-format
@@ -30,7 +30,7 @@ repos:
 
     # remove unused imports
 -   repo: https://github.com/hadialqattan/pycln.git
-    rev: v2.5.0
+    rev: v2.6.0
     hooks:
     -   id: pycln
 

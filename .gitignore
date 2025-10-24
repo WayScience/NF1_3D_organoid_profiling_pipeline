@@ -232,3 +232,4 @@ nextflow_pipeline/.nextflow.log*
 5.EDA/results/*
 6.dynamic_viz_Rshiny/.Renviron
 *Rplots.pdf
+profile_prep_for_sage/data_for_sage/*

@@ -10,6 +10,7 @@
 # In[ ]:
 
 
+import os
 import pathlib
 import sys
 
@@ -35,12 +36,16 @@ else:
             root_dir = parent
             break
 sys.path.append(str(root_dir / "utils"))
+
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 
 # ## parse args and set paths
@@ -48,7 +53,7 @@ image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root
 # If if a notebook run the hardcoded paths.
 # However, if this is run as a script, the paths are set by the parsed arguments.
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -57,25 +62,31 @@ if not in_notebook:
     clip_limit = args["clip_limit"]
     well_fov = args["well_fov"]
     patient = args["patient"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
         window_size=window_size,
         clip_limit=clip_limit,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "E10-2"
+    well_fov = "C4-2"
     window_size = 3
     clip_limit = 0.05
+    input_subparent_name = "deconvolved_images"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 
 input_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 mask_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
@@ -96,7 +107,7 @@ files = [str(x) for x in files if x.suffix in image_extensions]
 # get the nuclei image
 for f in files:
     if "405" in f:
-        nuclei = io.imread(f)
+        nuclei = read_zstack_image(f)  # uses tifffile on the backend
 nuclei = np.array(nuclei)
 imgs = skimage.exposure.equalize_adapthist(nuclei, clip_limit=clip_limit)
 original_imgs = imgs
@@ -110,7 +121,6 @@ print("number of z slices in the original image:", original_z_slice_count)
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
-
 image_stack_2_5D = np.empty((0, imgs.shape[1], imgs.shape[2]), dtype=imgs.dtype)
 for image_index in range(imgs.shape[0]):
     image_stack_window = imgs[image_index : image_index + window_size]
@@ -127,13 +137,17 @@ print("2.5D image stack shape:", image_stack_2_5D.shape)
 
 # ## Cellpose
 
-# In[ ]:
+# In[6]:
 
 
 use_GPU = torch.cuda.is_available()
 # Load the model
 model_name = "nuclei"
-model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
+
+model = models.CellposeModel(
+    gpu=use_GPU,
+    model_type=model_name,
+)
 
 output_dict = {
     "slice": [],
@@ -143,9 +157,7 @@ output_dict = {
 for slice in tqdm.tqdm(range(imgs.shape[0])):
     # Perform segmentation
     output_dict["slice"].append(slice)
-    labels, details, _ = model.eval(
-        imgs[slice, :, :], channels=[0, 0]
-    )  # no diamter needed for CP 4.0
+    labels, details, _ = model.eval(imgs[slice, :, :], channels=[0, 0], diameter=100)
     output_dict["labels"].append(labels)
     output_dict["details"].append(details)
 

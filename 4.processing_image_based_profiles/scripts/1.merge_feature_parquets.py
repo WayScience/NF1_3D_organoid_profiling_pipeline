@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -38,7 +38,8 @@ from notebook_init_utils import bandicoot_check, init_notebook
 root_dir, in_notebook = init_notebook()
 
 profile_base_dir = bandicoot_check(
-    pathlib.Path("~/mnt/bandicoot/NF1_organoid_data").resolve(), root_dir
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
+    root_dir,
 )
 
 

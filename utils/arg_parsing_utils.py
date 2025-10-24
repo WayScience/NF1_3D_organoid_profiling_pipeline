@@ -82,6 +82,18 @@ def parse_args():
         default=None,
         help="Type of processor to use, e.g. 'CPU' or 'GPU'",
     )
+    argparser.add_argument(
+        "--input_subparent_name",
+        type=str,
+        default=None,
+        help="Name of the subparent directory for input images, e.g. 'deconvolved_images'",
+    )
+    argparser.add_argument(
+        "--mask_subparent_name",
+        type=str,
+        default=None,
+        help="Name of the subparent directory for segmentation masks, e.g. 'deconvolved_segmentation_masks'",
+    )
 
     args = argparser.parse_args()
     well_fov = args.well_fov
@@ -91,6 +103,8 @@ def parse_args():
     compartment = args.compartment
     channel = args.channel
     processor_type = args.processor_type
+    input_subparent_name = args.input_subparent_name
+    mask_subparent_name = args.mask_subparent_name
 
     return {
         "well_fov": well_fov,
@@ -100,4 +114,6 @@ def parse_args():
         "compartment": compartment,
         "channel": channel,
         "processor_type": processor_type,
+        "input_subparent_name": input_subparent_name,
+        "mask_subparent_name": mask_subparent_name,
     }

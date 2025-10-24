@@ -8,6 +8,7 @@
 # In[ ]:
 
 
+import os
 import pathlib
 import pprint
 import sys
@@ -43,7 +44,7 @@ else:
 # In[ ]:
 
 
-bandicoot_path = pathlib.Path("~/mnt/bandicoot").resolve()
+bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve()
 if bandicoot_path.exists():
     bandicoot = True
 else:

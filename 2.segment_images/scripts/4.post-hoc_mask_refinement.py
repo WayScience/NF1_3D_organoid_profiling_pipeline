@@ -12,9 +12,10 @@
 # While others might be correct or incorrect but there is not logical way to determine if they are correct or not.
 # These cases are not corrected.
 
-# In[ ]:
+# In[1]:
 
 
+import os
 import pathlib
 import sys
 from typing import List, Tuple
@@ -36,15 +37,18 @@ else:
             break
 sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 from segmentation_decoupling import euclidian_2D_distance
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -52,19 +56,22 @@ if not in_notebook:
     compartment = args["compartment"]
     well_fov = args["well_fov"]
     patient = args["patient"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
         compartment=compartment,
+        mask_subparent_name=mask_subparent_name,
     )
 else:
     print("Running in a notebook")
-    well_fov = "G9-2"
-    compartment = "organoid"
+    well_fov = "C4-2"
+    compartment = "nuclei"
     patient = "NF0014_T1"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 mask_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 
 
@@ -84,12 +91,12 @@ elif compartment == "organoid":
 else:
     raise ValueError("Compartment must be either nuclei, cell or organoid")
 
-mask = tifffile.imread(mask_path)
+mask = read_zstack_image(mask_path)
 
 
 # ### Functions for refinement
 
-# In[ ]:
+# In[4]:
 
 
 def calculate_bbox_area(bbox: Tuple[int, int, int, int]) -> int:
@@ -498,7 +505,7 @@ for z in z_slices[: -(sliding_window_context - 1)]:
     print("writing the mask for z slice", z)
 
 
-# In[ ]:
+# In[8]:
 
 
 # reorder the organoid labels

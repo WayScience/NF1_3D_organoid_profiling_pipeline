@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[7]:
 
 
+import os
 import pathlib
 import sys
 
@@ -24,11 +25,14 @@ else:
             break
 sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 
 # In[ ]:
@@ -38,27 +42,33 @@ if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 
 else:
     print("Running in a notebook")
     well_fov = "C4-2"
     patient = "NF0014_T1"
+    input_subparent_name = "deconvolved_images"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 
 input_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
 ).resolve(strict=True)
 mask_input_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 output_file_path = pathlib.Path(mask_input_dir / "cytoplasm_mask.tiff").resolve()
 
 
-# In[ ]:
+# In[9]:
 
 
 # get all the masks
@@ -69,11 +79,11 @@ cell_masks_path = pathlib.Path(mask_input_dir / "cell_masks_watershed.tiff").res
     strict=True
 )
 
-nuclei_masks = tifffile.imread(nuclei_masks_path)
-cell_masks = tifffile.imread(cell_masks_path)
+nuclei_masks = read_zstack_image(nuclei_masks_path)
+cell_masks = read_zstack_image(cell_masks_path)
 
 
-# In[ ]:
+# In[10]:
 
 
 cytoplasm_masks = np.zeros_like(cell_masks)
@@ -86,13 +96,13 @@ for z_slice_index in range(nuclei_masks.shape[0]):
     cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
 
-# In[ ]:
+# In[11]:
 
 
 tifffile.imwrite(output_file_path, cytoplasm_masks)
 
 
-# In[ ]:
+# In[12]:
 
 
 if in_notebook:

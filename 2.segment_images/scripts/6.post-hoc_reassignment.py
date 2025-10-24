@@ -4,9 +4,10 @@
 # The goal of this notebook is to reassign segmentation labels based on the objects that they are contained in.
 # This will mean that the segmentation label id of the cell will match that of the nucleus that it is contained in.
 
-# In[ ]:
+# In[1]:
 
 
+import os
 import pathlib
 import sys
 
@@ -28,11 +29,14 @@ else:
             break
 sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 
 # In[ ]:
@@ -42,17 +46,20 @@ if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
+        mask_subparent_name=mask_subparent_name,
     )
 else:
     print("Running in a notebook")
     well_fov = "C4-2"
     patient = "NF0014_T1"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 mask_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 
 
@@ -204,13 +211,12 @@ def mask_label_reassignment(
 
 
 # get the organoid masks
-# cell_mask_path = mask_dir / "cell_masks_reconstructed_corrected.tiff"
 cell_mask_path = mask_dir / "cell_masks_watershed.tiff"
 nuclei_mask_path = mask_dir / "nuclei_masks_reconstructed_corrected.tiff"
 nuclei_mask_output_path = mask_dir / "nuclei_masks_reassigned.tiff"
 
-cell_mask = tifffile.imread(cell_mask_path)
-nuclei_mask = tifffile.imread(nuclei_mask_path)
+cell_mask = read_zstack_image(cell_mask_path)
+nuclei_mask = read_zstack_image(nuclei_mask_path)
 
 
 # In[5]:

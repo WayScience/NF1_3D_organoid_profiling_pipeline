@@ -61,7 +61,7 @@ HPC = args.HPC
 print(f"HPC: {HPC}")
 
 
-# In[3]:
+# In[ ]:
 
 
 # check if bandicoot is set
@@ -110,7 +110,7 @@ else:
 output_base_dir = root_dir
 
 
-# In[4]:
+# In[ ]:
 
 
 # Define parent and destination directories in a single dictionary
@@ -282,7 +282,7 @@ def has_equal_images_per_channel(
 
 # Run this cell through the script
 
-# In[6]:
+# In[ ]:
 
 
 # Function to process a single nested directory

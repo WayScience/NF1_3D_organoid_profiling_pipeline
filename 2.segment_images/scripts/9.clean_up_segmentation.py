@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
+import os
 import pathlib
 import shutil
 import sys
@@ -23,40 +24,49 @@ else:
             break
 sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
 from file_checking import check_number_of_files
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 else:
     patient = "NF0014_T1"
-    well_fov = "D2-1"
+    well_fov = "C4-2"
+    input_subparent_name = "convolution_25"
+    mask_subparent_name = "convolution_25_segmentation_masks"
 
 
-# In[ ]:
+# In[3]:
 
 
 # set path to the processed data dir
 segmentation_data_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 zstack_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 
 
@@ -122,5 +132,5 @@ for file in tqdm.tqdm(segmentation_data_files):
     for original_name, new_name in masks_names_to_keep_dict.items():
         if file.name == new_name:
             destination = zstack_dir / new_name
-            shutil.copy(file, destination)
+            shutil.copyfile(file, destination)
             print(f"Copied file: {file} to {destination}")

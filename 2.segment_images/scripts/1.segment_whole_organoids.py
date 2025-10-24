@@ -5,9 +5,10 @@
 # The end goals is to segment cell and extract morphology features from cellprofiler.
 # These masks must be imported into cellprofiler to extract features.
 
-# In[ ]:
+# In[1]:
 
 
+import os
 import pathlib
 import sys
 
@@ -36,14 +37,17 @@ else:
             break
 sys.path.append(str(root_dir / "utils/"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 
-# In[ ]:
+# In[2]:
 
 
 def segment_with_diameter(
@@ -141,7 +145,7 @@ def test_segment_with_diameter():
 test_segment_with_diameter()
 
 
-# In[ ]:
+# In[3]:
 
 
 if not in_notebook:
@@ -150,26 +154,32 @@ if not in_notebook:
     clip_limit = args["clip_limit"]
     well_fov = args["well_fov"]
     patient = args["patient"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
         window_size=window_size,
         clip_limit=clip_limit,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 
 else:
-    well_fov = "C2-1"
+    well_fov = "C4-2"
     window_size = 4
     clip_limit = 0.05
     patient = "NF0014_T1"
+    input_subparent_name = "deconvolved_images"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 
 input_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 
 mask_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{input_dir.stem}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{input_dir.stem}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
@@ -190,29 +200,24 @@ files = [str(x) for x in files if x.suffix in image_extensions]
 # find the cytoplasmic channels in the image set
 for f in files:
     if "405" in f:
-        nuclei = io.imread(f)
+        nuclei = read_zstack_image(f)
     elif "488" in f:
-        cyto1 = io.imread(f)
+        cyto1 = read_zstack_image(f)
     elif "555" in f:
-        cyto2 = io.imread(f)
+        cyto2 = read_zstack_image(f)
     elif "640" in f:
-        cyto3 = io.imread(f)
+        cyto3 = read_zstack_image(f)
     elif "TRANS" in f:
-        brightfield = io.imread(f)
+        brightfield = read_zstack_image(f)
     else:
         print(f"Unknown channel: {f}")
 
 cyto = np.max(
     [
-        # cyto1,
         cyto2,
-        # cyto3,
     ],
     axis=0,
 )
-# pick which channels to use for cellpose
-# cyto = skimage.exposure.equalize_adapthist(cyto, clip_limit=clip_limit)
-
 
 original_cyto_image = cyto.copy()
 

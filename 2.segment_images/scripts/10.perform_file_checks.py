@@ -4,6 +4,7 @@
 # In[ ]:
 
 
+import os
 import pathlib
 import sys
 
@@ -22,11 +23,14 @@ else:
             break
 sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
 from file_checking import check_number_of_files
@@ -37,11 +41,17 @@ from file_checking import check_number_of_files
 if not in_notebook:
     args = parse_args()
     patient = args["patient"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         patient=patient,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 else:
     patient = "NF0014_T1"
+    input_subparent_name = "deconvolved_images"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 
 # In[ ]:
@@ -49,11 +59,11 @@ else:
 
 # set path to the processed data dir
 segmentation_data_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/"
 ).resolve(strict=True)
-zstack_dir = pathlib.Path(f"{image_base_dir}/data/{patient}/zstack_images/").resolve(
-    strict=True
-)
+zstack_dir = pathlib.Path(
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/"
+).resolve(strict=True)
 
 
 # In[ ]:

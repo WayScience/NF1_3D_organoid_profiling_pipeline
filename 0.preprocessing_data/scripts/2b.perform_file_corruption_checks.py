@@ -5,9 +5,10 @@
 
 # ## Import libraries
 
-# In[1]:
+# In[ ]:
 
 
+import os
 import pathlib
 import pprint
 import sys
@@ -108,7 +109,7 @@ def max_z_projection(patient: str, well_fov: str) -> None:
 # In[ ]:
 
 
-bandicoot_path = pathlib.Path("~/mnt/bandicoot").resolve()
+bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve()
 raw_image_dir, output_base_dir = avoid_path_crash_bandicoot(bandicoot_path)
 
 

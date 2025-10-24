@@ -3,7 +3,7 @@
 
 # This notebook performs profile aggregation.
 
-# In[1]:
+# In[ ]:
 
 
 import os

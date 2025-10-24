@@ -7,10 +7,11 @@
 
 # ## import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import itertools
+import os
 import pathlib
 import sys
 
@@ -43,11 +44,14 @@ else:
             break
 sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
+from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-image_base_dir = bandicoot_check(pathlib.Path("~/mnt/bandicoot").resolve(), root_dir)
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
 
 sys.path.append(f"{root_dir}/utils")
 from segmentation_decoupling import (
@@ -60,37 +64,41 @@ from segmentation_decoupling import (
 
 # ## parse args and set paths
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
     args = parse_args()
     window_size = args["window_size"]
-
     well_fov = args["well_fov"]
     patient = args["patient"]
     compartment = args["compartment"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
         compartment=compartment,
         window_size=window_size,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 
 else:
     print("Running in a notebook")
-    print("Running in a notebook")
-    well_fov = "C2-1"
-    compartment = "organoid"
+    well_fov = "C4-2"
+    compartment = "nuclei"
     window_size = 4
     patient = "NF0014_T1"
+    input_subparent_name = "deconvolved_images"
+    mask_subparent_name = "deconvolved_segmentation_masks"
 
 input_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 
 mask_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
 
@@ -135,11 +143,11 @@ files = [str(x) for x in files if x.suffix in image_extensions]
 # get the nuclei image
 for f in files:
     if compartment == "nuclei" and "405" in f:
-        imgs = io.imread(f)
+        imgs = read_zstack_image(f)
     elif compartment == "cell" and "555" in f:
-        imgs = io.imread(f)
+        imgs = read_zstack_image(f)
     elif compartment == "organoid" and "488" in f:
-        imgs = io.imread(f)
+        imgs = read_zstack_image(f)
 imgs = np.array(imgs)
 original_imgs = imgs.copy()
 original_img_shape = imgs.shape
@@ -163,7 +171,6 @@ for zslice, arrays in tqdm.tqdm(enumerate(reconstruction_dict)):
     df = extract_unique_masks(reconstruction_dict[zslice])
     merged_df = get_combinations_of_indices(df, distance_threshold=distance_threshold)
     # combine dfs for each window index
-    # for window_index in range(window_size + 1):
     merged_df = merge_sets_df(merged_df)
     if not merged_df.empty:
         merged_df.loc[:, "slice"] = zslice
