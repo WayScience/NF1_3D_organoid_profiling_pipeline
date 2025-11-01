@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gff_3d_utils"
+version = "0.0.0"
+description = "Utility package for GFF 3D organoid profiling pipeline"
+requires-python = ">=3.11"
+authors = [ { name = "Your Name", email = "you@example.com" } ]
+license = { text = "MIT" }
+
+dependencies = [
+    "jupyter",
+    "tifffile",
+    "jupyterlab",
+    "pandas",
+    "scipy",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "pre-commit",
+    "ipykernel",
+
+]
+
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["errors*"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+    "uv>=0.9.7",
+]

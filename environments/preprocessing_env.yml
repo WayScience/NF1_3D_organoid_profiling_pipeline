@@ -2,16 +2,16 @@ name: gff_preprocessing_env
 channels:
   - conda-forge
 dependencies:
-  - conda-forge::python
+  - conda-forge::python>=3.11
   - conda-forge::jupyter=1.0.0
   - conda-forge::pip
   - conda-forge::tifffile
   - conda-forge::jupyterlab
-  - conda-forge::pandas=1.4.4
+  - conda-forge::pandas
   - conda-forge::ipykernel
   - conda-forge::nb_conda_kernels
-  - conda-forge::scipy=1.10.0
-  - conda-forge::numpy=1.22
+  - conda-forge::scipy
+  - conda-forge::numpy
   - conda-forge::scikit-learn
   - conda-forge::seaborn
   - conda-forge::umap-learn
@@ -20,3 +20,4 @@ dependencies:
   - pip:
     - Cytotable
     - coSMicQC>=0.1.2
+    - -e ../utils
