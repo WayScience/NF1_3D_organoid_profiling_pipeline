@@ -5,33 +5,20 @@
 
 # ## Import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
 import pprint
-import sys
 
 import numpy as np
 import pandas as pd
 import tifffile as tiff
-
-# Get the current working directory
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
 
 root_dir, in_notebook = init_notebook()
+
 if in_notebook:
     import tqdm.notebook as tqdm
 else:
@@ -106,26 +93,48 @@ def max_z_projection(patient: str, well_fov: str) -> None:
 
 # ## Set input and output directories
 
-# In[ ]:
+# In[3]:
 
 
+# check if bandicoot is set
 bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve()
-raw_image_dir, output_base_dir = avoid_path_crash_bandicoot(bandicoot_path)
+
+bandicoot = False
 
 
 # In[4]:
 
 
-# patient_ids
-# patient_id_file_path = pathlib.Path(f"{raw_image_dir}/data/patient_IDs.txt").resolve(
-#     strict=True
-# )
-# list_of_patients = pd.read_csv(patient_id_file_path, header=None)[0].tolist()
+if bandicoot:
+    # comment out depending on whose computer you are on
+    # mike's computer
+    bandicoot_path = pathlib.Path(
+        os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")
+    ).resolve(strict=True)
+    output_base_dir = bandicoot_path
+else:
+    # comment out depending on whose computer you are on
+    # mike's computer
+    raw_image_dir = pathlib.Path(
+        os.path.expanduser("~/Desktop/20TB_A/NF1_Patient_organoids")
+    ).resolve(strict=True)
+    # Jenna's computer
+    # raw_image_dir_local = pathlib.Path("/media/18tbdrive/GFF_organoid_data/")
+    output_base_dir = root_dir
+print(f"Raw image dir: {root_dir}")
 
-list_of_patients = ["NF0035_T1"]
+
+# In[ ]:
 
 
-# In[5]:
+patient_ids
+patient_id_file_path = pathlib.Path(f"{raw_image_dir}/data/patient_IDs.txt").resolve(
+    strict=True
+)
+list_of_patients = pd.read_csv(patient_id_file_path, header=None)[0].tolist()
+
+
+# In[6]:
 
 
 patient_input_dict = {}
@@ -148,7 +157,7 @@ pprint.pprint(patient_input_dict)
 # This is done by checking if the size of the channel images for a given well-fov is the same as the size of the channel images for the other well-fovs.
 # If the size is different, then the file is corrupted.
 
-# In[6]:
+# In[7]:
 
 
 patient_well_fovs_to_fix = []
@@ -179,14 +188,3 @@ print(
     f"""Need to check and fix a total of {len(patient_well_fovs_to_fix)} patient well_fovs:"""
 )
 pprint.pprint(patient_well_fovs_to_fix)
-
-
-# ## With the list of corrupted files, recreate the z-stack images
-# This is the point where the z-stack images are created from the individual z-slice images for each FOV per well.
-
-# In[7]:
-
-
-for patient_well_fov in patient_well_fovs_to_fix:
-    patient, well_fov = patient_well_fov.split()
-    max_z_projection(patient, well_fov)
