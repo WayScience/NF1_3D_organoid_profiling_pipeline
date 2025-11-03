@@ -87,7 +87,7 @@ print(f"Raw image dir: {raw_image_dir}")
 
 # ## Define paths
 
-# In[5]:
+# In[ ]:
 
 
 # Define parent and destination directories in a single dictionary
@@ -104,82 +104,83 @@ Keys:
 """
 
 dir_mapping = {
-    # "NF0014_T1": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0014_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "NF0014_T2": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/NF0014-T2 Cell Painting/NF0014-T2 Combined/"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0014_T2/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "NF0016_T1": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/NF0016 Cell Painting-Pilot Drug Screening-selected/NF0016-Cell Painting Images/NF0016-images copy"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0016_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "NF0017": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/NF0017-T3-P7 (AGP, Mito Parameter optimization)/Acquisition 03-07-2025"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0017/zstack_images"
-    #     ).resolve(),
-    # "times_nested": 2,
-    # "well_position": 0,
-    # "channel_position": 1    # },
-    # "NF0018_T6": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/NF0018 (T6) Cell Painting-Pilot Drug Screeining/NF0018-Cell Painting Images/NF0018-All Acquisitions"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0018_T6/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "NF0021_T1": {
-    #     "parent": pathlib.Path(f"{raw_image_dir}/NF0021-T1/NF0021-T1 Combined").resolve(
-    #         strict=True
-    #     ),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0021_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "NF0030_T1": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/NF0030 Cell Painting/NF0030 Cell Painting/NF0030-Cell Painting Images/Combined"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0030_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
+    "NF0014_T1": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0014-Thawed 3 (Raw image files)-Combined/NF0014-Thawed 3 (Raw image files)-Combined copy"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0014_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "NF0014_T2": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0014-T2 Cell Painting/NF0014-T2 Combined/"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0014_T2/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "NF0016_T1": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0016 Cell Painting-Pilot Drug Screening-selected/NF0016-Cell Painting Images/NF0016-images copy"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0016_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "NF0017": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0017-T3-P7 (AGP, Mito Parameter optimization)/Acquisition 03-07-2025"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0017/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "NF0018_T6": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0018 (T6) Cell Painting-Pilot Drug Screeining/NF0018-Cell Painting Images/NF0018-All Acquisitions"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0018_T6/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "NF0021_T1": {
+        "parent": pathlib.Path(f"{raw_image_dir}/NF0021-T1/NF0021-T1 Combined").resolve(
+            strict=True
+        ),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0021_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "NF0030_T1": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0030 Cell Painting/NF0030 Cell Painting/NF0030-Cell Painting Images/Combined"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0030_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
     "NF0031_T1_part_I": {
         "parent": pathlib.Path(
             f"{raw_image_dir}/NF0031-T1 Combined 1_2/NF0031-T1 Combined 1:2"
@@ -268,39 +269,39 @@ dir_mapping = {
         "well_position": -1,
         "channel_position": -3,
     },
-    # "NF0040_T1": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040)-Cell Painting Images/Combined"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/NF0040_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "SACRO219_T1": {
-    #     "parent": pathlib.Path(
-    #         f"{raw_image_dir}/SARC0219-T2 Cell Painting-selected/SARC0219-T2 Combined Cell Painting images/SARC0219-T2 Combined/"
-    #     ).resolve(strict=True),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/SARCO219_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
-    # "SARCO361_T1": {
-    #     "parent": pathlib.Path(f"{raw_image_dir}/SARC0361/SARC0361 Combined/").resolve(
-    #         strict=True
-    #     ),
-    #     "destination": pathlib.Path(
-    #         f"{output_base_dir}/data/SARCO361_T1/zstack_images"
-    #     ).resolve(),
-    #     "times_nested": 2,
-    #     "well_position": 0,
-    #     "channel_position": 1,
-    # },
+    "NF0040_T1": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040) Cell Painting/SARC0376 (NF0040)-Cell Painting Images/Combined"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0040_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "SACRO219_T1": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/SARC0219-T2 Cell Painting-selected/SARC0219-T2 Combined Cell Painting images/SARC0219-T2 Combined/"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/SARCO219_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
+    "SARCO361_T1": {
+        "parent": pathlib.Path(f"{raw_image_dir}/SARC0361/SARC0361 Combined/").resolve(
+            strict=True
+        ),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/SARCO361_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": 1,
+    },
 }
 
 
