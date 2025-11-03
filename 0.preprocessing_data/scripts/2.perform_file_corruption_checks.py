@@ -99,7 +99,7 @@ def max_z_projection(patient: str, well_fov: str) -> None:
 # check if bandicoot is set
 bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve()
 
-bandicoot = False
+bandicoot = True
 
 
 # In[4]:
@@ -120,15 +120,13 @@ else:
     ).resolve(strict=True)
     # Jenna's computer
     # raw_image_dir_local = pathlib.Path("/media/18tbdrive/GFF_organoid_data/")
-    output_base_dir = root_dir
-print(f"Raw image dir: {root_dir}")
+    output_base_dir = raw_image_dir
 
 
-# In[ ]:
+# In[5]:
 
 
-patient_ids
-patient_id_file_path = pathlib.Path(f"{raw_image_dir}/data/patient_IDs.txt").resolve(
+patient_id_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
     strict=True
 )
 list_of_patients = pd.read_csv(patient_id_file_path, header=None)[0].tolist()
@@ -141,7 +139,7 @@ patient_input_dict = {}
 for patient in list_of_patients:
     patient_input_dict[patient] = {
         "raw_images": pathlib.Path(
-            f"{raw_image_dir}/data/{patient}/raw_images"
+            f"{output_base_dir}/data/{patient}/raw_images"
         ).resolve(),
         "zstack_output": pathlib.Path(
             f"{output_base_dir}/data/{patient}/zstack_images"
