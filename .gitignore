@@ -178,6 +178,7 @@ data/*
 *Experiment*.csv
 3.cellprofiling/analysis_output/*
 3.cellprofiling/results/*
+3.cellprofiling/models/*
 
 4.processing_image_based_profiles/notebooks/runinfo/*
 4.processing_image_based_profiles/scripts/runinfo/*
@@ -190,3 +191,4 @@ nextflow_pipeline/.nextflow.log*
 6.dynamic_viz_Rshiny/.Renviron
 *Rplots.pdf
 profile_prep_for_sage/data_for_sage/*
+3.cellprofiling/models

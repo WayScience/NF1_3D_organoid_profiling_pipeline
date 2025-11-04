@@ -53,6 +53,25 @@ def measure_3D_texture(
     -------
     dict
         A dictionary containing the object ID, texture name, and texture value.
+        keys (feature names):
+            - object_id
+            - texture_name
+            - texture_value
+
+        Texture names and values:
+            - Angular.Second.Moment
+            - Contrast
+            - Correlation
+            - Variance
+            - Inverse.Difference.Moment
+            - Sum.Average
+            - Sum.Variance
+            - Sum.Entropy
+            - Entropy
+            - Difference.Variance
+            - Difference.Entropy
+            - Information.Measure.of.Correlation.1
+            - Information.Measure.of.Correlation.2
     """
     label_object = object_loader.label_image
     labels = object_loader.object_ids

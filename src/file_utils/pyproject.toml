@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "file_utils_module"
+version = "0.0.0"
+description = "Utility package for GFF 3D organoid profiling pipeline"
+requires-python = ">=3.11"
+authors = [ { name = "Your Name", email = "you@example.com" } ]
+license = { text = "MIT" }
+
+dependencies = [
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "pre-commit",
+    "ipykernel",
+
+]
+
+[project.scripts]
+arg_parsing = "arg_parsing_utils:main"
+file_checking = "file_checking:main"
+file_reading = "file_reading:main"
+notebook_init_utils = "notebook_init_utils:main"
+segmentation_decoupling = "segmentation_decoupling:main"
+preprocessing_funcs = "preprocessing_funcs:main"
+
+[tool.setuptools]
+py-modules = [
+"arg_parsing_utils",
+"file_checking",
+"file_reading",
+"notebook_init_utils",
+"segmentation_decoupling",
+"preprocessing_funcs"
+]
+
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["src/errors*"]
