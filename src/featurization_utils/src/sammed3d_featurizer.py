@@ -4,7 +4,7 @@ Convert SAM-Med3D from segmentation to featurization model.
 
 SAM-Med3D Architecture:
 - 3D Image Encoder (ViT-based): Extracts features from 3D volumes
-- 3D Prompt Encoder: Processes prompts (not needed for featurization)
+- 3D Prompt Encoder: Processes prompts, which are supervision signals provided by user for segmentation at inference time (not needed nor used for featurization)
 - 3D Mask Decoder: Generates segmentation masks (not needed for featurization)
 
 For featurization, we extract embeddings from the 3D image encoder.
