@@ -61,9 +61,10 @@ class SAMMed3DFeatureExtractor:
         self.feature_type = feature_type
 
         # Load model
-        self.model, self.encoder = self._load_model(model_path, use_medim)
-        self.model.to(device)
-        self.model.eval()
+        model, self.encoder = self._load_model(model_path, use_medim)
+        del model # delete model, as we only need the encoder branch
+        self.encoder .to(device)
+        self.encoder .eval()
 
         # Get feature dimensions
         self.feature_dim = self._get_feature_dim()
