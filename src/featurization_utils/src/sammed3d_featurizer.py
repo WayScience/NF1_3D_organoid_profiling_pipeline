@@ -42,7 +42,6 @@ class SAMMed3DFeatureExtractor:
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         use_medim: bool = True,
         image_size: int = 128,
-        feature_type: str = "global",
     ):
         """
         Args:
@@ -58,7 +57,6 @@ class SAMMed3DFeatureExtractor:
         """
         self.device = device
         self.image_size = image_size
-        self.feature_type = feature_type
 
         # Load model
         model, self.encoder = self._load_model(model_path, use_medim)
@@ -164,9 +162,8 @@ class SAMMed3DFeatureExtractor:
                 print(f"⚠ Error loading SAM-Med3D: {e}")
                 print("✓ Using simplified encoder as fallback")
 
-                model = SimplifiedSAMMed3DEncoder(
-                    img_size=self.image_size, embed_dim=768, depth=12, num_heads=12
-                )
+                model = None
+
                 return model, model
 
     def _build_sammed3d_model(self):
@@ -193,7 +190,7 @@ class SAMMed3DFeatureExtractor:
                 return features.shape[-1]
 
     def _extract_features(
-        self, x: torch.Tensor
+        self, x: torch.Tensor, feature_type: str | None = None
     ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         """
         Extract features from encoder.
@@ -211,57 +208,37 @@ class SAMMed3DFeatureExtractor:
             features = self.encoder(x)
 
         # Process based on feature type
-        if self.feature_type == "global":
+        if feature_type == "global":
             # Global average pooling
             if features.dim() == 5:  # (B, C, Z, Y, X)
                 features = F.adaptive_avg_pool3d(features, 1).flatten(1)
             elif features.dim() == 3:  # (B, N, C) - transformer output
                 features = features.mean(dim=1)
 
-        elif self.feature_type == "patch":
+        elif feature_type == "patch":
             # Keep patch-level features
             if features.dim() == 5:
                 # Reshape to (B, C, Z*Y*X)
                 B, C, Z, Y, X = features.shape
                 features = features.reshape(B, C, -1).permute(0, 2, 1)
 
-        elif self.feature_type == "cls":
+        elif feature_type == "cls":
             # Extract CLS token if available
             if features.dim() == 3:  # (B, N, C)
                 features = features[:, 0, :]  # First token is usually CLS
+            elif features.dim() == 5:
+                # retain the CLS tokens
+                features = features[:, :, 0, 0, 0]  # (B, C)
             else:
-                # Fall back to global pooling
-                features = F.adaptive_avg_pool3d(features, 1).flatten(1)
-
-        elif self.feature_type == "multiscale":
-            # Extract multi-scale features (requires model modifications)
-            # This is a placeholder - actual implementation depends on model
-            features = self._extract_multiscale_features(x)
+                raise ValueError("CLS token extraction requires transformer output.")
 
         return features
 
-    def _extract_multiscale_features(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
-        """Extract features at multiple scales."""
-        # This requires hooking into intermediate layers
-        # Simplified implementation
-        features_dict = {}
-
-        # Get final features
-        final_features = self.encoder(x)
-
-        if final_features.dim() == 5:
-            features_dict["fine"] = F.adaptive_avg_pool3d(final_features, 1).flatten(1)
-            features_dict["coarse"] = F.adaptive_avg_pool3d(
-                F.avg_pool3d(final_features, 2), 1
-            ).flatten(1)
-        else:
-            features_dict["fine"] = final_features.mean(dim=1)
-            features_dict["coarse"] = final_features.mean(dim=1)
-
-        return features_dict
-
     def extract(
-        self, volume: Union[np.ndarray, torch.Tensor], normalize: bool = True
+        self,
+        volume: Union[np.ndarray, torch.Tensor],
+        normalize: bool = True,
+        feature_type: str | None = None,
     ) -> np.ndarray:
         """
         Extract features from a 3D volume.
@@ -301,7 +278,7 @@ class SAMMed3DFeatureExtractor:
 
         # Extract features
         with torch.no_grad():
-            features = self._extract_features(volume)
+            features = self._extract_features(volume, feature_type=feature_type)
 
         # Convert to numpy
         if isinstance(features, dict):
@@ -340,75 +317,6 @@ class SAMMed3DFeatureExtractor:
         return np.array(all_features)
 
 
-class SimplifiedSAMMed3DEncoder(nn.Module):
-    """
-    Simplified 3D ViT-based encoder inspired by SAM-Med3D.
-    Used when the full SAM-Med3D model is not available.
-    """
-
-    def __init__(
-        self,
-        img_size: int = 128,
-        patch_size: int = 16,
-        in_chans: int = 1,
-        embed_dim: int = 768,
-        depth: int = 12,
-        num_heads: int = 12,
-        mlp_ratio: float = 4.0,
-    ):
-        super().__init__()
-
-        self.img_size = img_size
-        self.patch_size = patch_size
-        self.num_patches = (img_size // patch_size) ** 3
-
-        # 3D Patch embedding
-        self.patch_embed = nn.Conv3d(
-            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
-        )
-
-        # Position embedding
-        self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches, embed_dim))
-
-        # Transformer blocks
-        self.blocks = nn.ModuleList(
-            [TransformerBlock3D(embed_dim, num_heads, mlp_ratio) for _ in range(depth)]
-        )
-
-        self.norm = nn.LayerNorm(embed_dim)
-
-        self._init_weights()
-
-    def _init_weights(self):
-        nn.init.trunc_normal_(self.pos_embed, std=0.02)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: (B, C, Z, Y, X)
-
-        Returns:
-            (B, N, C) features
-        """
-        # Patch embedding
-        x = self.patch_embed(x)  # (B, C, Z', Y', X')
-
-        # Flatten patches
-        B, C, Z, Y, X = x.shape
-        x = x.flatten(2).transpose(1, 2)  # (B, N, C)
-
-        # Add position embedding
-        x = x + self.pos_embed
-
-        # Transformer blocks
-        for block in self.blocks:
-            x = block(x)
-
-        x = self.norm(x)
-
-        return x
-
-
 class TransformerBlock3D(nn.Module):
     """3D Transformer block."""
 
@@ -442,10 +350,9 @@ class MicroscopySAMMed3DPipeline:
         self,
         sammed3d_path: Optional[str] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        feature_type: str = "global",
     ):
         self.extractor = SAMMed3DFeatureExtractor(
-            model_path=sammed3d_path, device=device, feature_type=feature_type
+            model_path=sammed3d_path, device=device
         )
 
     def preprocess_volume(self, volume: np.ndarray) -> np.ndarray:
@@ -461,7 +368,10 @@ class MicroscopySAMMed3DPipeline:
         return volume
 
     def extract_features(
-        self, volume: np.ndarray, preprocess: bool = True
+        self,
+        volume: np.ndarray,
+        preprocess: bool = True,
+        feature_type: str | None = None,
     ) -> np.ndarray:
         """
         Extract features from microscopy volume.
@@ -476,7 +386,7 @@ class MicroscopySAMMed3DPipeline:
         if preprocess:
             volume = self.preprocess_volume(volume)
 
-        features = self.extractor.extract(volume)
+        features = self.extractor.extract(volume, feature_type=feature_type)
 
         return features
 
@@ -495,6 +405,7 @@ class MicroscopySAMMed3DPipeline:
 def call_SAMMed3D_pipeline(
     object_loader: ObjectLoader,
     SAMMed3D_model_path: Optional[str] = None,
+    feature_type: str | List = ["global", "patch", "cls"],
 ) -> dict:
     """
     This function is to be called per patient, well-fov
@@ -517,6 +428,10 @@ def call_SAMMed3D_pipeline(
             - "compartment": List of compartments
             - "value": List of feature values
     """
+    assert isinstance(feature_type, (str, list)), (
+        "feature_type must be a string or list of strings"
+    )
+
     image_object = object_loader.image
     label_object = object_loader.label_image
     labels = object_loader.object_ids
@@ -528,6 +443,7 @@ def call_SAMMed3D_pipeline(
         "channel": [],
         "compartment": [],
         "value": [],
+        "feature_type": [],
     }
 
     for index, label in enumerate(labels):
@@ -542,16 +458,30 @@ def call_SAMMed3D_pipeline(
         extracter = MicroscopySAMMed3DPipeline(
             sammed3d_path=SAMMed3D_model_path,
             device="cuda" if torch.cuda.is_available() else "cpu",
-            feature_type="global",
         )
-        features = extracter.extract_features(
-            selected_image_object
-        )  # preprocess the volume
-        for i, feature_value in enumerate(features.flatten()):
-            output_dict["object_id"].append(label)
-            output_dict["feature_name"].append(f"SAMMed3D_feature_{i}")
-            output_dict["channel"].append(object_loader.channel)
-            output_dict["compartment"].append(object_loader.compartment)
-            output_dict["value"].append(feature_value)
+        if isinstance(feature_type, list):
+            for ft in feature_type:
+                features = extracter.extract_features(
+                    selected_image_object, feature_type=ft
+                )  # preprocess the volume
+                for i, feature_value in enumerate(features.flatten()):
+                    output_dict["object_id"].append(label)
+                    output_dict["feature_name"].append(f"SAMMed3D_{ft}_feature_{i}")
+                    output_dict["channel"].append(object_loader.channel)
+                    output_dict["compartment"].append(object_loader.compartment)
+                    output_dict["value"].append(feature_value)
+                    output_dict["feature_type"].append(ft)
+            continue
+        else:
+            features = extracter.extract_features(
+                selected_image_object, feature_type=feature_type
+            )  # preprocess the volume
+            for i, feature_value in enumerate(features.flatten()):
+                output_dict["object_id"].append(label)
+                output_dict["feature_name"].append(f"SAMMed3D_feature_{i}")
+                output_dict["channel"].append(object_loader.channel)
+                output_dict["compartment"].append(object_loader.compartment)
+                output_dict["value"].append(feature_value)
+                output_dict["feature_type"].append(feature_type)
 
     return output_dict
