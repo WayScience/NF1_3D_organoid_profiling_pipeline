@@ -1,27 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import itertools
 import pathlib
-import sys
 
 import numpy as np
 import pandas as pd
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
@@ -31,11 +18,8 @@ profile_base_dir = bandicoot_check(
     pathlib.Path("~/mnt/bandicoot/NF1_organoid_data").resolve(), root_dir
 )
 
-sys.path.append(f"{root_dir}/3.cellprofiling/featurization_utils/")
-from loading_classes import ImageSetLoader
-
-sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
 from file_checking import check_number_of_files
+from loading_classes import ImageSetLoader
 
 # In[2]:
 

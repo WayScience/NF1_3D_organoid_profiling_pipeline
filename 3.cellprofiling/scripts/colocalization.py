@@ -6,7 +6,6 @@
 
 import os
 import pathlib
-import sys
 import time
 import warnings
 
@@ -14,23 +13,13 @@ import pandas as pd
 import psutil
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-cwd = pathlib.Path.cwd()
 
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
-sys.path.append(f"{root_dir}/3.cellprofiling/featurization_utils/")
+
 from colocalization_utils import (
     measure_3D_colocalization,
     prepare_two_images_for_colocalization,

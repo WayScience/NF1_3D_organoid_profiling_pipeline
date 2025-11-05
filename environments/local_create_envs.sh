@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# this script creates or updates conda environments based on the yaml files in this directory
 yaml_files=$(ls /*glob*.yml)
 
 # read the first line of the yaml file

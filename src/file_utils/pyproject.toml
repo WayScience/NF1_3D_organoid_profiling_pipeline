@@ -7,8 +7,8 @@ name = "file_utils_module"
 version = "0.0.0"
 description = "Utility package for GFF 3D organoid profiling pipeline"
 requires-python = ">=3.11"
-authors = [ { name = "Your Name", email = "you@example.com" } ]
-license = { text = "MIT" }
+authors = [ { name = "Michael J. Lippincott"} ]
+license = { text = "BSD 3-Clause License" }
 
 dependencies = [
 ]
@@ -23,14 +23,6 @@ dev = [
 
 ]
 
-[project.scripts]
-arg_parsing = "arg_parsing_utils:main"
-file_checking = "file_checking:main"
-file_reading = "file_reading:main"
-notebook_init_utils = "notebook_init_utils:main"
-segmentation_decoupling = "segmentation_decoupling:main"
-preprocessing_funcs = "preprocessing_funcs:main"
-
 [tool.setuptools]
 py-modules = [
 "arg_parsing_utils",
@@ -40,7 +32,6 @@ py-modules = [
 "segmentation_decoupling",
 "preprocessing_funcs"
 ]
-
 
 [tool.setuptools.packages.find]
 where = ["src/"]
