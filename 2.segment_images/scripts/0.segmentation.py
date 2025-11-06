@@ -12,10 +12,8 @@
 # In[1]:
 
 
-import argparse
 import os
 import pathlib
-import sys
 import time
 
 import matplotlib.pyplot as plt
@@ -82,12 +80,6 @@ mask_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
-
-
-# In[17]:
-
-
-print(input_dir)
 
 
 # In[5]:
