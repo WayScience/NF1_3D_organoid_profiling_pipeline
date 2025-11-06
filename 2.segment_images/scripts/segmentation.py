@@ -12,8 +12,10 @@
 # In[1]:
 
 
+import argparse
 import os
 import pathlib
+import sys
 import time
 
 import matplotlib.pyplot as plt
@@ -164,7 +166,7 @@ organoid_masks = np.array(
 )
 
 
-# In[8]:
+# In[ ]:
 
 
 # generate the coordinates dataframe for reconstruction
@@ -178,7 +180,7 @@ image = reassign_labels(organoid_masks, collapse_labels(coordinates_df, longest_
 # refine the organoid masks
 organoid_mask = run_post_hoc_refinement(
     mask_image=image,
-    sliding_window_context=window_size,
+    sliding_window_context=3,
 )
 # clean up and send to gc
 del image, coordinates_df, df, longest_paths
