@@ -7,12 +7,11 @@
 
 # ## import libraries
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import matplotlib.pyplot as plt
 
@@ -22,24 +21,11 @@ import skimage
 import tifffile
 import torch
 import tqdm
-from cellpose import core, models
-from skimage import io
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-
 from arg_parsing_utils import check_for_missing_args, parse_args
+from cellpose import core, models
 from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
+from skimage import io
 
 root_dir, in_notebook = init_notebook()
 
@@ -74,12 +60,12 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T1"
-    well_fov = "C4-2"
+    patient = "NF0037_T1-Z-1"
+    well_fov = "F4-2"
     window_size = 3
-    clip_limit = 0.05
-    input_subparent_name = "deconvolved_images"
-    mask_subparent_name = "deconvolved_segmentation_masks"
+    clip_limit = 0.01
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
 
 
 input_dir = pathlib.Path(

@@ -85,13 +85,13 @@ if not in_notebook:
     )
 
 else:
-    print("Running in a notebook")
-    well_fov = "C4-2"
+    patient = "NF0037_T1-Z-1"
+    well_fov = "F4-2"
     compartment = "nuclei"
-    window_size = 4
-    patient = "NF0014_T1"
-    input_subparent_name = "deconvolved_images"
-    mask_subparent_name = "deconvolved_segmentation_masks"
+    window_size = 3
+    clip_limit = 0.01
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
 
 input_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"

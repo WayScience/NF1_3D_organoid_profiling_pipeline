@@ -39,7 +39,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -54,9 +54,10 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    well_fov = "C4-2"
-    patient = "NF0014_T1"
-    mask_subparent_name = "deconvolved_segmentation_masks"
+
+    patient = "NF0037_T1-Z-1"
+    well_fov = "F4-2"
+    mask_subparent_name = "segmentation_masks"
 
 mask_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
@@ -319,7 +320,7 @@ nuclei_and_cell_df.head()
 
 
 nuclei_and_cell_df[["label_nuclei", "new_label", "label_cell"]].head()
-nuclei_df
+nuclei_df.head()
 
 
 # In[13]:

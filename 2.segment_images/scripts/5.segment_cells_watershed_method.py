@@ -39,7 +39,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -57,11 +57,11 @@ if not in_notebook:
         mask_subparent_name=mask_subparent_name,
     )
 else:
-    well_fov = "C4-2"
-    patient = "NF0014_T1"
-    clip_limit = 0.03
-    input_subparent_name = "deconvolved_images"
-    mask_subparent_name = "deconvolved_segmentation_masks"
+    patient = "NF0037_T1-Z-1"
+    well_fov = "F4-2"
+    clip_limit = 0.01
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
 
 input_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"

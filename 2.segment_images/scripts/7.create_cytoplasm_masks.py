@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[7]:
+# In[1]:
 
 
 import os
@@ -35,7 +35,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -53,10 +53,10 @@ if not in_notebook:
 
 else:
     print("Running in a notebook")
-    well_fov = "C4-2"
-    patient = "NF0014_T1"
-    input_subparent_name = "deconvolved_images"
-    mask_subparent_name = "deconvolved_segmentation_masks"
+    well_fov = "F4-1"
+    patient = "NF0037_T1-Z-1"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
 
 
 input_dir = pathlib.Path(
@@ -68,7 +68,7 @@ mask_input_dir = pathlib.Path(
 output_file_path = pathlib.Path(mask_input_dir / "cytoplasm_mask.tiff").resolve()
 
 
-# In[9]:
+# In[3]:
 
 
 # get all the masks
@@ -83,7 +83,7 @@ nuclei_masks = read_zstack_image(nuclei_masks_path)
 cell_masks = read_zstack_image(cell_masks_path)
 
 
-# In[10]:
+# In[ ]:
 
 
 cytoplasm_masks = np.zeros_like(cell_masks)
@@ -92,7 +92,7 @@ for z_slice_index in range(nuclei_masks.shape[0]):
     nuclei_slice_mask = nuclei_masks[z_slice_index]
     cell_slice_mask = cell_masks[z_slice_index]
     cytoplasm_mask = cell_slice_mask.copy()
-    cytoplasm_mask[nuclei_slice_mask > 0] = 0
+    cytoplasm_mask[nuclei_slice_mask > 0] = 0  # subtraction happens here
     cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
 

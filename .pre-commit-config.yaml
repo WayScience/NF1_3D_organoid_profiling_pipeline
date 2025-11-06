@@ -34,6 +34,7 @@ repos:
     rev: v2.6.0
     hooks:
     -   id: pycln
+        args: ["--exclude", "2.segment_images/scripts/segmentation.py"]
 
     # additional hooks found with in the pre-commit lib
 -   repo: https://github.com/pre-commit/pre-commit-hooks
