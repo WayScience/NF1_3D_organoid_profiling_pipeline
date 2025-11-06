@@ -10,7 +10,8 @@ if [ -z "$git_root" ]; then
 fi
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ "$git_root"/2.segment_images/notebooks/*.ipynb
 
-patient_array=( "NF0014" "NF0016" "NF0018" "NF0021" "NF0030" "NF0040" "SARCO219" "SARCO361" )
+# patient_array=( "NF0014" "NF0016" "NF0018" "NF0021" "NF0030" "NF0040" "SARCO219" "SARCO361" )
+patient_array=( "NF0037_T1-Z-1" )
 
 
 for patient in "${patient_array[@]}"; do
@@ -30,7 +31,6 @@ for patient in "${patient_array[@]}"; do
     python "$git_root"/2.segment_images/scripts/10.perform_file_checks.py \
         --patient "$patient"
 done
-
 
 
 # deactivate cellprofiler environment

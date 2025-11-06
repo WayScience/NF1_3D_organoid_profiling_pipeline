@@ -24,6 +24,8 @@ echo "Processing well_fov $well_fov for patient $patient"
 compartments=( "nuclei" "organoid" ) # we do not do 2.5D segmentation for cells in this script
 # cells get segmented using a 3D method rather a 2.5D method
 
+start_time=$(date +%s)
+
 python "$git_root"/2.segment_images/scripts/0.segment_nuclei.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
@@ -101,6 +103,15 @@ python "$git_root"/2.segment_images/scripts/9.clean_up_segmentation.py \
     --well_fov "$well_fov" \
     --input_subparent_name "$input_subparent_name" \
     --mask_subparent_name "$mask_subparent_name"
+
+end_time=$(date +%s)
+elapsed_time=$((end_time - start_time))
+
+hours=$((elapsed_time / 3600))
+minutes=$(((elapsed_time % 3600) / 60))
+seconds=$((elapsed_time % 60))
+
+echo "Total process took ${hours}h ${minutes}m ${seconds}s (${elapsed_time} seconds)"
 
 conda deactivate
 

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "segmentation_utils_module"
+version = "0.0.0"
+description = "Utility package for GFF 3D organoid profiling pipeline"
+requires-python = ">=3.11"
+authors = [ { name = "Michael J. Lippincott"} ]
+license = { text = "BSD 3-Clause License" }
+
+dependencies = [
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "pre-commit",
+    "ipykernel",
+
+]
+
+[tool.setuptools]
+py-modules = [
+
+]
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["src/*"]
