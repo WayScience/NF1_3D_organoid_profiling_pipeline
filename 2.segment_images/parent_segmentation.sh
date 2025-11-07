@@ -14,7 +14,6 @@ patient=$1
 
 echo "Processing patient $patient"
 
-
 # get all input directories in specified directory
 z_stack_dir="$git_root/data/$patient/zstack_images"
 mapfile -t input_dirs < <(ls -d "$z_stack_dir"/*)
@@ -33,6 +32,7 @@ for well_fov in "${input_dirs[@]}"; do
     current_dir=$((current_dir + 1))
     echo -ne "Processing directory $current_dir of $total_dirs\r"
     echo "Beginning segmentation for $well_fov"
+    # requesting 6 nodes (3.75GB per node) for 22.5GB total memory requirement
     sbatch \
         --nodes=1 \
         --ntasks=6 \
@@ -42,12 +42,10 @@ for well_fov in "${input_dirs[@]}"; do
         --account=amc-general \
         --time=1:00:00 \
         --output=segmentation_child-%j.out \
-        "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov"
-
+        "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "zstack_images" "segmentation_masks"
 done
 
 # deactivate cellprofiler environment
 conda deactivate
 
 echo "All segmentation child jobs submitted"
-

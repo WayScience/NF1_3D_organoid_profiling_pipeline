@@ -1,28 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import numpy as np
 import pandas as pd
 import tqdm
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 
@@ -33,7 +20,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 patients_file = pathlib.Path(f"{image_base_dir}/data/patient_IDs.txt").resolve(

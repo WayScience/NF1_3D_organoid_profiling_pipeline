@@ -19,7 +19,8 @@ if [ -z "$git_root" ]; then
 fi
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
-patient_array=( "NF0014" "NF0016" "NF0018" "NF0021" "SARCO219" "SARCO361" )
+patient_array=( "NF0031_T1" "NF0035_T1" "NF0037_T1-Z-1" "NF0037_T1-Z-0.5" "NF0037_T1-Z-0.2" "NF0037_T1-Z-0.1" )
+
 
 for patient in "${patient_array[@]}"; do
     number_of_jobs=$(squeue -u "$USER" | wc -l)

@@ -12,8 +12,10 @@
 # In[1]:
 
 
+import argparse
 import os
 import pathlib
+import sys
 import time
 
 import matplotlib.pyplot as plt
@@ -273,13 +275,13 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Save the segmented masks
 
-# In[15]:
+# In[ ]:
 
 
-nuclei_mask_output = pathlib.Path(f"{mask_path}/{well_fov}_nuclei_mask.tiff")
-cell_mask_output = pathlib.Path(f"{mask_path}/{well_fov}_cell_mask.tiff")
-cytoplasm_mask_output = pathlib.Path(f"{mask_path}/{well_fov}_cytoplasm_mask.tiff")
-organoid_mask_output = pathlib.Path(f"{mask_path}/{well_fov}_organoid_mask.tiff")
+nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
+cell_mask_output = pathlib.Path(f"{mask_path}/cell_mask.tiff")
+cytoplasm_mask_output = pathlib.Path(f"{mask_path}/cytoplasm_mask.tiff")
+organoid_mask_output = pathlib.Path(f"{mask_path}/organoid_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)

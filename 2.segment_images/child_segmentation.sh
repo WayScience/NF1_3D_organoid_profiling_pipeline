@@ -20,7 +20,7 @@ echo "Processing well_fov $well_fov for patient $patient"
 
 start_time=$(date +%s)
 
-python scripts/segmentation.py \
+python scripts/0.segmentation.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
     --input_subparent_name "$input_subparent_name" \

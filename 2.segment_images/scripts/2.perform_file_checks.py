@@ -1,27 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import numpy as np
 import tqdm
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
 from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
@@ -32,10 +19,9 @@ image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
 
-sys.path.append(str(pathlib.Path(f"{root_dir}/utils").resolve()))
 from file_checking import check_number_of_files
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -54,7 +40,7 @@ else:
     mask_subparent_name = "deconvolved_segmentation_masks"
 
 
-# In[ ]:
+# In[3]:
 
 
 # set path to the processed data dir
@@ -66,7 +52,7 @@ zstack_dir = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 # perform checks for each directory
