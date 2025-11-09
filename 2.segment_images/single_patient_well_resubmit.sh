@@ -5,7 +5,7 @@
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
 #SBATCH --time=10:00
-#SBATCH --output=segmentation_grandparent-%j.out
+#SBATCH --output=segmentation_resubmit-%j.out
 
 # activate  cellprofiler environment
 module load anaconda
