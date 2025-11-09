@@ -1,8 +1,16 @@
 #!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=amilan
+#SBATCH --qos=normal
+#SBATCH --account=amc-general
+#SBATCH --time=10:00
+#SBATCH --output=segmentation_grandparent-%j.out
+
 # activate  cellprofiler environment
-# module load anaconda
-# conda init bash
-# conda activate GFF_segmentation
+module load anaconda
+conda init bash
+conda activate GFF_segmentation
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
