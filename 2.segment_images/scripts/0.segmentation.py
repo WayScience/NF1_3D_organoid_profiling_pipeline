@@ -9,7 +9,7 @@
 #
 # No we are at ~8 minutes!
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -23,7 +23,9 @@ import numpy as np
 import pandas as pd
 import psutil
 import tifffile
+import torch
 from arg_parsing_utils import check_for_missing_args, parse_args
+from cellpose import models
 from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
 from skimage.filters import sobel
