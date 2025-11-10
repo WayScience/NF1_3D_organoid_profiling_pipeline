@@ -35,9 +35,9 @@ if not in_notebook:
         mask_subparent_name=mask_subparent_name,
     )
 else:
-    patient = "NF0014_T1"
-    input_subparent_name = "deconvolved_images"
-    mask_subparent_name = "deconvolved_segmentation_masks"
+    patient = "NF0037_T1-Z-0.1"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
 
 
 # In[3]:
@@ -62,9 +62,30 @@ zstack_dirs = list(zstack_dir.glob("*"))
 zstack_dirs = [d for d in zstack_dirs if d.is_dir()]
 
 print("Checking segmentation data directories")
+dict_of_reruns = {
+    "patient": [],
+    "well_fov": [],
+}
+total = 0
+completed = 0
+non_completed = 0
 for dir in segmentation_data_dirs:
-    check_number_of_files(dir, 4)
+    total += 1
+    status, dir_name = check_number_of_files(dir, 4)
+    if status:
+        completed += 1
+    else:
+        non_completed += 1
+        dict_of_reruns["patient"].append(patient)
+        dict_of_reruns["well_fov"].append(dir_name)
 
-print("Checking zstack directories")
-for dir in zstack_dirs:
-    check_number_of_files(dir, 9)
+print(f"Total directories checked: {total}")
+print(f"Need to rerun: {non_completed}")
+print(f"{completed / total * 100:.2f}% completed successfully")
+
+
+# In[5]:
+
+
+dict_of_reruns["well_fov"].sort()
+dict_of_reruns["well_fov"]
