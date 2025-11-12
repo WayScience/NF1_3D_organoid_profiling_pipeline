@@ -1,37 +1,80 @@
-# Find all YAML files that match the pattern
-YAML_FILES := $(wildcard *glob*.yml * *glob*.yaml *)
+# Find environment YAMLs (this dir and one level down)
+YAML_FILES := $(wildcard *.yml *.yaml */*.yml */*.yaml)
 
-# Extract environment names from first line of each YAML (line starting with "name: envname")
-ENV_NAMES := $(shell for f in $(YAML_FILES); do head -n 1 $$f | cut -d ' ' -f 2; done)
+.PHONY: all help list apply apply-all install-local
 
-# Default target: create/update all envs
-all: $(ENV_NAMES)
+# Default: show help
+all: help
 
-# Rule to create/update each environment by name
-%:
-	@echo "=== Processing environment $@ ==="
-	@if conda env list | grep -q "^$@ "; then \
-		echo "Updating environment $@"; \
-		mamba env update -f $$(grep -l "name: $@" $(YAML_FILES)); \
-	else \
-		echo "Creating environment $@"; \
-		mamba env create -f $$(grep -l "name: $@" $(YAML_FILES)); \
+help:
+	@echo "Usage:"
+	@echo "  make list                # list discovered YAML environment files"
+	@echo "  make apply FILE=path.yml # create or update environment from single YAML"
+	@echo "  make install-all         # create all discovered YAMLs"
+	@echo "  make update-all          # update all discovered YAMLs"
+
+list:
+	@sh -c 'if [ -z "$(YAML_FILES)" ]; then echo "No YAML files found."; else printf "%s\n" $(YAML_FILES); fi'
+
+# Apply a single YAML (pass FILE=path/to/env.yml)
+apply:
+	@if [ -z "$(FILE)" ]; then \
+        echo "Specify FILE=path/to/env.yml"; exit 1; \
 	fi
+	@sh -c 'f="$(FILE)"; if [ ! -f "$$f" ]; then echo "File $$f not found"; exit 1; fi; \
+    name=$$(awk "/^[[:space:]]*name:[[:space:]]*/{print $$2; exit}" $$f); \
+    if [ -z "$$name" ]; then echo "No 'name:' in $$f; abort"; exit 1; fi; \
+    if conda env list | awk "{print $$1}" | grep -qx "$$name"; then \
+        echo "Updating $$name from $$f"; mamba env update -f "$$f"; \
+    else \
+        echo "Creating $$name from $$f"; mamba env create -f "$$f"; \
+    fi'
 
-	@if [ "$@" = "GFF_segmentation" ] || [ "$@" = "GFF_segmentation_nuclei"]; then \
-		echo "Installing segmentation_utils in $@"; \
-		cd .. && . $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \
-		pip install -e ./src/segmentation_utils && conda deactivate; \
-	fi
+# Apply all discovered YAML files
+install-all:
+	@if [ -z "$(YAML_FILES)" ]; then \
+		echo "No YAML files found."; \
+		exit 0; \
+	fi; \
+	for f in $(YAML_FILES); do \
+		name=$$(awk '/^[[:space:]]*name:[[:space:]]*/{print $$2; exit}' "$$f"); \
+		if [ -z "$$name" ]; then \
+			echo "Skipping $$f (no name)"; \
+			continue; \
+		fi; \
+		if conda env list | awk '{print $$1}' | grep -qx "$$name"; then \
+			echo "$$name already exists, skipping creation."; \
+		else \
+			echo "Creating $$name from $$f"; \
+			mamba env create -f "$$f"; \
+		fi; \
+		if echo "$$name" | grep -q "featurizers"; then \
+			echo "Installing additional local featurization_utils for $$name"; \
+			conda run -n "$$name" --no-capture-output pip install -e ../src/featurization_utils; \
+		fi; \
+		if echo "$$name" | grep -q "segmentation"; then \
+			echo "Installing additional segmentation_utils for $$name"; \
+			conda run -n "$$name" --no-capture-output pip install -e ../src/segmentation_utils; \
+		fi; \
+		conda run -n "$$name" --no-capture-output pip install -e ../src/file_utils; \
+	done
 
-	@if [ "$@" = "featurizer" ] || [ "$@" = "deep_learning_featurizer" ]; then \
-		echo "Installing featurization_utils in $@"; \
-		cd .. && . $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \
-		pip install -e ./src/featurization_utils && conda deactivate; \
-	fi
-
-	@echo "Installing file_utils for $@"
-	@. $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \
-	pip install -e ./src/file_utils && conda deactivate
-
-.PHONY: all $(ENV_NAMES)
+update-all:
+	@if [ -z "$(YAML_FILES)" ]; then \
+		echo "No YAML files found."; \
+		exit 0; \
+	fi; \
+	for f in $(YAML_FILES); do \
+		name=$$(awk '/^[[:space:]]*name:[[:space:]]*/{print $$2; exit}' "$$f"); \
+		if [ -z "$$name" ]; then \
+			echo "Skipping $$f (no name)"; \
+			continue; \
+		fi; \
+		if conda env list | awk '{print $$1}' | grep -qx "$$name"; then \
+			echo "Updating $$name from $$f"; \
+			mamba env update -f "$$f"; \
+		else \
+			echo "Creating $$name from $$f"; \
+			mamba env create -f "$$f"; \
+		fi; \
+	done
