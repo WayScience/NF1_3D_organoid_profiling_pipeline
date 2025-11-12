@@ -17,21 +17,21 @@ fi
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
 patient_array=(
-    "NF0014_T1"
-    "NF0014_T2"
-    "NF0016_T1"
-    "NF0018_T6"
-    "NF0021_T1"
-    "NF0030_T1"
-    "NF0031_T1"
-    "NF0035_T1"
+    # "NF0014_T1"
+    # "NF0014_T2"
+    # "NF0016_T1"
+    # "NF0018_T6"
+    # "NF0021_T1"
+    # "NF0030_T1"
+    # "NF0031_T1"
+    # "NF0035_T1"
     "NF0037_T1-Z-1"
     "NF0037_T1-Z-0.5"
     "NF0037_T1-Z-0.2"
     "NF0037_T1-Z-0.1"
-    "NF0040_T1"
-    "SARCO219_T2"
-    "SARCO361_T1"
+    # "NF0040_T1"
+    # "SARCO219_T2"
+    # "SARCO361_T1"
 )
 
 
