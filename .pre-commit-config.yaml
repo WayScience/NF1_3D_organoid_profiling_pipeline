@@ -29,13 +29,6 @@ repos:
         additional_dependencies: [isort==5.6.4]
         args: [--profile=black]
 
-    # remove unused imports
--   repo: https://github.com/hadialqattan/pycln.git
-    rev: v2.6.0
-    hooks:
-    -   id: pycln
-        args: ["--exclude", "2.segment_images/scripts/0.segmentation.py"]
-
     # additional hooks found with in the pre-commit lib
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

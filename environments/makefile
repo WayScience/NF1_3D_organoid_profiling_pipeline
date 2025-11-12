@@ -18,6 +18,12 @@ all: $(ENV_NAMES)
 		mamba env create -f $$(grep -l "name: $@" $(YAML_FILES)); \
 	fi
 
+	@if [ "$@" = "GFF_segmentation" ] || [ "$@" = "GFF_segmentation_nuclei"]; then \
+		echo "Installing segmentation_utils in $@"; \
+		cd .. && . $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \
+		pip install -e ./src/segmentation_utils && conda deactivate; \
+	fi
+
 	@if [ "$@" = "featurizer" ] || [ "$@" = "deep_learning_featurizer" ]; then \
 		echo "Installing featurization_utils in $@"; \
 		cd .. && . $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \

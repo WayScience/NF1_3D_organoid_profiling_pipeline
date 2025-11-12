@@ -25,7 +25,10 @@ dev = [
 
 [tool.setuptools]
 py-modules = [
-
+    "segmentation_utils",
+    "organoid_segmentation",
+    "nuclei_segmentation",
+    "segmentation_decoupling",
 ]
 
 [tool.setuptools.packages.find]
