@@ -32,10 +32,10 @@ for well_fov in "${input_dirs[@]}"; do
     current_dir=$((current_dir + 1))
     echo -ne "Processing directory $current_dir of $total_dirs\r"
     echo "Beginning segmentation for $well_fov"
-    # requesting 6 nodes (3.75GB per node) for 22.5GB total memory requirement
+    # requesting 4 nodes (3.75GB per node) for 15GB total memory requirement
     sbatch \
         --nodes=1 \
-        --ntasks=6 \
+        --ntasks=4 \
         --partition=aa100 \
         --gres=gpu:1 \
         --qos=normal \
