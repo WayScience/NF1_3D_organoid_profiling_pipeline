@@ -38,11 +38,11 @@ python scripts/1.segmentation.py \
     --mask_subparent_name "$mask_subparent_name"
 
 
-# python scripts/5.clean_up_segmentation.py \
-#     --patient "$patient" \
-#     --well_fov "$well_fov" \
-#     --input_subparent_name "$input_subparent_name" \
-#     --mask_subparent_name "$mask_subparent_name"
+python scripts/5.clean_up_segmentation.py \
+    --patient "$patient" \
+    --well_fov "$well_fov" \
+    --input_subparent_name "$input_subparent_name" \
+    --mask_subparent_name "$mask_subparent_name"
 
 end_time=$(date +%s)
 elapsed_time=$((end_time - start_time))
