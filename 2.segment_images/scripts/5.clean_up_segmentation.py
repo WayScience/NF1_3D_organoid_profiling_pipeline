@@ -40,8 +40,8 @@ if not in_notebook:
         mask_subparent_name=mask_subparent_name,
     )
 else:
-    patient = "NF0016_T1"
-    well_fov = "C4-3"
+    patient = "NF0014_T1"
+    well_fov = "C4-2"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
@@ -58,34 +58,28 @@ zstack_dir = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[4]:
-
-
-# perform checks for each directory
-segmentation_data_files = list(segmentation_data_dir.glob("*"))
-
-
 # ## Copy files from processed dir to cellprofiler images dir
 
-# In[5]:
+# In[4]:
 
 
 # regrab the segmentation data files after renaming
 segmentation_data_files = list(segmentation_data_dir.glob("*"))
+print(segmentation_data_files)
 
 
-# In[6]:
+# In[5]:
 
 
 masks_names_to_keep_dict = {
-    "cell_masks_watershed.tiff": "cell_masks.tiff",
-    "cytoplasm_mask.tiff": "cytoplasm_masks.tiff",
-    "nuclei_masks_reassigned.tiff": "nuclei_masks.tiff",
-    "organoid_masks_reconstructed.tiff": "organoid_masks.tiff",
+    "cell_masks_watershed.tiff": "cell_mask.tiff",
+    "cytoplasm_masks.tiff": "cytoplasm_mask.tiff",
+    "nuclei_masks_reassigned.tiff": "nuclei_mask.tiff",
+    "organoid_masks_reconstructed.tiff": "organoid_mask.tiff",
 }
 
 
-# In[7]:
+# In[ ]:
 
 
 for file in tqdm.tqdm(segmentation_data_files, desc="Cleaning up segmentation masks"):
@@ -105,7 +99,7 @@ for file in segmentation_data_files:
         file.unlink()
 
 
-# In[8]:
+# In[7]:
 
 
 # glob the files once more

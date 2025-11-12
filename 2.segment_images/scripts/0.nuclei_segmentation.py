@@ -71,8 +71,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0037_T1-Z-1"
-    well_fov = "F4-1"
+    patient = "NF0014_T1"
+    well_fov = "C4-2"
     window_size = 3
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
@@ -144,23 +144,10 @@ nuclei_mask = run_post_hoc_refinement(
 del image, coordinates_df, df, longest_paths
 
 
-# In[8]:
-
-
-for zidx in range(nuclei_mask.shape[0]):
-    plt.subplot(121)
-    plt.imshow(nuclei[zidx, :, :], cmap="gray")
-    plt.axis("off")
-    plt.subplot(122)
-    plt.imshow(nuclei_mask[zidx, :, :], cmap="gray")
-    plt.axis("off")
-    plt.show()
-
-
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[9]:
+# In[8]:
 
 
 nuclei_df = get_labels_for_post_hoc_reassignment(
@@ -170,14 +157,14 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 
 # ## Save the segmented masks
 
-# In[10]:
+# In[9]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[11]:
+# In[10]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
