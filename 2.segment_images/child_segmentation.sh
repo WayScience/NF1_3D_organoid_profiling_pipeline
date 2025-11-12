@@ -20,12 +20,18 @@ echo "Processing well_fov $well_fov for patient $patient"
 
 start_time=$(date +%s)
 
-python scripts/0.segmentation.py \
+python scripts/0.nuclei_segmentation.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
     --input_subparent_name "$input_subparent_name" \
     --mask_subparent_name "$mask_subparent_name" \
     --clip_limit 0.02
+python scripts/1.segmentation.py \
+    --patient "$patient" \
+    --well_fov "$well_fov" \
+    --input_subparent_name "$input_subparent_name" \
+    --mask_subparent_name "$mask_subparent_name"
+
 
 python scripts/4.clean_up_segmentation.py \
     --patient "$patient" \
