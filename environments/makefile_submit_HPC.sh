@@ -8,7 +8,7 @@
 #SBATCH --output=setup_envs-%j.out
 
 # Load your module for conda/mamba if needed
-module load minifonrge
+module load miniforge
 module load make
 
 INSTALL_OR_UPDATE="install-all"
