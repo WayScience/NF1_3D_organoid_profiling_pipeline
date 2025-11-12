@@ -9,7 +9,7 @@
 # check if on slurms or local
 # module load anaconda
 conda init
-conda activate GFF_segmentation
+conda activate GFF_segmentation_nuclei
 
 
 patient=$1
@@ -26,6 +26,10 @@ python scripts/0.nuclei_segmentation.py \
     --input_subparent_name "$input_subparent_name" \
     --mask_subparent_name "$mask_subparent_name" \
     --clip_limit 0.02
+
+conda deactivate
+conda activate GFF_segmentation
+
 python scripts/1.segmentation.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
