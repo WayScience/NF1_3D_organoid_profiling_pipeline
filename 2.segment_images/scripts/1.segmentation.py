@@ -73,12 +73,12 @@ else:
     print("Running in a notebook")
     patient = "NF0014_T1"
     well_fov = "C4-2"
-    window_size = 4
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
 
+window_size = 4
 input_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)
@@ -91,7 +91,17 @@ mask_path.mkdir(exist_ok=True, parents=True)
 # In[5]:
 
 
-return_dict = read_in_channels(find_files_available(input_dir))
+return_dict = read_in_channels(
+    find_files_available(input_dir),
+    channel_dict={
+        "nuclei": "405",
+        "cyto1": "488",
+        "cyto2": "555",
+        "cyto3": "640",
+        "brightfield": "TRANS",
+    },
+    channels_to_read=["cyto2"],
+)
 cyto2 = return_dict["cyto2"]
 del return_dict
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -113,7 +123,7 @@ cyto2_image_shape = cyto2.shape
 # butterworth_grid_optimization(two_point_five_D_sliding_window, return_plot=False)
 
 filtered_cyto2 = apply_butterworth_filter(
-    sliding_window_two_point_five_D(cyto2, window_size=4),  # cyto
+    sliding_window_two_point_five_D(cyto2, window_size=window_size),  # cyto
     cutoff_frequency_ratio=0.05,
     order=1,
     high_pass=False,
@@ -153,7 +163,7 @@ organoid_masks = np.array(
         decouple_masks(
             reverse_sliding_window_max_projection(
                 output_dict,
-                window_size=4,
+                window_size=window_size,
                 original_z_slice_count=cyto2_image_shape[0],
             ),
             original_img_shape=cyto2_image_shape,

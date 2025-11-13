@@ -42,28 +42,25 @@ def read_in_channels(
         "cyto3": "640",
         "brightfield": "TRANS",
     },
+    channels_to_read: List[str] | None = None,
 ):
-    for f in files:
-        if channel_dict["nuclei"] in f:
-            nuclei = read_zstack_image(f)
-        elif channel_dict["cyto1"] in f:
-            cyto1 = read_zstack_image(f)
-        elif channel_dict["cyto2"] in f:
-            cyto2 = read_zstack_image(f)
-        elif channel_dict["cyto3"] in f:
-            cyto3 = read_zstack_image(f)
-        elif channel_dict["brightfield"] in f:
-            brightfield = read_zstack_image(f)
+    loaded = {}
+    for channel, token in channel_dict.items():
+        matches = [f for f in files if token in pathlib.Path(f).name or token in f]
+        if len(matches) == 0:
+            loaded[channel] = None
         else:
-            print(f"Unknown channel: {f}")
+            if len(matches) > 1:
+                print(
+                    f"Warning: multiple files match token '{token}' for channel '{channel}'. Using first match: {matches[0]}"
+                )
+            try:
+                loaded[channel] = np.array(read_zstack_image(matches[0]))
+            except Exception as e:
+                print(f"Error loading {matches[0]} for channel '{channel}': {e}")
+                loaded[channel] = None
 
-    return {
-        "nuclei": np.array(nuclei),
-        "cyto1": np.array(cyto1),
-        "cyto2": np.array(cyto2),
-        "cyto3": np.array(cyto3),
-        "brightfield": np.array(brightfield),
-    }
+    return loaded
 
 
 # ----------------------------------------------------------------------

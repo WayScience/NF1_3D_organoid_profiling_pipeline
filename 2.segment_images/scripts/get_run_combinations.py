@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import itertools
@@ -22,7 +22,7 @@ except NameError:
 
 from notebook_init_utils import bandicoot_check, init_notebook
 
-# In[ ]:
+# In[2]:
 
 
 root_dir, in_notebook = init_notebook()
@@ -43,7 +43,7 @@ input_combinations_path = pathlib.Path(
 input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[3]:
 
 
 channel_mapping = {
@@ -59,7 +59,7 @@ channel_mapping = {
 }
 
 
-# In[ ]:
+# In[4]:
 
 
 output_dict = {
@@ -70,7 +70,7 @@ output_dict = {
 }
 
 
-# In[ ]:
+# In[5]:
 
 
 for patient in patients:
@@ -87,7 +87,7 @@ for patient in patients:
         output_dict["mask_subparent_name"].append("segmentation_masks")
 
 
-# In[ ]:
+# In[6]:
 
 
 df = pd.DataFrame(output_dict)
@@ -95,7 +95,7 @@ print(f"Total combinations: {df.shape[0]}")
 df.head()
 
 
-# In[ ]:
+# In[7]:
 
 
 # write to a txt file with each row as a combination

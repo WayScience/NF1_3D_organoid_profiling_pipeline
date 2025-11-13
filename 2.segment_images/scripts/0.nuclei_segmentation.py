@@ -88,10 +88,22 @@ mask_path = pathlib.Path(
 mask_path.mkdir(exist_ok=True, parents=True)
 
 
-# In[5]:
+# In[ ]:
 
 
-return_dict = read_in_channels(find_files_available(input_dir))
+return_dict = read_in_channels(
+    find_files_available(input_dir),
+    channel_dict={
+        "nuclei": "405",  # key - string search in filename
+        "cyto1": "488",
+        "cyto2": "555",
+        "cyto3": "640",
+        "brightfield": "TRANS",
+    },
+    channels_to_read=["nuclei"],
+)
+
+
 nuclei = return_dict["nuclei"]
 # run clip_limit here
 nuclei = skimage.exposure.equalize_adapthist(
