@@ -27,6 +27,10 @@ if [ ! -f "$txt_file" ]; then
 fi
 
 while IFS= read -r line; do
+    # skip the header line
+    if [[ "$line" == "Patient"* ]]; then
+        continue
+    fi
 
     # split the line into an array
     IFS=$'\t' read -r -a parts <<< "$line"
