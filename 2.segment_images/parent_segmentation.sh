@@ -1,4 +1,11 @@
 #!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=amilan
+#SBATCH --qos=normal
+#SBATCH --account=amc-general
+#SBATCH --time=10:00
+#SBATCH --output=segmentation_parent-%j.out
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
