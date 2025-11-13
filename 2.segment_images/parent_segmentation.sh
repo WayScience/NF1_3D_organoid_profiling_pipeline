@@ -1,37 +1,43 @@
 #!/bin/bash
-# activate  cellprofiler environment
-module load anaconda
-conda init bash
-conda activate GFF_segmentation
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
 fi
+rerun=$1
 
-patient=$1
+if [ "$rerun" == "rerun" ]; then
+    txt_file="${git_root}/3.cellprofiling/load_data/rerun_combinations.txt"
+else
+    txt_file="${git_root}/3.cellprofiling/load_data/input_combinations.txt"
+fi
 
-echo "Processing patient $patient"
+# Check if TXT file exists
+if [ ! -f "$txt_file" ]; then
+    echo "Error: TXT file not found at $txt_file"
+    exit 1
+fi
 
-# get all input directories in specified directory
-z_stack_dir="$git_root/data/$patient/zstack_images"
-mapfile -t input_dirs < <(ls -d "$z_stack_dir"/*)
-total_dirs=$(echo "${input_dirs[@]}" | wc -w)
-echo "Total directories: $total_dirs"
-current_dir=0
+while IFS= read -r line; do
 
-# loop through all input directories
-for well_fov in "${input_dirs[@]}"; do
+    # split the line into an array
+    IFS=$'\t' read -r -a parts <<< "$line"
+    # assign the parts to variables
+    patient="${parts[0]}"
+    well_fov="${parts[1]}"
+    clip_limit="${parts[2]}"
+    input_subparent_name="${parts[3]}"
+    mask_subparent_name="${parts[4]}"
+
+    echo "Patient: $patient, WellFOV: $well_fov, Clip Limit: $clip_limit, Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
+
     number_of_jobs=$(squeue -u "$USER" | wc -l)
     while [ "$number_of_jobs" -gt 990 ]; do
         sleep 1s
         number_of_jobs=$(squeue -u "$USER" | wc -l)
     done
-    well_fov=$(basename "$well_fov")
-    current_dir=$((current_dir + 1))
-    echo -ne "Processing directory $current_dir of $total_dirs\r"
-    echo "Beginning segmentation for $well_fov"
+
     # requesting 4 nodes (3.75GB per node) for 15GB total memory requirement
     sbatch \
         --nodes=1 \
@@ -42,10 +48,8 @@ for well_fov in "${input_dirs[@]}"; do
         --account=amc-general \
         --time=30:00 \
         --output=segmentation_child-%j.out \
-        "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "zstack_images" "segmentation_masks"
-done
+        "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
-# deactivate cellprofiler environment
-conda deactivate
+done < "$txt_file"
 
 echo "All segmentation child jobs submitted"
