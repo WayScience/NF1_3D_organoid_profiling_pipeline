@@ -1,3 +1,13 @@
 patient	well_fov	clip_limit	input_subparent_name	mask_subparent_name
-NF0014_T1	E5-2	0.02	zstack_images	segmentation_masks
-NF0014_T1	D5-2	0.02	zstack_images	segmentation_masks
+NF0037_T1-Z-0.1 F4-1    0.1	zstack_images	segmentation_masks
+NF0037_T1-Z-0.1 F4-2    0.1	zstack_images	segmentation_masks
+NF0037_T1-Z-0.1 F4-3    0.1	zstack_images	segmentation_masks
+NF0037_T1-Z-0.2 F4-1    0.2	zstack_images	segmentation_masks
+NF0037_T1-Z-0.2 F4-2    0.2	zstack_images	segmentation_masks
+NF0037_T1-Z-0.2 F4-3    0.2	zstack_images	segmentation_masks
+NF0037_T1-Z-0.5 F4-1    0.5	zstack_images	segmentation_masks
+NF0037_T1-Z-0.5 F4-2    0.5	zstack_images	segmentation_masks
+NF0037_T1-Z-0.5 F4-3    0.5	zstack_images	segmentation_masks
+NF0037_T1-Z-1 F4-1    1.0	zstack_images	segmentation_masks
+NF0037_T1-Z-1 F4-2    1.0	zstack_images	segmentation_masks
+NF0037_T1-Z-1 F4-3    1.0	zstack_images	segmentation_masks
