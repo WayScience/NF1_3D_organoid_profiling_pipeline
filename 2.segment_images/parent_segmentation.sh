@@ -15,9 +15,9 @@ fi
 rerun=$1
 
 if [ "$rerun" == "rerun" ]; then
-    txt_file="${git_root}/3.cellprofiling/load_data/rerun_combinations.txt"
+    txt_file="${git_root}/2.segment_images/load_data/rerun_combinations.txt"
 else
-    txt_file="${git_root}/3.cellprofiling/load_data/input_combinations.txt"
+    txt_file="${git_root}/2.segment_images/load_data/input_combinations.txt"
 fi
 
 # Check if TXT file exists
