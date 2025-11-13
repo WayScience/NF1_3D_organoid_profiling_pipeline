@@ -28,7 +28,7 @@ fi
 
 while IFS= read -r line; do
     # skip the header line
-    if [[ "$line" == "Patient"* ]]; then
+    if [[ "$line" == "patient"* ]]; then
         continue
     fi
 
@@ -37,11 +37,10 @@ while IFS= read -r line; do
     # assign the parts to variables
     patient="${parts[0]}"
     well_fov="${parts[1]}"
-    clip_limit="${parts[2]}"
-    input_subparent_name="${parts[3]}"
-    mask_subparent_name="${parts[4]}"
+    input_subparent_name="${parts[2]}"
+    mask_subparent_name="${parts[3]}"
 
-    echo "Patient: $patient, WellFOV: $well_fov, Clip Limit: $clip_limit, Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
+    echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
 
     number_of_jobs=$(squeue -u "$USER" | wc -l)
     while [ "$number_of_jobs" -gt 990 ]; do

@@ -1,36 +1,49 @@
 #!/bin/bash
 
+conda activate GFF_segmentation
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
 fi
+rerun=$1
+
+if [ "$rerun" == "rerun" ]; then
+    txt_file="${git_root}/2.segment_images/load_data/rerun_combinations.txt"
+else
+    txt_file="${git_root}/2.segment_images/load_data/input_combinations.txt"
+fi
+
+# Check if TXT file exists
+if [ ! -f "$txt_file" ]; then
+    echo "Error: TXT file not found at $txt_file"
+    exit 1
+fi
+
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ "$git_root"/2.segment_images/notebooks/*.ipynb
-BANDICOOT=TRUE
-BANDICOOT_PATH="$HOME/mnt/bandicoot/NF1_organoid_data"
-# patient_array=( "NF0014_T1" "NF0014_T2" "NF0016_T1" "NF0018_T1" "NF0021_T1" "NF0030_T1" "NF0031_T1" "NF0035_T1" "NF0037_T1-Z-1" "NF0037_T1-Z-0.5" "NF0037_T1-Z-0.2" "NF0037_T1-Z-0.1" "NF0040_T1" "SARCO219_T2" "SARCO361_T1" )
 
-patient_array=( "NF0016_T1" "NF0018_T1" "NF0021_T1" "NF0030_T1" "NF0031_T1" "NF0035_T1" "NF0037_T1-Z-1" "NF0037_T1-Z-0.5" "NF0037_T1-Z-0.2" "NF0037_T1-Z-0.1" "NF0040_T1" "SARCO219_T2" "SARCO361_T1" )
-for patient in "${patient_array[@]}"; do
-
-    # get all input directories in specified directory
-    if [ "$BANDICOOT" = TRUE ]; then
-        git_root="$BANDICOOT_PATH"
+while IFS= read -r line; do
+    # skip the header line
+    if [[ "$line" == "patient"* ]]; then
+        continue
     fi
-    z_stack_dir="$git_root/data/$patient/zstack_images"
-    mapfile -t input_dirs < <(ls -d "$z_stack_dir"/*)
 
-    # loop through all input directories
-    for well_fov in "${input_dirs[@]}"; do
+    # split the line into an array
+    IFS=$'\t' read -r -a parts <<< "$line"
+    # assign the parts to variables
+    patient="${parts[0]}"
+    well_fov="${parts[1]}"
+    input_subparent_name="${parts[2]}"
+    mask_subparent_name="${parts[3]}"
 
-        well_fov=$(basename "$well_fov")
-        current_dir=$((current_dir + 1))
-        echo "Beginning segmentation for $patient - $well_fov"
-        bash child_segmentation.sh "$patient" "$well_fov" "zstack_images" "segmentation_masks"
-    done
+    echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
 
-done
+    echo "Beginning segmentation for $patient - $well_fov"
+    bash child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
+
+done < "$txt_file"
+
 
 
 echo "All segmentation child jobs ran"
