@@ -40,7 +40,7 @@ for well_fov in "${input_dirs[@]}"; do
         --gres=gpu:1 \
         --qos=normal \
         --account=amc-general \
-        --time=1:00:00 \
+        --time=30:00 \
         --output=segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "zstack_images" "segmentation_masks"
 done
