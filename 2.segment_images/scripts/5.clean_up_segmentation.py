@@ -97,16 +97,3 @@ for file in segmentation_data_files:
     else:
         # delete file
         file.unlink()
-
-
-# In[7]:
-
-
-# glob the files once more
-segmentation_data_files = list(segmentation_data_dir.glob("*"))
-# copy the masks to the zstack directory
-for file in tqdm.tqdm(segmentation_data_files):
-    destination = zstack_dir / file.name
-    if destination.exists():
-        continue
-    shutil.copyfile(file, destination)
