@@ -71,8 +71,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T1"
-    well_fov = "C4-2"
+    patient = "NF0037_T1-Z-0.1"
+    well_fov = "F4-3"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -102,14 +102,15 @@ return_dict = read_in_channels(
     },
     channels_to_read=["cyto2"],
 )
-cyto2 = return_dict["cyto2"]
+cyto2_raw = return_dict["cyto2"]
 del return_dict
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 nuclei_mask = read_zstack_image(nuclei_mask_output)
 # run clip_limit here
 cyto2 = skimage.exposure.equalize_adapthist(
-    cyto2, clip_limit=clip_limit, kernel_size=None
+    cyto2_raw, clip_limit=clip_limit, kernel_size=None
 )
+del cyto2_raw
 
 
 # ## Organoid segmentation

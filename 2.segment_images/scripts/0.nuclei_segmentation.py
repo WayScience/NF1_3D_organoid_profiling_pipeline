@@ -71,8 +71,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T1"
-    well_fov = "C4-2"
+    patient = "NF0037_T1-Z-0.1"
+    well_fov = "F4-2"
     window_size = 3
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
@@ -88,7 +88,7 @@ mask_path = pathlib.Path(
 mask_path.mkdir(exist_ok=True, parents=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 return_dict = read_in_channels(
@@ -104,11 +104,12 @@ return_dict = read_in_channels(
 )
 
 
-nuclei = return_dict["nuclei"]
+nuclei_raw = return_dict["nuclei"]
 # run clip_limit here
 nuclei = skimage.exposure.equalize_adapthist(
-    nuclei, clip_limit=clip_limit, kernel_size=None
+    nuclei_raw, clip_limit=clip_limit, kernel_size=None
 )
+del nuclei_raw
 
 
 # ## Nuclei Segmentation
@@ -153,6 +154,7 @@ nuclei_mask = run_post_hoc_refinement(
     mask_image=image,
     sliding_window_context=3,
 )
+
 del image, coordinates_df, df, longest_paths
 
 

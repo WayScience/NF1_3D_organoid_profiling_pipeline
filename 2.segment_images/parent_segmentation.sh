@@ -4,7 +4,7 @@
 #SBATCH --partition=amilan
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
-#SBATCH --time=10:00
+#SBATCH --time=7-00:00
 #SBATCH --output=segmentation_parent-%j.out
 
 git_root=$(git rev-parse --show-toplevel)
