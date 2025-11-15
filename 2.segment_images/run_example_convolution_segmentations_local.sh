@@ -16,10 +16,11 @@ well_fov="C4-2"
 echo "Processing patient $patient"
 
 # loop through all convolutions
-for convolution in {1..25}; do
+for convolution in {1..25} 50 75 100; do
     input_subparent_name="convolution_${convolution}"
     mask_subparent_name="convolution_${convolution}_segmentation_masks"
-    source \
+    # shellcheck source=bash
+    bash \
         "${git_root}"/2.segment_images/child_segmentation.sh \
         "$patient" \
         "$well_fov" \

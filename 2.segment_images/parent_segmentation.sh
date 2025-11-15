@@ -51,12 +51,12 @@ while IFS= read -r line; do
     # requesting 4 nodes (3.75GB per node) for 15GB total memory requirement
     sbatch \
         --nodes=1 \
-        --ntasks=4 \
+        --ntasks=2 \
         --partition=aa100 \
         --gres=gpu:1 \
         --qos=normal \
         --account=amc-general \
-        --time=30:00 \
+        --time=15:00 \
         --output=segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
