@@ -5,7 +5,7 @@
 #SBATCH --qos=long
 #SBATCH --account=amc-general
 #SBATCH --time=7-00:00
-#SBATCH --output=segmentation_parent-%j.out
+#SBATCH --output=logs/parent/segmentation_parent-%j.out
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
@@ -57,7 +57,7 @@ while IFS= read -r line; do
         --qos=normal \
         --account=amc-general \
         --time=15:00 \
-        --output=segmentation_child-%j.out \
+        --output=logs/child/segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
 done < "$txt_file"
