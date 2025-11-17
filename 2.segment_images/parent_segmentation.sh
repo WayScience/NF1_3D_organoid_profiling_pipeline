@@ -51,7 +51,7 @@ while IFS= read -r line; do
     # requesting 4 nodes (3.75GB per node) for 15GB total memory requirement
     sbatch \
         --nodes=1 \
-        --ntasks=4 \
+        --ntasks=8 \
         --partition=aa100 \
         --gres=gpu:1 \
         --qos=normal \
