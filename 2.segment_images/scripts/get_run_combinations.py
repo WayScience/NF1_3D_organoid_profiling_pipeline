@@ -40,7 +40,11 @@ patients = pd.read_csv(
 input_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/input_combinations.txt"
 )
+rerun_combinations_path = pathlib.Path(
+    f"{root_dir}/2.segment_images/load_data/rerun_combinations.txt"
+)
 input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
+rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 # In[3]:
@@ -101,3 +105,31 @@ df.head()
 # write to a txt file with each row as a combination
 # each column is a feature of the combination
 df.to_csv(input_combinations_path, sep="\t", index=False)
+
+
+# ## Rerun list
+
+# In[8]:
+
+
+# check which to rerun by checking if file exists
+df["file_path"] = df.apply(
+    lambda df: pathlib.Path(
+        f"{image_base_path}/data/{df['patient']}/{df['mask_subparent_name']}/{df['well_fov']}/organoid_mask.tiff"
+    ),
+    axis=1,
+)
+df["exists"] = df["file_path"].apply(lambda x: x.exists())
+print(f"{df.shape[0]} segmentations needed")
+df_rerun = df[~df["exists"]]
+print(f"{df.shape[0] - df_rerun.shape[0]} segmentations exist")
+print(f"{df_rerun.shape[0]} combinations to rerun")
+df_rerun
+
+
+# In[9]:
+
+
+# write to a txt file with each row as a combination
+# each column is a feature of the combination
+df.to_csv(rerun_combinations_path, sep="\t", index=False)
