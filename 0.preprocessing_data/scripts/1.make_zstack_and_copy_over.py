@@ -9,6 +9,7 @@
 import argparse
 import os
 import pathlib
+import re
 import sys
 
 import numpy as np
@@ -52,7 +53,7 @@ if not HPC and bandicoot_path.exists():
 else:
     bandicoot = False
 
-bandicoot = False
+bandicoot = True
 
 
 # In[4]:
@@ -69,9 +70,9 @@ elif bandicoot:
     bandicoot_path = pathlib.Path(
         os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")
     ).resolve(strict=True)
-    raw_image_dir = pathlib.Path(f"{bandicoot_path}/Raw_patient_files").resolve(
-        strict=True
-    )
+    raw_image_dir = pathlib.Path(
+        os.path.expanduser("~/Desktop/20TB_A/NF1_Patient_organoids")
+    ).resolve(strict=True)
     output_base_dir = bandicoot_path
 else:
     # comment out depending on whose computer you are on
@@ -83,11 +84,12 @@ else:
     # raw_image_dir_local = pathlib.Path("/media/18tbdrive/GFF_organoid_data/")
     output_base_dir = root_dir
 print(f"Raw image dir: {raw_image_dir}")
+print(f"Output base dir: {output_base_dir}")
 
 
 # ## Define paths
 
-# In[ ]:
+# In[5]:
 
 
 # Define parent and destination directories in a single dictionary
@@ -137,17 +139,17 @@ dir_mapping = {
         "well_position": 0,
         "channel_position": 1,
     },
-    "NF0017": {
-        "parent": pathlib.Path(
-            f"{raw_image_dir}/NF0017-T3-P7 (AGP, Mito Parameter optimization)/Acquisition 03-07-2025"
-        ).resolve(strict=True),
-        "destination": pathlib.Path(
-            f"{output_base_dir}/data/NF0017/zstack_images"
-        ).resolve(),
-        "times_nested": 2,
-        "well_position": 0,
-        "channel_position": 1,
-    },
+    # "NF0017": {
+    #     "parent": pathlib.Path(
+    #         f"{raw_image_dir}/NF0017-T3-P7 (AGP, Mito Parameter optimization)/Acquisition 03-07-2025"
+    #     ).resolve(strict=True),
+    #     "destination": pathlib.Path(
+    #         f"{output_base_dir}/data/NF0017/zstack_images"
+    #     ).resolve(),
+    #     "times_nested": 2,
+    #     "well_position": 0,
+    #     "channel_position": 1,
+    # },
     "NF0018_T6": {
         "parent": pathlib.Path(
             f"{raw_image_dir}/NF0018 (T6) Cell Painting-Pilot Drug Screeining/NF0018-Cell Painting Images/NF0018-All Acquisitions"
@@ -181,28 +183,6 @@ dir_mapping = {
         "well_position": 0,
         "channel_position": 1,
     },
-    "NF0031_T1_part_I": {
-        "parent": pathlib.Path(
-            f"{raw_image_dir}/NF0031-T1 Combined 1_2/NF0031-T1 Combined 1:2"
-        ).resolve(strict=True),
-        "destination": pathlib.Path(
-            f"{output_base_dir}/data/NF0031_T1/zstack_images"
-        ).resolve(),
-        "times_nested": 0,
-        "well_position": -1,
-        "channel_position": -3,
-    },
-    "NF0031_T1_part_II": {
-        "parent": pathlib.Path(
-            f"{raw_image_dir}/NF0031-T1 Combined 2_2/NF0031-T1 Combined 2:2"
-        ).resolve(strict=True),
-        "destination": pathlib.Path(
-            f"{output_base_dir}/data/NF0031_T1/zstack_images"
-        ).resolve(),
-        "times_nested": 0,
-        "well_position": -1,
-        "channel_position": -3,
-    },
     "NF0035_T1_part_I": {
         "parent": pathlib.Path(
             f"{raw_image_dir}/NF0035-T1-Part-1/NF0035-T1-Combined Part-1"
@@ -224,6 +204,28 @@ dir_mapping = {
         "times_nested": 2,
         "well_position": 0,
         "channel_position": 1,
+    },
+    "NF0037_T1_part_I": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0031-T1 Combined 1_2/NF0031-T1 Combined 1:2"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0037_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 0,
+        "well_position": -1,
+        "channel_position": -3,
+    },
+    "NF0037_T1_part_II": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0031-T1 Combined 2_2/NF0031-T1 Combined 2:2"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0037_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 0,
+        "well_position": -1,
+        "channel_position": -3,
     },
     "NF0037-T1-Z-1": {
         "parent": pathlib.Path(f"{raw_image_dir}/NF0037-T1-Z-1/NF0037-T1-Z-1").resolve(
@@ -280,12 +282,12 @@ dir_mapping = {
         "well_position": 0,
         "channel_position": 1,
     },
-    "SACRO219_T1": {
+    "SARCO219_T2": {
         "parent": pathlib.Path(
             f"{raw_image_dir}/SARC0219-T2 Cell Painting-selected/SARC0219-T2 Combined Cell Painting images/SARC0219-T2 Combined/"
         ).resolve(strict=True),
         "destination": pathlib.Path(
-            f"{output_base_dir}/data/SARCO219_T1/zstack_images"
+            f"{output_base_dir}/data/SARCO219_T2/zstack_images"
         ).resolve(),
         "times_nested": 2,
         "well_position": 0,
@@ -380,7 +382,21 @@ for patient in tqdm.tqdm(dir_mapping.keys(), desc="Processing patients", leave=T
 
             # generate filename below
             filepath = channel_images[channel_name]["filepath"][0]
-            well = pathlib.Path(filepath).stem.split("_")[
+
+            cleaned_filepath = filepath
+            patterns = [
+                r"\s*\(60X\)\s*",
+                r"\s*\(NO AUTOLEVELS\)\s*",
+                # r"-NEW\b",                       # remove literal "-NEW" only (word boundary)
+                r"\s*\(NO AUTOLEVELS-1\)\s*",
+                r"\s*\( NO AUTOLEVELS-2\)\s*",
+            ]
+            for pat in patterns:
+                cleaned_filepath = re.sub(
+                    pat, "", cleaned_filepath, flags=re.IGNORECASE
+                ).strip()
+
+            well = pathlib.Path(cleaned_filepath).parent.stem.split("_")[
                 dir_mapping[patient]["well_position"]
             ]
 
@@ -394,7 +410,6 @@ for patient in tqdm.tqdm(dir_mapping.keys(), desc="Processing patients", leave=T
             output_path.parent.mkdir(exist_ok=True, parents=True)
             if output_path.exists():
                 continue
-
             # create z-stack tiff by reading in each 2D image and stacking them
             images_to_stack = np.array(
                 [
