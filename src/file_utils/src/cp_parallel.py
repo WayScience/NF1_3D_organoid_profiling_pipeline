@@ -8,7 +8,7 @@ import multiprocessing
 import os
 import pathlib
 import subprocess
-from concurrent.futures import ProcessPoolExecutor, Future
+from concurrent.futures import Future, ProcessPoolExecutor
 from typing import List
 
 from errors.exceptions import MaxWorkerError

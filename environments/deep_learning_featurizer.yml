@@ -1,4 +1,4 @@
-name: GFF_featurization
+name: GFF_DL_featurization
 
 channels:
   - conda-forge
@@ -26,4 +26,8 @@ dependencies:
       - tqdm
       - cucim
       - torch
-
+      - torchvision
+      - medim
+      - monai
+      - edt
+      - surface-distance

@@ -1,40 +1,25 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 import time
 
 import pandas as pd
 import psutil
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import check_for_missing_args, parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
-sys.path.append(f"{root_dir}/3.cellprofiling/featurization_utils/")
 
-from featurization_parsable_arguments import parse_featurization_args
 from loading_classes import ImageSetLoader, ObjectLoader
 from resource_profiling_util import get_mem_and_time_profiling
 from texture_utils import measure_3D_texture
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -45,15 +30,15 @@ if not in_notebook:
     compartment = arguments_dict["compartment"]
     processor_type = arguments_dict["processor_type"]
 else:
-    well_fov = "E10-3"
+    well_fov = "C4-2"
     patient = "NF0014_T1"
-    channel = "BF"
-    compartment = "Organoid"
+    channel = "AGP"
+    compartment = "Nuclei"
     processor_type = "CPU"
 
-image_set_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/profiling_input_images/{well_fov}/"
-)
+bandicoot_check
+
+image_set_path = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}/")
 output_parent_path = pathlib.Path(
     f"{root_dir}/data/{patient}/extracted_features/{well_fov}/"
 )
@@ -92,9 +77,10 @@ image_set_loader = ImageSetLoader(
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
 )
+image_set_loader.image_set_dict.keys()
 
 
-# In[6]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -134,7 +120,7 @@ output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
 
 
-# In[7]:
+# In[8]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

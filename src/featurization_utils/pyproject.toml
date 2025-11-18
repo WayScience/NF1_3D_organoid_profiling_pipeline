@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "featurization_utils_module"
+version = "0.0.0"
+description = "Utility package for GFF 3D organoid profiling pipeline"
+requires-python = ">=3.11"
+authors = [ { name = "Michael J. Lippincott"} ]
+license = { text = "BSD 3-Clause License" }
+
+dependencies = [
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "pre-commit",
+    "ipykernel",
+]
+
+[tool.setuptools]
+py-modules = [
+    "area_size_shape_utils_gpu",
+    "area_size_shape_utils",
+    "colocalization_utils_gpu",
+    "colocalization_utils",
+    "granularity_utils",
+    "intensity_utils",
+    "neighbors_utils",
+    "resource_profiling_util",
+    "texture_utils",
+    "loading_classes",
+]
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["*"]
