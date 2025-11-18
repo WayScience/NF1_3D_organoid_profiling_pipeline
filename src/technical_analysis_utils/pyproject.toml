@@ -11,6 +11,7 @@ authors = [ { name = "Michael J. Lippincott"} ]
 license = { text = "BSD 3-Clause License" }
 
 dependencies = [
+    "numpy"
 ]
 
 [project.optional-dependencies]

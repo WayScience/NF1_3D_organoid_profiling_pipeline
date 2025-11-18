@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# This notebook compares the z-slice step sizes for segmentations of the same organoids.
+# It samples the higher z-slice resolution segmentations to match the lower z-slice resolution segmentations
+# and computes the Dice score for each pairwise comparison.
+#
+
 # In[1]:
 
 
@@ -115,12 +120,14 @@ for well_fov in well_fovs:
         mask_T1Z0_5_sampled = mask_T1Z0_5[::2, :, :].copy()
         mask_T1Z0_2_sampled = mask_T1Z0_2[::5, :, :].copy()
         mask_T1Z0_1_sampled = mask_T1Z0_1[::10, :, :].copy()
-        assert (
-            mask_T1Z1_sampled.shape[0]
-            == mask_T1Z0_5_sampled.shape[0]
-            == mask_T1Z0_2_sampled.shape[0]
-            == mask_T1Z0_1_sampled.shape[0]
-        ), "Sampled masks do not have the same number of z-slices"
+        if (
+            mask_T1Z1_sampled.shape[0] != mask_T1Z0_5_sampled.shape[0]
+            or mask_T1Z1_sampled.shape[0] != mask_T1Z0_2_sampled.shape[0]
+            or mask_T1Z1_sampled.shape[0] != mask_T1Z0_1_sampled.shape[0]
+        ):
+            raise ValueError(
+                f"Sampled masks do not have the same number of z-slices in {well_fov} for {compartment}"
+            )
 
         # set the masks in a dictionary for pairwise comparison
         mask_dict = {
@@ -132,8 +139,8 @@ for well_fov in well_fovs:
 
         for (name1, mask1), (name2, mask2) in combinations(mask_dict.items(), 2):
             iou = extract_IOU(
-                convert_indexed_mask_to_binary_mask(mask1),
-                convert_indexed_mask_to_binary_mask(mask2),
+                mask1,
+                mask2,
             )
             volume_ratio = mask1.sum() / mask2.sum() if mask2.sum() != 0 else 0
             iou_results["well_fov"].append(well_fov)
@@ -222,7 +229,7 @@ plt.legend(title="Compartment")
 plt.show()
 
 
-# In[11]:
+# In[7]:
 
 
 # plot the IOU across z-slice comparisons

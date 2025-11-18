@@ -27,17 +27,23 @@ def extract_IOU(mask1: np.ndarray, mask2: np.ndarray) -> float:
     Parameters
     ----------
     mask1 : np.ndarray
-        A binary mask where True represents the foreground (objects) and False represents the background.
+        A mask where True represents the foreground (objects) and False represents the background.
     mask2 : np.ndarray
-        A binary mask where True represents the foreground (objects) and False represents the background.
+        A mask where True represents the foreground (objects) and False represents the background.
 
     Returns
     -------
     float
         The Intersection over Union (IoU) score between the two masks.
     """
-    intersection = np.logical_and(mask1, mask2)
-    union = np.logical_or(mask1, mask2)
+    intersection = np.logical_and(
+        convert_indexed_mask_to_binary_mask(mask1) if mask1.dtype != bool else mask1,
+        convert_indexed_mask_to_binary_mask(mask2) if mask2.dtype != bool else mask2,
+    )
+    union = np.logical_or(
+        convert_indexed_mask_to_binary_mask(mask1) if mask1.dtype != bool else mask1,
+        convert_indexed_mask_to_binary_mask(mask2) if mask2.dtype != bool else mask2,
+    )
     iou_score = np.sum(intersection) / (np.sum(union) + 1e-12)
     return iou_score.item()
 
