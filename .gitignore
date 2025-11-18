@@ -234,4 +234,5 @@ nextflow_pipeline/.nextflow.log*
 6.dynamic_viz_Rshiny/.Renviron
 *Rplots.pdf
 profile_prep_for_sage/data_for_sage/*
-3.cellprofiling/models
+
+3.cellprofiling/models/*
