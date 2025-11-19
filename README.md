@@ -11,12 +11,12 @@ This repository contains the code and documentation for a comprehensive analysis
 ### Raw channels
 | 405 | 488 | 555 | 640 |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/gif/C4-2/C4-2_C4-2_405_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/gif/C4-2/C4-2_C4-2_488_animation.gif"  alt="GIF 2"> | <img src="./2.segment_images/animations/gif/C4-2/C4-2_C4-2_555_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/gif/C4-2/C4-2_C4-2_640_animation.gif" alt="GIF 4"> |
+| <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_405_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_488_animation.gif"  alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_555_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_640_animation.gif" alt="GIF 4"> |
 
 ### Organoid, Nuclei, Cell, and Cytoplasm Segmentations
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/gif/C4-2/C4-2_organoid_masks_reconstructed (labels)_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/gif/C4-2/C4-2_nuclei_masks_reconstructed (labels)_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/gif/C4-2/C4-2_cell_masks_reconstructed (labels)_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/gif/C4-2/C4-2_cytoplasm_mask (labels)_animation.gif" alt="GIF 4">
+| <img src="./2.segment_images/animations/media_for_readme/C4-2_organoid_masks (labels)_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_nuclei_masks (labels)_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cell_masks (labels)_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cytoplasm_mask (labels)_animation.gif" alt="GIF 4">
 ---
 
 ## Cell Painting
