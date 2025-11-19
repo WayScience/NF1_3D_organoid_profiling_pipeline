@@ -195,7 +195,9 @@ def decouple_masks(
     verbose: bool = False,
 ):
     masks_dict = {}
-    for zslice, arrays in tqdm.tqdm(enumerate(reconstruction_dict)):
+    for zslice, arrays in tqdm.tqdm(
+        enumerate(reconstruction_dict), total=len(reconstruction_dict)
+    ):
         df = extract_unique_masks(reconstruction_dict[zslice])
         merged_df = get_combinations_of_indices(
             df, distance_threshold=distance_threshold
