@@ -61,7 +61,7 @@ Top-level directories and a short description of what they contain:
 - environments
   - Conda/Mamba environment YAMLs and Makefile targets to reproduce required environments.
 
-Notes
+**Notes:**
 - Each module/directory generally includes a README with more detailed run instructions — consult those before running.
 - Many batch/HPC runs use notebook-to-script conversion and wrapper shell scripts; see the per-module README for exact commands and expected inputs.
 
