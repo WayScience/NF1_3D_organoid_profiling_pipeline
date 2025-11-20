@@ -72,3 +72,33 @@ Each of the scripts/notebooks in this module are run in the following order:
 - 4.post_decon_preprocessing.py
 
 Please see the `nyquist_sampling_calculations.ipynb` notebook for the calculations of the Nyquist sampling rates.
+
+
+## Well FOVs that were removed due to errors during preprocessing
+| Patient | Well_FOV | Status | Reason |
+|---------|----------|--------|--------|
+| NF0014_T1 | F11-3 | removed | Unnest failure |
+| NF0016_T1 | D3-2 | removed | Unnest failure |
+| NF0016_T1 | G3-2 | removed | Unnest failure |
+| NF0016_T1 | C5-3 | removed | Unnest failure |
+| NF0016_T1 | D8-1 | removed | Unnest failure |
+| NF0018_T6 | F4-2 | removed | Unnest failure |
+| NF0018_T6 | C8-2 | removed | Unnest failure |
+| NF0021_T1 | E10-2 | removed | Unnest failure |
+| NF0021_T1 | C3-4| removed | Unnest failure |
+| NF0030_T1 | C6-4 | removed | Unnest failure |
+| NF0030_T1 | D4-7 | removed | Unnest failure |
+| NF0035_T1 | E9-3 | removed | Unnest failure |
+
+
+## Yokogawa CQ1 vs Echo analysis and key differences
+| Feature | Yokogawa CQ1 | Echo |
+|---------|--------------|------|
+| Imaging Modality | Spinning Disk Confocal | Spinning Disk Confocal |
+| Objective | 60x Oil Immersion (1.35 NA) | 60x Air (0.9 NA) |
+| Medium and Refractive Index | Oil (1.518) | Air (1.0) |
+| Pixel Size | 0.1006 μm | 0.1083 μm |
+| Z-step Size | 1 μm | 1 μm |
+
+Please not that water's RI is approximately 1.33 and Matrigel's RI is approximately 1.34-1.36.
+

@@ -169,7 +169,7 @@ data/*
 2.segment_images/processed_data/*
 2.segment_images/notebooks/output.zarr
 2.segment_images/scripts/output.zarr
-2.segment_images/animations/mp4/*
+2.segment_images/animations/NF*
 2.segment_images/animations/test/mp4/*
 2.segment_images/animations/gif/*
 2.segment_images/rerun_jobs.txt
