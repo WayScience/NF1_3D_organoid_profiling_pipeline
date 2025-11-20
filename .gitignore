@@ -214,6 +214,7 @@ data/*
 1.segment_images/rerun_jobs.txt
 2.segment_images/animations/mp4/*
 2.segment_images/animations/test/mp4/*
+2.segment_images/animations/NF*
 2.segment_images/animations/gif/*
 2.segment_images/rerun_jobs.txt
 
