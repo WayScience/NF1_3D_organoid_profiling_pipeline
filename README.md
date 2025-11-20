@@ -20,7 +20,7 @@ This repository contains the code and documentation for a comprehensive analysis
 ---
 
 ## Cell Painting
-The modified 3D cell paingting was performed on patient-derived NF1 tumor organoids using the following stains:
+The modified 3D cell painting assay was performed on patient-derived NF1 tumor organoids using the following stains:
 | Stain | Target | Channel |
 |-------|--------|---------------------|
 | Hoechst | Nuclei | 405 nm |
