@@ -30,7 +30,7 @@ The modified 3D cell painting assay was performed on patient-derived NF1 tumor o
 | MitoTracker | Mitochondria | 640 nm |
 | - | - | Brightfield |
 
-Cell Painting was performed in 96 well plates with multiple fields of view (FOVs) imaged per well across multiple z-planes.
+Cell Painting was performed in 96-well plates with multiple fields of view (FOVs) imaged per well across multiple z-planes.
 
 ## Imaging
 We imaged the stained organoids using an spinning disk confocal microscope with pixel size of 0.100 µm and z-step size of 1 µm.
