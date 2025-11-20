@@ -1,7 +1,7 @@
 # NF1 3D Organoid Profiling Pipeline
 Patients living with Neurofibromatosis Type 1 (NF1) often develop neurofibromas (NFs), which are complex benign tumors.
 However, there are only two FDA-approved therapies for NF1-associated inoperable plexiform neurofibromas (PNFs): Mirdametinib and Selumetinib.
-Thus we **urgently need more therapeutic options** for neurofibromas.
+Thus, we **urgently need more therapeutic options** for neurofibromas.
 
 To address this, we have developed a 3D patient-derived tumor organoid model of NF1.
 We developed a modified 3D Cell Painting protocol to generate high-content imaging data from these organoids.
