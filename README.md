@@ -16,7 +16,7 @@ This repository contains the code and documentation for a comprehensive analysis
 ### Organoid, Nuclei, Cell, and Cytoplasm Segmentations
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/media_for_readme/C4-2_organoid_masks (labels)_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_nuclei_masks (labels)_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cell_masks (labels)_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cytoplasm_mask (labels)_animation.gif" alt="GIF 4">
+| <img src="./2.segment_images/animations/media_for_readme/C4-2_organoid_masks (labels)_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_nuclei_masks (labels)_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cell_masks (labels)_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cytoplasm_masks (labels)_animation.gif" alt="GIF 4">
 ---
 
 ## Cell Painting
@@ -45,7 +45,7 @@ Top-level directories and a short description of what they contain:
 - 2.segment_images
   - Full segmentation pipeline: notebooks, scripts for 2.5D/3D segmentation, mask reconstruction and post‑hoc refinements.
 - 3.cellprofiling
-  - CellProfiler pipelines, wrapper scripts and helpers to extract per-cell/per-organoid features.
+  - Featurization pipelines using custom featurization scripts that allow for efficient and scalable feature extraction from 3D image data.
 - 4.processing_image_based_profiles
   - Scripts to merge, normalize, filter and aggregate image‑based profiles across wells/patients.
 - 5.EDA
