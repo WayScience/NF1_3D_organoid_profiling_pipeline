@@ -52,7 +52,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[4]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -71,10 +71,10 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0037_T1-Z-0.1"
-    well_fov = "F4-2"
+    patient = "NF0037_T1_CQ1"
+    well_fov = "C9-23"
     window_size = 3
-    clip_limit = 0.03
+    clip_limit = 0.01
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
@@ -88,7 +88,7 @@ mask_path = pathlib.Path(
 mask_path.mkdir(exist_ok=True, parents=True)
 
 
-# In[5]:
+# In[ ]:
 
 
 return_dict = read_in_channels(
@@ -114,7 +114,7 @@ del nuclei_raw
 
 # ## Nuclei Segmentation
 
-# In[6]:
+# In[ ]:
 
 
 nuclei_image_shape = nuclei.shape
@@ -138,7 +138,7 @@ nuclei_masks = np.array(
 )
 
 
-# In[7]:
+# In[ ]:
 
 
 # generate the coordinates dataframe for reconstruction
@@ -161,7 +161,7 @@ del image, coordinates_df, df, longest_paths
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[8]:
+# In[ ]:
 
 
 nuclei_df = get_labels_for_post_hoc_reassignment(
@@ -171,14 +171,14 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 
 # ## Save the segmented masks
 
-# In[9]:
+# In[ ]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[10]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

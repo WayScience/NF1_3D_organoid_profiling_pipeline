@@ -71,14 +71,14 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0037_T1-Z-0.1"
-    well_fov = "F4-3"
-    clip_limit = 0.03
+    patient = "NF0037_T1_CQ1"
+    well_fov = "B8-6"
+    clip_limit = 0.01
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
 
-window_size = 4
+window_size = 2
 input_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)

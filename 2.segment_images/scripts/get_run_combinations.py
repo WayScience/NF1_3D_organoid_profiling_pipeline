@@ -26,9 +26,7 @@ from notebook_init_utils import bandicoot_check, init_notebook
 
 
 root_dir, in_notebook = init_notebook()
-bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(
-    strict=True
-)
+bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve()
 image_base_path = bandicoot_check(
     bandicoot_mount_path=bandicoot_path, root_dir=root_dir
 )
@@ -77,6 +75,13 @@ output_dict = {
 # In[5]:
 
 
+convolution_iters = [x for x in range(1, 26)]
+convolution_iters = convolution_iters + [50, 75, 100]
+
+
+# In[6]:
+
+
 for patient in patients:
     # get the well_fov for each patient
     patient_well_fovs = pathlib.Path(
@@ -84,14 +89,29 @@ for patient in patients:
     ).glob("*")
     for well_fov in patient_well_fovs:
         well_fov = well_fov.name
-
         output_dict["patient"].append(patient)
         output_dict["well_fov"].append(well_fov)
         output_dict["input_subparent_name"].append("zstack_images")
         output_dict["mask_subparent_name"].append("segmentation_masks")
 
+        # this is specific to the segmentation of the convolutions performed on the NF0014_T1 C4-2 well_fov
+        if patient == "NF0014_T1" and well_fov == "C4-2":
+            for convolution_iter in convolution_iters:
+                output_dict["patient"].append(patient)
+                output_dict["well_fov"].append(well_fov)
+                output_dict["input_subparent_name"].append(
+                    f"convolution_{convolution_iter}"
+                )
+                output_dict["mask_subparent_name"].append(
+                    f"convolution_{convolution_iter}_segmentation_masks"
+                )
+            output_dict["patient"].append(patient)
+            output_dict["well_fov"].append(well_fov)
+            output_dict["input_subparent_name"].append("deconvolved_images")
+            output_dict["mask_subparent_name"].append("deconvolved_segmentation_masks")
 
-# In[6]:
+
+# In[7]:
 
 
 df = pd.DataFrame(output_dict)
@@ -99,7 +119,7 @@ print(f"Total combinations: {df.shape[0]}")
 df.head()
 
 
-# In[7]:
+# In[8]:
 
 
 # write to a txt file with each row as a combination
@@ -109,7 +129,7 @@ df.to_csv(input_combinations_path, sep="\t", index=False)
 
 # ## Rerun list
 
-# In[8]:
+# In[9]:
 
 
 # check which to rerun by checking if file exists
@@ -127,9 +147,10 @@ print(f"{df_rerun.shape[0]} combinations to rerun")
 df_rerun
 
 
-# In[9]:
+# In[10]:
 
 
+df_rerun = df_rerun.drop(columns=["file_path", "exists"])
 # write to a txt file with each row as a combination
 # each column is a feature of the combination
-df.to_csv(rerun_combinations_path, sep="\t", index=False)
+df_rerun.to_csv(rerun_combinations_path, sep="\t", index=False)
