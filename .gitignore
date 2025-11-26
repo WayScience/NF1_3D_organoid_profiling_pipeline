@@ -173,6 +173,7 @@ data/*
 2.segment_images/animations/test/mp4/*
 2.segment_images/animations/gif/*
 2.segment_images/rerun_jobs.txt
+2.segment_images/animations/*
 
 # Ignore experiment files from QC results
 *Experiment*.csv
