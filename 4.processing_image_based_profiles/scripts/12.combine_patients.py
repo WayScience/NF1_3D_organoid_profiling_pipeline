@@ -6,24 +6,11 @@
 
 import os
 import pathlib
-import sys
 
 import duckdb
 import pandas as pd
-from pycytominer import aggregate, feature_select
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from notebook_init_utils import bandicoot_check, init_notebook
+from pycytominer import aggregate, feature_select
 
 root_dir, in_notebook = init_notebook()
 
@@ -72,7 +59,7 @@ for patient in patients:
             levels_to_merge_dict["organoid"].append(file)
 
 
-# In[5]:
+# In[ ]:
 
 
 feature_select_ops = [
@@ -82,7 +69,8 @@ feature_select_ops = [
     # "correlation_threshold", # comment out to remove correlation thresholding
 ]
 metadata_cols = [
-    "Metadata_patient_tumorMetadata_patient",
+    "Metadata_patient_tumor",
+    "Metadata_patient",
     "Metadata_tumor",
     "Metadata_object_id",
     "Metadata_unit",

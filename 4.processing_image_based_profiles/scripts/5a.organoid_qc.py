@@ -3,28 +3,15 @@
 
 # # Perform organoid-level quality control
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import pandas as pd
-from cosmicqc import find_outliers
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
+from cosmicqc import find_outliers
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
@@ -35,9 +22,20 @@ profile_base_dir = bandicoot_check(
 )
 
 
+# In[2]:
+
+
+if not in_notebook:
+    args = parse_args()
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
+
+else:
+    image_based_profiles_subparent_name = "image_based_profiles"
+
+
 # ## Load in all the organoid profiles and concat together
 
-# In[2]:
+# In[3]:
 
 
 # Path to patient folders
@@ -47,7 +45,10 @@ path_to_patients = pathlib.Path(f"{profile_base_dir}/data/")
 dfs = []
 for patient_folder in path_to_patients.iterdir():
     organoid_file = (
-        patient_folder / "image_based_profiles/1.combined_profiles" / "organoid.parquet"
+        patient_folder
+        / f"{image_based_profiles_subparent_name}"
+        / "1.combined_profiles"
+        / "organoid.parquet"
     )
     if organoid_file.exists():
         df = pd.read_parquet(organoid_file)
@@ -71,7 +72,7 @@ orig_organoid_profiles_df.head()
 #    - An organoid can not exist if there aren't any cells.
 #    - NaN in object_id would be incorrect as that means the object/organoid does not exist (will have all NaNs in the feature space).
 
-# In[3]:
+# In[4]:
 
 
 organoid_profiles_df = orig_organoid_profiles_df.copy()
@@ -88,7 +89,7 @@ organoid_profiles_df.head()
 
 # ## Process non-NaN rows to detect abnormally small and large organoids and flag them
 
-# In[4]:
+# In[5]:
 
 
 # Set the metadata columns to be used in the QC process
@@ -102,7 +103,7 @@ metadata_columns = [
 ]
 
 
-# In[5]:
+# In[6]:
 
 
 # Process each plate (patient_id) independently in the combined dataframe
@@ -162,7 +163,7 @@ for plate_name, plate_df in organoid_profiles_df.groupby("patient_id"):
     print(f"Saved organoid profiles with outlier flags to {output_file}\n")
 
 
-# In[6]:
+# In[7]:
 
 
 # Print example output of the flagged organoid profiles

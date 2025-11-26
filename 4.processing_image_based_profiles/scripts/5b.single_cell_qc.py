@@ -3,28 +3,15 @@
 
 # # Perform single-cell level quality control
 
-# In[ ]:
+# In[1]:
 
 
+import os
 import pathlib
-import sys
 
 import pandas as pd
-from cosmicqc import find_outliers
-
-cwd = pathlib.Path.cwd()
-import os
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
+from cosmicqc import find_outliers
 from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
@@ -35,6 +22,17 @@ profile_base_dir = bandicoot_check(
 )
 
 
+# In[2]:
+
+
+if not in_notebook:
+    args = parse_args()
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
+
+else:
+    image_based_profiles_subparent_name = "image_based_profiles"
+
+
 # ## Load in each single-cell level profile per patient and process
 #
 # 1. Load in the single-cell data (add `patient_id` column).
@@ -43,7 +41,7 @@ profile_base_dir = bandicoot_check(
 #    - Also add flag for if the `object_id` for a single-cell is NaN.
 # 3. Concat single-cell data together.
 
-# In[2]:
+# In[3]:
 
 
 # Path to patient folders
@@ -52,11 +50,13 @@ path_to_patients = pathlib.Path(f"{profile_base_dir}/data/")
 dfs = []
 for patient_folder in path_to_patients.iterdir():
     single_cell_file = (
-        patient_folder / "image_based_profiles/1.combined_profiles" / "sc.parquet"
+        patient_folder
+        / f"{image_based_profiles_subparent_name}/1.combined_profiles"
+        / "sc.parquet"
     )
     organoid_flags_file = (
         patient_folder
-        / "image_based_profiles/1a.qc_profiles"
+        / f"{image_based_profiles_subparent_name}/1a.qc_profiles"
         / "organoid_flagged_outliers.parquet"
     )
 
@@ -108,7 +108,7 @@ orig_single_cell_profiles_df.head()
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
-# In[3]:
+# In[4]:
 
 
 # Set the metadata columns to be used in the QC process
@@ -125,7 +125,7 @@ metadata_columns = [
 ]
 
 
-# In[4]:
+# In[5]:
 
 
 # Process each plate (patient_id) independently in the combined dataframe
@@ -212,7 +212,7 @@ for plate_name, plate_df in orig_single_cell_profiles_df.groupby("patient_id"):
     print(f"Saved single-cell profiles with outlier flags to {output_file}\n")
 
 
-# In[5]:
+# In[6]:
 
 
 # Print example output of the flagged single-cell profiles

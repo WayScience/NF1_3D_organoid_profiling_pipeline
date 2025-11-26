@@ -1,35 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
-
-import pandas as pd
-from cytotable import convert, presets
-
-sys.path.append("../../../utils")
 
 import duckdb
+import pandas as pd
+from arg_parsing_utils import parse_args
+from cytotable import convert, presets
+from notebook_init_utils import bandicoot_check, init_notebook
 from parsl.config import Config
 from parsl.executors import HighThroughputExecutor
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-from arg_parsing_utils import parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
@@ -45,22 +29,25 @@ if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
+
 else:
     patient = "NF0014_T1"
     well_fov = "G2-2"
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # In[3]:
 
 
 input_sqlite_file = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/{well_fov}.duckdb"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/{well_fov}.duckdb"
 ).resolve(strict=True)
 destination_sc_parquet_file = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
 ).resolve()
 destination_organoid_parquet_file = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
 ).resolve()
 destination_sc_parquet_file.parent.mkdir(parents=True, exist_ok=True)
 dest_datatype = "parquet"

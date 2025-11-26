@@ -4,30 +4,17 @@
 # This notebook performs profile normalization.
 # All profiles are normalized to the DMSO control treated profiles.
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import numpy as np
 import pandas as pd
-from pycytominer import normalize
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
+from pycytominer import normalize
 
 root_dir, in_notebook = init_notebook()
 
@@ -36,15 +23,17 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     args = parse_args()
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
     patient = "NF0014_T1"
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # In[3]:
@@ -52,19 +41,19 @@ else:
 
 # pathing
 sc_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/2.annotated_profiles/sc_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.annotated_profiles/sc_anno.parquet"
 ).resolve(strict=True)
 organoid_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/2.annotated_profiles/organoid_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.annotated_profiles/organoid_anno.parquet"
 ).resolve(strict=True)
 
 
 # output path
 sc_normalized_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/3.normalized_profiles/sc_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.normalized_profiles/sc_norm.parquet"
 ).resolve()
 organoid_normalized_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/3.normalized_profiles/organoid_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.normalized_profiles/organoid_norm.parquet"
 ).resolve()
 
 organoid_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,32 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import pandas as pd
-
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
@@ -44,9 +25,12 @@ if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
+
 else:
-    well_fov = "G2-2"
     patient = "NF0014_T1"
+    well_fov = "G2-2"
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # In[3]:
@@ -96,17 +80,17 @@ def centroid_within_bbox_detection(
 
 # input paths
 sc_profile_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
 organoid_profile_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
 # output paths
 sc_profile_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
 ).resolve()
 organoid_profile_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}_related.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}_related.parquet"
 ).resolve()
 
 
@@ -235,14 +219,14 @@ if sc_profile_df.empty:
 
 # ### Save the profiles
 
-# In[15]:
+# In[14]:
 
 
 organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
 organoid_profile_df.head()
 
 
-# In[16]:
+# In[15]:
 
 
 sc_profile_df.to_parquet(sc_profile_output_path, index=False)

@@ -4,27 +4,14 @@
 # This notebook combines all well fovs for each patient into a single file.
 #
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import duckdb
 import pandas as pd
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
@@ -42,9 +29,11 @@ profile_base_dir = bandicoot_check(
 if not in_notebook:
     args = parse_args()
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
     patient = "NF0014_T1"
+    image_based_profiles_subparent_name = "convolution_1_image_based_profiles"
 
 
 # In[3]:
@@ -52,14 +41,14 @@ else:
 
 # set paths
 profiles_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles"
 ).resolve(strict=True)
 # output_paths
 sc_merged_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/1.combined_profiles/sc.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.combined_profiles/sc.parquet"
 ).resolve()
 organoid_merged_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/1.combined_profiles/organoid.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.combined_profiles/organoid.parquet"
 ).resolve()
 organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -91,7 +80,11 @@ organoid_profiles = [str(x) for x in profiles if "organoid" in str(x.name)]
 # pass
 
 for col in pd.read_parquet(
-    "~/mnt/bandicoot/NF1_organoid_data/data/NF0014_T1/image_based_profiles/0.converted_profiles/G2-2/sc_profiles_G2-2_related.parquet"
+    pathlib.Path(
+        os.path.expanduser(
+            f"~/mnt/bandicoot/NF1_organoid_data/data/NF0014_T1/{image_based_profiles_subparent_name}/0.converted_profiles/C4-2/sc_profiles_C4-2_related.parquet"
+        )
+    )
 ).columns:
     if "intensity" in col.lower():
         print(col)

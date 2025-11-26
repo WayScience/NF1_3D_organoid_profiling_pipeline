@@ -1,28 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 from functools import reduce
 
 import duckdb
 import pandas as pd
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
@@ -41,16 +28,22 @@ if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    output_features_subparent_name = args["output_features_subparent_name"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
+
+
 else:
-    well_fov = "G2-2"
+    well_fov = "C4-2"
     patient = "NF0014_T1"
+    output_features_subparent_name = "convolution_22_extracted_features"
+    image_based_profiles_subparent_name = "convolution_22_image_based_profiles"
 
 
 result_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/extracted_features/{well_fov}"
+    f"{profile_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}"
 ).resolve(strict=True)
 database_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}"
 ).resolve()
 database_path.mkdir(parents=True, exist_ok=True)
 # create the sqlite database

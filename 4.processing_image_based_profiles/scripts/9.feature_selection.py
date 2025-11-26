@@ -3,29 +3,16 @@
 
 # This notebook performs profile feature selection.
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import pandas as pd
-from pycytominer import feature_select
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
+from pycytominer import feature_select
 
 root_dir, in_notebook = init_notebook()
 
@@ -35,15 +22,17 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     args = parse_args()
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
     patient = "NF0014_T1"
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # In[3]:
@@ -51,19 +40,19 @@ else:
 
 # pathing
 sc_normalized_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/3.normalized_profiles/sc_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.normalized_profiles/sc_norm.parquet"
 ).resolve(strict=True)
 organoid_normalized_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/3.normalized_profiles/organoid_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.normalized_profiles/organoid_norm.parquet"
 ).resolve(strict=True)
 
 
 # output path
 sc_fs_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/4.feature_selected_profiles/sc_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.feature_selected_profiles/sc_fs.parquet"
 ).resolve()
 organoid_fs_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/4.feature_selected_profiles/organoid_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.feature_selected_profiles/organoid_fs.parquet"
 ).resolve()
 
 organoid_fs_output_path.parent.mkdir(parents=True, exist_ok=True)

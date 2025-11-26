@@ -3,29 +3,16 @@
 
 # This notebook performs profile aggregation.
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import pandas as pd
-from pycytominer import aggregate
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
+from pycytominer import aggregate
 
 root_dir, in_notebook = init_notebook()
 
@@ -35,15 +22,17 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     args = parse_args()
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
     patient = "NF0014_T1"
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # ### Merge the sc and organoid profiles after aggregation
@@ -59,31 +48,31 @@ else:
 #######################################################################
 # 1. The single-cell parent organoid aggregated profile is merged with the fs organoid profile
 organoid_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/4.feature_selected_profiles/organoid_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.feature_selected_profiles/organoid_fs.parquet"
 ).resolve(strict=True)
 sc_agg_well_parent_organoid_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/5.aggregated_profiles/sc_agg_parent_organoid_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/sc_agg_parent_organoid_level.parquet"
 ).resolve(strict=True)
 
 # output merged path
 organoid_agg_well_parent_organoid_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/6.merged_profiles/sc-organoid_sc_agg_well_parent_organoid_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.merged_profiles/sc-organoid_sc_agg_well_parent_organoid_level.parquet"
 ).resolve()
 
 ########################################################################
 
 # 2. The well level profiles are merged together
 sc_agg_well_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/5.aggregated_profiles/sc_agg_well_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/sc_agg_well_level.parquet"
 ).resolve(strict=True)
 
 organoid_agg_well_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/5.aggregated_profiles/organoid_agg_well_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/organoid_agg_well_level.parquet"
 ).resolve(strict=True)
 
 # output merged path
 organoid_agg_well_merge_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/6.merged_profiles/sc-organoid_agg_well_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.merged_profiles/sc-organoid_agg_well_level.parquet"
 ).resolve()
 
 ###################################################################################
@@ -91,16 +80,16 @@ organoid_agg_well_merge_path = pathlib.Path(
 # 3. The consensus profiles are merged together
 
 sc_consensus_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/5.aggregated_profiles/sc_consensus.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/sc_consensus.parquet"
 ).resolve(strict=True)
 
 organoid_consensus_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/5.aggregated_profiles/organoid_consensus.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/organoid_consensus.parquet"
 ).resolve(strict=True)
 
 # output merged path
 organoid_consensus_merge_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/6.merged_profiles/sc-organoid_consensus.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.merged_profiles/sc-organoid_consensus.parquet"
 ).resolve()
 
 

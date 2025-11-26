@@ -5,26 +5,13 @@
 # The platemap is mapped back to the profile to retain the sample metadata.
 #
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import pandas as pd
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
 from arg_parsing_utils import parse_args
 from notebook_init_utils import bandicoot_check, init_notebook
 
@@ -36,15 +23,17 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     args = parse_args()
     patient = args["patient"]
+    image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
     patient = "NF0014_T1"
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # In[3]:
@@ -95,17 +84,16 @@ def annotate_profiles(
     return profile_df
 
 
+# ## pathing
+
 # In[4]:
 
 
-# pathing
-
-
 sc_merged_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/1.combined_profiles/sc.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.combined_profiles/sc.parquet"
 ).resolve(strict=True)
 organoid_merged_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/1.combined_profiles/organoid.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.combined_profiles/organoid.parquet"
 ).resolve(strict=True)
 
 platemap_path = pathlib.Path(
@@ -114,10 +102,10 @@ platemap_path = pathlib.Path(
 
 # output path
 sc_annotated_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/2.annotated_profiles/sc_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.annotated_profiles/sc_anno.parquet"
 ).resolve()
 organoid_annotated_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/image_based_profiles/2.annotated_profiles/organoid_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.annotated_profiles/organoid_anno.parquet"
 ).resolve()
 
 organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
