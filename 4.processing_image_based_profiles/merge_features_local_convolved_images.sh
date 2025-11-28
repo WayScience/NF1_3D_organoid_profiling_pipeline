@@ -39,9 +39,11 @@ patient_array=(
     "NF0014_T1"
     "NF0014_T1"
     "NF0014_T1"
+    "NF0014_T1"
     )
 
 well_fov_array=(
+    "C4-2"
     "C4-2"
     "C4-2"
     "C4-2"
@@ -104,6 +106,7 @@ output_features_subparent_name_array=(
     "convolution_50_extracted_features"
     "convolution_75_extracted_features"
     "convolution_100_extracted_features"
+    "deconvolved_images_extracted_features"
 
     )
 image_based_profiles_subparent_name_array=(
@@ -136,6 +139,7 @@ image_based_profiles_subparent_name_array=(
     "convolution_50_image_based_profiles"
     "convolution_75_image_based_profiles"
     "convolution_100_image_based_profiles"
+    "deconvolved_images_image_based_profiles"
     )
 
 # setup the logs dir
