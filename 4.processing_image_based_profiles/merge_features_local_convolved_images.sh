@@ -160,23 +160,23 @@ for index in "${!patient_array[@]}"; do
         echo "$patient - $well_fov"
         log_file="../logs/${patient}_${well_fov}_${output_features_subparent_name}.log"
         touch "$log_file"  # create the log file if it doesn't exist
-        # {
-        #     python \
-        #         1.merge_feature_parquets.py \
-        #         --patient "$patient" --well_fov "$well_fov" \
-        #         --output_features_subparent_name "${output_features_subparent_name}" \
-        #         --image_based_profiles_subparent_name "${image_based_profiles_subparent_name}"
-        #     python \
-        #         2.merge_sc.py \
-        #     --patient "$patient" --well_fov "$well_fov"\
-        #     --output_features_subparent_name "${output_features_subparent_name}" \
-        #     --image_based_profiles_subparent_name "${image_based_profiles_subparent_name}"
-        #     python \
-        #         3.organoid_cell_relationship.py \
-        #     --patient "$patient" --well_fov "$well_fov"\
-        #     --output_features_subparent_name "${output_features_subparent_name}" \
-        #     --image_based_profiles_subparent_name "${image_based_profiles_subparent_name}"
-        # } >> "$log_file" 2>&1
+        {
+            python \
+                1.merge_feature_parquets.py \
+                --patient "$patient" --well_fov "$well_fov" \
+                --output_features_subparent_name "${output_features_subparent_name}" \
+                --image_based_profiles_subparent_name "${image_based_profiles_subparent_name}"
+            python \
+                2.merge_sc.py \
+            --patient "$patient" --well_fov "$well_fov"\
+            --output_features_subparent_name "${output_features_subparent_name}" \
+            --image_based_profiles_subparent_name "${image_based_profiles_subparent_name}"
+            python \
+                3.organoid_cell_relationship.py \
+            --patient "$patient" --well_fov "$well_fov"\
+            --output_features_subparent_name "${output_features_subparent_name}" \
+            --image_based_profiles_subparent_name "${image_based_profiles_subparent_name}"
+        } >> "$log_file" 2>&1
     patient_log_file="../logs/patients/${patient}.log"
     mkdir -p "$(dirname "$patient_log_file")"  # create the patients directory if it doesn't exist
     touch "$patient_log_file"  # create the patient log file if it doesn't exist
