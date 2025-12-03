@@ -68,6 +68,7 @@ feature_types = [
     "Intensity",
     "Granularity",
     "Neighbor",
+    "SAMMed3D",
     "Texture",
 ]
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm"]

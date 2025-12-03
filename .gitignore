@@ -194,3 +194,4 @@ nextflow_pipeline/.nextflow.log*
 profile_prep_for_sage/data_for_sage/*
 
 3.cellprofiling/models/*
+7.technical_analysis/processed_data/*
