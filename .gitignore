@@ -217,6 +217,7 @@ data/*
 2.segment_images/animations/NF*
 2.segment_images/animations/gif/*
 2.segment_images/rerun_jobs.txt
+2.segment_images/animations/*
 
 # Ignore experiment files from QC results
 *Experiment*.csv
@@ -237,3 +238,4 @@ nextflow_pipeline/.nextflow.log*
 profile_prep_for_sage/data_for_sage/*
 
 3.cellprofiling/models/*
+7.technical_analysis/processed_data/*

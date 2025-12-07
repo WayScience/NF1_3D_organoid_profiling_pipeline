@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import duckdb
 import pandas as pd
