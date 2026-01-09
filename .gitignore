@@ -200,3 +200,6 @@ profile_prep_for_sage/data_for_sage/*
 3.cellprofiling/models
 models/*
 nextflow_pipeline/workflows/work/*
+7.technical_analysis/results/*
+7.technical_analysis/processed_data/*
+models/*
