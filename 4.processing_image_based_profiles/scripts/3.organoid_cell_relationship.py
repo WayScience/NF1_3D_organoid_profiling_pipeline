@@ -211,23 +211,6 @@ print(f"Single-cell profile shape: {sc_profile_df.shape}")
 # In[13]:
 
 
-if organoid_profile_df.empty:
-    # add a row with Na values
-    organoid_profile_df.loc[len(organoid_profile_df)] = [None] * len(
-        organoid_profile_df.columns
-    )
-    organoid_profile_df["image_set"] = well_fov
-
-
-# In[12]:
-
-
-print(f"Single-cell profile shape: {sc_profile_df.shape}")
-
-
-# In[13]:
-
-
 if sc_profile_df.empty:
     # add a row with Na values
     sc_profile_df.loc[len(sc_profile_df)] = [None] * len(sc_profile_df.columns)
