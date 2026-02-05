@@ -2,7 +2,7 @@
 Area.Size.Shape Features
 ===============================================================
 
-.. image:: _static/Volume_Shape_3D_Figure.png
+.. image:: ../_static/Volume_Shape_3D_Figure.png
    :alt: NF1 Pipeline Workflow
    :align: center
    :width: 100%
