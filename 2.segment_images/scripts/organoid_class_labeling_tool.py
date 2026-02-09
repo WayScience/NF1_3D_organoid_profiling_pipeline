@@ -334,7 +334,7 @@ print(f"Images to process: {len(df)}")
 df.head()
 
 
-# ## run the rest via script
+# ## run the rest via script (code cells won't be executed in notebook)
 
 # In[ ]:
 
