@@ -237,6 +237,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 # convert the cell masks to binary masks
 cell_binary_mask = cell_mask.copy()
 cell_binary_mask[cell_binary_mask > 0] = 1
+# Fill holes in cell masks before generating organoid mask
 for z in range(cell_binary_mask.shape[0]):
     cell_binary_mask[z] = scipy.ndimage.binary_fill_holes(
         cell_binary_mask[z].astype(bool)
