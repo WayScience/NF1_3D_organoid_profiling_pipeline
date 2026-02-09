@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This runs all segmentation operations in one place.
-# The idea is that this should be faster and easier to invoke as we only have to load the image data once instead of N times (~10).
-# Running each individual task as its own script is modular but requires overhead to load the data each time.
-# Currently it takes about 15 minutes to complete a single organoid's segmentation for all compartments... (~50,1500,1500) (Z,Y,X) dimensional image.
+# This notebook/scripts runs the nuclei segmentation pipeline for 3D images.
 
 # In[1]:
 
@@ -71,7 +68,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "E10-2"
+    well_fov = "C4-2"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -137,22 +134,25 @@ nuclei_masks = np.array(  # convert to array
 
 
 # Remove small objects while preserving label IDs
-# we avoid using the built-in skimage function to preserve label IDs
+# we avoid using the built-in skimage remove small objects function to preserve label IDs
 props = skimage.measure.regionprops(nuclei_masks)
 
 # Remove objects smaller than threshold
 for prop in props:
     if prop.area < 1000:  # 10 X 10 X 10 cube equivalent to 1000 voxels
+        # for context in this dataset eahc pixel is 0.1um
+        # so the 10x10x10 cube is 1um x 1um x 1um
+        # which is a reasonable size threshold for nuclei
         nuclei_masks[nuclei_masks == prop.label] = 0
 
 
 # In[8]:
 
 
-nuclei_mask, diag = full_pipeline(
+nuclei_mask, diag = object_stitching_and_relation(
     input_masks=nuclei_masks,
     max_match_distance=100,
-    max_trajectory_length=12,
+    max_trajectory_length=12,  # 12 slice length (12 = 12 um)
     verbose=False,
 )
 
@@ -173,7 +173,7 @@ nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
 nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
 
 
-# In[11]:
+# In[12]:
 
 
 if in_notebook:
@@ -192,14 +192,14 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[12]:
+# In[13]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[13]:
+# In[14]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
@@ -212,3 +212,7 @@ print(f"""
     --- %s minutes --- % {((end_time - start_time) / 60)}\n
     --- %s hours --- % {((end_time - start_time) / 3600)}
 """)
+
+
+# Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
+# This runs in under 1 minute on a GPU + CPU and uses less than 3GB of RAM.

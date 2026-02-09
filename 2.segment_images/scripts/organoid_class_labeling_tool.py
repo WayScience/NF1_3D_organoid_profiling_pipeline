@@ -29,7 +29,7 @@ from organoid_segmentation import *
 from segmentation_decoupling import *
 from skimage.filters import sobel
 
-# In[2]:
+# In[ ]:
 
 
 def save_labels(dictionary: dict, outfile: str):
@@ -63,7 +63,7 @@ def read_labels(infile: str) -> dict:
     """
     Description
     ----------
-    Read labels from a parquet file.
+    Read labels df from a parquet file.
     Parameters
     ----------
     infile : str
@@ -90,6 +90,8 @@ def clean_labels(labels: dict) -> dict:
             "patient": list of patient identifiers,
             "well_fov": list of well FOV identifiers,
             "label": list of labels assigned to each image,
+                where labels are the morohology class annotated
+                for a given well fov (e.g. "globular", "small/dissociated", etc.),
             "annotator": list of annotator names
         }
 
@@ -141,7 +143,7 @@ def check_for_image_labels(
     return False
 
 
-# In[3]:
+# In[ ]:
 
 
 def label_images_keypress(
@@ -230,7 +232,9 @@ def label_images_keypress(
 
                 if in_notebook:
                     plt.show()
-                    key = input("Enter label for image: ").strip()
+                    key = input(
+                        "Enter label for image: \n1=Globular\n2=Small/Dissociated\n3=Elongated\n"
+                    ).strip()
                     plt.close(fig)
                 else:
                     # connect key press handler
@@ -245,7 +249,9 @@ def label_images_keypress(
                         key = key_pressed["key"]
                     else:
                         # fallback to input
-                        key = input("Enter label for image: ").strip()
+                        key = input(
+                            "Enter label for image: \n1=Globular\n2=Small/Dissociated\n3=Elongated\n"
+                        ).strip()
 
                     fig.canvas.mpl_disconnect(cid)
                     plt.close(fig)

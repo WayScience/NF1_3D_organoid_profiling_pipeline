@@ -1106,3 +1106,24 @@ def clean_border_objects(segmentation, border_width=20):
             continue
         cleaned_seg[segmentation == label] = 0
     return cleaned_seg
+
+
+# if there are any singletons remove the labels in all masks
+def remove_label_id(mask_image: np.ndarray, label_id_to_remove: int) -> np.ndarray:
+    """
+    Remove the label id
+
+    Parameters
+    ----------
+    mask_image : np.ndarray
+        Mask image from which to remove the label id
+    label_id_to_remove : int
+        Label id to remove from the mask image
+
+    Returns
+    -------
+    np.ndarray
+        Mask image with the label id removed
+    """
+    mask_image[mask_image == label_id_to_remove] = 0
+    return mask_image

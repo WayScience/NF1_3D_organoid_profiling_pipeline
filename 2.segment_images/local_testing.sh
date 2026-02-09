@@ -8,7 +8,7 @@ fi
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
 cd scripts/ || exit 1
-patients=( "NF0014_T1" "NF0016_T1" "NF0030_T1" )
+patients=( "NF0030_T1" )
 for patient in "${patients[@]}"; do
     data_dir="/home/lippincm/mnt/bandicoot/NF1_organoid_data/data/$patient/zstack_images/"
     for well_fov in "$data_dir"*/; do

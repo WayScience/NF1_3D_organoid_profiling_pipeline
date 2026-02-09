@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# This notebook trains a random forest model to predict the binning label of each image based on the features extracted from the cell profiling pipeline.
+# The model is trained on a balanced dataset, where each binning label is represented equally.
+# The dataset is split into training, validation, and test sets, and the model's performance is evaluated on the test set.
+# The predicted bins are used to adjust the segmentation parameters for each image, which is expected to improve the segmentation quality.
+
 # In[1]:
 
 
@@ -76,22 +81,22 @@ patient_list_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolv
 raw_image_base_dir = pathlib.Path(f"{image_base_dir}/data/").resolve()
 
 
-# In[5]:
+# In[ ]:
 
 
 labels_save_file = pathlib.Path(
     "../image_labels/organoid_image_labels.parquet"
-).resolve()
-sammed_features_save_path = pathlib.Path(
+).resolve(strict=True)
+all_features_save_path = pathlib.Path(
     f"../../3.cellprofiling/results/all_features.parquet"
-).resolve()
+).resolve(strict=True)
 labels = read_labels(labels_save_file)
 labels_df = pd.DataFrame(labels)
 labels_df
-sammed_features_df = pd.read_parquet(sammed_features_save_path)
-sammed_features_df
+all_features_df = pd.read_parquet(all_features_save_path)
+all_features_df
 df = pd.merge(
-    sammed_features_df,
+    all_features_df,
     labels_df,
     on=["patient", "well_fov"],
     how="right",
@@ -100,7 +105,7 @@ df = pd.merge(
 df = df.dropna(subset=["label"])
 
 
-# In[6]:
+# In[ ]:
 
 
 # down sample the training group to be class balanced
@@ -109,17 +114,14 @@ min_count = class_counts.min()
 
 df = (
     df.groupby("label", group_keys=True)
-    .apply(lambda x: x.sample(n=min_count, random_state=42))
+    .apply(lambda x: x.sample(n=min_count, random_state=0))
     .reset_index()
 )
 
 df["label"].value_counts()
 
-# # get the records not in the balanced df
-# extra_records_df = df
 
-
-# In[7]:
+# In[ ]:
 
 
 # set up data splits
@@ -129,13 +131,13 @@ df["label"].value_counts()
 train_df, test_df = train_test_split(
     df,
     test_size=0.10,
-    random_state=42,
+    random_state=0,
     stratify=df[["label", "patient"]],
 )
 train_df, val_df = train_test_split(
     train_df,
     test_size=0.1111,  # 0.1111 * 0.90 = 0.10 (10% test)
-    random_state=42,
+    random_state=0,
     stratify=train_df[["label", "patient"]],
 )
 print(f"Train size: {len(train_df)}")
@@ -170,10 +172,9 @@ print("Test Confusion Matrix:")
 print(confusion_matrix(test_df["label"], test_preds))
 
 
-# In[9]:
+# In[ ]:
 
 
-# ...existing code...
 # plot the confusion matrix for the test set (row-normalized to percentages)
 plt.figure(figsize=(8, 6))
 cm = confusion_matrix(test_df["label"], test_preds)
@@ -191,7 +192,6 @@ plt.ylabel("True label")
 plt.xlabel("Predicted label")
 plt.tight_layout()
 plt.show()
-# ...existing code...
 
 
 # In[10]:
@@ -217,19 +217,13 @@ all_preds_df["image_path"] = all_preds_df.apply(
 all_preds_df.head()
 
 
-# In[14]:
-
-
-all_preds_df.groupby(["patient"]).count()
-
-
-# In[12]:
+# In[11]:
 
 
 # pick three random images from each predicted class to show
 label_names = {0: "globular", 1: "small/dissociated", 2: "elongated"}
 rng = np.random.default_rng(0)
-samples_per_class = 3
+samples_per_class = 5
 
 sampled_rows = []
 for pred_label, group in all_preds_df.groupby("prediction"):

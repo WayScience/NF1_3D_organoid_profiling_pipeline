@@ -445,7 +445,7 @@ def postprocess_segmentation(
     return result
 
 
-def full_pipeline(
+def object_stitching_and_relation(
     input_masks, max_match_distance=100.0, max_trajectory_length=None, verbose=False
 ):
     """

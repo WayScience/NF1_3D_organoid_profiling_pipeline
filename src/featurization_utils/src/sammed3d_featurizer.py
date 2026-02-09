@@ -492,6 +492,7 @@ def call_whole_image_sammed3d_pipeline(
     """
     This function is to be called per patient, well-fov
     Here we call the SAMMed3D pipeline to extract features for the whole image
+    From the whole FOV volume!
     Parameters
     ----------
     image : np.ndarray
@@ -525,18 +526,14 @@ def call_whole_image_sammed3d_pipeline(
 
     if isinstance(feature_type, list):
         for ft in feature_type:
-            features = extracter.extract_features(
-                image, feature_type=ft
-            )  # preprocess the volume
+            features = extracter.extract_features(image, feature_type=ft)
             for i, feature_value in enumerate(features.flatten()):
                 output_dict["feature_name"].append(f"SAMMed3D_{ft}_feature_{i}")
                 output_dict["value"].append(feature_value)
                 output_dict["feature_type"].append(ft)
         return output_dict
     else:
-        features = extracter.extract_features(
-            image, feature_type=feature_type
-        )  # preprocess the volume
+        features = extracter.extract_features(image, feature_type=feature_type)
         for i, feature_value in enumerate(features.flatten()):
             output_dict["feature_name"].append(f"SAMMed3D_feature_{i}")
             output_dict["value"].append(feature_value)

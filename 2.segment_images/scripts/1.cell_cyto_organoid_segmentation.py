@@ -72,7 +72,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "E10-2"
+    well_fov = "F10-1"
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -97,14 +97,14 @@ image_label_path = pathlib.Path(
 ).resolve(strict=True)
 organoid_image_labels_df = pd.read_parquet(image_label_path)
 # look up the morphology for this well_fov
-morphology = organoid_image_labels_df.loc[
+morphology_class = organoid_image_labels_df.loc[
     (
         (organoid_image_labels_df["well_fov"] == well_fov)
         & (organoid_image_labels_df["patient"] == patient)
     ),
     "label",
 ].values[0]
-print(f"Organoid morphology for {well_fov}: {morphology}")
+print(f"Organoid morphology for {well_fov}: {morphology_class}")
 
 # morphology = "elongated"  # FOR TESTING ONLY - REMOVE LATER
 
@@ -140,9 +140,9 @@ del cyto2_raw
 
 
 cell_mask = perform_morphology_dependent_segmentation(
-    morphology,
-    cyto2,
-    nuclei_mask,
+    organoid_label=morphology_class,  # use morphology label instead of generic label
+    cyto_signal=cyto2,  # use the clipped and equalized cyto signal for segmentation
+    nuclei_mask=nuclei_mask,  # use the nuclei mask for segmentation
 )
 
 
@@ -157,7 +157,7 @@ if in_notebook:
     plt.axis("off")
     plt.subplot(132)
     plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="nipy_spectral")
-    plt.title(f"Segmented Cell Mask - Morphology: {morphology}")
+    plt.title(f"Segmented Cell Mask - Morphology: {morphology_class}")
     plt.axis("off")
     plt.subplot(133)
     plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="nipy_spectral")
@@ -199,7 +199,7 @@ if in_notebook:
     plt.figure(figsize=(10, 10))
     plt.subplot(121)
     plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="nipy_spectral")
-    plt.title(f"Segmented Cell Mask - Morphology: {morphology}")
+    plt.title(f"Segmented Cell Mask - Morphology: {morphology_class}")
     plt.axis("off")
     plt.subplot(122)
     plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="nipy_spectral")
@@ -212,6 +212,8 @@ if in_notebook:
 
 
 # refine the cell masks
+# run the post hoc refinement step to reassign nuclei and cell masks to be the same label
+# if they are "connected" i.e. if the nucleus is within the cell mask, then assign the same label to the cell mask as the nucleus mask
 cell_mask = run_post_hoc_refinement(
     mask_image=cell_mask,
     sliding_window_context=3,
@@ -235,6 +237,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 
 # convert the cell masks to binary masks
+# the masks here are an array of every mask in the image.
 cell_binary_mask = cell_mask.copy()
 cell_binary_mask[cell_binary_mask > 0] = 1
 # Fill holes in cell masks before generating organoid mask
@@ -280,9 +283,25 @@ cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
 organoid_mask = clean_border_objects(organoid_mask, border_width=25)
 
 
+# In[17]:
+
+
+# since the nuclei - cell masks should be 1:1
+# check if there are any singletons and remove those labels
+unique_nuclei_labels = np.unique(nuclei_mask)
+unique_cell_labels = np.unique(cell_mask)
+unmatched_labels_to_remove = list(set(unique_nuclei_labels) - set(unique_cell_labels))
+
+
+for label_id in unmatched_labels_to_remove:
+    nuclei_mask = remove_label_id(nuclei_mask, label_id)
+    cell_mask = remove_label_id(cell_mask, label_id)
+    cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
+
+
 # ## Save the segmented masks
 
-# In[17]:
+# In[18]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -295,7 +314,7 @@ tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 tifffile.imwrite(organoid_mask_output, organoid_mask)
 
 
-# In[18]:
+# In[19]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
@@ -308,3 +327,7 @@ print(f"""
     --- %s minutes --- % {((end_time - start_time) / 60)}\n
     --- %s hours --- % {((end_time - start_time) / 3600)}
 """)
+
+
+# Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
+# This runs in under 1 minute on a CPU and uses less than 1GB of RAM.

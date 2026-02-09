@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
+import argparse
 import os
 import pathlib
 import sys
 import time
 import urllib.request
 
+import numpy as np
 import pandas as pd
 import psutil
+import tifffile
 import torch
 import torch.nn as nn
 from arg_parsing_utils import check_for_missing_args, parse_args
@@ -39,7 +42,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[4]:
 
 
 if not in_notebook:
@@ -77,10 +80,12 @@ if feature_save_path.exists():
     sys.exit(0)
 
 
-# In[6]:
+# In[ ]:
 
 
 # Noise Injector transformation
+
+
 class SaturationNoiseInjector(nn.Module):
     def __init__(self, low=200, high=255):
         super().__init__()
@@ -129,6 +134,10 @@ def featurize_2D_image_w_chami75(
 
         for c in range(image_tensor.shape[1]):
             # Extract single channel: (N, C, H, W) -> (N, 1, H, W)
+            # where:
+            # N is batch size (1 in this case),
+            # C is number of channels,
+            # H and W are Y and X dimensions
             single_channel = image_tensor[:, c, :, :].unsqueeze(1)
 
             # Apply transforms
@@ -165,7 +174,7 @@ transform = v2.Compose(
 )
 
 
-# In[7]:
+# In[ ]:
 
 
 # get all well fovs for this patient
@@ -175,7 +184,7 @@ images_to_process = {"patient": [], "well_fov": [], "image": [], "channel": []}
 images_to_load = [x for x in input_dir.glob("*.tif")]
 for image_file in images_to_load:
     image = read_zstack_image(image_file)
-    # load the middle slice to check if there is anything there
+    # load the middle slice
     mid_slice = image.shape[0] // 2
     image_mid = image[mid_slice, :, :]
     images_to_process["patient"].append(patient)
@@ -184,6 +193,9 @@ for image_file in images_to_load:
     images_to_process["channel"].append(f"{image_file.stem.split('_')[1]}")
 
 # Convert list of 2D images (H, W) to tensor (B, C, H, W)
+# where B is batch size (number of images),
+# C is number of channels (1 in this case),
+# H and W are Y and X dimensions
 # Stack images and add channel dimension
 images = torch.stack(
     [torch.tensor(img, dtype=torch.float32) for img in images_to_process["image"]]
@@ -194,7 +206,7 @@ images = images.unsqueeze(1)
 images = images.repeat(1, 3, 1, 1)
 
 
-# In[8]:
+# In[ ]:
 
 
 feature_dict = {
@@ -232,7 +244,7 @@ for image_index in range(images.shape[0]):
 df = pd.DataFrame(feature_dict)
 
 
-# In[9]:
+# In[ ]:
 
 
 df = (
@@ -245,7 +257,7 @@ df = (
 df.head()
 
 
-# In[10]:
+# In[ ]:
 
 
 df.to_parquet(
@@ -254,7 +266,7 @@ df.to_parquet(
 )
 
 
-# In[11]:
+# In[ ]:
 
 
 end_time = time.time()
