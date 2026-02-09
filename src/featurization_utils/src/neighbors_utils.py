@@ -1,8 +1,12 @@
 from typing import Dict, Tuple, Union
 
+import matplotlib.pyplot as plt
 import numpy
+import pandas
 import skimage.measure
 from loading_classes import ObjectLoader
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.spatial.distance import mahalanobis
 
 
 def neighbors_expand_box(
@@ -182,3 +186,413 @@ def measure_3D_number_of_neighbors(
         )
 
     return neighbors_out_dict
+
+
+def get_coordinates(nuclei_mask: numpy.ndarray, object_ids=[]) -> pandas.DataFrame:
+    """
+    Extract coordinates from a labeled mask.
+
+    Parameters:
+    -----------
+    nuclei_mask : ndarray
+        3D labeled mask where each object has a unique ID
+    object_ids : list
+        List of object IDs to extract
+
+    Returns:
+    --------
+    coords : pandas.DataFrame
+        DataFrame with columns: object_id, x, y, z
+    """
+    coords = {"object_id": [], "x": [], "y": [], "z": []}
+
+    for obj_id in object_ids:
+        object_mask = nuclei_mask.copy()
+        object_mask[object_mask != obj_id] = 0
+        object_mask[object_mask == obj_id] = 1
+        # Get the centroid of the object
+        z, y, x = numpy.where(object_mask == 1)
+        centroid = (numpy.mean(x), numpy.mean(y), numpy.mean(z))
+        coords["object_id"].append(obj_id)
+        coords["x"].append(centroid[0])
+        coords["y"].append(centroid[1])
+        coords["z"].append(centroid[2])
+
+    return pandas.DataFrame(coords)
+
+
+def calculate_centroid(coords: pandas.DataFrame) -> numpy.ndarray:
+    """Calculate the centroid of cell coordinates."""
+    return numpy.mean(coords, axis=0)
+
+
+def euclidean_distance_from_centroid(
+    coords: numpy.ndarray, centroid: numpy.ndarray
+) -> numpy.ndarray:
+    """Calculate Euclidean distance from centroid for each cell."""
+    return numpy.sqrt(numpy.sum((coords - centroid) ** 2, axis=1))
+
+
+def mahalanobis_distance_from_centroid(
+    coords: numpy.ndarray, centroid: numpy.ndarray, min_cells_threshold: int = 50
+) -> numpy.ndarray:
+    """
+    Calculate Mahalanobis distance from centroid for each cell.
+    This accounts for the covariance structure (shape) of the organoid.
+
+    For small sample sizes (<50 cells), uses regularization or falls back to Euclidean.
+
+    Parameters:
+    -----------
+    coords : ndarray
+        Cell coordinates (n_cells, 3)
+    centroid : ndarray
+        Centroid coordinates (3,)
+    min_cells_threshold : int
+        Minimum cells needed for reliable Mahalanobis (default: 50)
+
+    Returns:
+    --------
+    distances : ndarray
+        Mahalanobis distances for each cell
+    """
+    n_cells = len(coords)
+
+    # For very small samples, use Euclidean distance instead
+    if n_cells < 20:
+        print(
+            f"  WARNING: Only {n_cells} cells. Using Euclidean distance instead of Mahalanobis."
+        )
+        return euclidean_distance_from_centroid(coords, centroid)
+
+    # Calculate covariance matrix
+    cov_matrix = numpy.cov(coords.T)
+
+    # For small samples (20-50), use strong regularization
+    if n_cells < min_cells_threshold:
+        # Regularization strength inversely proportional to sample size
+        reg_strength = (min_cells_threshold - n_cells) / min_cells_threshold * 0.1
+        cov_matrix += numpy.eye(3) * reg_strength * numpy.trace(cov_matrix) / 3
+        print(
+            f"  WARNING: Only {n_cells} cells. Using regularized covariance (λ={reg_strength:.3f})"
+        )
+    else:
+        # Standard small regularization for numerical stability
+        cov_matrix += numpy.eye(3) * 1e-6
+
+    # Calculate inverse covariance matrix
+    try:
+        inv_cov = numpy.linalg.inv(cov_matrix)
+    except numpy.linalg.LinAlgError:
+        # Fallback to pseudo-inverse if singular
+        print("  WARNING: Singular covariance matrix. Using pseudo-inverse.")
+        inv_cov = numpy.linalg.pinv(cov_matrix)
+
+    # Calculate Mahalanobis distance for each point
+    distances = numpy.array(
+        [
+            numpy.sqrt((coord - centroid).T @ inv_cov @ (coord - centroid))
+            for coord in coords
+        ]
+    )
+
+    return distances
+
+
+def classify_cells_into_shells(
+    coords: pandas.DataFrame or dict,
+    n_shells: int = 5,
+    method: str = "mahalanobis",
+    min_cells_per_shell: int = 3,
+) -> dict:
+    """
+    Classify cells into radial shells based on distance from centroid.
+
+    Automatically adjusts n_shells for small organoids to ensure meaningful statistics.
+
+    Parameters:
+    -----------
+    coords : pandas.DataFrame or dict
+        Cell coordinates with columns/keys: object_id, x, y, z
+    n_shells : int
+        Number of concentric shells to create (will be adjusted if needed)
+    method : str
+        'euclidean' or 'mahalanobis'
+    min_cells_per_shell : int
+        Minimum average cells per shell (default: 3)
+
+    Returns:
+    --------
+    results : dict
+        Dictionary containing:
+        - 'shell_assignments': Shell number for each cell (0 = innermost)
+        - 'distances_from_center': Distance from centroid for each cell
+        - 'distances_from_exterior': Distance from exterior for each cell
+        - 'normalized_distances_from_center': Normalized distances (0-1)
+        - 'centroid': Centroid coordinates
+        - 'max_distance': Maximum distance from centroid
+        - 'n_shells_used': Actual number of shells used
+    """
+    # Handle both DataFrame and dict input
+    if isinstance(coords, pandas.DataFrame):
+        object_ids = coords["object_id"].to_numpy()
+        coords_array = coords[["x", "y", "z"]].to_numpy()
+    else:
+        object_ids = numpy.array(coords["object_id"])
+        coords_array = numpy.column_stack([coords["x"], coords["y"], coords["z"]])
+    if len(coords_array) == 0:
+        results = {
+            "object_id": [],
+            "shell_assignments": [],
+            "distances_from_center": [],
+            "distances_from_exterior": [],
+            "normalized_distances_from_center": [],
+        }
+        centroid = None
+        return results, centroid
+    n_cells = len(coords_array)
+    centroid = calculate_centroid(coords_array)
+
+    # Adjust number of shells for small organoids
+    max_shells = max(2, n_cells // min_cells_per_shell)
+    if n_shells > max_shells:
+        print(
+            f"  WARNING: {n_cells} cells with {n_shells} shells = {n_cells / n_shells:.1f} cells/shell"
+        )
+        print(f"           Reducing to {max_shells} shells for statistical reliability")
+        n_shells = max_shells
+
+    # Calculate distances based on method
+    if method == "mahalanobis":
+        distances = mahalanobis_distance_from_centroid(coords_array, centroid)
+    else:  # euclidean
+        distances = euclidean_distance_from_centroid(coords_array, centroid)
+
+    # Normalize distances to 0-1 range
+    max_distance = numpy.percentile(
+        distances, 95
+    )  # Use 95 percentile to avoid outliers
+    # max_distance = numpy.max(distances)
+    normalized_distances = distances / max_distance
+
+    # Assign shells (0 = innermost, n_shells-1 = outermost)
+    shell_assignments = numpy.floor(normalized_distances * n_shells).astype(int)
+    shell_assignments = numpy.clip(shell_assignments, 0, n_shells - 1)
+
+    # Calculate distance from exterior (inverse of distance from center)
+    distance_from_exterior = max_distance - distances
+
+    results = {
+        "object_id": object_ids,
+        "shell_assignments": shell_assignments,
+        "distances_from_center": distances,
+        "distances_from_exterior": distance_from_exterior,
+        "normalized_distances_from_center": normalized_distances,
+    }
+
+    return results, centroid
+
+
+def create_results_dataframe(results: dict) -> pandas.DataFrame:
+    """
+    Create a pandas DataFrame with all cell information.
+
+    Parameters:
+    -----------
+    results : dict
+        Results from classify_cells_into_shells
+
+    Returns:
+    --------
+    df : pandas.DataFrame
+        DataFrame with cell information
+    """
+    # Handle both DataFrame and dict input
+    if isinstance(results, dict):
+        df = pandas.DataFrame.from_dict(results)
+    else:
+        raise ValueError(
+            "Input must be a results dictionary from classify_cells_into_shells."
+        )
+
+    return df
+
+
+def visualize_organoid_shells(
+    coords: pandas.DataFrame,
+    classification_results: dict,
+    title: str = "Organoid Shell Classification",
+    centroid: numpy.ndarray = None,
+) -> plt.figure:
+    """
+    Create 3D visualization of organoid with shell coloring.
+
+    Parameters:
+    -----------
+    coords : pandas.DataFrame or dict
+        Cell coordinates with columns/keys: object_id, x, y, z
+    classification_results : dict
+        Results from classify_cells_into_shells
+    title : str
+        Plot title
+    """
+    # Handle both DataFrame and dict input
+    if isinstance(coords, pandas.DataFrame):
+        x_coords = coords["x"].to_numpy()
+        y_coords = coords["y"].to_numpy()
+        z_coords = coords["z"].to_numpy()
+    else:
+        x_coords = numpy.array(coords["x"])
+        y_coords = numpy.array(coords["y"])
+        z_coords = numpy.array(coords["z"])
+
+    fig = plt.figure(figsize=(14, 6))
+
+    # 3D scatter plot
+    ax1 = fig.add_subplot(121, projection="3d")
+
+    shell_assignments = classification_results["shell_assignments"]
+    n_shells = classification_results.get(
+        "n_shells_used", len(numpy.unique(shell_assignments))
+    )
+
+    # Red to blue color gradient
+    colors = plt.cm.RdYlBu_r(numpy.linspace(0, 1, n_shells))
+
+    for shell in range(n_shells):
+        mask = shell_assignments == shell
+        if numpy.sum(mask) > 0:  # Only plot if shell has cells
+            ax1.scatter(
+                x_coords[mask],
+                y_coords[mask],
+                z_coords[mask],
+                c=[colors[shell]],
+                label=f"Shell {shell + 1} (n={numpy.sum(mask)})",
+                s=50,
+                alpha=0.7,
+                edgecolors="black",
+                linewidths=0.5,
+            )
+
+    if centroid is not None:
+        ax1.scatter(
+            *centroid,
+            c="black",
+            s=200,
+            marker="*",
+            label="Centroid",
+            edgecolors="white",
+            linewidths=2,
+        )
+
+    ax1.set_xlabel("X")
+    ax1.set_ylabel("Y")
+    ax1.set_zlabel("Z")
+    ax1.set_title(title)
+    ax1.legend(loc="upper right", fontsize=8)
+
+    # Shell distribution histogram
+    ax2 = fig.add_subplot(122)
+    shell_counts = [numpy.sum(shell_assignments == i) for i in range(n_shells)]
+    bars = ax2.bar(
+        range(1, n_shells + 1), shell_counts, color=colors, alpha=0.7, edgecolor="black"
+    )
+    ax2.set_xlabel("Shell Number")
+    ax2.set_ylabel("Number of Cells")
+    ax2.set_title("Cell Distribution Across Shells")
+    ax2.set_xticks(range(1, n_shells + 1))
+
+    # Add percentage labels on bars
+    total_cells = len(x_coords)
+    for i, (bar, count) in enumerate(zip(bars, shell_counts)):
+        height = bar.get_height()
+        percentage = (count / total_cells) * 100
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height,
+            f"{count}\n({percentage:.1f}%)",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+
+    # Add horizontal line for average
+    avg_per_shell = total_cells / n_shells
+    ax2.axhline(
+        y=avg_per_shell,
+        color="red",
+        linestyle="--",
+        alpha=0.5,
+        label=f"Average ({avg_per_shell:.1f})",
+    )
+    ax2.legend()
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_distance_distributions(
+    classification_results: dict, n_shells: int = None
+) -> plt.figure:
+    """
+    Plot distance distributions for each shell.
+
+    Parameters:
+    -----------
+    classification_results : dict
+        Results from classify_cells_into_shells
+    n_shells : int, optional
+        Number of shells (will use n_shells_used from results if not provided)
+    """
+    if n_shells is None:
+        n_shells = classification_results.get(
+            "n_shells_used",
+            len(numpy.unique(classification_results["shell_assignments"])),
+        )
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    shell_assignments = classification_results["shell_assignments"]
+    distances_from_center = classification_results["distances_from_center"]
+    distances_from_exterior = classification_results["distances_from_exterior"]
+
+    colors = plt.cm.RdYlBu_r(numpy.linspace(0, 1, n_shells))
+
+    # Distance from center
+    for shell in range(n_shells):
+        mask = shell_assignments == shell
+        if numpy.sum(mask) > 0:
+            axes[0].hist(
+                distances_from_center[mask],
+                bins=20,
+                alpha=0.5,
+                color=colors[shell],
+                label=f"Shell {shell + 1}",
+                edgecolor="black",
+            )
+
+    axes[0].set_xlabel("Distance from Center")
+    axes[0].set_ylabel("Number of Cells")
+    axes[0].set_title("Distance from Center Distribution")
+    axes[0].legend()
+
+    # Distance from exterior
+    for shell in range(n_shells):
+        mask = shell_assignments == shell
+        if numpy.sum(mask) > 0:
+            axes[1].hist(
+                distances_from_exterior[mask],
+                bins=20,
+                alpha=0.5,
+                color=colors[shell],
+                label=f"Shell {shell + 1}",
+                edgecolor="black",
+            )
+
+    axes[1].set_xlabel("Distance from Exterior")
+    axes[1].set_ylabel("Number of Cells")
+    axes[1].set_title("Distance from Exterior Distribution")
+    axes[1].legend()
+
+    plt.tight_layout()
+    return fig

@@ -4,6 +4,9 @@ well_fov=$2
 compartment=$3
 channel=$4
 processor_type=$5
+input_subparent_name=$6
+mask_subparent_name=$7
+output_features_subparent_name=$8
 
 echo "Granularity feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 
@@ -26,7 +29,10 @@ python "$git_root"/3.cellprofiling/scripts/granularity.py \
     --well_fov "$well_fov" \
     --compartment "$compartment" \
     --channel "$channel" \
-    --processor_type "CPU"
+    --processor_type "CPU" \
+    --input_subparent_name "$input_subparent_name" \
+    --mask_subparent_name "$mask_subparent_name" \
+    --output_features_subparent_name "$output_features_subparent_name"
 
 
 end=$(date +%s)

@@ -25,7 +25,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -43,19 +43,19 @@ else:
 
 # pathing
 sc_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.annotated_profiles/sc_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.qc_profiles/sc_flagged_outliers.parquet"
 ).resolve(strict=True)
 organoid_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.annotated_profiles/organoid_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.qc_profiles/organoid_flagged_outliers.parquet"
 ).resolve(strict=True)
 
 
 # output path
 sc_normalized_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.normalized_profiles/sc_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.normalized_profiles/sc_norm.parquet"
 ).resolve()
 organoid_normalized_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.normalized_profiles/organoid_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.normalized_profiles/organoid_norm.parquet"
 ).resolve()
 
 organoid_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -69,15 +69,9 @@ sc_annotated_profiles = pd.read_parquet(sc_annotated_path)
 organoid_annotated_profiles = pd.read_parquet(organoid_annotated_path)
 
 
-# In[5]:
-
-
-sc_annotated_profiles.head()
-
-
 # ### Normalize the single-cell profiles
 
-# In[6]:
+# In[5]:
 
 
 sc_metadata_columns = [x for x in sc_annotated_profiles.columns if "Metadata" in x]
@@ -92,7 +86,7 @@ sc_features_columns = [
 ]
 
 
-# In[7]:
+# In[6]:
 
 
 # find inf values and replace with NaN
@@ -101,7 +95,7 @@ sc_annotated_profiles[sc_features_columns] = sc_annotated_profiles[
 ].replace([float("inf"), -float("inf")], np.nan)
 
 
-# In[8]:
+# In[7]:
 
 
 # normalize the data
@@ -116,20 +110,24 @@ sc_normalized_profiles.to_parquet(sc_normalized_output_path, index=False)
 sc_normalized_profiles.head()
 
 
+# In[8]:
+
+
+# Replace inf values with NaN for single-cell profiles
+sc_annotated_profiles[sc_features_columns] = sc_annotated_profiles[
+    sc_features_columns
+].replace([np.inf, -np.inf], np.nan)
+
+
 # ### Normalize the organoid profiles
 
 # In[9]:
 
 
-organoid_annotated_profiles.head()
-
-
-# In[10]:
-
-
 organoid_metadata_columns = [
     x for x in organoid_annotated_profiles.columns if "Metadata" in x
 ]
+
 organoid_metadata_columns += [
     "Area.Size.Shape_Organoid_CENTER.X",
     "Area.Size.Shape_Organoid_CENTER.Y",
@@ -140,6 +138,13 @@ organoid_features_columns = [
     for col in organoid_annotated_profiles.columns
     if col not in organoid_metadata_columns
 ]
+# Replace inf values with NaN for organoid profiles
+# count the inf values and replace with NaN
+inf_count = np.isinf(organoid_annotated_profiles[organoid_features_columns]).sum().sum()
+print(f"Number of inf values in organoid profiles: {inf_count}")
+organoid_annotated_profiles[organoid_features_columns] = organoid_annotated_profiles[
+    organoid_features_columns
+].replace([np.inf, -np.inf], np.nan)
 # normalize the data
 organoid_normalized_profiles = normalize(
     organoid_annotated_profiles,

@@ -78,14 +78,12 @@ class SAMMed3DFeatureExtractor:
                     # Use pretrained SAM-Med3D-turbo
                     model_path = "https://huggingface.co/blueyo0/SAM-Med3D/resolve/main/sam_med3d_turbo.pth"
 
-                print(f"✓ Loading SAM-Med3D via MedIM from {model_path}")
                 model = medim.create_model(
                     "SAM-Med3D", pretrained=True, checkpoint_path=model_path
                 )
 
                 # Extract encoder
                 encoder = model.image_encoder
-                print(f"✓ Successfully loaded pretrained SAM-Med3D-turbo")
 
                 return model, encoder
 
@@ -388,7 +386,11 @@ class MicroscopySAMMed3DPipeline:
         return features
 
     def extract_features_batch(
-        self, volumes: List[np.ndarray], preprocess: bool = True, batch_size: int = 4
+        self,
+        volumes: List[np.ndarray],
+        preprocess: bool = True,
+        batch_size: int = 4,
+        feature_type: str | None = None,
     ) -> np.ndarray:
         """Extract features from multiple volumes."""
         if preprocess:
@@ -397,6 +399,14 @@ class MicroscopySAMMed3DPipeline:
         features = self.extractor.extract_batch(volumes, batch_size=batch_size)
 
         return features
+
+
+def check_for_zero_objects(label_image: np.ndarray) -> bool:
+    """Check if there are any objects in the label image."""
+    unique_labels = np.unique(label_image)
+    # Exclude background label (0)
+    object_labels = unique_labels[unique_labels != 0]
+    return len(object_labels) == 0
 
 
 def call_SAMMed3D_pipeline(
@@ -442,6 +452,13 @@ def call_SAMMed3D_pipeline(
         "value": [],
         "feature_type": [],
     }
+    if check_for_zero_objects(label_object):
+        return output_dict
+
+    extracter = MicroscopySAMMed3DPipeline(
+        sammed3d_path=SAMMed3D_model_path,
+        device="cuda" if torch.cuda.is_available() else "cpu",
+    )
 
     for index, label in enumerate(labels):
         selected_label_object = label_object.copy()
@@ -452,10 +469,7 @@ def call_SAMMed3D_pipeline(
             1  # binarize the label for volume calcs
         )
         selected_image_object[selected_label_object != 1] = 0
-        extracter = MicroscopySAMMed3DPipeline(
-            sammed3d_path=SAMMed3D_model_path,
-            device="cuda" if torch.cuda.is_available() else "cpu",
-        )
+
         if isinstance(feature_type, list):
             for ft in feature_type:
                 features = extracter.extract_features(

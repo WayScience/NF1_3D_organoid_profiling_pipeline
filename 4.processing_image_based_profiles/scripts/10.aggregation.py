@@ -24,7 +24,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -37,34 +37,34 @@ else:
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# In[3]:
+# In[ ]:
 
 
 # pathing
 sc_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.feature_selected_profiles/sc_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.feature_selected_profiles/sc_fs.parquet"
 ).resolve(strict=True)
 organoid_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.feature_selected_profiles/organoid_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.feature_selected_profiles/organoid_fs.parquet"
 ).resolve(strict=True)
 
 
 # output path
 sc_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/sc_agg_well_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.aggregated_profiles/sc_agg_well_level.parquet"
 ).resolve()
 sc_agg_well_parent_organoid_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/sc_agg_parent_organoid_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.aggregated_profiles/sc_agg_parent_organoid_level.parquet"
 ).resolve()
 sc_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/sc_consensus.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.aggregated_profiles/sc_consensus.parquet"
 ).resolve()
 
 organoid_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/organoid_agg_well_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.aggregated_profiles/organoid_agg_well_level.parquet"
 ).resolve()
 organoid_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.aggregated_profiles/organoid_consensus.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.aggregated_profiles/organoid_consensus.parquet"
 ).resolve()
 
 organoid_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)

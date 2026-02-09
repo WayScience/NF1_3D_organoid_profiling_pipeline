@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -27,36 +27,51 @@ from colocalization_utils_gpu import (
     measure_3D_colocalization_gpu,
     prepare_two_images_for_colocalization_gpu,
 )
-from featurization_parsable_arguments import parse_featurization_args
 from loading_classes import ImageSetLoader, TwoObjectLoader
+from notebook_init_utils import bandicoot_check, init_notebook
 from resource_profiling_util import get_mem_and_time_profiling
 
-# In[ ]:
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
+
+
+# In[2]:
 
 
 if not in_notebook:
-    arguments_dict = parse_featurization_args()
+    arguments_dict = parse_args()
     patient = arguments_dict["patient"]
     well_fov = arguments_dict["well_fov"]
     channel = arguments_dict["channel"]
     compartment = arguments_dict["compartment"]
     processor_type = arguments_dict["processor_type"]
+    input_subparent_name = arguments_dict["input_subparent_name"]
+    mask_subparent_name = arguments_dict["mask_subparent_name"]
+    output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "E11-4"
-    patient = "NF0014_T1"
-    channel = "Mito.BF"
-    compartment = "Cell"
+    well_fov = "D11-2"
+    patient = "NF0016_T1"
+    channel = "ER.Mito"
+    compartment = "Nuclei"
     processor_type = "CPU"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
+    output_features_subparent_name = "extracted_features"
 
 channel1 = channel.split(".")[0] if "." in channel else channel
 channel2 = channel.split(".")[1] if "." in channel else None
 image_set_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/profiling_input_images/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
+)
+
+mask_set_path = pathlib.Path(
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 )
 
 output_parent_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/extracted_features/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
@@ -82,9 +97,11 @@ channel_mapping = {
 
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
+    mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
 )
+image_set_loader.image_set_dict.keys()
 
 
 # In[5]:
@@ -104,6 +121,10 @@ coloc_loader = TwoObjectLoader(
     channel1=channel1,
     channel2=channel2,
 )
+
+
+# In[ ]:
+
 
 output_dir = pathlib.Path(
     output_parent_path
@@ -167,7 +188,7 @@ else:
     coloc_df.to_parquet(output_dir)
 
 
-# In[ ]:
+# In[8]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

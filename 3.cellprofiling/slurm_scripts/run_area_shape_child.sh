@@ -4,6 +4,9 @@ well_fov=$2
 compartment=$3
 channel=$4
 processor_type=$5
+input_subparent_name=$6
+mask_subparent_name=$7
+output_features_subparent_name=$8
 
 
 echo "AreaSizeShape feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
@@ -27,7 +30,10 @@ if [ "$processor_type" = "GPU" ]; then
         --well_fov "$well_fov" \
         --compartment "$compartment" \
         --channel "$channel" \
-        --processor_type "GPU"
+        --processor_type "GPU" \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name" \
+        --output_features_subparent_name "$output_features_subparent_name"
 
 else
     echo "Running CPU version"
@@ -36,7 +42,10 @@ else
         --well_fov "$well_fov" \
         --compartment "$compartment" \
         --channel "$channel" \
-        --processor_type "CPU"
+        --processor_type "CPU" \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name" \
+        --output_features_subparent_name "$output_features_subparent_name"
 fi
 
 end=$(date +%s)

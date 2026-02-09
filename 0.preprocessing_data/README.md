@@ -89,6 +89,7 @@ Please see the `nyquist_sampling_calculations.ipynb` notebook for the calculatio
 | NF0030_T1 | C6-4 | removed | Unnest failure |
 | NF0030_T1 | D4-7 | removed | Unnest failure |
 | NF0035_T1 | E9-3 | removed | Unnest failure |
+| SARCO361_T1 | D2-3 | removed | Unnest failure |
 
 
 ## Yokogawa CQ1 vs Echo analysis and key differences

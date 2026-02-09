@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -15,31 +15,48 @@ from notebook_init_utils import bandicoot_check, init_notebook
 root_dir, in_notebook = init_notebook()
 
 from loading_classes import ImageSetLoader, ObjectLoader
+from notebook_init_utils import bandicoot_check, init_notebook
 from resource_profiling_util import get_mem_and_time_profiling
 from texture_utils import measure_3D_texture
 
-# In[2]:
+profile_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
+    root_dir,
+)
+
+
+# In[ ]:
 
 
 if not in_notebook:
-    arguments_dict = parse_featurization_args()
+    arguments_dict = parse_args()
     patient = arguments_dict["patient"]
     well_fov = arguments_dict["well_fov"]
     channel = arguments_dict["channel"]
     compartment = arguments_dict["compartment"]
     processor_type = arguments_dict["processor_type"]
+    input_subparent_name = arguments_dict["input_subparent_name"]
+    mask_subparent_name = arguments_dict["mask_subparent_name"]
+    output_features_subparent_name = arguments_dict["output_features_subparent_name"]
+
 else:
-    well_fov = "C4-2"
-    patient = "NF0014_T1"
-    channel = "AGP"
-    compartment = "Nuclei"
+    well_fov = "D11-2"
+    patient = "NF0016_T1"
+    channel = "DNA"
+    compartment = "Cell"
     processor_type = "CPU"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
+    output_features_subparent_name = "extracted_features"
 
-bandicoot_check
-
-image_set_path = pathlib.Path(f"{root_dir}/data/{patient}/zstack_images/{well_fov}/")
+image_set_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
+)
+mask_set_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
+)
 output_parent_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/extracted_features/{well_fov}/"
+    f"{profile_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
@@ -73,13 +90,14 @@ start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
+    mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
 )
 image_set_loader.image_set_dict.keys()
 
 
-# In[ ]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -119,7 +137,7 @@ output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
 
 
-# In[8]:
+# In[7]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

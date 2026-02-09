@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
 import os
 import pathlib
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from tqdm import tqdm
 
 cwd = pathlib.Path.cwd()
 
@@ -38,42 +41,6 @@ profile_base_dir = bandicoot_check(
 # In[2]:
 
 
-patient_data_path = pathlib.Path(f"{profile_base_dir}/data/patient_IDs.txt").resolve(
-    strict=True
-)
-patients = pd.read_csv(patient_data_path, header=None, names=["patient_ID"])[
-    "patient_ID"
-].tolist()
-
-
-# In[3]:
-
-
-stats_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/all_patient_profiles/"
-).resolve()
-stats_output_path.mkdir(parents=True, exist_ok=True)
-
-
-# In[4]:
-
-
-stats_files = []
-for patient in patients:
-    stats_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/extracted_features/run_stats/"
-    ).resolve(strict=True)
-
-    for file_path in stats_path.glob("*.parquet"):
-        if file_path.is_file():
-            stats_files.append(file_path)
-stats_files.sort()
-print(f"Found {len(stats_files)} stats files for {len(patients)} patients.")
-
-
-# In[5]:
-
-
 def safe_read_parquet(stats_file):
     """Safely read a Parquet file and handle errors.
     This is primarily to continue through code in the event of corrupted files."""
@@ -83,6 +50,64 @@ def safe_read_parquet(stats_file):
     except ValueError as e:
         print(f"Error reading {stats_file}: {e}")
         return None
+
+
+# In[3]:
+
+
+patient_data_path = pathlib.Path(f"{profile_base_dir}/data/patient_IDs.txt").resolve(
+    strict=True
+)
+patients = pd.read_csv(patient_data_path, header=None, names=["patient_ID"])[
+    "patient_ID"
+].tolist()
+
+
+# In[4]:
+
+
+stats_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/all_patient_profiles/"
+).resolve()
+stats_output_path.mkdir(parents=True, exist_ok=True)
+
+
+# In[5]:
+
+
+def get_stats_files_for_patient(patient):
+    """Get all stats files for a single patient."""
+    stats_path = Path(
+        f"{profile_base_dir}/data/{patient}/extracted_features/run_stats/"
+    ).resolve(strict=True)
+
+    return [
+        file_path for file_path in stats_path.glob("*.parquet") if file_path.is_file()
+    ]
+
+
+# Parallel execution with progress bar
+stats_files = []
+with ThreadPoolExecutor(max_workers=12) as executor:
+    # Submit all tasks
+    futures = {
+        executor.submit(get_stats_files_for_patient, patient): patient
+        for patient in patients
+    }
+
+    # Collect results with progress bar
+    for future in tqdm(
+        as_completed(futures), total=len(futures), desc="Finding stats files"
+    ):
+        patient = futures[future]
+        try:
+            patient_files = future.result()
+            stats_files.extend(patient_files)
+        except Exception as e:
+            tqdm.write(f"✗ Error for {patient}: {e}")
+
+stats_files.sort()
+print(f"\n✓ Found {len(stats_files)} stats files for {len(patients)} patients.")
 
 
 # In[6]:
@@ -113,45 +138,5 @@ df["mem_usage_GB"] = df["mem_usage"] / (1024)
 df.to_parquet(
     f"{stats_output_path}/all_patient_featurization_stats.parquet", index=False
 )
-
+print(df.shape)
 df.head()
-
-
-# ## Preliminary plots - will finalize in R later
-
-# In[8]:
-
-
-# plot the memory and time for each feature type
-if in_notebook:
-    sns.barplot(
-        data=df,
-        x="feature_type",
-        y="time_taken_minutes",
-        hue="feature_type",
-        palette="Set2",
-    )
-    plt.title("Time taken for each feature type")
-    plt.xlabel("Feature Type")
-    plt.ylabel("Time (min)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    # move the legend outside the plot
-    plt.legend(title="Feature Type", bbox_to_anchor=(1.05, 1), loc="upper left")
-    plt.show()
-
-    sns.barplot(
-        data=df,
-        x="feature_type",
-        y="mem_usage_GB",
-        hue="feature_type",
-        palette="Set2",
-    )
-    plt.title("Memory used for each feature type")
-    plt.xlabel("Feature Type")
-    plt.ylabel("Memory (GB)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.legend(title="Feature Type", bbox_to_anchor=(1.05, 1), loc="upper left")
-
-    plt.show()

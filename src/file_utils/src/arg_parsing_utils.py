@@ -105,6 +105,8 @@ def parse_args():
     processor_type = args.processor_type
     input_subparent_name = args.input_subparent_name
     mask_subparent_name = args.mask_subparent_name
+    output_features_subparent_name = args.output_features_subparent_name
+
 
     return {
         "well_fov": well_fov,
@@ -116,4 +118,5 @@ def parse_args():
         "processor_type": processor_type,
         "input_subparent_name": input_subparent_name,
         "mask_subparent_name": mask_subparent_name,
+        "output_features_subparent_name": output_features_subparent_name,
     }

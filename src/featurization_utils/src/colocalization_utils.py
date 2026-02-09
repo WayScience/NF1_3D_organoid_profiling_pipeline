@@ -489,9 +489,17 @@ def measure_3D_colocalization(
     ################################################################################################
 
     # Threshold as percentage of maximum intensity of objects in each channel
-    tff = (thr / 100) * scipy.ndimage.maximum(cropped_image_1)
-    tss = (thr / 100) * scipy.ndimage.maximum(cropped_image_2)
-
+    try:
+        tff = (thr / 100) * scipy.ndimage.maximum(cropped_image_1)
+        tss = (thr / 100) * scipy.ndimage.maximum(cropped_image_2)
+        # Ensure thresholds are at least 1 to avoid zero thresholding
+        # if an errors occurs this is probably due to empty images
+        # or images where the bbox is incredibly small and inconsistent
+        # or the bbox is on the border of the image
+        # in which case we want to remove anyway
+    except ValueError:
+        tff = 1
+        tss = 1
     combined_thresh = (cropped_image_1 >= tff) & (cropped_image_2 >= tss)
 
     first_image_thresh = cropped_image_1[combined_thresh]

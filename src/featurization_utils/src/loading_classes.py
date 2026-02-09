@@ -19,6 +19,8 @@ class ImageSetLoader:
     ----------
     image_set_path : pathlib.Path
         Path to the image set directory.
+    mask_set_path : pathlib.Path
+        Path to the mask set directory. Note the difference from image_set_path.
     anisotropy_spacing : tuple
         The anisotropy spacing of the images. In the format (z_spacing, y_spacing, x_spacing).
     channel_mapping : dict
@@ -64,6 +66,7 @@ class ImageSetLoader:
     def __init__(
         self,
         image_set_path: pathlib.Path,
+        mask_set_path: pathlib.Path,
         anisotropy_spacing: tuple,
         channel_mapping: dict,
     ):
@@ -83,12 +86,19 @@ class ImageSetLoader:
         self.anisotropy_spacing = anisotropy_spacing
         self.anisotropy_factor = self.anisotropy_spacing[0] / self.anisotropy_spacing[1]
         self.image_set_name = image_set_path.name
-        files = sorted(image_set_path.glob("*"))
-        files = [f for f in files if f.suffix in [".tif", ".tiff"]]
+        self.mask_set_path = mask_set_path
+        channel_files = sorted(image_set_path.glob("*"))
+        mask_files = sorted(mask_set_path.glob("*"))
+        channel_files = [f for f in channel_files if f.suffix in [".tif", ".tiff"]]
+        mask_files = [f for f in mask_files if f.suffix in [".tif", ".tiff"]]
 
         # Load images into a dictionary
         self.image_set_dict = {}
-        for f in files:
+        for f in channel_files:
+            for key, value in channel_mapping.items():
+                if value in f.name:
+                    self.image_set_dict[key] = skimage.io.imread(f)
+        for f in mask_files:
             for key, value in channel_mapping.items():
                 if value in f.name:
                     self.image_set_dict[key] = skimage.io.imread(f)

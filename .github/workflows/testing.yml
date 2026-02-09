@@ -1,0 +1,44 @@
+name: Test Documentation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+      - '**.rst'
+      - '**.md'
+
+jobs:
+  test-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install -r docs/requirements.txt
+        pip install doc8 sphinx-lint
+
+    - name: Check RST syntax
+      run: |
+        doc8 docs/source --max-line-length 100
+
+    - name: Lint Sphinx files
+      run: |
+        sphinx-lint docs/source
+
+    - name: Build docs (strict mode)
+      run: |
+        cd docs
+        sphinx-build -W -b html source _build/html
+
+    - name: Check links
+      run: |
+        cd docs
+        make linkcheck

@@ -1,0 +1,11 @@
+name: NF1_3D_featurization_sphinx_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      - sphinx
+      - sphinx-rtd-theme
+      - sphinx-autodoc-typehints

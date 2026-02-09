@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -17,34 +17,47 @@ root_dir, in_notebook = init_notebook()
 
 from area_size_shape_utils import measure_3D_area_size_shape
 from area_size_shape_utils_gpu import measure_3D_area_size_shape_gpu
-from featurization_parsable_arguments import parse_featurization_args
 from loading_classes import ImageSetLoader, ObjectLoader
+from notebook_init_utils import bandicoot_check, init_notebook
 from resource_profiling_util import get_mem_and_time_profiling
 
-# In[ ]:
+image_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
+)
+
+
+# In[2]:
 
 
 if not in_notebook:
-    arguments_dict = parse_featurization_args()
+    arguments_dict = parse_args()
     patient = arguments_dict["patient"]
     well_fov = arguments_dict["well_fov"]
     compartment = arguments_dict["compartment"]
     channel = arguments_dict["channel"]
     processor_type = arguments_dict["processor_type"]
+    input_subparent_name = arguments_dict["input_subparent_name"]
+    mask_subparent_name = arguments_dict["mask_subparent_name"]
+    output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "F3-1"
-    patient = "NF0014_T1"
-    compartment = "Organoid"
+    well_fov = "E11-3"
+    patient = "NF0018_T6"
+    compartment = "Nuclei"
     channel = "DNA"
     processor_type = "CPU"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
+    output_features_subparent_name = "extracted_features"
 
 image_set_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/profiling_input_images/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
 )
-
+mask_set_path = pathlib.Path(
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
+)
 output_parent_path = pathlib.Path(
-    f"{root_dir}/data/{patient}/extracted_features/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 
@@ -78,12 +91,13 @@ start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
+    mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
 )
 
 
-# In[ ]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -111,7 +125,7 @@ else:
     )
 
 
-# In[ ]:
+# In[7]:
 
 
 final_df = pd.DataFrame(size_shape_dict)
@@ -135,7 +149,7 @@ final_df.to_parquet(output_file, index=False)
 final_df.head()
 
 
-# In[ ]:
+# In[8]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
@@ -152,6 +166,6 @@ get_mem_and_time_profiling(
     compartment=compartment,
     CPU_GPU=processor_type,
     output_file_dir=pathlib.Path(
-        f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_AreaSizeShape_DNA_{compartment}_{processor_type}.parquet"
+        f"{image_base_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_AreaSizeShape_DNA_{compartment}_{processor_type}.parquet"
     ),
 )

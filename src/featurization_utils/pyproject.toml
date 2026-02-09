@@ -32,6 +32,7 @@ py-modules = [
     "intensity_utils",
     "neighbors_utils",
     "resource_profiling_util",
+    "sammed3d_featurizer",
     "texture_utils",
     "loading_classes",
     "sammed3d_featurizer",

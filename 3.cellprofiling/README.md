@@ -1,5 +1,11 @@
 # Featurization
 
+All scripts pull data from a Way-lab specific NAS-mounted directory.
+We have a function that parses if the path is available and if not defaults to a local path (./data).
+We use the `root_dir` variable to specify that some files should be saved to the local git repo directory and not the NAS-mounted directory.
+We use the `image_base_dir` variable to specify that some files should be pulled from the NAS-mounted directory.
+This includes both raw and processed data.
+
 ![Featurization pipeline](./diagram/featurization_strategy.png)
 
 The approach to the featurization is to run each feature extraction function for each cell compartment for each channel in a distributed manner.

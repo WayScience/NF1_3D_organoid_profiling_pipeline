@@ -3,7 +3,6 @@
 
 # In[1]:
 
-
 import argparse
 import os
 import pathlib
@@ -45,7 +44,7 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T2"
+    patient = "NF0014_T1"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
@@ -58,7 +57,7 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 
 
-# In[3]:
+# In[ ]:
 
 
 def plot_plate_overview(

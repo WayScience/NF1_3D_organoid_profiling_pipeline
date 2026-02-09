@@ -200,3 +200,5 @@ profile_prep_for_sage/data_for_sage/*
 models/*
 2.segment_images/figures/platemaps/*
 3.cellprofiling/logs/*
+docs/doctrees/*
+docs/html/*

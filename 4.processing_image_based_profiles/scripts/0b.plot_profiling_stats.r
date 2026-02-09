@@ -39,8 +39,9 @@ find_git_root <- function() {
 root_dir <- find_git_root()
 cat("Git root directory:", root_dir, "\n")
 
-bandicoot_path <- file.path(
-    "~/mnt/bandicoot"
+bandicoot_path <- normalizePath(
+    file.path("~", "mnt", "bandicoot","NF1_organoid_data"),
+    mustWork = FALSE
 )
 if (!dir.exists(bandicoot_path)) {
     profile_base_dir <- file.path(
@@ -51,6 +52,7 @@ if (!dir.exists(bandicoot_path)) {
         bandicoot_path
     )
 }
+profile_base_dir
 
 # get the profiling stats and load into a dataframe
 profiling_path <- file.path(
@@ -110,6 +112,7 @@ ggsave(
     height = height,
     dpi = 300
 )
+time_plot
 
 # plot the memory usage for each sub-image set
 # where a sub-image set is a channel-compartment-image-set combination

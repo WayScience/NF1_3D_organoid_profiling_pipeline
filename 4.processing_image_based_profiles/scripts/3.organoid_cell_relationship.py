@@ -30,8 +30,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
-    well_fov = "G2-2"
+    patient = "SARCO361_T1"
+    well_fov = "D2-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -136,34 +136,51 @@ print(f"The organoid bounding boxes are in the columns:\n{organoid_bbox_colnames
 # In[9]:
 
 
-# loop thorugh the organoids first as there are less organoids than single-cells
-for organoid_index, organoid_row in organoid_profile_df.iterrows():
-    # get the organoid bbox - should be alphabetically sorted
-    # define the organoid bbox in the order of:
-    # (z_min, y_min, x_min, z_max, y_max, x_max)
-    organoid_bbox = (
-        organoid_row[organoid_bbox_colnames[5]],
-        organoid_row[organoid_bbox_colnames[4]],
-        organoid_row[organoid_bbox_colnames[3]],
-        organoid_row[organoid_bbox_colnames[2]],
-        organoid_row[organoid_bbox_colnames[1]],
-        organoid_row[organoid_bbox_colnames[0]],
-    )
-    # loop through the single-cells and check if the centroid is within the organoid bbox
-    for sc_index, sc_row in sc_profile_df.iterrows():
-        # get the single-cell centroid - should be alphabetically sorted
-        # define the single-cell centroid in the order of (z, y, x)
-        sc_centroid = (
-            sc_row[x_y_z_sc_colnames[2]],
-            sc_row[x_y_z_sc_colnames[1]],
-            sc_row[x_y_z_sc_colnames[0]],
-        )
+from tqdm import tqdm
 
-        if centroid_within_bbox_detection(sc_centroid, organoid_bbox):
-            sc_profile_df.at[sc_index, "parent_organoid"] = organoid_row["object_id"]
-        else:
-            # if the centroid is not within the organoid bbox, set the parent organoid to -1
-            sc_profile_df.at[sc_index, "parent_organoid"] = -1
+# Initialize parent_organoid to -1
+sc_profile_df["parent_organoid"] = -1
+
+# Extract single-cell centroids as numpy array for faster access
+sc_centroids = sc_profile_df[x_y_z_sc_colnames].values  # (N_cells, 3) array
+
+# Loop through organoids with progress bar
+for organoid_index, organoid_row in tqdm(
+    organoid_profile_df.iterrows(),
+    total=len(organoid_profile_df),
+    desc="Assigning cells to organoids",
+):
+    # Get organoid bbox
+    organoid_bbox = (
+        organoid_row[organoid_bbox_colnames[5]],  # z_min
+        organoid_row[organoid_bbox_colnames[4]],  # y_min
+        organoid_row[organoid_bbox_colnames[3]],  # x_min
+        organoid_row[organoid_bbox_colnames[2]],  # z_max
+        organoid_row[organoid_bbox_colnames[1]],  # y_max
+        organoid_row[organoid_bbox_colnames[0]],  # x_max
+    )
+
+    z_min, y_min, x_min, z_max, y_max, x_max = organoid_bbox
+
+    # Vectorized bbox check - much faster!
+    mask = (
+        (sc_centroids[:, 2] >= z_min)
+        & (sc_centroids[:, 2] <= z_max)  # z
+        & (sc_centroids[:, 1] >= y_min)
+        & (sc_centroids[:, 1] <= y_max)  # y
+        & (sc_centroids[:, 0] >= x_min)
+        & (sc_centroids[:, 0] <= x_max)  # x
+    )
+
+    # Only assign if cell doesn't already have a parent
+    unassigned_mask = sc_profile_df["parent_organoid"] == -1
+    final_mask = mask & unassigned_mask
+
+    # Assign parent organoid to matching cells
+    sc_profile_df.loc[final_mask, "parent_organoid"] = organoid_row["object_id"]
+
+print(f"Assigned {(sc_profile_df['parent_organoid'] != -1).sum()} cells to organoids")
+print(f"Unassigned cells: {(sc_profile_df['parent_organoid'] == -1).sum()}")
 
 
 # ### Add single-cell counts for each organoid
@@ -196,6 +213,12 @@ organoid_profile_df.insert(2, "single_cell_count", sc_count)
 # In[11]:
 
 
+organoid_profile_df
+
+
+# In[12]:
+
+
 if organoid_profile_df.empty:
     # add a row with Na values
     organoid_profile_df.loc[len(organoid_profile_df)] = [None] * len(
@@ -204,13 +227,13 @@ if organoid_profile_df.empty:
     organoid_profile_df["image_set"] = well_fov
 
 
-# In[12]:
+# In[13]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
 
-# In[13]:
+# In[14]:
 
 
 if sc_profile_df.empty:
@@ -221,14 +244,14 @@ if sc_profile_df.empty:
 
 # ### Save the profiles
 
-# In[14]:
+# In[15]:
 
 
 organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
 organoid_profile_df.head()
 
 
-# In[15]:
+# In[16]:
 
 
 sc_profile_df.to_parquet(sc_profile_output_path, index=False)

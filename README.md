@@ -7,6 +7,10 @@ To address this, we have developed a 3D patient-derived tumor organoid model of 
 We developed a modified 3D Cell Painting protocol to generate high-content imaging data from these organoids.
 This repository contains the code and documentation for a comprehensive analysis pipeline to process and analyze these 3D organoid models of NF1 NFs.
 
+
+### Documenation
+[![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
+
 ---
 ### Raw channels
 | 405 | 488 | 555 | 640 |

@@ -22,9 +22,21 @@ if [ -f "$log_file" ]; then
 fi
 mkdir -p "$git_root/4.processing_image_based_profiles/logs"
 {
-    python "$git_root"/4.processing_image_based_profiles/scripts/1.merge_feature_parquets.py --patient "$patient" --well_fov "$well_fov"
-    python "$git_root"/4.processing_image_based_profiles/scripts/2.merge_sc.py --patient "$patient" --well_fov "$well_fov"
-    python "$git_root"/4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py --patient "$patient" --well_fov "$well_fov"
+    python "$git_root"/4.processing_image_based_profiles/scripts/1.merge_feature_parquets.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --output_features_subparent_name "extracted_features" \
+        --image_based_profiles_subparent_name "image_based_profiles"
+    python "$git_root"/4.processing_image_based_profiles/scripts/2.merge_sc.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --output_features_subparent_name "extracted_features" \
+        --image_based_profiles_subparent_name "image_based_profiles"
+    python "$git_root"/4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --output_features_subparent_name "extracted_features" \
+        --image_based_profiles_subparent_name "image_based_profiles"
 } >> "$log_file" 2>&1
 
 conda deactivate

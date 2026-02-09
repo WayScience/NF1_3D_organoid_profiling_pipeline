@@ -1,0 +1,41 @@
+name: Update Docs on Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to tag'
+        required: true
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Update version in docs
+      run: |
+        VERSION="${{ github.event.release.tag_name || github.event.inputs.version }}"
+        sed -i "s/release = '.*'/release = '$VERSION'/" docs/source/conf.py
+
+    - name: Commit and push
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add docs/source/conf.py
+        git commit -m "Update docs version to $VERSION" || echo "No changes"
+        git push
+
+    - name: Trigger RTD build
+      run: |
+        curl -X POST \
+          -H "Authorization: Token ${{ secrets.RTD_WEBHOOK_TOKEN }}" \
+          https://readthedocs.org/api/v3/projects/nf1-3d-organoid-profiling-pipeline/versions/latest/builds/
