@@ -134,7 +134,7 @@ train_df, test_df = train_test_split(
 )
 train_df, val_df = train_test_split(
     train_df,
-    test_size=0.1111,  # 0.1111 * 0.90 = 0.10
+    test_size=0.1111,  # 0.1111 * 0.90 = 0.10 (10% test)
     random_state=42,
     stratify=train_df[["label", "patient"]],
 )
