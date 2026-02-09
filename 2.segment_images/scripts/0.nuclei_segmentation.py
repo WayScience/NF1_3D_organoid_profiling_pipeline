@@ -71,7 +71,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "G7-1"
+    well_fov = "E10-2"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -143,15 +143,7 @@ props = skimage.measure.regionprops(nuclei_masks)
 # Remove objects smaller than threshold
 for prop in props:
     if prop.area < 1000:  # 10 X 10 X 10 cube equivalent to 1000 voxels
-        print(prop)
         nuclei_masks[nuclei_masks == prop.label] = 0
-if in_notebook:
-    z = nuclei_masks.shape[0] // 4
-    plt.figure(figsize=(10, 4))
-    plt.imshow(nuclei_masks[z], cmap="nipy_spectral")
-    plt.title("Nuclei Masks After 3D Graph-Based Segmentation")
-    plt.axis("off")
-    plt.show()
 
 
 # In[8]:
@@ -165,24 +157,49 @@ nuclei_mask, diag = full_pipeline(
 )
 
 
-# ## relabel the nuclei
+# ## Remove edge objects
 
 # In[9]:
+
+
+nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
+
+
+# ## relabel the nuclei
+
+# In[10]:
 
 
 nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
 
 
+# In[11]:
+
+
+if in_notebook:
+    z = nuclei_masks.shape[0] // 4
+    plt.figure(figsize=(10, 4))
+    plt.subplot(121)
+    plt.imshow(nuclei_mask[z], cmap="nipy_spectral")
+    plt.title("Nuclei Masks After 3D Graph-Based Segmentation")
+    plt.axis("off")
+    plt.subplot(122)
+    plt.imshow(nuclei[z], cmap="inferno")
+    plt.axis("off")
+    plt.title("Nuclei signal")
+    plt.show()
+
+
 # ## Save the segmented masks
 
-# In[10]:
+# In[12]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[11]:
+# In[13]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

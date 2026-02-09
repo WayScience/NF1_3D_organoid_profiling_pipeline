@@ -77,6 +77,36 @@ def read_labels(infile: str) -> dict:
     return data
 
 
+def clean_labels(labels: dict) -> dict:
+    """
+    This function removes any and all records that contain NaN values
+    This ensures that the image can be re-annotated.
+
+    Parameters
+    ----------
+    labels : dict
+        Dictionary with the following structure
+        {
+            "patient": list of patient identifiers,
+            "well_fov": list of well FOV identifiers,
+            "label": list of labels assigned to each image,
+            "annotator": list of annotator names
+        }
+
+    Returns
+    -------
+    dict
+        Updated dictionary with records containing NaN values removed
+    """
+    # convert to dataframe for easier cleaning
+    labels_df = pd.DataFrame(labels)
+    # if NaN in any rows, drop those rows
+    labels_df = labels_df.dropna()
+    # convert back to dictionary
+    labels = labels_df.to_dict(orient="list")
+    return labels
+
+
 def check_for_image_labels(
     dictionary: dict,
     patient: str,
@@ -111,55 +141,130 @@ def check_for_image_labels(
     return False
 
 
+# In[3]:
+
+
 def label_images_keypress(
-    image_dict: dict, label_map: dict, labels_save_file: pathlib.Path
+    image_dict: dict,
+    label_map: dict,
+    labels_save_file: pathlib.Path,
+    batch_size: int = 100,
+    in_notebook: bool = True,
+    annotator: str | None = None,
+    input_mode: str = "auto",  # "auto", "keypress", "prompt"
+    keypress_timeout: float = 15,  # seconds; 0 = wait forever
 ) -> dict:
     """
-    Label images using keyboard input.
+    Label images using keyboard input (with notebook-safe fallback).
 
     Parameters
     ----------
-    image_paths : list of str
-    label_map : dict
-        Mapping from key press (str) to label value
-
-    Returns
-    -------
-    dict
+    in_notebook : bool
+        If True, tries non-blocking display behavior for Jupyter.
+    annotator : str | None
+        Optional annotator name. If None, prompt user.
+    input_mode : str
+        "auto" -> use keypress if backend supports it, else prompt.
+        "keypress" -> force keypress.
+        "prompt" -> force text input prompt.
+    keypress_timeout : float
+        Seconds to wait for keypress before fallback to prompt (0 = no timeout).
     """
-    annotator = input("Enter annotator name: ")
+    if annotator is None:
+        annotator = input("Enter annotator name: ")
+
+    # Convert input to DataFrame for filtering
+    image_df = pd.DataFrame(image_dict)
 
     labels = {"patient": [], "well_fov": [], "label": [], "annotator": []}
     if labels_save_file.exists():
         labels = read_labels(labels_save_file)
-    for i, image_path in enumerate(image_dict["image_path"]):
-        if check_for_image_labels(
-            dictionary=labels,
-            patient=image_dict["patient"][i],
-            well_fov=image_dict["well_fov"][i],
-            annotator=annotator,
-        ):
+
+    labeled_pairs = set(zip(labels.get("patient", []), labels.get("well_fov", [])))
+
+    if input_mode == "auto":
+        input_mode = "prompt" if in_notebook else "keypress"
+    elif in_notebook and input_mode == "keypress":
+        input_mode = "prompt"
+
+    for patient_id in tqdm.tqdm(
+        np.unique(image_df["patient"]), desc="Processing patients", leave=True
+    ):
+        subset_patient_df = image_df[image_df["patient"] == patient_id].reset_index(
+            drop=True
+        )
+
+        is_labeled = subset_patient_df.apply(
+            lambda row: (row["patient"], row["well_fov"]) in labeled_pairs, axis=1
+        )
+        unlabeled_df = subset_patient_df[~is_labeled].reset_index(drop=True)
+
+        if unlabeled_df.empty:
             continue
-        image = read_zstack_image(image_path)
-        # load the middle slice to check if there is anything there
-        mid_slice = image.shape[0] // 4
-        image_mid = image[mid_slice, :, :]
-        fig, ax = plt.subplots(figsize=(5, 5))
-        ax.imshow(image_mid, cmap="inferno")
-        ax.axis("off")
-        plt.show(block=False)
-        key = input("Press key for label: ")
-        plt.close(fig)
-        labels["annotator"].append(annotator)
-        labels["patient"].append(image_dict["patient"][i])
-        labels["well_fov"].append(image_dict["well_fov"][i])
-        labels["label"].append(label_map.get(key, None))
-        save_labels(labels, labels_save_file)
+
+        total_images = len(unlabeled_df)
+        counter = 0
+
+        for batch_start in range(0, len(unlabeled_df), batch_size):
+            batch_df = unlabeled_df.iloc[batch_start : batch_start + batch_size].copy()
+
+            batch_df["image"] = [
+                (lambda img: img[img.shape[0] // 2])(read_zstack_image(image_path))
+                for image_path in tqdm.tqdm(
+                    batch_df["image_path"],
+                    desc="Loading images",
+                    leave=False,
+                )
+            ]
+
+            for i, image in enumerate(batch_df["image"]):
+                counter += 1
+                fig, ax = plt.subplots(figsize=(10, 10))
+                ax.imshow(batch_df["image"].iloc[i], cmap="inferno")
+                ax.axis("off")
+                key_pressed = {"key": None}
+
+                def on_key(event):
+                    key_pressed["key"] = event.key
+                    plt.close(fig)
+
+                if in_notebook:
+                    plt.show()
+                    key = input("Enter label for image: ").strip()
+                    plt.close(fig)
+                else:
+                    # connect key press handler
+                    cid = fig.canvas.mpl_connect("key_press_event", on_key)
+
+                    plt.show(block=False)
+
+                    # wait for key press (timeout in seconds)
+                    pressed = plt.waitforbuttonpress(timeout=10)
+
+                    if pressed and key_pressed["key"] is not None:
+                        key = key_pressed["key"]
+                    else:
+                        # fallback to input
+                        key = input("Enter label for image: ").strip()
+
+                    fig.canvas.mpl_disconnect(cid)
+                    plt.close(fig)
+
+                labels["annotator"].append(annotator)
+                labels["patient"].append(batch_df["patient"].iloc[i])
+                labels["well_fov"].append(batch_df["well_fov"].iloc[i])
+                labels["label"].append(label_map.get(key, None))
+                save_labels(labels, labels_save_file)
+                print(f"{counter / total_images:.2%} labeled")
+
+            labeled_pairs = set(
+                zip(labels.get("patient", []), labels.get("well_fov", []))
+            )
 
     return labels
 
 
-# In[3]:
+# In[4]:
 
 
 start_time = time.time()
@@ -167,7 +272,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[4]:
+# In[5]:
 
 
 root_dir, in_notebook = init_notebook()
@@ -180,7 +285,7 @@ patient_list_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolv
 )
 
 
-# In[5]:
+# In[6]:
 
 
 labels_save_file = pathlib.Path(
@@ -192,7 +297,18 @@ labels_save_file_bandicoot = pathlib.Path(
 labels_save_file.parent.mkdir(exist_ok=True, parents=True)
 
 
-# In[6]:
+# In[7]:
+
+
+save_labels(  # step 3: saves the cleaned labels back to the parquet file
+    clean_labels(  # step 2: cleans the labels (removes records with NaN values)
+        read_labels(labels_save_file)  # step 1: reads in the labels
+    ),
+    labels_save_file,  # path to save the cleaned labels back to the parquet file
+)
+
+
+# In[8]:
 
 
 patients = pd.read_csv(patient_list_file_path, header=None)[0].tolist()
@@ -218,16 +334,26 @@ print(f"Images to process: {len(df)}")
 df.head()
 
 
-# In[7]:
+# ## run the rest via script
+
+# In[ ]:
 
 
-label_map = {"1": "globular", "2": "dissociated", "3": "small", "4": "elongated"}
+label_map = {"1": "globular", "2": "small/dissociated", "3": "elongated"}
 
 
 # In[ ]:
 
 
-labels = label_images_keypress(images_to_process, label_map, labels_save_file)
+labels = label_images_keypress(
+    images_to_process,
+    label_map,
+    labels_save_file,
+    in_notebook=in_notebook,
+    batch_size=250,
+)
+# loads in all images for a single patient - might take a few minutes to load sinlge slices into memory
+# this is to speed up the labeling process since we don't have to read in the image for each individual FOV
 save_labels(labels, labels_save_file_bandicoot)
 
 

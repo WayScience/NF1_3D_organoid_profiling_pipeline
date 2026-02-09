@@ -32,7 +32,7 @@ def segment_cells_with_3D_watershed(
     labels = skimage.segmentation.watershed(
         image=cyto_signal,
         markers=nuclei_mask,
-        connectivity=1,  # keep at 1
+        connectivity=0,  # keep at 1
         compactness=0,  # keep at 0
     )
 
@@ -88,7 +88,7 @@ def perform_morphology_dependent_segmentation(
         elevation_map = skimage.filters.gaussian(cyto2, sigma=1.0)
         elevation_map = sobel(elevation_map)
 
-    elif label == "dissociated":
+    elif label == "small/dissociated":
         print("Dissociated morphology selected")
         elevation_map = skimage.morphology.binary_dilation(
             elevation_map_threshold_signal,
@@ -97,9 +97,9 @@ def perform_morphology_dependent_segmentation(
         elevation_map = sobel(elevation_map)
         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
 
-    elif label == "small":
-        elevation_map = sobel(elevation_map)
-        elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
+    # elif label == "small":
+    #     elevation_map = sobel(elevation_map)
+    #     elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
     elif label == "elongated":
         elevation_map = sobel(elevation_map_threshold_signal)
         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)

@@ -72,7 +72,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "F11-1"
+    well_fov = "E10-2"
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -98,11 +98,15 @@ image_label_path = pathlib.Path(
 organoid_image_labels_df = pd.read_parquet(image_label_path)
 # look up the morphology for this well_fov
 morphology = organoid_image_labels_df.loc[
-    organoid_image_labels_df["well_fov"] == well_fov, "label"
+    (
+        (organoid_image_labels_df["well_fov"] == well_fov)
+        & (organoid_image_labels_df["patient"] == patient)
+    ),
+    "label",
 ].values[0]
 print(f"Organoid morphology for {well_fov}: {morphology}")
 
-# morphology = "globular"  # FOR TESTING ONLY - REMOVE LATER
+# morphology = "elongated"  # FOR TESTING ONLY - REMOVE LATER
 
 
 # In[6]:
@@ -135,130 +139,6 @@ del cyto2_raw
 # In[7]:
 
 
-# def segment_cells_with_3D_watershed(
-#     cyto_signal: np.ndarray,
-#     nuclei_mask: np.ndarray,
-# ) -> np.ndarray:
-#     """ "
-#     Description
-#     -----------
-#         Segments cells using 3D watershed algorithm given cytoplasm signal and nuclei mask.
-#     Parameters
-#     ----------
-#         cyto_signal : np.ndarray
-#             3D numpy array representing the cytoplasm signal.
-#         nuclei_mask : np.ndarray
-#             3D numpy array representing the nuclei mask.
-#     Returns
-#     -------
-#         np.ndarray
-#             3D numpy array representing the segmented cell mask.
-#     """
-#     labels = skimage.segmentation.watershed(
-#         image=cyto_signal,
-#         markers=nuclei_mask,
-#         connectivity=1, # keep at 1
-#         compactness=0, # keep at 0
-#     )
-
-#     # change the largest label (by area) to 0
-#     # cleans up the output and sets the background properly
-#     unique, counts = np.unique(labels, return_counts=True)
-#     largest_label = unique[np.argmax(counts)]
-#     labels[labels == largest_label] = 0
-#     return labels
-
-
-# def perform_morphology_dependent_segmentation(
-#     label: str,
-#     cyto2: np.ndarray,
-#     nuclei_mask: np.ndarray,
-# ) -> np.ndarray:
-#     """
-#     Description
-#     -----------
-#         Performs morphology dependent segmentation based on the provided morphology label.
-#     Parameters
-#     ----------
-#         label : str
-#             Morphology label indicating the type of morphology.
-#         cyto2 : np.ndarray
-#             3D numpy array representing the cytoplasm signal.
-#         nuclei_mask : np.ndarray
-#             3D numpy array representing the nuclei mask.
-#     Returns
-#     -------
-#         np.ndarray
-#             3D numpy array representing the segmented cell mask.
-#     """
-#     # generate the low frequency elevation map
-#     # all morhology types use the same initial elevation map
-#     elevation_map = skimage.filters.butterworth(
-#         cyto2,
-#         cutoff_frequency_ratio=0.08,
-#         order=2,
-#         high_pass=False,
-#         squared_butterworth=False,
-#     )
-#     # generate threshold using otsu
-#     threshold = skimage.filters.threshold_otsu(elevation_map)
-#     # generate thresholded signal
-#     elevation_map_threshold_signal = elevation_map.copy()
-#     elevation_map_threshold_signal = elevation_map_threshold_signal > threshold
-
-#     min_size = 1000  # volume in voxels
-#     max_size = 10_000_000  # volume in voxels
-
-#     if label == "globular":
-#         elevation_map = skimage.filters.gaussian(cyto2, sigma=1.0)
-#         elevation_map = sobel(elevation_map)
-
-#     elif label == "dissociated":
-#         print("Dissociated morphology selected")
-#         elevation_map = skimage.morphology.binary_dilation(
-#             elevation_map_threshold_signal,
-#             skimage.morphology.ball(2),
-#         )
-#         elevation_map = sobel(elevation_map)
-#         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
-
-#     elif label == "small":
-#         elevation_map = sobel(elevation_map)
-#         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
-#     elif label == "elongated":
-#         elevation_map = sobel(elevation_map_threshold_signal)
-#         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
-#     else:
-#         raise ValueError(f"Unknown morphology label: {label}")
-
-#     cell_mask = segment_cells_with_3D_watershed(
-#         cyto_signal=elevation_map,
-#         nuclei_mask=nuclei_mask,
-#     )
-#     # Remove small objects while preserving label IDs
-#     # we avoid using the built-in skimage function to preserve label IDs
-#     props = skimage.measure.regionprops(cell_mask)
-
-#     # Remove objects smaller than threshold
-#     for prop in props:
-#         if prop.area < min_size:  # min size threshold (adjust as needed)
-#             cell_mask[cell_mask == prop.label] = 0
-
-#     # remove large objects
-#     unique, counts = np.unique(cell_mask[cell_mask > 0], return_counts=True)
-#     for label, count in zip(unique, counts):
-#         if count > max_size:
-#             cell_mask[cell_mask == label] = 0
-
-#     return cell_mask
-
-
-# In[ ]:
-
-
-# In[ ]:
-
-
 cell_mask = perform_morphology_dependent_segmentation(
     morphology,
     cyto2,
@@ -266,7 +146,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[ ]:
+# In[8]:
 
 
 if in_notebook:
@@ -289,7 +169,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[ ]:
+# In[9]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -300,7 +180,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[ ]:
+# In[10]:
 
 
 nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
@@ -312,7 +192,7 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 )
 
 
-# In[ ]:
+# In[11]:
 
 
 if in_notebook:
@@ -328,7 +208,7 @@ if in_notebook:
     plt.show()
 
 
-# In[ ]:
+# In[12]:
 
 
 # refine the cell masks
@@ -340,7 +220,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[ ]:
+# In[13]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -351,18 +231,21 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Organoid segmentation (derived from cell segmentation)
 
-# In[ ]:
+# In[14]:
 
 
 # convert the cell masks to binary masks
 cell_binary_mask = cell_mask.copy()
 cell_binary_mask[cell_binary_mask > 0] = 1
-
+for z in range(cell_binary_mask.shape[0]):
+    cell_binary_mask[z] = scipy.ndimage.binary_fill_holes(
+        cell_binary_mask[z].astype(bool)
+    )
 # make sure each instance has a unique integer label
 organoid_mask = skimage.measure.label(cell_binary_mask)
 
 
-# In[ ]:
+# In[15]:
 
 
 if in_notebook:
@@ -383,9 +266,22 @@ if in_notebook:
     plt.show()
 
 
+# ## Remove border objects
+
+# In[16]:
+
+
+# nuclei should already have objects removed at the border from the previous notebook,
+# but we can run this again just to be safe
+nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
+cell_mask = clean_border_objects(cell_mask, border_width=25)
+cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
+organoid_mask = clean_border_objects(organoid_mask, border_width=25)
+
+
 # ## Save the segmented masks
 
-# In[ ]:
+# In[17]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -398,7 +294,7 @@ tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 tifffile.imwrite(organoid_mask_output, organoid_mask)
 
 
-# In[ ]:
+# In[18]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
