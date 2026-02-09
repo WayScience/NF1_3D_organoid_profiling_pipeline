@@ -17,7 +17,7 @@ def segment_cells_with_3D_watershed(
     """ "
     Description
     -----------
-        Segments cells using 3D watershed algorithm given cytoplasm signal and nuclei mask.
+        Segments cells using 3D watershed algorithm given cytoplasm signal (channel) and nuclei mask.
     Parameters
     ----------
         cyto_signal : np.ndarray
