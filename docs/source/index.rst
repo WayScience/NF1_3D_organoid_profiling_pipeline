@@ -23,3 +23,9 @@ Welcome to the NF1 3D Organoid Profiling Pipeline documentation. This pipeline p
     features/neighbors
     features/texture
     features/sammed3d
+
+.. toctree::
+    :maxdepth: 2
+    :caption: API Reference
+
+    api
