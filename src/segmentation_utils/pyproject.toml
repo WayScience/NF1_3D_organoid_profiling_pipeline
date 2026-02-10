@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "segmentation_utils_module"
 version = "0.0.0"
 description = "Utility package for GFF 3D organoid profiling pipeline"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 authors = [ { name = "Michael J. Lippincott"} ]
 license = { text = "BSD 3-Clause License" }
 
@@ -25,10 +25,10 @@ dev = [
 
 [tool.setuptools]
 py-modules = [
-    "segmentation_utils",
-    "organoid_segmentation",
+    "general_segmentation_utils",
     "nuclei_segmentation",
     "segmentation_decoupling",
+    "cell_segmentation",
 ]
 
 [tool.setuptools.packages.find]

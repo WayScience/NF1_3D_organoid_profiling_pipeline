@@ -17,7 +17,6 @@ repos:
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.15.0
-
     hooks:
       # Run the formatter.
     -   id: ruff-format
@@ -34,8 +33,11 @@ repos:
     hooks:
     -   id: pycln
         args: [--config=pyproject.toml]
-        exclude: ^2\.segment_images/scripts/.*\.py$
-
+        exclude: |
+          (?x)^(
+            2\.segment_images/scripts/.*\.py$|
+            3\.cellprofiling/scripts/.*\.py$
+          )$
     # additional hooks found with in the pre-commit lib
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

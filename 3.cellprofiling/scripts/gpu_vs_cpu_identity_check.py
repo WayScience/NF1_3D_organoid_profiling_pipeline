@@ -9,10 +9,7 @@
 
 import pathlib
 
-import numpy as np
 import pandas as pd
-import psutil
-import skimage
 
 try:
     cfg = get_ipython().config
@@ -20,9 +17,9 @@ try:
 except NameError:
     in_notebook = False
 if in_notebook:
-    from tqdm.notebook import tqdm
+    pass
 else:
-    from tqdm import tqdm
+    pass
 
 
 # In[ ]:

@@ -1,4 +1,3 @@
-import pathlib
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
@@ -6,61 +5,15 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import skimage
-import torch
 import tqdm
-from cellpose import core, models
-from file_reading import read_zstack_image
 from segmentation_decoupling import (
     euclidian_2D_distance,
     extract_unique_masks,
     get_combinations_of_indices,
-    get_number_of_unique_labels,
     merge_sets_df,
     reassemble_each_mask,
 )
 from skimage.filters import sobel
-
-
-# ----------------------------------------------------------------------
-# extensions and reads
-# ----------------------------------------------------------------------
-def find_files_available(
-    input_dir: pathlib.Path,
-    image_extensions: set = {".tif", ".tiff"},
-) -> List[pathlib.Path]:
-    files = sorted(input_dir.glob("*"))
-    files = [str(x) for x in files if x.suffix in image_extensions]
-    return files
-
-
-def read_in_channels(
-    files,
-    channel_dict: dict = {
-        "nuclei": "405",
-        "cyto1": "488",
-        "cyto2": "555",
-        "cyto3": "640",
-        "brightfield": "TRANS",
-    },
-    channels_to_read: List[str] | None = None,
-):
-    loaded = {}
-    for channel, token in channel_dict.items():
-        matches = [f for f in files if token in pathlib.Path(f).name or token in f]
-        if len(matches) == 0:
-            loaded[channel] = None
-        else:
-            if len(matches) > 1:
-                print(
-                    f"Warning: multiple files match token '{token}' for channel '{channel}'. Using first match: {matches[0]}"
-                )
-            try:
-                loaded[channel] = np.array(read_zstack_image(matches[0]))
-            except Exception as e:
-                print(f"Error loading {matches[0]} for channel '{channel}': {e}")
-                loaded[channel] = None
-
-    return loaded
 
 
 # ----------------------------------------------------------------------
@@ -108,11 +61,6 @@ def reverse_sliding_window_max_projection(
                     z_stack_mask
                 )
     return reconstruction_dict
-
-
-# ----------------------------------------------------------------------
-# Organoid segmentation with dynamic diameter search
-# ----------------------------------------------------------------------
 
 
 # ----------------------------------------------------------------------
@@ -232,9 +180,9 @@ def generate_coordinates_for_reconstruction(image: np.ndarray) -> pd.DataFrame:
         "bbox-3": [],
     }
 
-    for slice in range(image.shape[0]):
+    for image_slice in range(image.shape[0]):
         props = skimage.measure.regionprops_table(
-            image[slice, :, :], properties=["label", "centroid", "bbox"]
+            image[image_slice, :, :], properties=["label", "centroid", "bbox"]
         )
 
         label, centroid1, centroid2, bbox0, bbox1, bbox2, bbox3 = (
@@ -249,7 +197,7 @@ def generate_coordinates_for_reconstruction(image: np.ndarray) -> pd.DataFrame:
         if len(label) > 0:
             for i in range(len(label)):
                 cordinates["original_label"].append(label[i])
-                cordinates["slice"].append(slice)
+                cordinates["slice"].append(image_slice)
                 cordinates["centroid-0"].append(centroid1[i])
                 cordinates["centroid-1"].append(centroid2[i])
                 cordinates["bbox-0"].append(bbox0[i])
@@ -473,9 +421,9 @@ def reassign_labels(
 ):
     new_mask_image = np.zeros_like(image)
     # mask label reassignment
-    for slice in range(image.shape[0]):
-        mask = image[slice, :, :]
-        tmp_df = df[df["slice"] == slice]
+    for image_slice in range(image.shape[0]):
+        mask = image[image_slice, :, :]
+        tmp_df = df[df["slice"] == image_slice]
         if tmp_df.empty:
             continue
         # check if label is present or if reassignment is needed
@@ -484,7 +432,7 @@ def reassign_labels(
         for i in range(tmp_df.shape[0]):
             mask[mask == tmp_df.iloc[i]["original_label"]] = tmp_df.iloc[i]["label"]
 
-        new_mask_image[slice, :, :] = mask
+        new_mask_image[image_slice, :, :] = mask
     return new_mask_image
 
 
@@ -679,10 +627,10 @@ def add_masks_where_missing(
     np.ndarray
         The new mask image with the added slices.
     """
-    for slice in interpolated_rows_to_add_df["added_z"].unique():
+    for image_slice in interpolated_rows_to_add_df["added_z"].unique():
         # get the rows that correspond to the slice
         tmp_df = interpolated_rows_to_add_df[
-            interpolated_rows_to_add_df["added_z"] == slice
+            interpolated_rows_to_add_df["added_z"] == image_slice
         ]
         if tmp_df.shape[0] == 0:
             continue
@@ -1140,3 +1088,42 @@ def create_cytoplasm_masks(
         cytoplasm_masks[z_slice_index] = cytoplasm_mask
 
     return cytoplasm_masks
+
+
+def clean_border_objects(segmentation, border_width=20):
+    cleaned_seg = segmentation.copy()
+    max_z, max_y, max_x = segmentation.shape
+    border_labels = set()
+    # check x borders
+    border_labels.update(np.unique(segmentation[:, :, max_x - border_width :]))
+    border_labels.update(np.unique(segmentation[:, :, :border_width]))
+    # check y borders
+    border_labels.update(np.unique(segmentation[:, :border_width, :]))
+    border_labels.update(np.unique(segmentation[:, -border_width:, :]))
+    # remove these labels
+    for label in border_labels:
+        if label == 0:
+            continue
+        cleaned_seg[segmentation == label] = 0
+    return cleaned_seg
+
+
+# if there are any singletons remove the labels in all masks
+def remove_label_id(mask_image: np.ndarray, label_id_to_remove: int) -> np.ndarray:
+    """
+    Remove the label id
+
+    Parameters
+    ----------
+    mask_image : np.ndarray
+        Mask image from which to remove the label id
+    label_id_to_remove : int
+        Label id to remove from the mask image
+
+    Returns
+    -------
+    np.ndarray
+        Mask image with the label id removed
+    """
+    mask_image[mask_image == label_id_to_remove] = 0
+    return mask_image

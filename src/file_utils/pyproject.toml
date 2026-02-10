@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "file_utils"
 version = "0.0.0"
 description = "Utility package for GFF 3D organoid profiling pipeline"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 authors = [ { name = "Michael J. Lippincott"} ]
 license = { text = "BSD 3-Clause License" }
 

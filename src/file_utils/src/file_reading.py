@@ -1,6 +1,51 @@
+import pathlib
+from typing import List
+
 import numpy as np
 import skimage
 import tifffile
+
+
+# ----------------------------------------------------------------------
+# extensions and reads
+# ----------------------------------------------------------------------
+def find_files_available(
+    input_dir: pathlib.Path,
+    image_extensions: set = {".tif", ".tiff"},
+) -> List[pathlib.Path]:
+    files = sorted(input_dir.glob("*"))
+    files = [str(x) for x in files if x.suffix in image_extensions]
+    return files
+
+
+def read_in_channels(
+    files,
+    channel_dict: dict = {
+        "nuclei": "405",
+        "cyto1": "488",
+        "cyto2": "555",
+        "cyto3": "640",
+        "brightfield": "TRANS",
+    },
+    channels_to_read: List[str] = [None],
+):
+    loaded = {}
+    for channel, token in channel_dict.items():
+        matches = [f for f in files if token in str(pathlib.Path(f).name)]
+        if len(matches) == 0:
+            loaded[channel] = None
+        else:
+            if len(matches) > 1:
+                print(
+                    f"Warning: multiple files match token '{token}' for channel '{channel}'. Using first match: {matches[0]}"
+                )
+            try:
+                loaded[channel] = np.array(read_zstack_image(matches[0]))
+            except Exception as e:
+                print(f"Error loading {matches[0]} for channel '{channel}': {e}")
+                loaded[channel] = None
+
+    return loaded
 
 
 def read_zstack_image(file_path: str) -> np.ndarray:

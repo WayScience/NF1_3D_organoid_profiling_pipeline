@@ -15,6 +15,7 @@ import pandas as pd
 from arg_parsing_utils import check_for_missing_args, parse_args
 from file_reading import read_zstack_image
 from notebook_init_utils import bandicoot_check, init_notebook
+from skimage import exposure
 
 root_dir, in_notebook = init_notebook()
 image_base_dir = bandicoot_check(
@@ -65,7 +66,11 @@ def plot_plate_overview(
     title_for_substring: str,
     available_wells: dict,
     layout: int = "96",
+    skip_outer_wells: bool = True,
     image_color_map: str = "nipy_spectral",
+    lut: np.ndarray | None = None,
+    contrast_enhance: bool = True,
+    clip_limit: float = 0.03,
 ) -> plt.Figure:
     """
     Generate a plate-view of images from each well
@@ -84,16 +89,35 @@ def plot_plate_overview(
         Plate layout, by default "96"
     image_color_map : str, optional
         Colormap for images, by default "nipy_spectral"
+    lut : np.ndarray | None, optional
+        Custom lookup table for coloring label images. If provided, image_color_map is ignored.
+        Should be an Nx3 or Nx4 array of RGB/RGBA values (0-1 or 0-255 range).
+        by default None
+    contrast_enhance : bool, optional
+        Whether to apply contrast enhancement to images, by default True
+    clip_limit : float, optional
+        Clip limit for contrast enhancement, by default 0.03
     """
-    if layout == "96":
-        rows = list(string.ascii_uppercase[:8])
+    if layout == "96" and skip_outer_wells:  # only the inner 60 wells
+        rows = list(string.ascii_uppercase[1:7])
+        cols = list(range(2, 12))
+    elif layout == "96" and not skip_outer_wells:
+        rows = list(string.ascii_uppercase[0:8])
         cols = list(range(1, 13))
+    elif layout == "384" and skip_outer_wells:  # only the inner 308 wells
+        rows = list(string.ascii_uppercase[2:15])  # B-O
+        cols = list(range(2, 24))  # 2-23
+    elif layout == "384" and not skip_outer_wells:
+        rows = list(string.ascii_uppercase[0:16])  # A-P
+        cols = list(range(1, 25))  # 1-24
+    else:
+        raise ValueError(f"Unsupported plate layout: {layout}")
 
     # Create figure with minimal spacing
     fig, axes = plt.subplots(
-        8,
-        12,
-        figsize=(21, 14),
+        len(rows),
+        len(cols),
+        figsize=(20, 12),  # W X H
         gridspec_kw={
             "wspace": 0.02,
             "hspace": 0.02,
@@ -132,8 +156,20 @@ def plot_plate_overview(
                     mid_z = nuclei_mask.shape[0] // 2
                     nuclei_mask = nuclei_mask[mid_z]
 
-                    # Display image
-                    ax.imshow(nuclei_mask, cmap=image_color_map)
+                    # Enhance contrast
+                    if contrast_enhance:
+                        nuclei_mask = exposure.equalize_adapthist(
+                            nuclei_mask, clip_limit=clip_limit
+                        )
+
+                    # Display image with custom LUT or colormap
+                    if lut is not None:
+                        from matplotlib.colors import ListedColormap
+
+                        cmap = ListedColormap(lut)
+                        ax.imshow(nuclei_mask, cmap=cmap)
+                    else:
+                        ax.imshow(nuclei_mask, cmap=image_color_map)
 
                     # Add bezel (border) around the image
                     for spine in ax.spines.values():
@@ -170,9 +206,42 @@ def plot_plate_overview(
     return fig
 
 
-# In[ ]:
+# In[4]:
 
 
+# cyan LUT (Green + Blue)
+cyan_lut = np.zeros((256, 3))
+cyan_lut[:, 1] = np.linspace(0, 1, 256)  # Green
+cyan_lut[:, 2] = np.linspace(0, 1, 256)  # Blue
+cyan_lut[0] = [0, 0, 0]
+
+# Magenta LUT (Red + Blue)
+magenta_lut = np.zeros((256, 3))
+magenta_lut[:, 0] = np.linspace(0, 1, 256)  # Red
+magenta_lut[:, 2] = np.linspace(0, 1, 256)  # Blue
+magenta_lut[0] = [0, 0, 0]
+
+# Yellow LUT (Red + Green)
+yellow_lut = np.zeros((256, 3))
+yellow_lut[:, 0] = np.linspace(0, 1, 256)  # Red
+yellow_lut[:, 1] = np.linspace(0, 1, 256)  # Green
+yellow_lut[0] = [0, 0, 0]
+
+# Green LUT
+green_lut = np.zeros((256, 3))
+green_lut[:, 1] = np.linspace(0, 1, 256)  # Green
+green_lut[0] = [0, 0, 0]
+
+# red LUT
+red_lut = np.zeros((256, 3))
+red_lut[:, 0] = np.linspace(0, 1, 256)  # Red
+red_lut[0] = [0, 0, 0]
+
+
+# In[5]:
+
+
+patients = ["NF0014_T1"]
 for patient in tqdm.tqdm(
     patients, desc="Generating platemaps for patients", unit="patient"
 ):
@@ -189,7 +258,8 @@ for patient in tqdm.tqdm(
         if not well_fov_path.is_dir():
             continue
         well_fov_name = well_fov_path.stem.split("-")[0]
-        mask_available_wells[well_fov_name] = well_fov_path
+        if well_fov_name not in mask_available_wells:
+            mask_available_wells[well_fov_name] = well_fov_path
 
     well_fovs = input_dir.glob("*")
     image_available_wells = {}
@@ -197,43 +267,55 @@ for patient in tqdm.tqdm(
         if not well_fov_path.is_dir():
             continue
         well_fov_name = well_fov_path.stem.split("-")[0]
-        image_available_wells[well_fov_name] = well_fov_path
+        if well_fov_name not in image_available_wells:
+            image_available_wells[well_fov_name] = well_fov_path
 
     # plot and save the plate view
     channels_to_show = ["405", "488", "555", "640"]
     masks_to_show = ["organoid", "nuclei", "cell"]
 
-    for channel in tqdm.tqdm(
-        channels_to_show, desc="Generating channel platemaps", leave=False
-    ):
-        if channel == "405":
-            channel_title = "Hoechst - 405nm"
-        elif channel == "488":
-            channel_title = "Endoplasmic Reticulum - 488nm"
-        elif channel == "555":
-            channel_title = "AGP - 555nm"
-        elif channel == "640":
-            channel_title = "Mitochondria - 640nm"
-        else:
-            channel_title = channel
-        fig = plot_plate_overview(
-            plate=patient,
-            image_sub_string_to_search=channel,
-            title_for_substring=channel_title,
-            available_wells=image_available_wells,
-            layout="96",
-            image_color_map="inferno",
-        )
-        # Save using matplotlib
-        output_path = figures_path / f"{patient}_platemap_{channel}.png"
-        fig.savefig(
-            output_path,
-            dpi=600,
-            bbox_inches="tight",
-            facecolor="white",
-            edgecolor="none",
-        )
-        plt.close(fig)
+    # for channel in tqdm.tqdm(
+    #     channels_to_show, desc="Generating channel platemaps", leave=False
+    # ):
+    #     if channel == "405":
+    #         lut = cyan_lut
+    #         channel_title = "Hoechst - 405nm"
+
+    #     elif channel == "488":
+    #         lut = green_lut
+    #         channel_title = "Endoplasmic Reticulum - 488nm"
+
+    #     elif channel == "555":
+    #         lut = magenta_lut
+    #         channel_title = "AGP - 555nm"
+
+    #     elif channel == "640":
+    #         lut = red_lut
+    #         channel_title = "Mitochondria - 640nm"
+
+    #     else:
+    #         lut = None
+    #     fig = plot_plate_overview(
+    #         plate=patient,
+    #         image_sub_string_to_search=channel,
+    #         title_for_substring=channel_title,
+    #         available_wells=image_available_wells,
+    #         layout="96",
+    #         skip_outer_wells=True,
+    #         lut=lut,
+    #         contrast_enhance=True,  # Enable contrast enhancement
+    #         clip_limit=0.03,  # Adjust this value (0-1)
+    #     )
+    # # Save using matplotlib
+    # output_path = figures_path / f"{patient}_platemap_{channel}.png"
+    # fig.savefig(
+    #     output_path,
+    #     dpi=600,
+    #     bbox_inches="tight",
+    #     facecolor="white",
+    #     edgecolor="none",
+    # )
+    # plt.close(fig)
     for mask in tqdm.tqdm(masks_to_show, desc="Generating mask platemaps", leave=False):
         if mask == "organoid":
             mask_title = "Organoid Mask"
@@ -246,8 +328,10 @@ for patient in tqdm.tqdm(
         fig = plot_plate_overview(
             plate=patient,
             image_sub_string_to_search=mask,
+            title_for_substring=mask_title,
             available_wells=mask_available_wells,
             layout="96",
+            skip_outer_wells=True,
             image_color_map="nipy_spectral",
         )
         # Save using matplotlib

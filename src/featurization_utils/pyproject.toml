@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "featurization_utils_module"
 version = "0.0.0"
 description = "Utility package for GFF 3D organoid profiling pipeline"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 authors = [ { name = "Michael J. Lippincott"} ]
 license = { text = "BSD 3-Clause License" }
 
@@ -35,6 +35,7 @@ py-modules = [
     "sammed3d_featurizer",
     "texture_utils",
     "loading_classes",
+    "sammed3d_featurizer",
 ]
 
 [tool.setuptools.packages.find]
