@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
+
+"""Calculate Nyquist sampling rates for each imaging channel."""
+
+
+# In[1]:
 
 import matplotlib.pyplot as plt
 import numpy as np

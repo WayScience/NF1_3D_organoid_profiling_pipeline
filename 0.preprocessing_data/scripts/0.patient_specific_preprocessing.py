@@ -4,6 +4,11 @@
 # In[ ]:
 
 
+"""Prepare patient-specific preprocessing inputs and metadata."""
+
+
+# In[ ]:
+
 import argparse
 import pathlib
 import sys
