@@ -1,3 +1,5 @@
+"""This document provides utility functions for profiling memory and time usage during featurization runs."""
+
 import os
 import pathlib
 import time

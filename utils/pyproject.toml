@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nf1-3d-organoid-profiling-pipeline"
+version = "0.0.1"
+description = "Utility modules for the NF1 3D organoid profiling pipeline"
+requires-python = ">=3.9"
+authors = [{ name = "Michael J. Lippincott" }]
+license = { text = "BSD 3-Clause License" }
+dependencies = [
+    "pandas",
+    "numpy",
+    "scipy",
+    "scikit-image",
+    "tifffile",
+    "cellpose",
+    "napari_animation",
+    "networkx",
+    "torch",
+    "cucim",
+    "cupy",
+    "argparse",
+    "medim",
+    "tqdm"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "black", "ruff", "pre-commit", "ipykernel"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+	"featurization_utils*",
+	"file_utils*",
+	"segmentation_utils*",
+	"visualization_utils*",
+]

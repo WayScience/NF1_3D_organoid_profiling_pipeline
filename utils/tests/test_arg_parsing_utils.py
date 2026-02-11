@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 
 import pytest
-
 from file_utils.arg_parsing_utils import check_for_missing_args, parse_args
 
 

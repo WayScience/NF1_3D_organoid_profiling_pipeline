@@ -86,14 +86,14 @@ cd .. || exit
 ```
 
 ### Python utilities (monorepo layout)
-The utilities under `src/` are now structured as installable packages. For local development, install them in editable mode:
+The utilities under `utils/src/` are now structured as installable packages. For local development, install them in editable mode:
 ```bash
-cd src
+cd utils
 pip install -e .
 ```
-This preserves legacy imports (e.g., `import file_reading`) via compatibility shims while also enabling package imports like `from file_utils import file_reading`.
 Note that the utilites should be imported into compute environments.
 See the `environments` module for installing the utils.
+There is a Makefile int the `environments` module that installs the environemnts with utils.
 
 ### System Requirements
 - Linux-based OS

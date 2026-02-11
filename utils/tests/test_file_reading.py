@@ -6,8 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
-pytest.importorskip("skimage")
 from file_utils.file_reading import (
     find_files_available,
     read_in_channels,

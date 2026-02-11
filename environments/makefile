@@ -18,14 +18,8 @@ all: $(ENV_NAMES)
 		mamba env create -f $$(grep -l "name: $@" $(YAML_FILES)); \
 	fi
 
-	@if [ "$@" = "featurizer" ] || [ "$@" = "deep_learning_featurizer" ]; then \
-		echo "Installing featurization_utils in $@"; \
-		cd .. && . $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \
-		pip install -e ./src/featurization_utils && conda deactivate; \
-	fi
-
-	@echo "Installing file_utils for $@"
+	@echo "Installing utils for $@"
 	@. $$(conda info --base)/etc/profile.d/conda.sh && conda activate $@ && \
-	pip install -e ./src/file_utils && conda deactivate
+	pip install -e ../utils/src/ && conda deactivate
 
 .PHONY: all $(ENV_NAMES)

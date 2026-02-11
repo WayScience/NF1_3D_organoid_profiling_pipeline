@@ -24,7 +24,7 @@ def check_for_missing_args(**kwargs: Any) -> None:
         )
 
 
-def parse_args() -> dict[str, Any]:
+def parse_args() -> dict[str, str | int | float | None]:
     """
     Parse command line arguments for segmentation tasks.
 
