@@ -3,6 +3,7 @@
 
 # In[1]:
 
+
 import argparse
 import os
 import pathlib
@@ -26,6 +27,7 @@ if in_notebook:
     import tqdm.notebook as tqdm
 else:
     import tqdm
+image_base_dir
 
 
 # In[2]:
@@ -57,7 +59,7 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 
 
-# In[ ]:
+# In[3]:
 
 
 def plot_plate_overview(
@@ -155,6 +157,9 @@ def plot_plate_overview(
                     nuclei_mask = read_zstack_image(image_files[0])
                     mid_z = nuclei_mask.shape[0] // 2
                     nuclei_mask = nuclei_mask[mid_z]
+                    # downscale for faster display
+                    if not "mask" in title_for_substring:
+                        nuclei_mask = nuclei_mask[::10, ::10]
 
                     # Enhance contrast
                     if contrast_enhance:
@@ -201,7 +206,7 @@ def plot_plate_overview(
             ax.set_yticks([])
 
     # Adjust layout to minimize white space
-    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    # plt.tight_layout(rect=[0, 0, 1, 0.97])
 
     return fig
 
@@ -238,10 +243,9 @@ red_lut[:, 0] = np.linspace(0, 1, 256)  # Red
 red_lut[0] = [0, 0, 0]
 
 
-# In[5]:
+# In[ ]:
 
 
-patients = ["NF0014_T1"]
 for patient in tqdm.tqdm(
     patients, desc="Generating platemaps for patients", unit="patient"
 ):
@@ -250,16 +254,8 @@ for patient in tqdm.tqdm(
     ).resolve(strict=True)
     mask_path = pathlib.Path(
         f"{image_base_dir}/data/{patient}/{mask_subparent_name}/"
-    ).resolve(strict=True)
+    ).resolve()
     # get the well_fov paths
-    well_fovs = mask_path.glob("*")
-    mask_available_wells = {}
-    for well_fov_path in well_fovs:
-        if not well_fov_path.is_dir():
-            continue
-        well_fov_name = well_fov_path.stem.split("-")[0]
-        if well_fov_name not in mask_available_wells:
-            mask_available_wells[well_fov_name] = well_fov_path
 
     well_fovs = input_dir.glob("*")
     image_available_wells = {}
@@ -274,48 +270,65 @@ for patient in tqdm.tqdm(
     channels_to_show = ["405", "488", "555", "640"]
     masks_to_show = ["organoid", "nuclei", "cell"]
 
-    # for channel in tqdm.tqdm(
-    #     channels_to_show, desc="Generating channel platemaps", leave=False
-    # ):
-    #     if channel == "405":
-    #         lut = cyan_lut
-    #         channel_title = "Hoechst - 405nm"
+    for channel in tqdm.tqdm(
+        channels_to_show, desc="Generating channel platemaps", leave=False
+    ):
+        if channel == "405":
+            lut = cyan_lut
+            channel_title = "Hoechst - 405nm"
 
-    #     elif channel == "488":
-    #         lut = green_lut
-    #         channel_title = "Endoplasmic Reticulum - 488nm"
+        elif channel == "488":
+            lut = green_lut
+            channel_title = "Endoplasmic Reticulum - 488nm"
 
-    #     elif channel == "555":
-    #         lut = magenta_lut
-    #         channel_title = "AGP - 555nm"
+        elif channel == "555":
+            lut = magenta_lut
+            channel_title = "AGP - 555nm"
 
-    #     elif channel == "640":
-    #         lut = red_lut
-    #         channel_title = "Mitochondria - 640nm"
+        elif channel == "640":
+            lut = red_lut
+            channel_title = "Mitochondria - 640nm"
 
-    #     else:
-    #         lut = None
-    #     fig = plot_plate_overview(
-    #         plate=patient,
-    #         image_sub_string_to_search=channel,
-    #         title_for_substring=channel_title,
-    #         available_wells=image_available_wells,
-    #         layout="96",
-    #         skip_outer_wells=True,
-    #         lut=lut,
-    #         contrast_enhance=True,  # Enable contrast enhancement
-    #         clip_limit=0.03,  # Adjust this value (0-1)
-    #     )
-    # # Save using matplotlib
-    # output_path = figures_path / f"{patient}_platemap_{channel}.png"
-    # fig.savefig(
-    #     output_path,
-    #     dpi=600,
-    #     bbox_inches="tight",
-    #     facecolor="white",
-    #     edgecolor="none",
-    # )
-    # plt.close(fig)
+        else:
+            lut = None
+        fig = plot_plate_overview(
+            plate=patient,
+            image_sub_string_to_search=channel,
+            title_for_substring=channel_title,
+            available_wells=image_available_wells,
+            layout="96",
+            skip_outer_wells=True,
+            lut=lut,
+            contrast_enhance=True,  # Enable contrast enhancement
+            clip_limit=0.03,  # Adjust this value (0-1)
+        )
+        # Save using matplotlib
+        output_path = figures_path / f"{patient}_platemap_{channel}.png"
+        fig.savefig(
+            output_path,
+            dpi=600,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        plt.close(fig)
+
+
+# In[ ]:
+
+
+for patient in tqdm.tqdm(
+    patients, desc="Generating platemaps for patients", unit="patient"
+):
+    well_fovs = mask_path.glob("*")
+    mask_available_wells = {}
+    for well_fov_path in well_fovs:
+        if not well_fov_path.is_dir():
+            continue
+        well_fov_name = well_fov_path.stem.split("-")[0]
+        if well_fov_name not in mask_available_wells:
+            mask_available_wells[well_fov_name] = well_fov_path
+
     for mask in tqdm.tqdm(masks_to_show, desc="Generating mask platemaps", leave=False):
         if mask == "organoid":
             mask_title = "Organoid Mask"

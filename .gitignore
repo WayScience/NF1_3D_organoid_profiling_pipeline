@@ -203,3 +203,4 @@ models/*
 docs/doctrees/*
 docs/html/*
 3.cellprofiling/logs/*
+2.segment_images/data/compressed_images/*
