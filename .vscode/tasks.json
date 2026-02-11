@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Sphinx docs",
+			"type": "shell",
+			"command": "sphinx-build -b html docs/source docs/build/html",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$sphinx"
+			],
+			"group": "build"
+		}
+	]
+}
