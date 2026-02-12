@@ -144,6 +144,7 @@ Loading Classes
 
 .. automodule:: 3D_image_analysis.featurization_utils.loading_classes
    :members:
+   :no-index:
 
 Errors
 ------

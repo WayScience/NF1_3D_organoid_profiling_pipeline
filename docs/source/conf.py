@@ -31,6 +31,7 @@ source_suffix = {
 myst_enable_checkboxes = True
 myst_enable_html_img = True
 myst_heading_anchors = 3
+myst_parse_data = True
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
@@ -104,7 +105,11 @@ autodoc_mock_imports = [
 ]
 
 # Don't treat import warnings as errors
-suppress_warnings = ["autodoc.import_object"]
+suppress_warnings = [
+    "autodoc.import_object",
+    "config.deprecated_alias",
+    "myst.topmatter",
+]
 
 # Napoleon settings (for Google/NumPy style docstrings)
 napoleon_google_docstring = True
