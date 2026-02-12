@@ -23,12 +23,8 @@ import numpy as np
 import pandas as pd
 import tifffile
 import tqdm
-from image_analysis_3D.file_utils.notebook_init_utils import (
-    init_notebook,
-)
-from image_analysis_3D.file_utils.preprocessing_funcs import (
-    read_2D_image_for_zstacking,
-)
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
+from image_analysis_3D.file_utils.preprocessing_funcs import read_2D_image_for_zstacking
 
 root_dir, in_notebook = init_notebook()
 

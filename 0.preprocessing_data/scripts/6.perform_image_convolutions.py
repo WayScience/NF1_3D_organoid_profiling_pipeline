@@ -12,7 +12,6 @@
 import os
 import pathlib
 
-
 # Import dependencies
 import skimage
 import tifffile

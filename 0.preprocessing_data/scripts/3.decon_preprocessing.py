@@ -13,9 +13,7 @@ import pathlib
 import shutil
 
 import pandas as pd
-from image_analysis_3D.file_utils.notebook_init_utils import (
-    init_notebook,
-)
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 
 root_dir, in_notebook = init_notebook()
 

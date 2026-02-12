@@ -15,9 +15,7 @@ import sys
 import numpy as np
 import tifffile
 import tqdm
-from image_analysis_3D.file_utils.notebook_init_utils import (
-    init_notebook,
-)
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 from image_analysis_3D.file_utils.preprocessing_funcs import (
     check_well_dir_name_format,
     get_to_the_unested_dir,
