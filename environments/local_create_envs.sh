@@ -1,6 +1,7 @@
 #!/bin/bash
 # this script creates or updates conda environments based on the yaml files in this directory
-yaml_files=$(ls /*glob*.yml)
+# shellcheck disable=SC2035
+yaml_files=$(ls -la *.yml)
 
 # read the first line of the yaml file
 for yaml_file in $yaml_files; do

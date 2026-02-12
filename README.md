@@ -1,4 +1,7 @@
 # NF1 3D Organoid Profiling Pipeline
+### Documenation
+[![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
+
 Patients living with Neurofibromatosis Type 1 (NF1) often develop neurofibromas (NFs), which are complex benign tumors.
 However, there are only two FDA-approved therapies for NF1-associated inoperable plexiform neurofibromas (PNFs): Mirdametinib and Selumetinib.
 Thus, we **urgently need more therapeutic options** for neurofibromas.
@@ -6,10 +9,6 @@ Thus, we **urgently need more therapeutic options** for neurofibromas.
 To address this, we have developed a 3D patient-derived tumor organoid model of NF1.
 We developed a modified 3D Cell Painting protocol to generate high-content imaging data from these organoids.
 This repository contains the code and documentation for a comprehensive analysis pipeline to process and analyze these 3D organoid models of NF1 NFs.
-
-
-### Documenation
-[![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
 
 ---
 ### Raw channels
@@ -60,7 +59,7 @@ Top-level directories and a short description of what they contain:
   - Experimental/analysis scripts and ad‑hoc notebooks used for method development.
 - data
   - Expected location for processed image files, intermediate artifacts and aggregated profiles (patient subfolders).
-- src / utils
+- src
   - Utility libraries and helper modules used across notebooks and scripts.
 - environments
   - Conda/Mamba environment YAMLs and Makefile targets to reproduce required environments.
@@ -85,6 +84,16 @@ cd environments || exit
 make --always-make
 cd .. || exit
 ```
+
+### Python utilities (monorepo layout)
+The utilities under `utils/src/` are now structured as installable packages. For local development, install them in editable mode:
+```bash
+cd utils
+pip install -e .
+```
+Note that the utilites should be imported into compute environments.
+See the `environments` module for installing the utils.
+There is a Makefile int the `environments` module that installs the environemnts with utils.
 
 ### System Requirements
 - Linux-based OS

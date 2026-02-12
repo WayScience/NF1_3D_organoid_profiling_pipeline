@@ -3,47 +3,37 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "preprocessing_module"
-version = "0.0.0"
-description = "Utility package for GFF 3D organoid profiling pipeline"
-requires-python = ">=3.11"
-authors = [ { name = "Your Name", email = "you@example.com" } ]
-license = { text = "MIT" }
-
+name = "nf1-3d-organoid-profiling-pipeline"
+version = "0.0.1"
+description = "Utility modules for the NF1 3D organoid profiling pipeline"
+requires-python = ">=3.9"
+authors = [{ name = "Michael J. Lippincott" }]
+license = { text = "BSD 3-Clause License" }
 dependencies = [
+    "pandas",
+    "numpy",
+    "scipy",
+    "scikit-image",
+    "tifffile",
+    "cellpose",
+    "napari_animation",
+    "networkx",
+    "torch",
+    "cucim",
+    "cupy",
+    "argparse",
+    "medim",
+    "tqdm"
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-    "black",
-    "ruff",
-    "pre-commit",
-    "ipykernel",
-
-]
-
-[project.scripts]
-arg_parsing = "arg_parsing_utils:main"
-file_checking = "file_checking:main"
-file_reading = "file_reading:main"
-notebook_init_utils = "notebook_init_utils:main"
-segmentation_decoupling = "segmentation_decoupling:main"
-exceptions = "errors.exceptions:main"
-preprocessing_funcs = "preprocessing_funcs:main"
-
-[tool.setuptools]
-py-modules = [
-"arg_parsing_utils",
-"file_checking",
-"file_reading",
-"notebook_init_utils",
-"segmentation_decoupling",
-"errors.exceptions",
-"preprocessing_funcs"
-]
-
+dev = ["pytest", "black", "ruff", "pre-commit", "ipykernel"]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["errors*"]
+where = ["src"]
+include = [
+	"featurization_utils*",
+	"file_utils*",
+	"segmentation_utils*",
+	"visualization_utils*",
+]
