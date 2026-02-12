@@ -16,7 +16,10 @@ Requirements:
     pip install medim
 """
 
-from pathlib import Path
+import logging
+import os
+import sys
+from io import StringIO
 from typing import Dict, List, Optional, Union
 
 import medim
@@ -69,6 +72,13 @@ class SAMMed3DFeatureExtractor:
 
     def _load_model(self, model_path: Optional[str], use_medim: bool):
         """Load SAM-Med3D model."""
+        # Suppress logging and stdout
+        import sys
+
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("torch").setLevel(logging.ERROR)
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
 
         if use_medim:
             try:
