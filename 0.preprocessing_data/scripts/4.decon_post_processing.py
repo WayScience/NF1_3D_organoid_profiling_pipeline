@@ -14,27 +14,14 @@ import pathlib
 import shutil
 
 import pandas as pd
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
+root_dir, in_notebook = init_notebook()
+
 if in_notebook:
-    from tqdm.notebook import tqdm
+    import tqdm.notebook as tqdm
 else:
-    from tqdm import tqdm
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
+    import tqdm
 
 bandicoot_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve()
 if bandicoot_path.exists():

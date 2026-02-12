@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-"""Create z-stacks and copy raw images into the preprocessing layout."""
-
-
 # ## Imports
 
 # In[1]:
+
 
 import argparse
 import os
@@ -20,8 +15,8 @@ import sys
 import numpy as np
 import tifffile
 import tqdm
-from notebook_init_utils import init_notebook
-from preprocessing_funcs import (
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
+from image_analysis_3D.file_utils.preprocessing_funcs import (
     check_well_dir_name_format,
     get_to_the_unested_dir,
     get_well_fov_dirs,
@@ -76,7 +71,7 @@ elif bandicoot:
         os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")
     ).resolve(strict=True)
     raw_image_dir = pathlib.Path(
-        os.path.expanduser("~/Desktop/20TB_A/NF1_Patient_organoids")
+        os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data/Raw_patient_files")
     ).resolve(strict=True)
     output_base_dir = bandicoot_path
 else:
@@ -212,7 +207,7 @@ dir_mapping = {
     },
     "NF0037_T1_part_I": {
         "parent": pathlib.Path(
-            f"{raw_image_dir}/NF0031-T1 Combined 1_2/NF0031-T1 Combined 1:2"
+            f"{raw_image_dir}/NF0037-T1 Combined 1_2/NF0031-T1 Combined 1:2"
         ).resolve(strict=True),
         "destination": pathlib.Path(
             f"{output_base_dir}/data/NF0037_T1/zstack_images"
@@ -223,7 +218,7 @@ dir_mapping = {
     },
     "NF0037_T1_part_II": {
         "parent": pathlib.Path(
-            f"{raw_image_dir}/NF0031-T1 Combined 2_2/NF0031-T1 Combined 2:2"
+            f"{raw_image_dir}/NF0037-T1 Combined 2_2/NF0031-T1 Combined 2:2"
         ).resolve(strict=True),
         "destination": pathlib.Path(
             f"{output_base_dir}/data/NF0037_T1/zstack_images"
@@ -287,6 +282,50 @@ dir_mapping = {
         "well_position": 0,
         "channel_position": 1,
     },
+    "NF0055_T1-Z-0.1": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0055-2-T1 Cell Painting-selected/NF0055-2-T1-Organoids acquired Z-step 0.1/Acquisition 12232025-0.1 organoids/"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0055_T1-Z-0.1/zstack_images"
+        ).resolve(),
+        "times_nested": 2,
+        "well_position": 0,
+        "channel_position": -3,
+    },
+    "NF0055_T1_part_I": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0055-2-T1-Part 1/Acquisition12172025"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0055_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 0,
+        "well_position": 0,
+        "channel_position": 2,
+    },
+    "NF0055_T1_part_II": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0055-2-T1-Part 2/Acquisition12192025"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0055_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 0,
+        "well_position": 0,
+        "channel_position": 2,
+    },
+    "NF0055_T1_part_III": {
+        "parent": pathlib.Path(
+            f"{raw_image_dir}/NF0055-2-T1-Part 3/Acquisition12222025"
+        ).resolve(strict=True),
+        "destination": pathlib.Path(
+            f"{output_base_dir}/data/NF0055_T1/zstack_images"
+        ).resolve(),
+        "times_nested": 0,
+        "well_position": 0,
+        "channel_position": 2,
+    },
     "SARCO219_T2": {
         "parent": pathlib.Path(
             f"{raw_image_dir}/SARC0219-T2 Cell Painting-selected/SARC0219-T2 Combined Cell Painting images/SARC0219-T2 Combined/"
@@ -339,7 +378,10 @@ for patient in tqdm.tqdm(dir_mapping.keys(), desc="Processing patients", leave=T
     ):
         # ensure that the dir follows the alpha numeric - numeric format
         well_dir_name = well_dir.name
-        if not check_well_dir_name_format(well_dir_name):
+        if (
+            not check_well_dir_name_format(well_dir_name)
+            and patient != "NF0055_T1-Z-0.1"
+        ):
             print(f"Skipping directory with unexpected name format: {well_dir_name}")
             continue
         # step through the nested directories to get to the most branched child directory
@@ -364,6 +406,7 @@ for patient in tqdm.tqdm(dir_mapping.keys(), desc="Processing patients", leave=T
                     channel = file.stem.split("_")[
                         dir_mapping[patient]["channel_position"] - 1
                     ]
+
                 else:
                     channel = file.stem.split("_")[
                         dir_mapping[patient]["channel_position"]

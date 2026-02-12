@@ -7,22 +7,20 @@
 """Prepare inputs and metadata for Huygens deconvolution."""
 
 
-# In[1]:
+# In[ ]:
 
 import pathlib
 import shutil
 
 import pandas as pd
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 
-try:
-    cfg = get_ipython().config
-    in_notebook = True
-except NameError:
-    in_notebook = False
+root_dir, in_notebook = init_notebook()
+
 if in_notebook:
-    from tqdm.notebook import tqdm
+    import tqdm.notebook as tqdm
 else:
-    from tqdm import tqdm
+    import tqdm
 
 
 # In[2]:
