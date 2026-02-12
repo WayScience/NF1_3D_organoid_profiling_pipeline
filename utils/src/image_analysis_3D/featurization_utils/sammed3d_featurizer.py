@@ -27,10 +27,19 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+<<<<<<< HEAD
+=======
+<<<<<<<< HEAD:utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
+>>>>>>> bd2ebfd (Onboard new data (#119))
 
 <<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
 from .loading_classes import ObjectLoader
 ========
+<<<<<<< HEAD
+=======
+========
+>>>>>>>> bd2ebfd (Onboard new data (#119)):utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
+>>>>>>> bd2ebfd (Onboard new data (#119))
 from featurization_utils.loading_classes import ObjectLoader
 >>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
 
