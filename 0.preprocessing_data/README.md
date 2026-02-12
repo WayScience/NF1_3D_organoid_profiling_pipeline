@@ -14,7 +14,7 @@ The Olympus UPlanSApo 60x oil objective provides high resolution with a working 
 | MitoTracker | MitoTracker Deep Red  | 644             | 665           | 640            | Mitochondria |
 
 ## Deconvolution settings
-The deconvolution files used can be found in the `./1.huygens_workflow_files` folder.
+The deconvolution files used can be found in the `./huygens_workflow_files` folder.
 
 The settings in the Huygens software were as follows:
 | Parameter | Value |
@@ -64,12 +64,14 @@ $$\alpha=1.105 \space radians$$
 ## Run order
 Each of the scripts/notebooks in this module are run in the following order:
 - 0.patient_specific_preprocessing.py
-- 1.update_file_structure.py
-- 2a.make_z-stack_images.py
-- 2b.perform_file_corruption_checks.py
+- 1.make_zstack_and_copy_over.py
+- 1z.make_zstack_and_copy_over_CQ1.py (if using CQ1 data)
+- 2.perform_file_corruption_checks.py
 - 3.decon_preprocessing.py
 - Here is when I run the Huygens deconvolution software in batch mode
-- 4.post_decon_preprocessing.py
+- 4.decon_post_processing.py
+
+Scripts in `./scripts` are generated from the notebooks in `./notebooks` via `jupyter nbconvert` and may not be present until preprocessing is run.
 
 Please see the `nyquist_sampling_calculations.ipynb` notebook for the calculations of the Nyquist sampling rates.
 

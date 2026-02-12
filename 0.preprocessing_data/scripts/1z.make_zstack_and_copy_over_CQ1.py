@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[ ]:
+
+
+"""Create z-stacks and copy CQ1 images into the preprocessing layout."""
+
+
 # ## Imports
 
 # In[1]:
-
 
 import argparse
 import json
@@ -18,13 +23,8 @@ import numpy as np
 import pandas as pd
 import tifffile
 import tqdm
-from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
-from preprocessing_funcs import (
-    check_well_dir_name_format,
-    get_to_the_unested_dir,
-    get_well_fov_dirs,
-    read_2D_image_for_zstacking,
-)
+from notebook_init_utils import init_notebook
+from preprocessing_funcs import read_2D_image_for_zstacking
 
 root_dir, in_notebook = init_notebook()
 

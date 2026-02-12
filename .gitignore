@@ -202,6 +202,6 @@ models/*
 3.cellprofiling/logs/*
 docs/doctrees/*
 docs/html/*
-3.cellprofiling/logs/*
 2.segment_images/data/compressed_images/*
 2.segment_images/models/*
+3.cellprofiling/logs/*

@@ -4,6 +4,11 @@
 # In[ ]:
 
 
+"""Post-process Huygens deconvolution outputs and organize results."""
+
+
+# In[ ]:
+
 import os
 import pathlib
 import shutil

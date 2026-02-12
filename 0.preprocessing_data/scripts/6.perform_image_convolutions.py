@@ -4,18 +4,18 @@
 # In[ ]:
 
 
+"""Generate convolution-based image augmentations for downstream analysis."""
+
+
+# In[ ]:
+
 import os
 import pathlib
 import sys
 
-import matplotlib.pyplot as plt
-
 # Import dependencies
-import numpy as np
-import pandas as pd
 import skimage
 import tifffile
-from skimage import io
 
 cwd = pathlib.Path.cwd()
 

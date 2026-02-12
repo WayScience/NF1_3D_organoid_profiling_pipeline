@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[ ]:
+
+
+"""Visualize deconvolution outputs for QC and review."""
+
+
 # Thi document runs visualizations outputting `.mp4` and `.gif` files of 3D organoid data.
 # This notebok runs nviz to create the visualizations and napari.
 
 # ## Imports
 
 # In[1]:
-
 
 import os
 import pathlib
@@ -17,17 +22,14 @@ import sys
 # import matplotlib.pyplot as plt
 # import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import skimage.io as io
 import tifffile
 from moviepy.editor import VideoFileClip
 from napari.utils import nbscreenshot
 from napari_animation import Animation
 from napari_animation.easing import Easing
 from nviz.image import image_set_to_arrays
-from nviz.image_meta import extract_z_slice_number_from_filename, generate_ome_xml
+from nviz.image_meta import generate_ome_xml
 from nviz.view import view_ometiff_with_napari
-from PIL import Image
 
 cwd = pathlib.Path.cwd()
 
@@ -50,7 +52,6 @@ image_base_dir = bandicoot_check(
 )
 
 sys.path.append(f"{root_dir}/utils")
-from segmentation_decoupling import euclidian_2D_distance
 
 # In[2]:
 
