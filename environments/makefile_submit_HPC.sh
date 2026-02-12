@@ -11,4 +11,4 @@
 module load miniforge
 
 # Run Makefile
-make --always-make
+make --always-make -f makefile

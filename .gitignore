@@ -204,4 +204,4 @@ docs/doctrees/*
 docs/html/*
 2.segment_images/data/compressed_images/*
 2.segment_images/models/*
-
+3.cellprofiling/logs/*
