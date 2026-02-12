@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nf1-3d-organoid-profiling-pipeline"
+name = "image_analysis_3D"
 version = "0.0.1"
 description = "Utility modules for the NF1 3D organoid profiling pipeline"
 requires-python = ">=3.9"
@@ -19,12 +19,21 @@ dependencies = [
     "napari_animation",
     "networkx",
     "torch",
-    "cucim",
-    "cupy",
+    "torch>=2.0.0",
+    "cupy-cuda11x>=12.0.0",
     "argparse",
     "medim",
-    "tqdm"
+    "tqdm",
+    "jupyter",
+    "ipykernel"
 ]
+[tool.uv]
+# Use Python 3.11 for better compatibility with CUDA libraries
+python = "3.13"
+index-url = "https://download.pytorch.org/whl/cu118"
+# Fall back to PyPI for other packages
+extra-index-url = ["https://pypi.org/simple"]
+
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "ruff", "pre-commit", "ipykernel"]
