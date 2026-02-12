@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
+
+"""Visualize 2D convolution outputs for QC and inspection."""
+
+
+# In[1]:
 
 import os
 import pathlib
@@ -11,11 +16,7 @@ import sys
 import matplotlib.pyplot as plt
 
 # Import dependencies
-import numpy as np
-import pandas as pd
 import skimage
-import tifffile
-from skimage import io
 
 cwd = pathlib.Path.cwd()
 

@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[ ]:
+
+
+"""Create z-stacks and copy raw images into the preprocessing layout."""
+
+
 # ## Imports
 
 # In[1]:
-
 
 import argparse
 import os
@@ -15,7 +20,7 @@ import sys
 import numpy as np
 import tifffile
 import tqdm
-from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
+from notebook_init_utils import init_notebook
 from preprocessing_funcs import (
     check_well_dir_name_format,
     get_to_the_unested_dir,
