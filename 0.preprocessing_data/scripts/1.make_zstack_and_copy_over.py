@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[ ]:
+
+
+"""Create z-stacks and copy raw images into the preprocessing layout."""
+
+
 # ## Imports
 
 # In[1]:
-
 
 import argparse
 import os

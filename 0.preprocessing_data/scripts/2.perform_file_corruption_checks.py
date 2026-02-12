@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[ ]:
+
+
+"""Check for corrupted files and log problematic wells/FOVs."""
+
+
 # # Check the files for corrupted files, or files that were not copied over correctly.
 
 # ## Import libraries
 
 # In[1]:
-
 
 import os
 import pathlib
@@ -138,9 +143,6 @@ list_of_patients = pd.read_csv(patient_id_file_path, header=None)[0].tolist()
 patient_input_dict = {}
 for patient in list_of_patients:
     patient_input_dict[patient] = {
-        "raw_images": pathlib.Path(
-            f"{output_base_dir}/data/{patient}/raw_images"
-        ).resolve(),
         "zstack_output": pathlib.Path(
             f"{output_base_dir}/data/{patient}/zstack_images"
         ).resolve(),
