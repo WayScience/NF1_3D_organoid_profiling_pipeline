@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 """Create z-stacks and copy CQ1 images into the preprocessing layout."""
@@ -9,7 +9,7 @@
 
 # ## Imports
 
-# In[1]:
+# In[2]:
 
 import argparse
 import json
@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 import tifffile
 import tqdm
-from notebook_init_utils import init_notebook
-from preprocessing_funcs import read_2D_image_for_zstacking
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
+from image_analysis_3D.file_utils.preprocessing_funcs import read_2D_image_for_zstacking
 
 root_dir, in_notebook = init_notebook()
 
@@ -36,7 +36,7 @@ else:
 
 # ## Help functions
 
-# In[2]:
+# In[3]:
 
 
 # remove leading zeros from FOVS and timepoints
@@ -81,7 +81,7 @@ def cq1_file_name_parsing(file_stem: str) -> Tuple[str, str, str, str, str]:
 
 # ## parse args and set paths
 
-# In[3]:
+# In[4]:
 
 
 argparse = argparse.ArgumentParser(
@@ -93,7 +93,7 @@ args = argparse.parse_args(args=sys.argv[1:] if "ipykernel" not in sys.argv[0] e
 HPC = args.HPC
 
 
-# In[4]:
+# In[5]:
 
 
 # check if bandicoot is set
@@ -106,7 +106,7 @@ else:
 bandicoot = True
 
 
-# In[5]:
+# In[6]:
 
 
 if HPC:
@@ -139,7 +139,7 @@ print(f"Output base dir: {output_base_dir}")
 
 # ## Define paths
 
-# In[6]:
+# In[7]:
 
 
 # Define parent and destination directories in a single dictionary
@@ -166,7 +166,7 @@ dir_mapping = {
 
 # ## Generate a well mapping
 
-# In[7]:
+# In[8]:
 
 
 well_map = {
@@ -183,7 +183,7 @@ with open(path_to_processed_data / "well_map.json", "w") as f:
     json.dump(well_map, f)
 
 
-# In[8]:
+# In[9]:
 
 
 # set the channel dictionary
@@ -199,7 +199,7 @@ channel_dict = {
 
 # ## Copy and zstack images
 
-# In[9]:
+# In[10]:
 
 
 # image channel names and extensions
@@ -210,7 +210,7 @@ channel_images = {
 }
 
 
-# In[10]:
+# In[11]:
 
 
 # loop through each patient
@@ -218,7 +218,7 @@ patient = "NF0037_T1_CQ1"
 files = list(dir_mapping[patient]["parent"].rglob("*.tif*"))
 
 
-# In[11]:
+# In[12]:
 
 
 df = pd.DataFrame(files, columns=["Filepath"])
@@ -234,13 +234,13 @@ df.sort_values(by=["Filename"], inplace=True)
 df.head()
 
 
-# In[12]:
+# In[13]:
 
 
 print(f"transfering {len(df['well_fov'].unique())} well_fovs")
 
 
-# In[13]:
+# In[14]:
 
 
 for well_fov in tqdm.tqdm(
