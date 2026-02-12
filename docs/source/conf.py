@@ -9,17 +9,28 @@ release = "1.0.0"
 
 # Add project root and src to path
 sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../src"))
+sys.path.insert(0, os.path.abspath("../../utils/src"))
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
-    # 'myst_parser',  # Remove this line if not needed
+    "myst_parser",
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# MyST Parser configuration
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "myst",
+}
+
+# MyST Parser settings
+myst_enable_checkboxes = True
+myst_enable_html_img = True
+myst_heading_anchors = 3
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
