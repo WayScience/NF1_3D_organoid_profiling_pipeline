@@ -42,6 +42,7 @@ LABELS = {
 
 # Cache for existing annotations
 ANNOTATIONS_CACHE: Dict[str, str] = {}
+SORT_BY_LABEL_MODE: bool = False  # Whether to sort all images by label across batches
 
 
 def get_image_files() -> List[Path]:
@@ -191,26 +192,35 @@ def get_images():
     """Return paginated image list with existing annotations."""
     offset = request.args.get("offset", 0, type=int)
 
-    all_images = get_image_files()
-    print(f"DEBUG: Total images found: {len(all_images)}")
+    if SORT_BY_LABEL_MODE:
+        # Use sorted images grouped by label
+        images_data, total = get_sorted_images(offset, BATCH_SIZE)
+        all_images = get_image_files()
+    else:
+        # Use normal order
+        all_images = get_image_files()
+        print(f"DEBUG: Total images found: {len(all_images)}")
 
-    batch = all_images[offset : offset + BATCH_SIZE]
-    print(f"DEBUG: Batch {offset}-{offset + len(batch)}, {len(batch)} images")
+        batch = all_images[offset : offset + BATCH_SIZE]
+        print(f"DEBUG: Batch {offset}-{offset + len(batch)}, {len(batch)} images")
 
-    images_data = []
-    for img_path in batch:
-        filename = img_path.name
-        existing_label = ANNOTATIONS_CACHE.get(filename)
-        images_data.append({"filename": filename, "existing_label": existing_label})
-        print(f"DEBUG: Added image: {filename}")
+        images_data = []
+        for img_path in batch:
+            filename = img_path.name
+            existing_label = ANNOTATIONS_CACHE.get(filename)
+            images_data.append({"filename": filename, "existing_label": existing_label})
+            print(f"DEBUG: Added image: {filename}")
+
+        total = len(all_images)
+        print(f"DEBUG: Returning {len(images_data)} images")
 
     response = {
         "images": images_data,
         "offset": offset,
-        "total": len(all_images),
-        "has_more": (offset + BATCH_SIZE) < len(all_images),
+        "total": total,
+        "has_more": (offset + BATCH_SIZE) < total,
+        "sort_by_label_mode": SORT_BY_LABEL_MODE,
     }
-    print(f"DEBUG: Returning {len(images_data)} images")
     return jsonify(response)
 
 
@@ -287,8 +297,48 @@ def get_stats():
             "annotated": annotated,
             "pending": len(all_images) - annotated,
             "by_label": label_counts,
+            "sort_by_label_mode": SORT_BY_LABEL_MODE,
         }
     )
+
+
+@app.route("/api/toggle-sort-by-label", methods=["POST"])
+def toggle_sort_by_label():
+    """Toggle sort by label mode for all batches."""
+    global SORT_BY_LABEL_MODE
+    SORT_BY_LABEL_MODE = not SORT_BY_LABEL_MODE
+    return jsonify({"sort_by_label_mode": SORT_BY_LABEL_MODE})
+
+
+def get_sorted_images(offset: int, batch_size: int) -> List[dict]:
+    """Get images sorted by label across all batches."""
+    all_images = get_image_files()
+
+    # Group images by label
+    groups = {"unlabeled": [], "1": [], "2": [], "3": [], "4": [], "5": [], "6": []}
+
+    for img_path in all_images:
+        filename = img_path.name
+        label = ANNOTATIONS_CACHE.get(filename) or "unlabeled"
+        if label in groups:
+            groups[label].append(img_path)
+
+    # Flatten groups in order: unlabeled, 1, 2, 3, 4, 5, 6
+    sorted_images = []
+    label_order = ["unlabeled", "1", "2", "3", "4", "5", "6"]
+    for label in label_order:
+        sorted_images.extend(groups[label])
+
+    # Apply offset and batch size
+    batch = sorted_images[offset : offset + batch_size]
+
+    images_data = []
+    for img_path in batch:
+        filename = img_path.name
+        existing_label = ANNOTATIONS_CACHE.get(filename)
+        images_data.append({"filename": filename, "existing_label": existing_label})
+
+    return images_data, len(sorted_images)
 
 
 @app.route("/api/set-annotator", methods=["POST"])
@@ -806,6 +856,32 @@ INDEX_HTML = """
             box-shadow: 0 4px 8px rgba(6, 174, 213, 0.3);
         }
 
+        .btn-sort-batches {
+            background: #f59e0b !important;
+            color: #000 !important;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            padding: 0.6rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-sort-batches:hover {
+            background: #d97706 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-sort-batches.active {
+            background: #10b981 !important;
+            color: white !important;
+        }
+
+        .btn-sort-batches.active:hover {
+            background: #059669 !important;
+        }
+
         .success-toast {
             position: fixed;
             bottom: 2rem;
@@ -1034,6 +1110,7 @@ INDEX_HTML = """
             <button onclick="previousBatch()" class="btn-primary" style="width: 100%; padding: 0.6rem;">← Previous Batch</button>
             <button onclick="nextBatch()" class="btn-primary" style="width: 100%; padding: 0.6rem;">Next Batch →</button>
             <button onclick="toggleSortMenu()" class="btn-primary" style="width: 100%; padding: 0.6rem;">Sort by Label ▼</button>
+            <button id="sortBatchesBtn" onclick="toggleSortBatchesMode()" class="btn-sort-batches" style="width: 100%; padding: 0.6rem;">📊 Sort Batches</button>
             <button id="toggleLabelBtn" onclick="togglePatientWellFOV()" class="btn-toggle-label" style="width: 100%; padding: 0.6rem;">👤 Patient</button>
             <button onclick="saveAnnotations()" class="btn-save" style="width: 100%; padding: 0.6rem;">💾 Save All</button>
         </div>
@@ -1059,6 +1136,7 @@ INDEX_HTML = """
         let selectedImages = new Set();  // Track selected images
         let allBatchImages = [];  // Store all images in current batch
         let currentSortFilter = 'all';  // Current sort filter
+        let sortBatchesMode = false;  // Whether batches are sorted by label
 
         async function loadConfig() {
             const res = await fetch('/api/config');
@@ -1077,9 +1155,14 @@ INDEX_HTML = """
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ annotator: name })
-            }).then(() => {
+            }).then(async () => {
                 document.getElementById('annotatorModal').classList.remove('show');
+                // Make sure config is loaded before loading batch
+                await loadConfig();
                 loadBatch(0);
+            }).catch(err => {
+                console.error('Error setting annotator:', err);
+                alert('Error setting annotator');
             });
         }
 
@@ -1508,7 +1591,7 @@ INDEX_HTML = """
                     const pending = data.pending;
 
                     // Show summary
-                    alert(`📊 Annotation Summary:\n\n✓ Annotated: ${annotated}/${total}\n⏳ Pending: ${pending}\n\nAll annotations are automatically saved to:\nannotations.parquet`);
+                    alert(`📊 Annotation Summary:\n\n✓ Annotated: ${annotated}/${total}\n⏳ Pending: ${pending}\n\nAll annotations are automatically saved to:\n../image_labels/annotations.parquet`);
 
                     // Show toast with save confirmation
                     const toast = document.createElement('div');
@@ -1562,6 +1645,55 @@ INDEX_HTML = """
 
                 console.log('DEBUG: Switched to Patient mode');
             }
+        }
+
+        function toggleSortBatchesMode() {
+            const btn = document.getElementById('sortBatchesBtn');
+
+            // Call backend to toggle sort mode
+            fetch('/api/toggle-sort-by-label', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(res => res.json())
+            .then(data => {
+                sortBatchesMode = data.sort_by_label_mode;
+
+                if (sortBatchesMode) {
+                    // Enable batch sorting by label across all batches
+                    btn.classList.add('active');
+                    btn.textContent = '✓ All Images Sorted by Label';
+
+                    // Show toast
+                    const toast = document.createElement('div');
+                    toast.className = 'success-toast';
+                    toast.textContent = '✓ All images now sorted by label across batches';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+
+                    console.log('DEBUG: Global sort by label enabled');
+                } else {
+                    // Disable batch sorting
+                    btn.classList.remove('active');
+                    btn.textContent = '📊 Sort All by Label';
+
+                    // Show toast
+                    const toast = document.createElement('div');
+                    toast.className = 'success-toast';
+                    toast.textContent = '◯ Sorting disabled - back to normal order';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+
+                    console.log('DEBUG: Global sort by label disabled');
+                }
+
+                // Reset to first batch and reload
+                currentBatch = 0;
+                loadBatch(0);
+            })
+            .catch(err => {
+                console.error('Error toggling sort by label:', err);
+                alert('Error toggling sort mode');
+            });
         }
 
         function updatePaginationButtons() {
@@ -1641,8 +1773,8 @@ Examples:
     parser.add_argument(
         "-o",
         "--output",
-        default="annotations.parquet",
-        help="Output parquet file (default: annotations.parquet)",
+        default="../image_labels/annotations.parquet",
+        help="Output parquet file (default: ../image_labels/annotations.parquet)",
     )
     parser.add_argument(
         "--port", type=int, default=5000, help="Port to run server on (default: 5000)"
