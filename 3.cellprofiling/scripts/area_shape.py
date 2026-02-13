@@ -6,20 +6,43 @@
 
 import os
 import pathlib
+import sys
 import time
 
 import numpy as np
 import pandas as pd
 import psutil
-from notebook_init_utils import init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
-from area_size_shape_utils import measure_3D_area_size_shape
-from area_size_shape_utils_gpu import measure_3D_area_size_shape_gpu
-from loading_classes import ImageSetLoader, ObjectLoader
-from notebook_init_utils import bandicoot_check, init_notebook
-from resource_profiling_util import get_mem_and_time_profiling
+from image_analysis_3D.featurization_utils.area_size_shape_utils import (
+    measure_3D_area_size_shape,
+)
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
+)
+
+# bug in the cucim module but we are using CPU so it does not matter for now
+# from image_analysis_3D.featurization_utils.area_size_shape_utils_gpu import measure_3D_area_size_shape_gpu
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
@@ -41,8 +64,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "E11-3"
-    patient = "NF0018_T6"
+    well_fov = "C4-2"
+    patient = "NF0014_T1"
     compartment = "Nuclei"
     channel = "DNA"
     processor_type = "CPU"
@@ -94,6 +117,7 @@ image_set_loader = ImageSetLoader(
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
+    image_set_name=well_fov,
 )
 
 
@@ -101,12 +125,11 @@ image_set_loader = ImageSetLoader(
 
 
 object_loader = ObjectLoader(
-    image_set_loader.image_set_dict["DNA"],
-    image_set_loader.image_set_dict[compartment],
-    "DNA",
-    compartment,
+    image=None,
+    label_image=image_set_loader.image_set_dict[compartment],
+    channel_name=None,
+    compartment_name=compartment,
 )
-
 
 # area, size, shape
 if processor_type == "GPU":
@@ -135,7 +158,14 @@ for col in final_df.columns:
     if col not in ["object_id"]:
         final_df[col] = final_df[col].astype(np.float32)
         final_df.rename(
-            columns={col: f"Area.Size.Shape_{compartment}_{col}"},
+            columns={
+                col: format_morphology_feature_name(
+                    compartment=compartment,
+                    channel=channel,
+                    feature_type="AreaSizeShape",
+                    measurement=col,
+                )
+            },
             inplace=True,
         )
 
@@ -162,7 +192,7 @@ get_mem_and_time_profiling(
     feature_type="AreaSizeShape",
     well_fov=well_fov,
     patient_id=patient,
-    channel="DNA",
+    channel="NoChannel",
     compartment=compartment,
     CPU_GPU=processor_type,
     output_file_dir=pathlib.Path(

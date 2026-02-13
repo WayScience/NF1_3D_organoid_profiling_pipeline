@@ -6,19 +6,37 @@
 
 import os
 import pathlib
+import sys
 import time
 
 import pandas as pd
 import psutil
-from notebook_init_utils import init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
-from granularity_utils import measure_3D_granularity
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
+)
+from image_analysis_3D.featurization_utils.granularity_utils import (
+    measure_3D_granularity,
+)
 
 # from granularity import measure_3D_granularity
-from loading_classes import ImageSetLoader, ObjectLoader
-from resource_profiling_util import get_mem_and_time_profiling
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
 
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
@@ -40,10 +58,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "D11-2"
-    patient = "NF0016_T1"
-    channel = "Mito"
-    compartment = "Nuclei"
+    well_fov = "C4-2"
+    patient = "NF0014_T1"
+    channel = "AGP"
+    compartment = "Organoid"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -93,6 +111,7 @@ image_set_loader = ImageSetLoader(
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
+    image_set_name=well_fov,
 )
 
 
@@ -105,11 +124,19 @@ object_loader = ObjectLoader(
     channel,
     compartment,
 )
+if in_notebook:
+    verbose = True
+else:
+    verbose = False
 if processor_type == "CPU":
     object_measurements = measure_3D_granularity(
         object_loader=object_loader,
         radius=1,  # radius of the sphere to use for granularity measurement in pixels
         granular_spectrum_length=16,  # usually 16 but 2 is used for testing for now
+        subsample_image_value=0.5,  # subsample the image for faster processing. Value should be between 0 and 1. 1 means no subsampling
+        z_to_xy_ratio=10.0,  # ratio of z spacing to xy spacing (anisotropy)
+        mask_threshold=0.9,  # threshold for determining if an object is too close
+        verbose=verbose,
     )
 else:
     raise ValueError(
@@ -129,7 +156,14 @@ for col in final_df.columns:
         continue
     else:
         final_df.rename(
-            columns={col: f"Granularity_{compartment}_{channel}_{col}"},
+            columns={
+                col: format_morphology_feature_name(
+                    compartment=compartment,
+                    channel=channel,
+                    feature_type="Granularity",
+                    measurement=f"Granularity_{col}",
+                )
+            },
             inplace=True,
         )
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
@@ -139,6 +173,7 @@ output_file = pathlib.Path(
 )
 output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
+final_df.head()
 
 
 # In[7]:

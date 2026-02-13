@@ -24,7 +24,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from featurization_utils.loading_classes import ObjectLoader
+
+from .loading_classes import ObjectLoader
 
 
 class SAMMed3DFeatureExtractor:
@@ -516,11 +517,11 @@ def call_SAMMed3D_pipeline(
                 )  # preprocess the volume
                 for i, feature_value in enumerate(features.flatten()):
                     output_dict["object_id"].append(label)
-                    output_dict["feature_name"].append(f"SAMMed3D_{ft}_feature_{i}")
+                    output_dict["feature_name"].append(f"{ft}-feature-{i}")
                     output_dict["channel"].append(object_loader.channel)
                     output_dict["compartment"].append(object_loader.compartment)
                     output_dict["value"].append(feature_value)
-                    output_dict["feature_type"].append(ft)
+                    output_dict["feature_type"].append("SAMMed3D")
             continue
         else:
             features = extracter.extract_features(
@@ -528,11 +529,11 @@ def call_SAMMed3D_pipeline(
             )  # preprocess the volume
             for i, feature_value in enumerate(features.flatten()):
                 output_dict["object_id"].append(label)
-                output_dict["feature_name"].append(f"SAMMed3D_feature_{i}")
+                output_dict["feature_name"].append(f"{feature_type}-feature-{i}")
                 output_dict["channel"].append(object_loader.channel)
                 output_dict["compartment"].append(object_loader.compartment)
                 output_dict["value"].append(feature_value)
-                output_dict["feature_type"].append(feature_type)
+                output_dict["feature_type"].append("SAMMed3D")
 
     return output_dict
 
@@ -565,6 +566,7 @@ def call_whole_image_sammed3d_pipeline(
         - "feature_name": List of feature names
         - "value": List of feature values
         - "feature_type": List of feature types
+        - "compartment": List of compartment names
     """
     assert isinstance(feature_type, (str, list)), (
         "feature_type must be a string or list of strings"
@@ -574,6 +576,7 @@ def call_whole_image_sammed3d_pipeline(
         "feature_name": [],
         "value": [],
         "feature_type": [],
+        "compartment": [],
     }
 
     extracter = MicroscopySAMMed3DPipeline(
@@ -585,15 +588,17 @@ def call_whole_image_sammed3d_pipeline(
         for ft in feature_type:
             features = extracter.extract_features(image, feature_type=ft)
             for i, feature_value in enumerate(features.flatten()):
-                output_dict["feature_name"].append(f"SAMMed3D_{ft}_feature_{i}")
+                output_dict["feature_name"].append(f"{ft}-feature-{i}")
                 output_dict["value"].append(feature_value)
-                output_dict["feature_type"].append(ft)
+                output_dict["compartment"].append("Image")
+                output_dict["feature_type"].append("SAMMed3D")
         return output_dict
     else:
         features = extracter.extract_features(image, feature_type=feature_type)
         for i, feature_value in enumerate(features.flatten()):
-            output_dict["feature_name"].append(f"SAMMed3D_feature_{i}")
+            output_dict["feature_name"].append(f"{feature_type}-feature-{i}")
             output_dict["value"].append(feature_value)
-            output_dict["feature_type"].append(feature_type)
+            output_dict["compartment"].append("Image")
+            output_dict["feature_type"].append("SAMMed3D")
 
     return output_dict

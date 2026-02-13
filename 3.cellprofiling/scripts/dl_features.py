@@ -8,20 +8,36 @@ import itertools
 import logging
 import os
 import pathlib
+import sys
 import time
 import urllib
 
 import numpy as np
 import pandas as pd
 import psutil
-from arg_parsing_utils import check_for_missing_args, parse_args
-from loading_classes import ImageSetLoader, ObjectLoader
-from notebook_init_utils import bandicoot_check, init_notebook
-from resource_profiling_util import get_mem_and_time_profiling
-from sammed3d_featurizer import call_SAMMed3D_pipeline
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
+)
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
+from image_analysis_3D.featurization_utils.sammed3d_featurizer import (
+    call_SAMMed3D_pipeline,
+)
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
-from notebook_init_utils import bandicoot_check, init_notebook
 
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
@@ -114,8 +130,8 @@ image_set_loader = ImageSetLoader(
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
+    image_set_name=well_fov,
 )
-image_set_loader.image_set_dict.keys()
 
 
 # In[8]:
