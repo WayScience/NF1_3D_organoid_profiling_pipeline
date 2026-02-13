@@ -98,7 +98,7 @@ The pipeline follows a hierarchical processing structure:
    - We standardize the directory hierarchy across patients.
    - We rename files to a consistent naming scheme (to account for cross-batch inconsistencies).
 3. **Creating z-stacks**
-   - We combine 2D image slices into 3D z-stacks, built to accommodate different microscope formats (CQ1, IX83)
+   - We combine 2D image slices into 3D z-stacks, built to accommodate different microscope formats (CQ1, Echo)
    - This process maintain metadata and propagates channel information.
    - We track z-spacing between images (typically 0.5μm) as well as z-stack depth (between 50-100 slices [~25-50μm total])
 4. **Detecting image corruption**
