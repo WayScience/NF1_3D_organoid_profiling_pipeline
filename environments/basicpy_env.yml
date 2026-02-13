@@ -13,6 +13,7 @@ dependencies:
   - conda-forge::ipywidgets
   - conda-forge::jupyter
   - conda-forge::nbconvert
+  - conda-forge::tqdm
   - pip:
       - basicpy
       - hyperactive==4.0.0
