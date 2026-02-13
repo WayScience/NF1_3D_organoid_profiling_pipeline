@@ -15,6 +15,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
+    "sphinxcontrib.mermaid",
     "myst_parser",
 ]
 
@@ -24,7 +25,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # MyST Parser configuration
 source_suffix = {
     ".rst": "restructuredtext",
-    ".md": "myst",
+    ".md": "markdown",
 }
 
 # MyST Parser settings
@@ -32,6 +33,7 @@ myst_enable_checkboxes = True
 myst_enable_html_img = True
 myst_heading_anchors = 3
 myst_parse_data = True
+myst_fence_as_directive = ["mermaid"]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
