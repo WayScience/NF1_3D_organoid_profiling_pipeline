@@ -2,11 +2,11 @@
 title: Libraries
 ---
 
-# Python Scientific Stack
+# Python scientific stack
 
 The feature extraction pipeline leverages industry-standard Python scientific libraries for efficient image processing and computation.
 
-## Core Libraries
+## Core libraries
 
 ### scikit-image
 **Purpose**: Image processing and analysis
@@ -20,7 +20,7 @@ Features used:
 
 ### scipy
 **Purpose**: Scientific computing
-**Website**: <https://www.scipy.org/>
+**Website**: <https://scipy.org/>
 
 Features used:
 - Advanced signal processing
@@ -30,7 +30,7 @@ Features used:
 
 ### mahotas
 **Purpose**: Image analysis and processing
-**Website**: <https://mahotas.readthedocs.io/>
+**Website**: <https://mahotas.readthedocs.io/en/latest>
 
 Features used:
 - Gray-level co-occurrence matrix (GLCM)
@@ -50,7 +50,7 @@ Features used:
 
 ### cupy
 **Purpose**: GPU-accelerated arrays (drop-in NumPy replacement)
-**Website**: <https://docs.cupy.dev/>
+**Website**: <https://docs.cupy.dev/en/stable>
 
 Features:
 - GPU memory management
@@ -59,7 +59,7 @@ Features:
 
 ### cucim
 **Purpose**: GPU-accelerated image processing
-**Website**: <https://docs.rapids.ai/api/cucim/>
+**Website**: <https://docs.rapids.ai/api/cucim/stable/>
 
 Features:
 - GPU-accelerated scikit-image operations
