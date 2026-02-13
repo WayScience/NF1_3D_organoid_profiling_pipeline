@@ -2,11 +2,11 @@
 title: Libraries
 ---
 
-# Python Scientific Stack
+# Python scientific stack
 
 The feature extraction pipeline leverages industry-standard Python scientific libraries for efficient image processing and computation.
 
-## Core Libraries
+## Core libraries
 
 ### scikit-image
 **Purpose**: Image processing and analysis

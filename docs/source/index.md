@@ -1,8 +1,11 @@
 ---
-title: NF1 3D Organoid Profiling Pipeline Documentation
+title: 3D organoid image-based profiling
 ---
 
-Welcome to the NF1 3D Organoid Profiling Pipeline documentation. This pipeline provides a comprehensive workflow for processing and analyzing 3D organoid imaging data.
+Welcome to the 3D organoid image-based profiling documentation page.
+This pipeline provides a comprehensive workflow for processing and analyzing 3D organoid imaging data.
+
+We initially applied this to pipeline to Neurofibromatosis Type 1 (NF1) patient-derived samples.
 
 ```{toctree}
 :maxdepth: 2
