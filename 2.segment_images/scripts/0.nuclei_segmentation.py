@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This runs all segmentation operations in one place.
-# The idea is that this should be faster and easier to invoke as we only have to load the image data once instead of N times (~10).
-# Running each individual task as its own script is modular but requires overhead to load the data each time.
-# Currently it takes about 15 minutes to complete a single organoid's segmentation for all compartments... (~50,1500,1500) (Z,Y,X) dimensional image.
-# Let us see how long this takes!
-#
-# No we are at ~8 minutes!
+# This notebook/scripts runs the nuclei segmentation pipeline for 3D images.
 
 # In[1]:
 
@@ -22,17 +16,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import psutil
+import skimage
 import tifffile
 import torch
 from arg_parsing_utils import check_for_missing_args, parse_args
 from cellpose import models
-from file_reading import read_zstack_image
+from file_reading import find_files_available, read_in_channels, read_zstack_image
+from general_segmentation_utils import *
 from notebook_init_utils import bandicoot_check, init_notebook
 from nuclei_segmentation import *
+from read_in_channel_mapping import *
 from segmentation_decoupling import *
 from skimage.filters import sobel
-
-from segmentation_utils import *
+from skimage.segmentation import relabel_sequential
 
 # In[2]:
 
@@ -71,8 +67,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0037_T1-Z-0.5"
-    well_fov = "F4-3"
+    patient = "NF0014_T1"
+    well_fov = "C4-2"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -86,6 +82,7 @@ mask_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
+channel_dict = retrieve_channel_mapping(f"{root_dir}/data/channel_mapping.toml")
 
 
 # In[5]:
@@ -93,18 +90,12 @@ mask_path.mkdir(exist_ok=True, parents=True)
 
 return_dict = read_in_channels(
     find_files_available(input_dir),
-    channel_dict={
-        "nuclei": "405",  # key - string search in filename
-        "cyto1": "488",
-        "cyto2": "555",
-        "cyto3": "640",
-        "brightfield": "TRANS",
-    },
-    channels_to_read=["nuclei"],
+    channel_dict=channel_dict,
+    channels_to_read=["DNA"],
 )
 
 
-nuclei_raw = return_dict["nuclei"]
+nuclei_raw = return_dict["DNA"]
 # run clip_limit here
 nuclei = skimage.exposure.equalize_adapthist(
     nuclei_raw, clip_limit=clip_limit, kernel_size=None
@@ -118,9 +109,8 @@ del nuclei_raw
 
 
 nuclei_image_shape = nuclei.shape
-#
-nuclei_masks = np.array(
-    list(  # send to array
+nuclei_masks = np.array(  # convert to array
+    list(  # send to list
         decouple_masks(  # 4. decouple masks
             reverse_sliding_window_max_projection(  # 3. reverse sliding window
                 segmentaion_on_two_D(  # 2. segment on 2D
@@ -138,47 +128,78 @@ nuclei_masks = np.array(
 )
 
 
+# ## remove small masks in each slice
+
 # In[7]:
 
 
-# generate the coordinates dataframe for reconstruction
-coordinates_df = generate_coordinates_for_reconstruction(nuclei_masks)
-# generate distance pairs dataframe
-df = generate_distance_pairs(coordinates_df, x_y_vector_radius_max_constraint=20)
-# generate and solve graph to get longest paths
-longest_paths = solve_graph(graph_creation(df))
-# collapse labels based on longest paths and reassign labels in nuclei masks
-image = reassign_labels(nuclei_masks, collapse_labels(coordinates_df, longest_paths))
-# refine the nuclei masks
-nuclei_mask = run_post_hoc_refinement(
-    mask_image=image,
-    sliding_window_context=3,
-)
+# Remove small objects while preserving label IDs
+# we avoid using the built-in skimage remove small objects function to preserve label IDs
+props = skimage.measure.regionprops(nuclei_masks)
 
-del image, coordinates_df, df, longest_paths
+# Remove objects smaller than threshold
+for prop in props:
+    if prop.area < 1000:  # 10 X 10 X 10 cube equivalent to 1000 voxels
+        # for context in this dataset eahc pixel is 0.1um
+        # so the 10x10x10 cube is 1um x 1um x 1um
+        # which is a reasonable size threshold for nuclei
+        nuclei_masks[nuclei_masks == prop.label] = 0
 
-
-# ## run the mask reassignment function (post-hoc)
-# ### This needs to occur after both nuclei and cell segmentations are done
 
 # In[8]:
 
 
-nuclei_df = get_labels_for_post_hoc_reassignment(
-    compartment_mask=nuclei_mask, compartment_name="nuclei"
+nuclei_mask, diag = object_stitching_and_relation(
+    input_masks=nuclei_masks,
+    max_match_distance=100,
+    max_trajectory_length=12,  # 12 slice length (12 = 12 um)
+    verbose=False,
 )
+
+
+# ## Remove edge objects
+
+# In[9]:
+
+
+nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
+
+
+# ## relabel the nuclei
+
+# In[10]:
+
+
+nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
+
+
+# In[12]:
+
+
+if in_notebook:
+    z = nuclei_masks.shape[0] // 4
+    plt.figure(figsize=(10, 4))
+    plt.subplot(121)
+    plt.imshow(nuclei_mask[z], cmap="nipy_spectral")
+    plt.title("Nuclei Masks After 3D Graph-Based Segmentation")
+    plt.axis("off")
+    plt.subplot(122)
+    plt.imshow(nuclei[z], cmap="inferno")
+    plt.axis("off")
+    plt.title("Nuclei signal")
+    plt.show()
 
 
 # ## Save the segmented masks
 
-# In[9]:
+# In[13]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[10]:
+# In[14]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
@@ -191,3 +212,7 @@ print(f"""
     --- %s minutes --- % {((end_time - start_time) / 60)}\n
     --- %s hours --- % {((end_time - start_time) / 3600)}
 """)
+
+
+# Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
+# This runs in under 1 minute on a GPU + CPU and uses less than 3GB of RAM.

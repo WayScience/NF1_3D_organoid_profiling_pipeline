@@ -1,36 +1,30 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
+
+"""Visualize 2D convolution outputs for QC and inspection."""
+
+
+# In[ ]:
 
 import os
 import pathlib
-import sys
 
 import matplotlib.pyplot as plt
 
 # Import dependencies
-import numpy as np
-import pandas as pd
 import skimage
-import tifffile
-from skimage import io
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import read_zstack_image
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 if in_notebook:

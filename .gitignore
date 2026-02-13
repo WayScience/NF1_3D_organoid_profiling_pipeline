@@ -155,6 +155,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Ignore VSCode settings
+.vscode/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
@@ -197,9 +200,11 @@ profile_prep_for_sage/data_for_sage/*
 3.cellprofiling/models/*
 7.technical_analysis/processed_data/*
 7.technical_analysis/results/*
-
 models/*
 2.segment_images/figures/platemaps/*
+3.cellprofiling/logs/*
 docs/doctrees/*
 docs/html/*
-.vscode/*
+2.segment_images/data/compressed_images/*
+2.segment_images/models/*
+3.cellprofiling/logs/*

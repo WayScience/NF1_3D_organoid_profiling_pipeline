@@ -1,4 +1,5 @@
 #!/bin/bash
+# Run preprocessing on the HPC cluster using the configured conda environment.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=amilan
@@ -16,8 +17,8 @@ jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*
 cd scripts/ || exit
 
 python 0.patient_specific_preprocessing.py --HPC
-python 1.update_file_structure.py --HPC
-python 2.make_z-stack_images.py
+python 1.make_zstack_and_copy_over.py --HPC
+python 2.perform_file_corruption_checks.py
 
 cd .. || exit
 

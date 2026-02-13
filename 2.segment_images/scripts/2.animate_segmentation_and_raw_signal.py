@@ -3,7 +3,7 @@
 
 # ## Imports
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -45,7 +45,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -65,11 +65,11 @@ if not in_notebook:
 
 else:
     print("Running in a notebook")
-    well_fov = "C4-2"
+    well_fov = "F4-1"
     patient = "NF0014_T1"
-    input_subparent_name = "deconvolved_images"
-    mask_subparent_name = "deconvolved_segmentation_masks"
-    amimation_subparent_name = "deconvolved_animations"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
+    amimation_subparent_name = "animations"
 
 image_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
@@ -218,7 +218,7 @@ with tiff.TiffWriter(tmp_output_path, bigtiff=True) as tif:
     tif.write(combined_data, description=ome_xml, photometric="minisblack")
 
 
-# In[9]:
+# In[ ]:
 
 
 # import shutil
@@ -233,7 +233,7 @@ with tiff.TiffWriter(tmp_output_path, bigtiff=True) as tif:
 # )
 
 
-# In[10]:
+# In[ ]:
 
 
 viewer = view_ometiff_with_napari(
@@ -252,7 +252,7 @@ viewer.window._qt_viewer.dockLayerControls.setVisible(False)
 viewer.window._qt_window.resize(1000, 1000)
 
 
-# In[11]:
+# In[ ]:
 
 
 # get the layer names in the viewer
@@ -263,7 +263,7 @@ for layer_name in layer_names:
     viewer.layers[layer_name].visible = False
 
 
-# In[12]:
+# In[ ]:
 
 
 for layer_name in layer_names:
@@ -296,7 +296,7 @@ for layer_name in layer_names:
 print("All layers animated")
 
 
-# In[13]:
+# In[ ]:
 
 
 # get all gifs in the directory

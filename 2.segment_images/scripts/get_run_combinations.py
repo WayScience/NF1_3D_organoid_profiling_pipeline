@@ -81,7 +81,7 @@ convolution_iters = [x for x in range(1, 26)]
 convolution_iters = convolution_iters + [50, 75, 100]
 
 
-# In[6]:
+# In[ ]:
 
 
 z_stack_testing_patients = [
@@ -89,6 +89,7 @@ z_stack_testing_patients = [
     "NF0037_T1-Z-0.5",
     "NF0037_T1-Z-0.2",
     "NF0037_T1-Z-0.1",
+    # "NF0055_T1-0.1"
 ]
 for patient in patients:
     # get the well_fov for each patient

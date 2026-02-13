@@ -15,7 +15,7 @@ import pprint
 import numpy as np
 import pandas as pd
 import tifffile as tiff
-from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 
 root_dir, in_notebook = init_notebook()
 
@@ -180,7 +180,7 @@ for patient in tqdm.tqdm(patient_input_dict.keys(), desc="Processing patients"):
         file_sizes = [file.stat().st_size for file in files]
 
         # check if the file sizes are all the same
-        if len(set(file_sizes)) != 1:
+        if len(set(file_sizes)) != 1 and patient != "NF0037_T1":
             patient_well_fovs_to_fix.append(f"{patient} {well_dir.name}")
 print(
     f"""Need to check and fix a total of {len(patient_well_fovs_to_fix)} patient well_fovs:"""

@@ -29,3 +29,4 @@ dependencies:
       - aicsimageio
       - torch_optimizer
       - nvidia-cudnn-cu11==8.6.0.163
+      - u-Segment3D
