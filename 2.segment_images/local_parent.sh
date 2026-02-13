@@ -40,7 +40,8 @@ while IFS= read -r line; do
     echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
 
     echo "Beginning segmentation for $patient - $well_fov"
-    bash child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
+    # shellcheck disable=SC1091
+    source child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
 done < "$txt_file"
 

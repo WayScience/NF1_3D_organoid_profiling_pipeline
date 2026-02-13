@@ -200,8 +200,11 @@ profile_prep_for_sage/data_for_sage/*
 3.cellprofiling/models/*
 7.technical_analysis/processed_data/*
 7.technical_analysis/results/*
-
 models/*
 2.segment_images/figures/platemaps/*
+3.cellprofiling/logs/*
 docs/doctrees/*
 docs/html/*
+2.segment_images/data/compressed_images/*
+2.segment_images/models/*
+3.cellprofiling/logs/*

@@ -1,4 +1,5 @@
 #!/bin/bash
+# Visualize 2D and 3D convolution outputs for a specified well/FOV.
 
 patient="NF0014_T1"
 well_fov="C4-2"

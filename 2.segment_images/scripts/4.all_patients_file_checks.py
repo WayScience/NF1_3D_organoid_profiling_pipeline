@@ -54,6 +54,3 @@ for patient in patients:
             print(f"{patient} {well_fov} zstack images has files of different sizes.")
             errors_count += 1
 print(f"Found {errors_count} errors in total.")
-
-
-# In[ ]:

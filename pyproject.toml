@@ -1,2 +1,14 @@
+[project]
+name = "nf1-3d-organoid-profiling-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "image-analysis-3d",
+    "ipykernel>=6.31.0",
+    "pip>=26.0.1",
+]
+
 [tool.pycln]
 all = true
