@@ -100,7 +100,7 @@ The pipeline follows a hierarchical processing structure:
 3. **Creating z-stacks**
    - We combine 2D image slices into 3D z-stacks, built to accommodate different microscope formats (CQ1, Echo)
    - This process maintain metadata and propagates channel information.
-   - We track z-spacing between images (typically 0.5μm) as well as z-stack depth (between 50-100 slices [~25-50μm total])
+   - We track z-spacing between images (typically 1μm) as well as z-stack depth (between 50-100 slices [~50-100μm total])
 4. **Detecting image corruption**
    - We validate TIFF file integrity removing corrupted images, incomplete stacks, and other errors introduced during image acquisition.
    - We flag problematic datasets.
