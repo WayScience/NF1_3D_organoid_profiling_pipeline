@@ -59,7 +59,7 @@ Features:
 
 ### cucim
 **Purpose**: GPU-accelerated image processing
-**Website**: <https://docs.rapids.ai/api/cucim/>
+**Website**: <https://docs.rapids.ai/api/cucim/stable/>
 
 Features:
 - GPU-accelerated scikit-image operations
