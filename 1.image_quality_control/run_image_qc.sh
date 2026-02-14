@@ -7,7 +7,7 @@ fi
 # initialize the correct shell for your machine to allow conda to work
 conda init bash
 # activate the CellProfiler environment
-conda activate gff_cp_env
+conda activate GFF_cellprofiler
 
 # convert Jupyter notebook to Python script
 jupyter nbconvert --to script --output-dir="$git_root/1.image_quality_control/nbconverted/" "$git_root/1.image_quality_control/notebooks/*.ipynb"

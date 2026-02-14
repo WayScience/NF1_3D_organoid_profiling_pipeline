@@ -1,0 +1,18 @@
+[project]
+name = "cp_parallel_utils"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "cp_parallel",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+    "cp_parallel_utils*",
+]
+
+[tool.pycln]
+all = true
