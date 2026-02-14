@@ -1,6 +1,9 @@
 """
 This collection of functions runs CellProfiler in parallel and can convert the results into log files
 for each process.
+This is copied from: https://github.com/WayScience/CP_Parallel
+Which Jenna Tomkinson is the author of.
+The code has been adapted to fit the needs of this project and is used in the 1.image_quality_control pipeline to run CellProfiler pipelines in parallel for each plate.
 """
 
 import logging
