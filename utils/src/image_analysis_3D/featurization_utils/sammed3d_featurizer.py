@@ -27,22 +27,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-<<<<<<< HEAD
-=======
-<<<<<<<< HEAD:utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
->>>>>>> bd2ebfd (Onboard new data (#119))
 
-<<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
 from .loading_classes import ObjectLoader
-========
-<<<<<<< HEAD
-=======
-========
->>>>>>>> bd2ebfd (Onboard new data (#119)):utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
->>>>>>> bd2ebfd (Onboard new data (#119))
 from featurization_utils.loading_classes import ObjectLoader
->>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
-
 
 class SAMMed3DFeatureExtractor:
     """
@@ -483,18 +470,13 @@ def call_SAMMed3D_pipeline(
         Class that loads the image and label image for a given patient,
         well-fov, channel, compartment
     SAMMed3D_model_path : Optional[str], optional
-<<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
         Path to the SAMMed3D model, by default None. Ignored if extractor is provided.
     feature_type : str | List, optional
         Feature types to extract, by default ["global", "patch", "cls"]
     extractor : Optional[MicroscopySAMMed3DPipeline], optional
         Pre-loaded extractor instance. If provided, SAMMed3D_model_path is ignored.
         Use this to avoid reloading the model in loops. By default None.
-========
-        Path to the SAMMed3D model, by default None
-    feature_type : str | List, optional
-        Feature types to extract, by default ["global", "patch", "cls"]
->>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
+
 
     Returns
     -------
@@ -595,12 +577,10 @@ def call_whole_image_sammed3d_pipeline(
         Path to the SAMMed3D model, by default None. Ignored if extractor is provided.
     feature_type : str | List, optional
         Type of features to extract, by default ["global", "patch", "cls"]
-<<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
+
     extractor : Optional[MicroscopySAMMed3DPipeline], optional
         Pre-loaded extractor instance. If provided, SAMMed3D_model_path is ignored.
         Use this to avoid reloading the model in loops. By default None.
-========
->>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
 
     Returns
     -------
@@ -610,10 +590,7 @@ def call_whole_image_sammed3d_pipeline(
         - "feature_name": List of feature names
         - "value": List of feature values
         - "feature_type": List of feature types
-<<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/sammed3d_featurizer.py
-        - "compartment": List of compartment names
-========
->>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/sammed3d_featurizer.py
+        - "compartment": List of compartments (will be "Image" for whole image features)
     """
     assert isinstance(feature_type, (str, list)), (
         "feature_type must be a string or list of strings"

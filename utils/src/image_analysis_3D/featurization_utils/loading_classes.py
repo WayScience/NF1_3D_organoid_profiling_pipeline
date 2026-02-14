@@ -71,6 +71,7 @@ class ImageSetLoader:
     def __init__(
         self,
         image_set_path: pathlib.Path,
+<<<<<<< HEAD
 <<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/loading_classes.py
         mask_set_path: pathlib.Path | None,
         anisotropy_spacing: tuple[float, float, float],
@@ -81,6 +82,12 @@ class ImageSetLoader:
         anisotropy_spacing: tuple[float, float, float],
         channel_mapping: dict[str, str],
 >>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/loading_classes.py
+=======
+        mask_set_path: pathlib.Path | None,
+        anisotropy_spacing: tuple[float, float, float],
+        channel_mapping: dict[str, str],
+        image_set_name: str | None = None,
+>>>>>>> 8af3f0c (Refactor featurization (#121))
     ) -> None:
         """
         Initialize the ImageSetLoader with the path to the image set, spacing, and channel mapping.
@@ -151,7 +158,10 @@ class ImageSetLoader:
         self.unique_compartment_objects = {}
         if len(self.compartments) == 0:
             self.compartments = None
+<<<<<<< HEAD
             return
+=======
+>>>>>>> 8af3f0c (Refactor featurization (#121))
         for compartment in self.compartments:
             self.unique_compartment_objects[compartment] = numpy.unique(
                 self.image_set_dict[compartment]
@@ -271,6 +281,7 @@ class ObjectLoader:
 
     def __init__(
         self,
+<<<<<<< HEAD
 <<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/loading_classes.py
         image: numpy.ndarray | None,
         label_image: numpy.ndarray,
@@ -280,6 +291,11 @@ class ObjectLoader:
         label_image: numpy.ndarray,
         channel_name: str,
 >>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/loading_classes.py
+=======
+        image: numpy.ndarray | None,
+        label_image: numpy.ndarray,
+        channel_name: str | None,
+>>>>>>> 8af3f0c (Refactor featurization (#121))
         compartment_name: str,
     ) -> None:
         """Initialize object loader with image and labels.
@@ -290,11 +306,15 @@ class ObjectLoader:
             Image array used for measurements.
         label_image : numpy.ndarray
             Labeled segmentation mask.
+<<<<<<< HEAD
 <<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/loading_classes.py
         channel_name : str | None
 ========
         channel_name : str
 >>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/loading_classes.py
+=======
+        channel_name : str | None
+>>>>>>> 8af3f0c (Refactor featurization (#121))
             Channel name for the image.
         compartment_name : str
             Compartment name for the labels.

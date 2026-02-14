@@ -28,13 +28,6 @@ dependencies = [
     "mahotas",
     "matplotlib",
 ]
-[tool.uv]
-# Use Python 3.11 for better compatibility with CUDA libraries
-python = "3.13"
-index-url = "https://download.pytorch.org/whl/cu118"
-# Fall back to PyPI for other packages
-extra-index-url = ["https://pypi.org/simple"]
-
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "pytest-xdist", "black", "ruff", "pre-commit"]
