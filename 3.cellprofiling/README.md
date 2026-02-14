@@ -126,5 +126,5 @@ Where:
     - Texture
 
 - `<Measurement>`: The name of the feature being extracted:
-- `<Parameters>`: Any additional parameters used in the feature extraction, such as the size of the texture window or the number of bins for intensity features.
+- `<MeasurementParameters>`: Any additional parameters used in the feature extraction, such as the size of the texture window or the number of bins for intensity features.
 - For example, `Texture_Organoid_Mito_Entropy-256-3` indicates that the feature is a texture feature extracted from the organoid compartment using the Mito channel, with the feature being entropy and parameters of 256-3.
