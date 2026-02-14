@@ -6,19 +6,34 @@
 
 import os
 import pathlib
+import sys
 import time
 
 import pandas as pd
 import psutil
-from arg_parsing_utils import check_for_missing_args, parse_args
-from intensity_utils import measure_3D_intensity_CPU, measure_3D_intensity_gpu
-from loading_classes import ImageSetLoader, ObjectLoader
-from notebook_init_utils import bandicoot_check, init_notebook
-from resource_profiling_util import get_mem_and_time_profiling
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
+)
+from image_analysis_3D.featurization_utils.intensity_utils import (
+    measure_3D_intensity_CPU,
+)
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
-from notebook_init_utils import bandicoot_check, init_notebook
-
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
@@ -40,7 +55,7 @@ if not in_notebook:
 
 else:
     well_fov = "D2-3"
-    patient = "SARCO361_T1"
+    patient = "NF0014_T1"
     channel = "Mito"
     compartment = "Cytoplasm"
     processor_type = "CPU"
@@ -92,8 +107,8 @@ image_set_loader = ImageSetLoader(
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
+    image_set_name=well_fov,
 )
-image_set_loader.image_set_dict.keys()
 
 
 # In[6]:
@@ -111,14 +126,10 @@ print(object_loader.image.shape, object_loader.label_image.shape)
 # In[7]:
 
 
-if processor_type == "GPU":
-    output_dict = measure_3D_intensity_gpu(object_loader)
-elif processor_type == "CPU":
+if processor_type == "CPU":
     output_dict = measure_3D_intensity_CPU(object_loader)
 else:
-    raise ValueError(
-        f"Processor type {processor_type} is not supported. Use 'CPU' or 'GPU'."
-    )
+    raise ValueError(f"Processor type {processor_type} is not supported. Use 'CPU'.")
 final_df = pd.DataFrame(output_dict)
 # prepend compartment and channel to column names
 final_df = final_df.pivot(
@@ -126,14 +137,20 @@ final_df = final_df.pivot(
     columns="feature_name",
     values="value",
 ).reset_index()
-for col in final_df.columns:
-    if col == "object_id":
-        continue
-    else:
-        final_df.rename(
-            columns={col: f"Intensity_{compartment}_{channel}_{col}"},
-            inplace=True,
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
         )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
 
@@ -143,9 +160,10 @@ output_file = pathlib.Path(
 )
 output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
+final_df.head()
 
 
-# In[ ]:
+# In[8]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

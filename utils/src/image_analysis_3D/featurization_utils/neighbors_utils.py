@@ -324,13 +324,10 @@ def classify_cells_into_shells(
     --------
     results : dict
         Dictionary containing:
-        - 'shell_assignments': Shell number for each cell (0 = innermost)
-        - 'distances_from_center': Distance from centroid for each cell
-        - 'distances_from_exterior': Distance from exterior for each cell
-        - 'normalized_distances_from_center': Normalized distances (0-1)
-        - 'centroid': Centroid coordinates
-        - 'max_distance': Maximum distance from centroid
-        - 'n_shells_used': Actual number of shells used
+        - 'ShellAssignments': Shell number for each cell (0 = innermost)
+        - 'distancesFromCenter': Distance from centroid for each cell
+        - 'distancesFromExterior': Distance from exterior for each cell
+        - 'NormalizedDistancesFromCenter': Normalized distances (0-1)
     """
     # Handle both DataFrame and dict input
     if isinstance(coords, pandas.DataFrame):
@@ -342,10 +339,10 @@ def classify_cells_into_shells(
     if len(coords_array) == 0:
         results = {
             "object_id": [],
-            "shell_assignments": [],
-            "distances_from_center": [],
-            "distances_from_exterior": [],
-            "normalized_distances_from_center": [],
+            "ShellAssignments": [],
+            "distancesFromCenter": [],
+            "distancesFromExterior": [],
+            "NormalizedDistancesFromCenter": [],
         }
         centroid = None
         return results, centroid
@@ -383,10 +380,10 @@ def classify_cells_into_shells(
 
     results = {
         "object_id": object_ids,
-        "shell_assignments": shell_assignments,
-        "distances_from_center": distances,
-        "distances_from_exterior": distance_from_exterior,
-        "normalized_distances_from_center": normalized_distances,
+        "ShellAssignments": shell_assignments,
+        "distancesFromCenter": distances,
+        "distancesFromExterior": distance_from_exterior,
+        "NormalizedDistancesFromCenter": normalized_distances,
     }
 
     return results, centroid
@@ -450,7 +447,7 @@ def visualize_organoid_shells(
     # 3D scatter plot
     ax1 = fig.add_subplot(121, projection="3d")
 
-    shell_assignments = classification_results["shell_assignments"]
+    shell_assignments = classification_results["ShellAssignments"]
     n_shells = classification_results.get(
         "n_shells_used", len(numpy.unique(shell_assignments))
     )
@@ -546,14 +543,14 @@ def plot_distance_distributions(
     if n_shells is None:
         n_shells = classification_results.get(
             "n_shells_used",
-            len(numpy.unique(classification_results["shell_assignments"])),
+            len(numpy.unique(classification_results["ShellAssignments"])),
         )
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    shell_assignments = classification_results["shell_assignments"]
-    distances_from_center = classification_results["distances_from_center"]
-    distances_from_exterior = classification_results["distances_from_exterior"]
+    shell_assignments = classification_results["ShellAssignments"]
+    distances_from_center = classification_results["distancesFromCenter"]
+    distances_from_exterior = classification_results["distancesFromExterior"]
 
     colors = plt.cm.RdYlBu_r(numpy.linspace(0, 1, n_shells))
 

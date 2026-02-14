@@ -66,15 +66,11 @@ We extract features for each of the feature types:
 - Granularity (5 channels \* 4 compartments = 20 parquet files)
 - Intensity (5 channels \* 4 compartments = 20 parquet files)
 - Neighbors (one metric at one compartment level = 1 parquet file)
+- SAMMed3D (5 channels \* 4 compartments = 20 parquet files)
 - Texture (5 channels \* 4 compartments = 20 parquet files)
 
-Note that the following features can be extracted using a GPU processor:
-- AreaSizeShape
-- Colocalization
-- Intensity
-All features can be extracted using a CPU processor.
 
-So each parent process will result in the child processes generating 105 parquet files per well and FOV combination.
+All features are extracted using a CPU processor.
 
 Usage of featurization vs feature extraction:
 
@@ -102,17 +98,11 @@ Essentially, this places a decent time gap between the submission of the great g
 
 
 ## Feature naming conventions
+Please also refer to the [Feature-Naming-Convention](../docs/RFC-2119-Feature-Naming-Convention.md) document for more details on the feature naming conventions.
 The feature names are standardized to ensure consistency across the dataset. The naming convention is as follows:
-<FeatureType>_<Compartment>_<Channel>_<FeatureName>_<Parameters>
+<Compartment>_<Channel>_<FeatureType>_<Measurment>[-<MeasurmentParameters>]
 
 Where:
-- `<FeatureType>`: The type of feature being extracted:
-    - AreaSizeShape
-    - Colocalization
-    - Granularity
-    - Intensity
-    - Neighbors
-    - Texture
 - `<Compartment>`: The compartment from which the feature is extracted:
     - Nuclei
     - Cell
@@ -125,7 +115,16 @@ Where:
     - AGP
     - Brightfield
     note if the FeatueType is Colocalization, the channel will be a combination of channels
-    and separated by a . e.g. Mito.DAPI
-- `<FeatureName>`: The name of the feature being extracted:
-- `<Parameters>`: Any additional parameters used in the feature extraction, such as the size of the texture window or the number of bins for intensity features.
-- For example, `Texture_Organoid_Mito_Entropy_256.1` indicates that the feature is a texture feature extracted from the organoid compartment using the Mito channel, with the feature being entropy and parameters of 256.1.
+    and separated by a - e.g. Mito-DAPI
+- `<FeatureType>`: The type of feature being extracted:
+    - AreaSizeShape
+    - Colocalization
+    - Granularity
+    - Intensity
+    - Neighbors
+    - SAMMed3D
+    - Texture
+
+- `<Measurement>`: The name of the feature being extracted:
+- `<MeasurementParameters>`: Any additional parameters used in the feature extraction, such as the size of the texture window or the number of bins for intensity features.
+- For example, `Texture_Organoid_Mito_Entropy-256-3` indicates that the feature is a texture feature extracted from the organoid compartment using the Mito channel, with the feature being entropy and parameters of 256-3.
