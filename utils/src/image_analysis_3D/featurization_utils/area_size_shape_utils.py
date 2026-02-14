@@ -6,7 +6,7 @@ import skimage.measure
 from .loading_classes import ImageSetLoader, ObjectLoader
 
 
-def calulate_surface_area(
+def calculate_surface_area(
     label_object: numpy.ndarray,
     props: dict[str, numpy.ndarray],
     spacing: tuple[float, float, float],
@@ -71,21 +71,21 @@ def measure_3D_area_size_shape(
 
     features_to_record = {
         "object_id": [],
-        "VOLUME": [],
-        "CENTER.X": [],
-        "CENTER.Y": [],
-        "CENTER.Z": [],
-        "BBOX.VOLUME": [],
-        "MIN.X": [],
-        "MAX.X": [],
-        "MIN.Y": [],
-        "MAX.Y": [],
-        "MIN.Z": [],
-        "MAX.Z": [],
-        "EXTENT": [],
-        "EULER.NUMBER": [],
-        "EQUIVALENT.DIAMETER": [],
-        "SURFACE.AREA": [],
+        "Volume": [],
+        "CenterX": [],
+        "CenterY": [],
+        "CenterZ": [],
+        "BboxVolume": [],
+        "MinX": [],
+        "MaxX": [],
+        "MinY": [],
+        "MaxY": [],
+        "MinZ": [],
+        "MaxZ": [],
+        "Extent": [],
+        "EulerNumber": [],
+        "EquivalentDiameter": [],
+        "SurfaceArea": [],
     }
 
     desired_properties = [
@@ -107,31 +107,31 @@ def measure_3D_area_size_shape(
         )
 
         features_to_record["object_id"].append(label)
-        features_to_record["VOLUME"].append(props["area"].item())
-        features_to_record["CENTER.X"].append(props["centroid-2"].item())
-        features_to_record["CENTER.Y"].append(props["centroid-1"].item())
-        features_to_record["CENTER.Z"].append(props["centroid-0"].item())
-        features_to_record["BBOX.VOLUME"].append(props["bbox_area"].item())
-        features_to_record["MIN.X"].append(props["bbox-2"].item())
-        features_to_record["MAX.X"].append(props["bbox-5"].item())
-        features_to_record["MIN.Y"].append(props["bbox-1"].item())
-        features_to_record["MAX.Y"].append(props["bbox-4"].item())
-        features_to_record["MIN.Z"].append(props["bbox-0"].item())
-        features_to_record["MAX.Z"].append(props["bbox-3"].item())
-        features_to_record["EXTENT"].append(props["extent"].item())
-        features_to_record["EULER.NUMBER"].append(props["euler_number"].item())
-        features_to_record["EQUIVALENT.DIAMETER"].append(
+        features_to_record["Volume"].append(props["area"].item())
+        features_to_record["CenterX"].append(props["centroid-2"].item())
+        features_to_record["CenterY"].append(props["centroid-1"].item())
+        features_to_record["CenterZ"].append(props["centroid-0"].item())
+        features_to_record["BboxVolume"].append(props["bbox_area"].item())
+        features_to_record["MinX"].append(props["bbox-2"].item())
+        features_to_record["MaxX"].append(props["bbox-5"].item())
+        features_to_record["MinY"].append(props["bbox-1"].item())
+        features_to_record["MaxY"].append(props["bbox-4"].item())
+        features_to_record["MinZ"].append(props["bbox-0"].item())
+        features_to_record["MaxZ"].append(props["bbox-3"].item())
+        features_to_record["Extent"].append(props["extent"].item())
+        features_to_record["EulerNumber"].append(props["euler_number"].item())
+        features_to_record["EquivalentDiameter"].append(
             props["equivalent_diameter"].item()
         )
 
         try:
-            features_to_record["SURFACE.AREA"].append(
-                calulate_surface_area(
+            features_to_record["SurfaceArea"].append(
+                calculate_surface_area(
                     label_object=label_object,
                     props=props,
                     spacing=spacing,
                 )
             )
-        except:
-            features_to_record["SURFACE.AREA"].append(numpy.nan)
+        except (RuntimeError, ValueError) as e:
+            features_to_record["SurfaceArea"].append(numpy.nan)
     return features_to_record

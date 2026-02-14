@@ -71,9 +71,10 @@ class ImageSetLoader:
     def __init__(
         self,
         image_set_path: pathlib.Path,
-        mask_set_path: pathlib.Path,
+        mask_set_path: pathlib.Path | None,
         anisotropy_spacing: tuple[float, float, float],
         channel_mapping: dict[str, str],
+        image_set_name: str | None = None,
     ) -> None:
         """
         Initialize the ImageSetLoader with the path to the image set, spacing, and channel mapping.
@@ -87,14 +88,22 @@ class ImageSetLoader:
         channel_mapping : dict
             A dictionary mapping channel names to their corresponding image file names.
             Example: {'nuclei': 'nuclei_', 'cell': 'cell_', 'cytoplasm': 'cytoplasm_'}
+        image_set_name : str | None
+            Optional name for the image set.
+            This is typuically the well_fov name, but can be set to None if not applicable.
         """
         self.anisotropy_spacing = anisotropy_spacing
         self.anisotropy_factor = self.anisotropy_spacing[0] / self.anisotropy_spacing[1]
-        self.image_set_name = image_set_path.name
+        self.image_set_name = image_set_name
+        if image_set_path is None:
+            channel_files = []
+        else:
+            channel_files = sorted(image_set_path.glob("*"))
+            channel_files = [f for f in channel_files if f.suffix in [".tif", ".tiff"]]
+
         self.mask_set_path = mask_set_path
-        channel_files = sorted(image_set_path.glob("*"))
-        mask_files = sorted(mask_set_path.glob("*"))
-        channel_files = [f for f in channel_files if f.suffix in [".tif", ".tiff"]]
+
+        mask_files = sorted(mask_set_path.glob("*")) if mask_set_path else []
         mask_files = [f for f in mask_files if f.suffix in [".tif", ".tiff"]]
 
         # Load images into a dictionary
@@ -134,6 +143,8 @@ class ImageSetLoader:
     def get_unique_objects_in_compartments(self) -> None:
         """Populate unique object IDs per compartment."""
         self.unique_compartment_objects = {}
+        if len(self.compartments) == 0:
+            self.compartments = None
         for compartment in self.compartments:
             self.unique_compartment_objects[compartment] = numpy.unique(
                 self.image_set_dict[compartment]
@@ -233,9 +244,9 @@ class ObjectLoader:
 
     def __init__(
         self,
-        image: numpy.ndarray,
+        image: numpy.ndarray | None,
         label_image: numpy.ndarray,
-        channel_name: str,
+        channel_name: str | None,
         compartment_name: str,
     ) -> None:
         """Initialize object loader with image and labels.
@@ -246,7 +257,7 @@ class ObjectLoader:
             Image array used for measurements.
         label_image : numpy.ndarray
             Labeled segmentation mask.
-        channel_name : str
+        channel_name : str | None
             Channel name for the image.
         compartment_name : str
             Compartment name for the labels.
@@ -256,8 +267,6 @@ class ObjectLoader:
         self.channel = channel_name
         self.compartment = compartment_name
         # get the labeled image objects
-        # this is a 3D image, so the objects are labeled in 3D
-        # self.objects = skimage.measure.label(label_image)
         self.object_ids = numpy.unique(label_image)
         # drop the 0 label
         self.object_ids = [x for x in self.object_ids if x != 0]
