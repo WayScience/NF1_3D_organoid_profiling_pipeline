@@ -154,20 +154,20 @@ else:
 final_df = pd.DataFrame(size_shape_dict)
 
 # prepend compartment and channel to column names
-for col in final_df.columns:
-    if col not in ["object_id"]:
-        final_df[col] = final_df[col].astype(np.float32)
-        final_df.rename(
-            columns={
-                col: format_morphology_feature_name(
-                    compartment=compartment,
-                    channel=channel,
-                    feature_type="AreaSizeShape",
-                    measurement=col,
-                )
-            },
-            inplace=True,
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
         )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 
 final_df.insert(1, "image_set", image_set_loader.image_set_name)
 

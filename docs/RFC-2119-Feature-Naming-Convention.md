@@ -1,7 +1,7 @@
 # Feature Naming Convention and Schema Specification
 
-**Status:** Standard
-**Version:** 1.0
+**Status:** Experimental
+**Version:** 0.0.1
 **Date:** February 13, 2026
 **Authors:** NF1 3D Organoid Profiling Pipeline Development Team
 **Keywords:** feature naming, schema, morphology, image analysis, 3D organoids
@@ -168,7 +168,7 @@ Nuclei_DNA_SAMMed3D_CLSFeature-512
 
 Copyright (c) 2026 Way Science Lab. All rights reserved.
 
-This document may be freely distributed and used for implementation purposes within the NF1 3D Organoid Profiling Pipeline project and related research activities.
+This document may be freely distributed and used for implementation purposes within the NF1 3D Organoid Profiling Pipeline project and related research activities. The license for this document is the covered under the license of the NF1 3D Organoid Profiling Pipeline project, which is available at [LICENSE](../LICENSE).
 
 ---
 

@@ -137,21 +137,20 @@ final_df = final_df.pivot(
     columns="feature_name",
     values="value",
 ).reset_index()
-for col in final_df.columns:
-    if col == "object_id":
-        continue
-    else:
-        final_df.rename(
-            columns={
-                col: format_morphology_feature_name(
-                    compartment=compartment,
-                    channel=channel,
-                    feature_type="Intensity",
-                    measurement=col,
-                )
-            },
-            inplace=True,
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
         )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
 

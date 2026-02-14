@@ -205,3 +205,7 @@ docs/html/*
 2.segment_images/data/compressed_images/*
 2.segment_images/models/*
 3.cellprofiling/logs/*
+5.technical_analysis/results/*
+5.technical_analysis/processed_data/*
+7.technical_analysis/results/*
+7.technical_analysis/processed_data/*

@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import itertools
 import os
 import pathlib
-import sys
-from itertools import product
 
 import numpy as np
 import pandas as pd

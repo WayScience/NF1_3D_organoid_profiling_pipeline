@@ -98,7 +98,7 @@ Essentially, this places a decent time gap between the submission of the great g
 
 
 ## Feature naming conventions
-Please also refer to the [RFC-2119-Feature-Naming-Convention](../docs/RFC-2119-Feature-Naming-Convention.md) document for more details on the feature naming conventions.
+Please also refer to the [Feature-Naming-Convention](../docs/RFC-2119-Feature-Naming-Convention.md) document for more details on the feature naming conventions.
 The feature names are standardized to ensure consistency across the dataset. The naming convention is as follows:
 <Compartment>_<Channel>_<FeatureType>_<Measurment>[-<MeasurmentParameters>]
 

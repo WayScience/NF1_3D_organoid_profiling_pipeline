@@ -151,21 +151,20 @@ final_df = final_df.pivot_table(
 final_df.columns = final_df.columns.droplevel()
 final_df = final_df.reset_index()
 # prepend compartment and channel to column names
-for col in final_df.columns:
-    if col == "object_id":
-        continue
-    else:
-        final_df.rename(
-            columns={
-                col: format_morphology_feature_name(
-                    compartment=compartment,
-                    channel=channel,
-                    feature_type="Granularity",
-                    measurement=f"Granularity_{col}",
-                )
-            },
-            inplace=True,
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
         )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
 output_file = pathlib.Path(
     output_parent_path
@@ -176,7 +175,7 @@ final_df.to_parquet(output_file)
 final_df.head()
 
 
-# In[7]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

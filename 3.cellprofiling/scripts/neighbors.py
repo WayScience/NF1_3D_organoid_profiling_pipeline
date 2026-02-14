@@ -241,19 +241,20 @@ if in_notebook and centroid is not None:
 # merge the two dataframes
 df = pd.concat(dfs, ignore_index=True)
 merged_df = pd.merge(final_df, df, on="object_id", how="left")
-for col in merged_df.columns:
-    if "object_id" not in col and "neighbors" not in col and "image_set" not in col:
-        merged_df.rename(
-            columns={
-                col: format_morphology_feature_name(
-                    compartment=compartment,
-                    channel=channel,
-                    feature_type="Neighbors",
-                    measurement=col,
-                )
-            },
-            inplace=True,
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
         )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 if not merged_df.empty:
     merged_df.insert(0, "image_set", image_set_loader.image_set_name)
 

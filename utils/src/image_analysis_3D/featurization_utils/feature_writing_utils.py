@@ -15,16 +15,18 @@ def remove_underscores_from_string(string: str) -> str:
     str
         The string with unwanted delimiters removed and replaced with hyphens.
     """
-    if not isinstance(string, str):
-        raise ValueError(f"Input must be a string, but got {type(string)}")
-    if "_" in string:
-        string = string.replace("_", "-")
-    if "." in string:
-        string = string.replace(".", "-")
-    if " " in string:
-        string = string.replace(" ", "-")
-    if "/" in string:
-        string = string.replace("/", "-")
+
+    string = string.translate(
+        str.maketrans(
+            {
+                "_": "-",
+                ".": "-",
+                " ": "-",
+                "/": "-",
+            }
+        )
+    )
+
     return string
 
 
@@ -33,6 +35,8 @@ def format_morphology_feature_name(
 ) -> str:
     """
     Format a morphology feature name in a consistent way across all morphology features.
+    This format follows specification for the following:
+    https://https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/docs/RFC-2119-Feature-Naming-Convention.md
     Parameters
     ----------
     compartment : str

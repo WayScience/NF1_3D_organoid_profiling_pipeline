@@ -91,8 +91,6 @@ def measure_3D_granularity(
 ) -> Dict[str, list]:
     """
     Calculate the granularity of a 3D image using morphological operations.
-
-    FIXED VERSION: Properly handles subsampling and per-object measurements.
     """
 
     # Validate inputs

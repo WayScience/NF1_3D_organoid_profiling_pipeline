@@ -191,9 +191,20 @@ for channel, compartment in all_channel_compartment_combinations:
     # drop the multiindexing from pivot
     final_df.columns.name = None
     # prepend compartment and channel to column names
-    for col in final_df.columns:
-        if col not in ["object_id"]:
-            final_df[col] = final_df[col].astype(np.float32)
+    final_df.rename(
+        columns={
+            col: format_morphology_feature_name(
+                compartment=compartment,
+                channel=channel,
+                feature_type="Granularity",
+                measurement=col,
+            )
+            if col != "object_id"
+            else col
+            for col in final_df.columns
+        },
+        inplace=True,
+    )
 
     # de-fragment
     final_df = final_df.copy()
