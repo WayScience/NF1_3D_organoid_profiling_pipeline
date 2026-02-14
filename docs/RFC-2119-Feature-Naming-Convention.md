@@ -1,4 +1,4 @@
-# RFC 2119: Feature Naming Convention and Schema Specification
+# Feature Naming Convention and Schema Specification
 
 **Status:** Standard
 **Version:** 1.0
