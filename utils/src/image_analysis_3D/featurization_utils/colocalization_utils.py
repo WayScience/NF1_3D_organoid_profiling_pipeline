@@ -463,7 +463,6 @@ def measure_3D_colocalization(
         The output features for colocalization analysis.
     """
     results = {}
-    thr = 15
     ################################################################################################
     # Calculate the correlation coefficient between the two images
     # This is the Pearson correlation coefficient
@@ -476,13 +475,13 @@ def measure_3D_colocalization(
     # std(X) = sqrt(sum((X - mean(X)) ** 2) / (N - 1))
     # thus N -1 cancels out in the calculation below
     ################################################################################################
-    mean1 = scipy.ndimage.mean(cropped_image_1, 1)
-    mean2 = scipy.ndimage.mean(cropped_image_2, 1)
-    std1 = numpy.sqrt(scipy.ndimage.sum((cropped_image_1 - mean1) ** 2))
-    std2 = numpy.sqrt(scipy.ndimage.sum((cropped_image_2 - mean2) ** 2))
+    mean1 = numpy.mean(cropped_image_1)
+    mean2 = numpy.mean(cropped_image_2)
+    std1 = numpy.sqrt(numpy.sum((cropped_image_1 - mean1) ** 2))
+    std2 = numpy.sqrt(numpy.sum((cropped_image_2 - mean2) ** 2))
     x = cropped_image_1 - mean1  # x is not the same as the x dimension here
     y = cropped_image_2 - mean2  # y is not the same as the y dimension here
-    corr = scipy.ndimage.sum(x * y / (std1 * std2))
+    corr = numpy.sum(x * y) / (std1 * std2)
 
     ################################################################################################
     # Calculate the Manders' coefficients
@@ -490,28 +489,34 @@ def measure_3D_colocalization(
 
     # Threshold as percentage of maximum intensity of objects in each channel
     try:
-        tff = (thr / 100) * scipy.ndimage.maximum(cropped_image_1)
-        tss = (thr / 100) * scipy.ndimage.maximum(cropped_image_2)
+        tff = (thr / 100) * numpy.max(cropped_image_1)
+        tss = (thr / 100) * numpy.max(cropped_image_2)
         # Ensure thresholds are at least 1 to avoid zero thresholding
         # if an errors occurs this is probably due to empty images
         # or images where the bbox is incredibly small and inconsistent
         # or the bbox is on the border of the image
         # in which case we want to remove anyway
     except ValueError:
-        tff = 1
-        tss = 1
-    combined_thresh = (cropped_image_1 >= tff) & (cropped_image_2 >= tss)
+        M1, M2 = 0.0, 0.0
+    else:
+        # get the thresholds
+        combined_thresh = (cropped_image_1 >= tff) & (cropped_image_2 >= tss)
 
-    first_image_thresh = cropped_image_1[combined_thresh]
-    second_image_thresh = cropped_image_2[combined_thresh]
-    tot_first_image_thr = scipy.ndimage.sum(
-        cropped_image_1[cropped_image_1 >= tff],
-    )
-    tot_second_image_thr = scipy.ndimage.sum(cropped_image_2[cropped_image_2 >= tss])
+        first_image_thresh = cropped_image_1[combined_thresh]
+        second_image_thresh = cropped_image_2[combined_thresh]
 
-    M1 = scipy.ndimage.sum(first_image_thresh) / numpy.array(tot_first_image_thr)
-    M2 = scipy.ndimage.sum(second_image_thresh) / numpy.array(tot_second_image_thr)
+        tot_first_image_thr = scipy.ndimage.sum(
+            cropped_image_1[cropped_image_1 >= tff],
+        )
+        tot_second_image_thr = scipy.ndimage.sum(
+            cropped_image_2[cropped_image_2 >= tss]
+        )
 
+        if tot_first_image_thr > 0 and tot_second_image_thr > 0:
+            M1 = scipy.ndimage.sum(first_image_thresh) / tot_first_image_thr
+            M2 = scipy.ndimage.sum(second_image_thresh) / tot_second_image_thr
+        else:
+            M1, M2 = 0.0, 0.0
     ################################################################################################
     # Calculate the overlap coefficient
     ################################################################################################
@@ -536,6 +541,53 @@ def measure_3D_colocalization(
         cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
     ) / (numpy.array(spsq))
 
+    # first_pixels, second_pixels = flattened image arrays
+    # combined_thresh = boolean mask of pixels above threshold in both channels
+    # fi_thresh, si_thresh = thresholded intensities (same shape as pixels)
+
+    # --- Rank computation ---
+    # Flatten images for ranking
+    img1_flat = cropped_image_1.flatten()
+    img2_flat = cropped_image_2.flatten()
+
+    # --- Rank computation ---
+    sorted_idx_1 = numpy.argsort(img1_flat)
+    sorted_idx_2 = numpy.argsort(img2_flat)
+
+    # Create rank arrays
+    rank_1_flat = numpy.empty_like(sorted_idx_1, dtype=float)
+    rank_2_flat = numpy.empty_like(sorted_idx_2, dtype=float)
+    rank_1_flat[sorted_idx_1] = numpy.arange(len(sorted_idx_1))
+    rank_2_flat[sorted_idx_2] = numpy.arange(len(sorted_idx_2))
+
+    # Reshape back to original shape
+    rank_im1 = rank_1_flat.reshape(cropped_image_1.shape)
+    rank_im2 = rank_2_flat.reshape(cropped_image_2.shape)
+
+    # --- Rank difference weight ---
+    R = max(rank_im1.max(), rank_im2.max()) + 1
+    Di = numpy.abs(rank_im1 - rank_im2)
+    weight = (R - Di) / R
+
+    # Get weights for thresholded pixels
+    weight_thresh = weight[combined_thresh]
+
+    # Get thresholded values (no double-thresholding!)
+    first_image_thresh_final = first_image_thresh
+    second_image_thresh_final = second_image_thresh
+
+    # --- Calculate weighted colocalization ---
+    if numpy.any(combined_thresh) and len(first_image_thresh_final) > 0:
+        weighted_sum_1 = numpy.sum(first_image_thresh_final * weight_thresh)
+        weighted_sum_2 = numpy.sum(second_image_thresh_final * weight_thresh)
+
+        total_1 = numpy.sum(first_image_thresh_final)
+        total_2 = numpy.sum(second_image_thresh_final)
+
+        RWC1 = weighted_sum_1 / total_1 if total_1 > 0 else 0.0
+        RWC2 = weighted_sum_2 / total_2 if total_2 > 0 else 0.0
+    else:
+        RWC1, RWC2 = 0.0, 0.0
     ################################################################################################
     # Calculate the Costes' coefficient
     ################################################################################################
@@ -569,43 +621,22 @@ def measure_3D_colocalization(
     tot_second_image_thr_c = scipy.ndimage.sum(
         cropped_image_2[cropped_image_2 >= thr_second_image_c],
     )
-    C1 = scipy.ndimage.sum(first_image_thresh_c) / numpy.array(tot_first_image_thr_c)
-    C2 = scipy.ndimage.sum(second_image_thresh_c) / numpy.array(tot_second_image_thr_c)
-
+    if tot_first_image_thr_c > 0 and tot_second_image_thr_c > 0:
+        C1 = scipy.ndimage.sum(first_image_thresh_c) / tot_first_image_thr_c
+        C2 = scipy.ndimage.sum(second_image_thresh_c) / tot_second_image_thr_c
+    else:
+        C1, C2 = 0.0, 0.0
     ################################################################################################
     # write the results to the output dictionary
     ################################################################################################
 
-    results["MEAN.CORRELATION.COEFF"] = numpy.mean(corr)
-    results["MEDIAN.CORRELATION.COEFF"] = numpy.median(corr)
-    results["MIN.CORRELATION.COEFF"] = numpy.min(corr)
-    results["MAX.CORRELATION.COEFF"] = numpy.max(corr)
-    results["MEAN.MANDERS.COEFF.M1"] = numpy.mean(M1)
-    results["MEDIAN.MANDERS.COEFF.M1"] = numpy.median(M1)
-    results["MIN.MANDERS.COEFF.M1"] = numpy.min(M1)
-    results["MAX.MANDERS.COEFF.M1"] = numpy.max(M1)
-    results["MEAN.MANDERS.COEFF.M2"] = numpy.mean(M2)
-    results["MEDIAN.MANDERS.COEFF.M2"] = numpy.median(M2)
-    results["MIN.MANDERS.COEFF.M2"] = numpy.min(M2)
-    results["MAX.MANDERS.COEFF.M2"] = numpy.max(M2)
-    results["MEAN.OVERLAP.COEFF"] = numpy.mean(overlap)
-    results["MEDIAN.OVERLAP.COEFF"] = numpy.median(overlap)
-    results["MIN.OVERLAP.COEFF"] = numpy.min(overlap)
-    results["MAX.OVERLAP.COEFF"] = numpy.max(overlap)
-    results["MEAN.K1"] = numpy.mean(K1)
-    results["MEDIAN.K1"] = numpy.median(K1)
-    results["MIN.K1"] = numpy.min(K1)
-    results["MAX.K1"] = numpy.max(K1)
-    results["MEAN.K2"] = numpy.mean(K2)
-    results["MEDIAN.K2"] = numpy.median(K2)
-    results["MIN.K2"] = numpy.min(K2)
-    results["MAX.K2"] = numpy.max(K2)
-    results["MEAN.MANDERS.COEFF.COSTES.M1"] = numpy.mean(C1)
-    results["MEDIAN.MANDERS.COEFF.COSTES.M1"] = numpy.median(C1)
-    results["MIN.MANDERS.COEFF.COSTES.M1"] = numpy.min(C1)
-    results["MAX.MANDERS.COEFF.COSTES.M1"] = numpy.max(C1)
-    results["MEAN.MANDERS.COEFF.COSTES.M2"] = numpy.mean(C2)
-    results["MEDIAN.MANDERS.COEFF.COSTES.M2"] = numpy.median(C2)
-    results["MIN.MANDERS.COEFF.COSTES.M2"] = numpy.min(C2)
-    results["MAX.MANDERS.COEFF.COSTES.M2"] = numpy.max(C2)
+    results["Correlation"] = corr
+    results["MandersCoeffM1"] = M1
+    results["MandersCoeffM2"] = M2
+    results["OverlapCoeff"] = overlap
+    results["MandersCoeffCostesM1"] = C1
+    results["MandersCoeffCostesM2"] = C2
+    results["RankWeightedColocalizationCoeff1"] = RWC1
+    results["RankWeightedColocalizationCoeff2"] = RWC2
+
     return results

@@ -6,17 +6,31 @@
 
 import os
 import pathlib
+import sys
 import time
 
 import numpy as np
 import pandas as pd
 import psutil
-from notebook_init_utils import init_notebook
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
+)
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
-from loading_classes import ImageSetLoader, ObjectLoader
-from neighbors_utils import (
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.neighbors_utils import (
     classify_cells_into_shells,
     create_results_dataframe,
     get_coordinates,
@@ -24,8 +38,9 @@ from neighbors_utils import (
     plot_distance_distributions,
     visualize_organoid_shells,
 )
-from notebook_init_utils import bandicoot_check, init_notebook
-from resource_profiling_util import get_mem_and_time_profiling
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
 
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
@@ -100,6 +115,7 @@ image_set_loader = ImageSetLoader(
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
+    image_set_name=well_fov,
 )
 
 
@@ -110,8 +126,6 @@ image_set_loader = ImageSetLoader(
 # and measure the number of neighbors
 # for each compartment
 
-compartment = "Nuclei"
-channel = "DNA"
 object_loader = ObjectLoader(
     image_set_loader.image_set_dict[channel],
     image_set_loader.image_set_dict[compartment],
@@ -132,7 +146,7 @@ final_df = pd.DataFrame(neighbors_out_dict)
 # PARAMETERS - Adjust these as needed
 N_SHELLS = 4
 METHOD = "mahalanobis"  # 'mahalanobis' or 'euclidean'
-RANDOM_SEED = 42
+RANDOM_SEED = 0
 
 
 # In[8]:
@@ -227,15 +241,20 @@ if in_notebook and centroid is not None:
 # merge the two dataframes
 df = pd.concat(dfs, ignore_index=True)
 merged_df = pd.merge(final_df, df, on="object_id", how="left")
-for col in merged_df.columns:
-    if "object_id" not in col and "neighbors" not in col and "image_set" not in col:
-        merged_df.rename(columns={col: f"Neighbors_{col}"}, inplace=True)
-merged_df.head()
-
-
-# In[11]:
-
-
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
+        )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 if not merged_df.empty:
     merged_df.insert(0, "image_set", image_set_loader.image_set_name)
 
@@ -248,7 +267,7 @@ merged_df.to_parquet(output_file)
 merged_df.head()
 
 
-# In[12]:
+# In[11]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
