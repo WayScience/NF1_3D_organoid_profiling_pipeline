@@ -7,6 +7,7 @@
 import itertools
 import os
 import pathlib
+import sys
 from itertools import product
 
 import numpy as np
@@ -123,7 +124,7 @@ for i in iterations:
 list_of_subdirs_to_scan.append("deconvolved_images")
 
 
-# In[10]:
+# In[ ]:
 
 
 for patient in patients:
