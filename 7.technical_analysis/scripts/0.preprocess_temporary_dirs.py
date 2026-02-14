@@ -14,10 +14,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import skimage
-import tifffile
-from matplotlib.colors import BoundaryNorm, ListedColormap
-from skimage import io
 
 cwd = pathlib.Path.cwd()
 

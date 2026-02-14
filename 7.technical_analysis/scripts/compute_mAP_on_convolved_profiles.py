@@ -12,11 +12,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from copairs import map
-from copairs.map.average_precision import p_values
 from copairs.matching import assign_reference_index
 from notebook_init_utils import bandicoot_check, init_notebook
 from numpy.random import rand
-from scipy.spatial.distance import cosine
 
 root_dir, in_notebook = init_notebook()
 if in_notebook:
@@ -29,7 +27,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 def paired_permutation_test(XA: np.array, XB: np.array, n_perm=10000):

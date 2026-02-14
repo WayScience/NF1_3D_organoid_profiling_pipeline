@@ -12,7 +12,6 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import umap
 from notebook_init_utils import bandicoot_check, init_notebook
 from pycytominer import feature_select, normalize

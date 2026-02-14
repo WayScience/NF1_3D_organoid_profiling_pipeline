@@ -18,23 +18,10 @@
 import os
 import pathlib
 
-import matplotlib.pyplot as plt
-
 # Import dependencies
-import numpy as np
-import pandas as pd
-import skimage
 import tifffile
-from arg_parsing_utils import check_for_missing_args, parse_args
 from file_reading import read_zstack_image
-from matplotlib.colors import BoundaryNorm, ListedColormap
 from notebook_init_utils import bandicoot_check, init_notebook
-from skimage import io
-from technical_analysis_segmentation_utils import (
-    convert_indexed_mask_to_binary_mask,
-    extract_IOU,
-    signed_xor_3color,
-)
 
 root_dir, in_notebook = init_notebook()
 
