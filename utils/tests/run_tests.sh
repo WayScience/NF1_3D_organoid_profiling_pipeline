@@ -125,17 +125,34 @@ print_error() {
     echo -e "${RED}✗${NC} $1"
 }
 
-# Function to check if pytest is available
-check_pytest() {
-    if ! command -v pytest &> /dev/null; then
-        print_error "pytest not found. Installing dependencies..."
-        cd "$UTILS_DIR"
-        pip install -e ".[dev]" > /dev/null 2>&1 || {
-            print_error "Failed to install dependencies"
-            exit 1
-        }
-        print_status "Dependencies installed"
+# Function to create and activate a uv test environment
+setup_uv_env() {
+    if ! command -v uv &> /dev/null; then
+        print_error "uv not found. Please install uv first."
+        exit 1
     fi
+
+    local venv_dir="$PROJECT_ROOT/.venv-test"
+
+    if [ ! -d "$venv_dir" ]; then
+        print_status "Creating uv test environment at $venv_dir"
+        uv venv "$venv_dir"
+    fi
+
+    # shellcheck disable=SC1091
+    source "$venv_dir/bin/activate"
+
+    print_status "Installing project dependencies"
+    (cd "$PROJECT_ROOT" && uv pip install -e .) > /dev/null 2>&1 || {
+        print_error "Failed to install project dependencies"
+        exit 1
+    }
+
+    print_status "Installing utils test dependencies"
+    uv pip install -e "${UTILS_DIR}[dev]" > /dev/null 2>&1 || {
+        print_error "Failed to install dependencies"
+        exit 1
+    }
 }
 
 # Function to run tests
@@ -144,19 +161,19 @@ run_tests() {
 
     print_header "Running Featurization Tests"
 
-    local pytest_args="-v"
-    local test_files=""
+    local pytest_args=("-v")
+    local test_files=()
 
     # Add verbose flag
     if [ "$VERBOSE" = true ]; then
-        pytest_args="${pytest_args}v"
+        pytest_args+=("-v")
     fi
 
     # Add parallel flag
     if [ "$PARALLEL" = true ]; then
         # Check if pytest-xdist is available
         if python -c "import xdist" 2>/dev/null; then
-            pytest_args="${pytest_args} -n auto"
+            pytest_args+=("-n" "auto")
             print_status "Running tests in parallel"
         else
             echo -e "${YELLOW}⚠${NC} pytest-xdist not installed, running sequentially"
@@ -167,30 +184,30 @@ run_tests() {
     # Determine which tests to run
     if [ "$RUN_PERFORMANCE" = true ]; then
         print_header "Performance Tests"
-        test_files="test_featurization_integration.py::TestPerformance"
+        test_files=("test_featurization_integration.py::TestPerformance")
         echo -e "${YELLOW}Running performance benchmarks...${NC}"
     elif [ "$RUN_UNIT_TESTS" = true ] && [ "$RUN_INTEGRATION_TESTS" = false ]; then
         print_header "Unit Tests"
-        test_files="test_featurization_utils.py"
+        test_files=("test_featurization_utils.py")
         echo -e "${YELLOW}Running unit tests...${NC}"
     elif [ "$RUN_INTEGRATION_TESTS" = true ] && [ "$RUN_UNIT_TESTS" = false ]; then
         print_header "Integration Tests"
-        test_files="test_featurization_integration.py"
+        test_files=("test_featurization_integration.py")
         echo -e "${YELLOW}Running integration tests...${NC}"
     else
         print_header "All Tests"
-        test_files="test_featurization_utils.py test_featurization_integration.py"
+        test_files=("test_featurization_utils.py" "test_featurization_integration.py")
         echo -e "${YELLOW}Running all tests...${NC}"
     fi
 
     # Add coverage reporting
     if [ "$RUN_COVERAGE" = true ]; then
-        pytest_args="${pytest_args} --cov=src.image_analysis_3D.featurization_utils --cov-report=html --cov-report=term-missing"
+        pytest_args+=("--cov=src.image_analysis_3D.featurization_utils" "--cov-report=html" "--cov-report=term-missing")
         echo -e "${YELLOW}Coverage report will be generated...${NC}"
     fi
 
     # Run pytest
-    if pytest "${pytest_args}" "${test_files}"; then
+    if python -m pytest "${pytest_args[@]}" "${test_files[@]}"; then
         print_status "All tests passed!"
         return 0
     else
@@ -244,9 +261,9 @@ main() {
 
     print_summary
 
-    # Check pytest availability
-    check_pytest
-    print_status "pytest is available"
+    # Create and activate uv test environment
+    setup_uv_env
+    print_status "uv test environment ready"
     echo ""
 
     # Run tests
