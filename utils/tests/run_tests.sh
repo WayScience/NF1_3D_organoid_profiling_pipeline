@@ -20,9 +20,9 @@ UTILS_DIR="$PROJECT_ROOT/utils"
 # Default values
 RUN_UNIT_TESTS=true
 RUN_INTEGRATION_TESTS=true
-RUN_COVERAGE=false
-RUN_PERFORMANCE=false
-VERBOSE=false
+RUN_COVERAGE=true
+RUN_PERFORMANCE=true
+VERBOSE=true
 PARALLEL=false
 
 # Function to print usage
@@ -202,8 +202,16 @@ run_tests() {
 
     # Add coverage reporting
     if [ "$RUN_COVERAGE" = true ]; then
-        pytest_args+=("--cov=src.image_analysis_3D.featurization_utils" "--cov-report=html" "--cov-report=term-missing")
-        echo -e "${YELLOW}Coverage report will be generated...${NC}"
+        # Check if pytest-cov is available
+        if python -c "import pytest_cov" 2>/dev/null; then
+            # Only measure coverage for featurization_utils - other modules tested separately
+            pytest_args+=("--cov=src.image_analysis_3D.featurization_utils" "--cov-report=html:htmlcov" "--cov-report=term-missing")
+            echo -e "${YELLOW}Coverage report will be generated for featurization_utils${NC}"
+        else
+            echo -e "${YELLOW}⚠${NC} pytest-cov not installed, skipping coverage"
+            echo "  Install with: uv pip install pytest-cov"
+            RUN_COVERAGE=false
+        fi
     fi
 
     # Run pytest

@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
-
-pytest.importorskip("tifffile")
+import tifffile
 from file_utils.preprocessing_funcs import (
     check_well_dir_name_format,
     get_to_the_unested_dir,
@@ -17,7 +15,6 @@ from file_utils.preprocessing_funcs import (
 
 
 def test_read_2d_image_for_zstacking(tmp_path: Path) -> None:
-    tifffile = pytest.importorskip("tifffile")
     img = np.zeros((5, 6), dtype=np.uint16)
     file_path = tmp_path / "img.tif"
     tifffile.imwrite(file_path, img)

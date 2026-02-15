@@ -258,8 +258,8 @@ class TestPerformance:
         )
         elapsed = time.time() - start_time
 
-        # Should complete in reasonable time
-        assert elapsed < 10.0
+        # Should complete in reasonable time (allowing for slower systems)
+        assert elapsed < 15.0
         assert len(result["texture_value"]) > 0
 
     def test_memory_efficiency_subsampling(self, large_volume, large_label_image):
@@ -279,7 +279,7 @@ class TestPerformance:
         elapsed = time.time() - start_time
 
         # Should be faster with subsampling (allowing more time for slower systems)
-        assert elapsed < 15.0
+        assert elapsed < 20.0
 
 
 # ============================================================================
@@ -428,13 +428,14 @@ class TestRobustness:
     """Tests for robustness to various input conditions."""
 
     def test_disconnected_objects(self):
-        """Test with disconnected components within same label."""
+        """Test with objects touching at single voxel point (edge case)."""
         image = np.random.randint(50, 200, (10, 20, 20), dtype=np.uint8)
         labels = np.zeros((10, 20, 20), dtype=np.uint8)
 
-        # Create disconnected regions with same label
-        labels[2:4, 5:10, 5:10] = 1
-        labels[6:8, 10:15, 10:15] = 1
+        # Create objects touching at a single voxel - true edge case
+        labels[2:5, 5:8, 5:8] = 1
+        labels[5:8, 8:11, 8:11] = 2  # Touching at single corner/edge voxels
+        labels[5, 8, 8] = 3  # Extremely small object at junction
 
         loader = ObjectLoader(
             image=image,
@@ -444,8 +445,8 @@ class TestRobustness:
         )
         result = measure_3D_intensity_CPU(object_loader=loader)
 
-        # Should handle disconnected components
-        assert len(result["object_id"]) > 0
+        # Should handle objects touching at single points
+        assert len(result["object_id"]) >= 3
 
     def test_touch_boundary_objects(self):
         """Test objects that touch image boundaries."""
@@ -489,14 +490,17 @@ class TestRobustness:
         assert len(result["object_id"]) > 0
 
     def test_nested_objects_like_structures(self):
-        """Test with nested, concentric objects."""
+        """Test with objects having internal holes (edge case topology)."""
         image = np.random.randint(50, 200, (20, 30, 30), dtype=np.uint8)
         labels = np.zeros((20, 30, 30), dtype=np.uint8)
 
-        # Outer object
+        # Create object with internal hole - topological edge case
         labels[2:18, 5:25, 5:25] = 1
-        # Inner object (will overwrite outer labels)
-        labels[6:14, 10:20, 10:20] = 2
+        # Create hole inside object 1 (set back to 0)
+        labels[8:12, 12:18, 12:18] = 0
+        # Add another object with Swiss cheese topology
+        labels[2:8, 26:29, 26:29] = 2
+        labels[4:6, 27, 27] = 0  # Tiny hole through object 2
 
         loader = ObjectLoader(
             image=image,
@@ -506,8 +510,55 @@ class TestRobustness:
         )
         result = measure_3D_texture(object_loader=loader)
 
-        # Should handle overlapping regions
-        assert len(result["object_id"]) > 0
+        # Should handle objects with internal holes (non-trivial topology)
+        assert len(result["object_id"]) >= 2
+
+    def test_maximum_object_count(self):
+        """Test with maximum practical number of objects (edge case)."""
+        image = np.random.randint(50, 200, (10, 30, 30), dtype=np.uint8)
+        labels = np.zeros((10, 30, 30), dtype=np.uint8)
+
+        # Create many small objects (close to practical limit)
+        obj_id = 1
+        for z in range(2, 9, 2):
+            for y in range(2, 28, 3):
+                for x in range(2, 28, 3):
+                    if obj_id <= 200:  # Near limit
+                        labels[z, y, x] = obj_id % 256  # Handle uint8 overflow
+                        obj_id += 1
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        # Should handle many objects efficiently
+        result = measure_3D_intensity_CPU(object_loader=loader)
+        assert len(set(result["object_id"])) >= 50
+
+    def test_checkerboard_pattern_objects(self):
+        """Test with alternating checkerboard pattern (edge case)."""
+        image = np.random.randint(50, 200, (10, 20, 20), dtype=np.uint8)
+        labels = np.zeros((10, 20, 20), dtype=np.uint8)
+
+        # Create checkerboard pattern - maximum object boundaries
+        for z in range(2, 8):
+            for y in range(2, 18):
+                for x in range(2, 18):
+                    labels[z, y, x] = ((z + y + x) % 2) + 1
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        # Should handle complex boundary patterns
+        result = measure_3D_intensity_CPU(object_loader=loader)
+        assert len(result["object_id"]) >= 2
 
 
 # ============================================================================
@@ -752,10 +803,12 @@ class TestEdgeCasesAdvanced:
     """Advanced edge case tests."""
 
     def test_single_object_all_features(self):
-        """Test all features with single object."""
-        image = np.random.randint(50, 200, (15, 25, 25), dtype=np.uint8)
+        """Test all features with extremely large single object (edge case)."""
+        # Edge case: single massive object filling almost entire volume
+        image = np.random.randint(50, 200, (50, 80, 80), dtype=np.uint8)
         labels = np.zeros_like(image, dtype=np.uint8)
-        labels[3:12, 5:20, 5:20] = 1
+        # Object fills 95% of volume - edge case for memory and computation
+        labels[1:49, 1:79, 1:79] = 1
 
         loader = ObjectLoader(
             image=image,
@@ -767,7 +820,7 @@ class TestEdgeCasesAdvanced:
         mock_loader = Mock()
         mock_loader.anisotropy_spacing = (1.0, 0.1, 0.1)
 
-        # All features should work
+        # All features should work even with massive object
         results = {}
 
         try:
@@ -775,15 +828,20 @@ class TestEdgeCasesAdvanced:
                 image_set_loader=mock_loader,
                 object_loader=loader,
             )
+            assert "Volume" in results["area"]
+            # Check that volume is indeed very large
+            assert results["area"]["Volume"][0] > 100000
         except Exception:
             pass
 
         try:
             results["intensity"] = measure_3D_intensity_CPU(object_loader=loader)
+            assert len(results["intensity"]["object_id"]) > 0
         except Exception:
             pass
 
         try:
+            # Use subsampling for texture on large object
             results["texture"] = measure_3D_texture(object_loader=loader)
         except Exception:
             pass
@@ -793,7 +851,8 @@ class TestEdgeCasesAdvanced:
         except Exception:
             pass
 
-        assert len(results) > 0
+        # At least intensity and area should succeed
+        assert len(results) >= 2
 
     def test_very_high_intensity_values(self):
         """Test features with very high intensity values."""

@@ -11,5 +11,12 @@ def test_retrieve_channel_mapping(tmp_path: Path) -> None:
     toml_path = tmp_path / "channels.toml"
     toml_path.write_text("[channel_mapping]\nnuclei='405'\ncyto='488'\n")
     mapping = retrieve_channel_mapping(str(toml_path))
-    assert mapping["nuclei"] == "405"
-    assert mapping["cyto"] == "488"
+    assert mapping["DNA"] == "405"
+    assert mapping["ER"] == "488"
+    assert mapping["AGP"] == "555"
+    assert mapping["Mito"] == "640"
+    assert mapping["BF"] == "TRANS"
+    assert mapping["Nuclei"] == "nuclei_"
+    assert mapping["Cell"] == "cell_"
+    assert mapping["Cytoplasm"] == "cytoplasm_"
+    assert mapping["Organoid"] == "organoid_"
