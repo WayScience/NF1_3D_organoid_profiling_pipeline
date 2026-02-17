@@ -94,6 +94,12 @@ def parse_args():
         default=None,
         help="Name of the subparent directory for segmentation masks, e.g. 'deconvolved_segmentation_masks'",
     )
+    argparser.add_argument(
+        "--output_features_subparent_name",
+        type=str,
+        default=None,
+        help="Name of the subparent directory for the features",
+    )
 
     args = argparser.parse_args()
     well_fov = args.well_fov
@@ -106,7 +112,6 @@ def parse_args():
     input_subparent_name = args.input_subparent_name
     mask_subparent_name = args.mask_subparent_name
     output_features_subparent_name = args.output_features_subparent_name
-
 
     return {
         "well_fov": well_fov,
