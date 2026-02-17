@@ -112,14 +112,18 @@ def perform_morphology_dependent_segmentation(
     connectivity = 1
     compactness = 0
 
-    if organoid_label == "globular":
+    if organoid_label == "globular" or organoid_label == "cluster":
         elevation_map = skimage.filters.gaussian(cyto_signal, sigma=1.0)
         elevation_map = sobel(elevation_map)
         # update compactness for globular morphology to reduce oversegmentation
         connectivity = 0
         compactness = 0
 
-    elif organoid_label == "small/dissociated":
+    elif (
+        organoid_label == "small"
+        or organoid_label == "dissociated"
+        or organoid_label == "blank"
+    ):
         print("Dissociated morphology selected")
         elevation_map = skimage.morphology.binary_dilation(
             elevation_map_threshold_signal,
@@ -135,6 +139,9 @@ def perform_morphology_dependent_segmentation(
         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
         connectivity = 0
         compactness = 0
+    elif organoid_label == "failed" or organoid_label == "blank":
+        print("Failed morphology selected, skipping cell segmentation")
+        return np.zeros_like(cyto_signal, dtype=np.int32)
     else:
         raise ValueError(f"Unknown morphology label: {organoid_label}")
 

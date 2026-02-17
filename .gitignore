@@ -224,3 +224,7 @@ docs/html/*
 2.segment_images/models/*
 2.segment_images/logs/*
 2.segment_images/results/*
+5.technical_analysis/processed_data/*
+5.technical_analysis/results/*
+7.technical_analysis/processed_data/*
+7.technical_analysis/results/*
