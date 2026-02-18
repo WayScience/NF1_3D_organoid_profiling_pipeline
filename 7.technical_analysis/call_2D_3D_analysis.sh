@@ -6,7 +6,7 @@ cd scripts || exit
 
 conda activate GFF_segmentation
 
-python raw_image_tech_analysis_2D_3D.py
+python raw_image_tech_analysis_2D_3D.py --n_processes 18
 
 conda deactivate
 
