@@ -129,7 +129,7 @@ results_dir = pathlib.Path(
 results_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 # list of all file paths to analyze
@@ -165,7 +165,7 @@ file_paths_df = pd.DataFrame({"image_path": file_paths})
 file_paths_df.to_parquet(file_paths_output_file, index=False)
 
 
-# In[ ]:
+# In[5]:
 
 
 df = pd.DataFrame({"image_path": file_paths})
@@ -217,7 +217,7 @@ df["organoid_mask_path"] = df.apply(
 df.head()
 
 
-# In[ ]:
+# In[1]:
 
 
 channels = ["405", "488", "555", "640"]
@@ -233,6 +233,7 @@ for idx, row in tqdm.tqdm(df.iterrows(), total=len(df)):
         for channel in channels:
             # Reconstruct row as a Series-like object
             row = pd.Series(row_dict)
+            patient = row["patient"]
 
             # set file paths for results
             results_2D_file_dir = pathlib.Path(
@@ -242,120 +243,112 @@ for idx, row in tqdm.tqdm(df.iterrows(), total=len(df)):
             results_3D_file_dir = pathlib.Path(
                 f"{results_dir}/{row['basicpy_status']}_{row['patient']}_{row['well_fov']}_{channel}_{compartment}_image_quality_metrics_3D_wise.parquet"
             ).resolve()
-            try:
-                # skip processing if file already exists - a sort of caching
-                if results_2D_file_dir.exists() and results_3D_file_dir.exists():
-                    continue
 
-                # loads one mask - binarizes - retrieves foreground and background masks
-                if compartment == "nuclei":
-                    mask = binarize_instance_masks(
-                        tifffile.imread(row["nuclei_mask_path"])
+            # skip processing if file already exists - a sort of caching
+            if results_2D_file_dir.exists() and results_3D_file_dir.exists():
+                continue
+
+            # loads one mask - binarizes - retrieves foreground and background masks
+            if compartment == "nuclei":
+                mask = binarize_instance_masks(tifffile.imread(row["nuclei_mask_path"]))
+            elif compartment == "cell":
+                mask = binarize_instance_masks(tifffile.imread(row["cell_mask_path"]))
+            elif compartment == "organoid":
+                mask = binarize_instance_masks(
+                    tifffile.imread(row["organoid_mask_path"])
+                )
+            else:
+                raise ValueError(f"Unknown compartment: {compartment}")
+
+            if channel == "640" and patient == "NF0037_T1":
+                # this is temporary until the new masks are generated with the correct channel
+                mask = mask[1:, :, :]
+
+            # Load raw signal image
+            image_path = row[channel]
+            image = tifffile.imread(image_path)
+
+            ####################################################
+            # 3D-wise metrics
+            ####################################################
+            if results_3D_file_dir.exists():
+                continue
+            else:
+                image_metrics_3D_dict = {
+                    "patient": [],
+                    "well_fov": [],
+                    "channel": [],
+                    "compartment": [],
+                    "signal_to_noise_ratio": [],
+                    "michelson_contrast": [],
+                    "RMS_contrast": [],
+                }
+
+                # get the 3D foreground and background masks
+                foreground_mask, background_mask = retreive_foreground_background_masks(
+                    binary_mask=mask
+                )
+                image_metrics_3D = calculate_all_image_metrics(
+                    image=image,
+                    foreground_mask=foreground_mask,
+                    background_mask=background_mask,
+                )
+                image_metrics_3D_dict["patient"].append(row["patient"])
+                image_metrics_3D_dict["well_fov"].append(row["well_fov"])
+                image_metrics_3D_dict["channel"].append(channel)
+                image_metrics_3D_dict["compartment"].append(compartment)
+                image_metrics_3D_dict["signal_to_noise_ratio"].append(
+                    image_metrics_3D["snr"]
+                )
+                image_metrics_3D_dict["michelson_contrast"].append(
+                    image_metrics_3D["m_contrast"]
+                )
+                image_metrics_3D_dict["RMS_contrast"].append(
+                    image_metrics_3D["rms_contrast"]
+                )
+                image_metrics_3D_df = pd.DataFrame(image_metrics_3D_dict)
+                image_metrics_3D_df.to_parquet(results_3D_file_dir, index=False)
+
+            #####################################################
+            # 2D-wise metrics
+            #####################################################
+            if results_2D_file_dir.exists():
+                continue
+            else:
+                for z_slice in range(image.shape[0]):
+                    # we had the wrong channel in the first slice of the mito channel
+                    # this way we actually align the mask to the image if in mito channel
+                    if channel == "640":
+                        # this is temporary until the new masks are generated with the correct channel
+                        mask_slice = mask[z_slice, :, :].copy()
+                    else:
+                        mask_slice = mask[z_slice, :, :].copy()
+                    image_slice = image[z_slice, :, :].copy()
+                    foreground_mask_slice, background_mask_slice = (
+                        retreive_foreground_background_masks(binary_mask=mask_slice)
                     )
-                elif compartment == "cell":
-                    mask = binarize_instance_masks(
-                        tifffile.imread(row["cell_mask_path"])
+
+                    # Calculate metrics
+                    image_metrics_2D = calculate_all_image_metrics(
+                        image=image_slice,
+                        foreground_mask=foreground_mask_slice,
+                        background_mask=background_mask_slice,
                     )
-                elif compartment == "organoid":
-                    mask = binarize_instance_masks(
-                        tifffile.imread(row["organoid_mask_path"])
-                    )
-                else:
-                    raise ValueError(f"Unknown compartment: {compartment}")
 
-                if channel == "640" and patient == "NF0037_T1":
-                    # this is temporary until the new masks are generated with the correct channel
-                    mask = mask[1:, :, :]
-
-                # Load raw signal image
-                image_path = row[channel]
-                image = tifffile.imread(image_path)
-
-                ####################################################
-                # 3D-wise metrics
-                ####################################################
-                if results_3D_file_dir.exists():
-                    continue
-                else:
-                    image_metrics_3D_dict = {
-                        "patient": [],
-                        "well_fov": [],
-                        "channel": [],
-                        "compartment": [],
-                        "signal_to_noise_ratio": [],
-                        "michelson_contrast": [],
-                        "RMS_contrast": [],
+                    # Store results
+                    results_dict = {
+                        "patient": [row["patient"]],
+                        "well_fov": [row["well_fov"]],
+                        "channel": [channel],
+                        "z_slice": [z_slice],
+                        "compartment": [compartment],
+                        "signal_to_noise_ratio": [image_metrics_2D["snr"]],
+                        "michelson_contrast": [image_metrics_2D["m_contrast"]],
+                        "RMS_contrast": [image_metrics_2D["rms_contrast"]],
                     }
 
-                    # get the 3D foreground and background masks
-                    foreground_mask, background_mask = (
-                        retreive_foreground_background_masks(binary_mask=mask)
-                    )
-                    image_metrics_3D = calculate_all_image_metrics(
-                        image=image,
-                        foreground_mask=foreground_mask,
-                        background_mask=background_mask,
-                    )
-                    image_metrics_3D_dict["patient"].append(row["patient"])
-                    image_metrics_3D_dict["well_fov"].append(row["well_fov"])
-                    image_metrics_3D_dict["channel"].append(channel)
-                    image_metrics_3D_dict["compartment"].append(compartment)
-                    image_metrics_3D_dict["signal_to_noise_ratio"].append(
-                        image_metrics_3D["snr"]
-                    )
-                    image_metrics_3D_dict["michelson_contrast"].append(
-                        image_metrics_3D["m_contrast"]
-                    )
-                    image_metrics_3D_dict["RMS_contrast"].append(
-                        image_metrics_3D["rms_contrast"]
-                    )
-                    image_metrics_3D_df = pd.DataFrame(image_metrics_3D_dict)
-                    image_metrics_3D_df.to_parquet(results_3D_file_dir, index=False)
-
-                #####################################################
-                # 2D-wise metrics
-                #####################################################
-                if results_2D_file_dir.exists():
-                    continue
-                else:
-                    for z_slice in range(image.shape[0]):
-                        # we had the wrong channel in the first slice of the mito channel
-                        # this way we actually align the mask to the image if in mito channel
-                        if channel == "640":
-                            # this is temporary until the new masks are generated with the correct channel
-                            mask_slice = mask[z_slice, :, :].copy()
-                        else:
-                            mask_slice = mask[z_slice, :, :].copy()
-                        image_slice = image[z_slice, :, :].copy()
-                        foreground_mask_slice, background_mask_slice = (
-                            retreive_foreground_background_masks(binary_mask=mask_slice)
-                        )
-
-                        # Calculate metrics
-                        image_metrics_2D = calculate_all_image_metrics(
-                            image=image_slice,
-                            foreground_mask=foreground_mask_slice,
-                            background_mask=background_mask_slice,
-                        )
-
-                        # Store results
-                        results_dict = {
-                            "patient": [row["patient"]],
-                            "well_fov": [row["well_fov"]],
-                            "channel": [channel],
-                            "z_slice": [z_slice],
-                            "compartment": [compartment],
-                            "signal_to_noise_ratio": [image_metrics_2D["snr"]],
-                            "michelson_contrast": [image_metrics_2D["m_contrast"]],
-                            "RMS_contrast": [image_metrics_2D["rms_contrast"]],
-                        }
-
-                    result_df = pd.DataFrame(results_dict)
-                    result_df.to_parquet(results_2D_file_dir, index=False)
-            except Exception as e:
-                print(
-                    f"Error processing {row['patient']} {row['well_fov']} {channel} {compartment}: {e}"
-                )
+                result_df = pd.DataFrame(results_dict)
+                result_df.to_parquet(results_2D_file_dir, index=False)
 
 
 # In[ ]:
