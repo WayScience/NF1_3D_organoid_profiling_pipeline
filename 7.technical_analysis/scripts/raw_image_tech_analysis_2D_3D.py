@@ -205,6 +205,10 @@ def calculate_RMS_contrast(
     mean_signal = np.mean(signal)
     mean_background = np.mean(background)
 
+    if mean_background == 0:
+        eps = 1e-10
+        mean_background += eps
+
     rms_contrast = np.sqrt(np.mean((signal - mean_signal) ** 2)) / mean_background
     return rms_contrast
 

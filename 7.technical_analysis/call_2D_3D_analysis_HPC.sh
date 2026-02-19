@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=128
+#SBATCH --ntasks=64
 #SBATCH --partition=amilan
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
@@ -17,7 +17,7 @@ cd scripts || exit
 
 conda activate GFF_segmentation
 
-python raw_image_tech_analysis_2D_3D.py --n_processes 128
+python raw_image_tech_analysis_2D_3D.py --n_processes 64
 
 conda deactivate
 
