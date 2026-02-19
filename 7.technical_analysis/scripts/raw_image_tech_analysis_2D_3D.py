@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -26,7 +26,7 @@ else:
     import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -51,7 +51,7 @@ if mp.cpu_count() < n_processes:
 print(f"Using {n_processes} processes")
 
 
-# In[ ]:
+# In[3]:
 
 
 def file_corruption_check(image: np.ndarray) -> bool:
@@ -243,7 +243,7 @@ def calculate_all_image_metrics(
     }
 
 
-# In[ ]:
+# In[4]:
 
 
 platemap_file_dir = pathlib.Path(
@@ -256,7 +256,7 @@ results_dir = pathlib.Path(
 results_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 # list of all file paths to analyze

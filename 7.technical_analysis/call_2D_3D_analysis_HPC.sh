@@ -4,10 +4,11 @@
 #SBATCH --partition=amilan
 #SBATCH --qos=normal
 #SBATCH --account=amc-general
-#SBATCH --time=4:00:00
+#SBATCH --time=5:00
 #SBATCH --output=multi_process_2D_3D_tech_analysis_%j.out
 
 module load anaconda
+module load gcc
 conda init bash
 conda activate GFF_segmentation
 
