@@ -39,10 +39,17 @@ if not in_notebook:
         default=18,
         help="Number of processes to use",
     )
+    argparse.add_argument(
+        "--run_parallel",
+        action="store_true",
+        help="Run processing in parallel",
+    )
     n_processes = argparse.parse_args().n_processes
+    run_parallel = argparse.parse_args().run_parallel
 else:
     # Process tasks in parallel
-    n_processes = 18
+    n_processes = 20
+    run_parallel = True
 
 # catch if the number of process requested exceeds the number of CPUs available and adjust accordingly
 if mp.cpu_count() < n_processes:
@@ -292,7 +299,7 @@ file_paths_df = pd.DataFrame({"image_path": file_paths})
 file_paths_df.to_parquet(file_paths_output_file, index=False)
 
 
-# In[ ]:
+# In[6]:
 
 
 df = pd.DataFrame({"image_path": file_paths})
@@ -341,10 +348,11 @@ df["organoid_mask_path"] = df.apply(
     ),
     axis=1,
 )
+print(df.shape)
 df.head()
 
 
-# In[ ]:
+# In[7]:
 
 
 def calculate_slice_by_slice_metrics(
@@ -384,19 +392,34 @@ def calculate_slice_by_slice_metrics(
         kwargs["channel"],
         kwargs["compartment"],
     )
+    results_dict = {
+        "patient": [],
+        "well_fov": [],
+        "channel": [],
+        "z_slice": [],
+        "compartment": [],
+        "signal_to_noise_ratio": [],
+        "michelson_contrast": [],
+        "RMS_contrast": [],
+    }
     for z_slice in range(image.shape[0]):
         # we had the wrong channel in the first slice of the mito channel
         # this way we actually align the mask to the image if in mito channel
-        if channel == "640":
-            # this is temporary until the new masks are generated with the correct channel
-            mask_slice = mask[z_slice, :, :].copy()
-        else:
-            mask_slice = mask[z_slice, :, :].copy()
+        mask_slice = mask[z_slice, :, :].copy()
         image_slice = image[z_slice, :, :].copy()
         foreground_mask_slice, background_mask_slice = (
             retreive_foreground_background_masks(binary_mask=mask_slice)
         )
-
+        if not np.any(foreground_mask_slice) or not np.any(background_mask_slice):
+            results_dict["patient"].append(patient)
+            results_dict["well_fov"].append(well_fov)
+            results_dict["channel"].append(channel)
+            results_dict["z_slice"].append(z_slice)
+            results_dict["compartment"].append(compartment)
+            results_dict["signal_to_noise_ratio"].append(np.nan)
+            results_dict["michelson_contrast"].append(np.nan)
+            results_dict["RMS_contrast"].append(np.nan)
+            continue
         # Calculate metrics
         image_metrics_2D = calculate_all_image_metrics(
             image=image_slice,
@@ -405,16 +428,14 @@ def calculate_slice_by_slice_metrics(
         )
 
         # Store results
-        results_dict = {
-            "patient": [patient],
-            "well_fov": [well_fov],
-            "channel": [channel],
-            "z_slice": [z_slice],
-            "compartment": [compartment],
-            "signal_to_noise_ratio": [image_metrics_2D["snr"]],
-            "michelson_contrast": [image_metrics_2D["m_contrast"]],
-            "RMS_contrast": [image_metrics_2D["rms_contrast"]],
-        }
+        results_dict["patient"].append(patient)
+        results_dict["well_fov"].append(well_fov)
+        results_dict["channel"].append(channel)
+        results_dict["z_slice"].append(z_slice)
+        results_dict["compartment"].append(compartment)
+        results_dict["signal_to_noise_ratio"].append(image_metrics_2D["snr"])
+        results_dict["michelson_contrast"].append(image_metrics_2D["m_contrast"])
+        results_dict["RMS_contrast"].append(image_metrics_2D["rms_contrast"])
 
     result_df = pd.DataFrame(results_dict)
     result_df.to_parquet(results_2D_file_dir, index=False)
@@ -490,7 +511,7 @@ def calculate_whole_volume_metrics(
     return True
 
 
-# In[ ]:
+# In[8]:
 
 
 def process_single_task(task_params):
@@ -540,13 +561,17 @@ def process_single_task(task_params):
         else:
             raise ValueError(f"Unknown compartment: {compartment}")
 
-        if channel == "640" and patient == "NF0037_T1":
-            # this is temporary until the new masks are generated with the correct channel
-            mask = mask[1:, :, :]
-
         # Load raw signal image
         image_path = row[channel]
         image = tifffile.imread(image_path)
+
+        if channel == "640" and patient == "NF0037_T1":
+            # this is temporary until the new masks are generated with the correct channel
+            mask = mask[1:, :, :]
+            if mask.shape[0] != image.shape[0]:
+                raise ValueError(
+                    f"Mask and image have different number of z-slices for {patient} {well_fov} {channel} {compartment}"
+                )
 
         ####################################################
         # 3D-wise metrics
@@ -558,7 +583,7 @@ def process_single_task(task_params):
                 results_3D_file_dir=results_3D_file_dir,
                 kwargs={
                     "patient": patient,
-                    "well_fov": row["well_fov"],
+                    "well_fov": well_fov,
                     "channel": channel,
                     "compartment": compartment,
                 },
@@ -574,7 +599,7 @@ def process_single_task(task_params):
                 results_2D_file_dir=results_2D_file_dir,
                 kwargs={
                     "patient": patient,
-                    "well_fov": row["well_fov"],
+                    "well_fov": well_fov,
                     "channel": channel,
                     "compartment": compartment,
                 },
@@ -592,6 +617,9 @@ def process_single_task(task_params):
         )
 
 
+# In[9]:
+
+
 # Prepare all tasks
 channels = ["405", "488", "555", "640"]
 compartments = ["nuclei", "cell", "organoid"]
@@ -605,34 +633,40 @@ for idx, row in df.iterrows():
 
 print(f"Total tasks to process: {len(tasks)}")
 
-
-with mp.Pool(processes=n_processes) as pool:
-    results = list(
-        tqdm.tqdm(
-            pool.imap(process_single_task, tasks),
-            total=len(tasks),
-            desc="Processing images",
+if run_parallel:
+    with mp.Pool(processes=n_processes) as pool:
+        results = list(
+            tqdm.tqdm(
+                pool.imap(process_single_task, tasks),
+                total=len(tasks),
+                desc="Processing images",
+            )
         )
+
+    # Print summary
+    successful = sum(1 for success, _ in results if success)
+    failed = sum(1 for success, _ in results if not success)
+    print(
+        f"\nProcessing complete: {successful}/{len(results)} tasks successful, {failed} failed"
     )
 
-# Print summary
-successful = sum(1 for success, _ in results if success)
-failed = sum(1 for success, _ in results if not success)
-print(
-    f"\nProcessing complete: {successful}/{len(results)} tasks successful, {failed} failed"
-)
+    # Print any error messages
+    errors = [msg for success, msg in results if not success]
+    if errors:
+        print("\nErrors encountered:")
+        for error in errors[:10]:  # Print first 10 errors
+            print(f"  - {error}")
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more errors")
+else:
+    # Process tasks sequentially
+    for task in tqdm.tqdm(tasks, desc="Processing images sequentially"):
+        success, message = process_single_task(task)
+        if not success:
+            print(f"Error: {message}")
 
-# Print any error messages
-errors = [msg for success, msg in results if not success]
-if errors:
-    print("\nErrors encountered:")
-    for error in errors[:10]:  # Print first 10 errors
-        print(f"  - {error}")
-    if len(errors) > 10:
-        print(f"  ... and {len(errors) - 10} more errors")
 
-
-# In[ ]:
+# In[10]:
 
 
 # get a list of all files in the results directory
@@ -647,7 +681,7 @@ print(f"Combined 3D metrics dataframe shape: {df_3D.shape}")
 df_2D.head()
 
 
-# In[ ]:
+# In[11]:
 
 
 # merge the plate map info into the results
@@ -669,3 +703,9 @@ df_3D_results.sort_values(
     by=["patient", "well_fov", "channel", "compartment"], inplace=True
 )
 df_3D_results.to_parquet(concat_dir / "merged_results_3D.parquet", index=False)
+
+
+# In[12]:
+
+
+len(df_2D_results["z_slice"].unique())
