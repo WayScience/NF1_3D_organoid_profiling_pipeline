@@ -12,8 +12,11 @@ dependencies = [
     "arrow>=1.4.0",
     "ipykernel>=6.31.0",
     "matplotlib>=3.10.8",
+    "pandas>=3.0.1",
     "pip>=26.0.1",
     "pyarrow>=23.0.0",
+    "scikit-image>=0.26.0",
+    "transformers<5.0",
 ]
 
 [tool.uv]

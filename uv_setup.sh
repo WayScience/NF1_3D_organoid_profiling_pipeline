@@ -11,7 +11,7 @@ for _ in $(seq 1 $loops); do
     fi
     deactivate >/dev/null 2>&1 || true
 done
-
+unset VIRTUAL_ENV
 
 set -e
 
@@ -21,7 +21,6 @@ rm -f uv.lock
 rm -rf .venv
 
 uv venv
-
 uv sync
 
 # Use RELATIVE path - simple and reliable

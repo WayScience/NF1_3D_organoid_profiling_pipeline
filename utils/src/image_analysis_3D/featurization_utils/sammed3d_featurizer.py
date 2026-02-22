@@ -446,6 +446,7 @@ def call_SAMMed3D_pipeline(
     object_loader: ObjectLoader,
     SAMMed3D_model_path: Optional[str] = None,
     feature_type: str | List = ["global", "patch", "cls"],
+    extractor: Optional["MicroscopySAMMed3DPipeline"] = None,
 ) -> dict:
     """
     Call the SAMMed3D pipeline to extract features per patient, well-fov.
@@ -459,9 +460,12 @@ def call_SAMMed3D_pipeline(
         Class that loads the image and label image for a given patient,
         well-fov, channel, compartment
     SAMMed3D_model_path : Optional[str], optional
-        Path to the SAMMed3D model, by default None
+        Path to the SAMMed3D model, by default None. Ignored if extractor is provided.
     feature_type : str | List, optional
         Feature types to extract, by default ["global", "patch", "cls"]
+    extractor : Optional[MicroscopySAMMed3DPipeline], optional
+        Pre-loaded extractor instance. If provided, SAMMed3D_model_path is ignored.
+        Use this to avoid reloading the model in loops. By default None.
 
     Returns
     -------
@@ -495,10 +499,14 @@ def call_SAMMed3D_pipeline(
     if check_for_zero_objects(label_object):
         return output_dict
 
-    extracter = MicroscopySAMMed3DPipeline(
-        sammed3d_path=SAMMed3D_model_path,
-        device="cuda" if torch.cuda.is_available() else "cpu",
-    )
+    # Use provided extractor or create new one
+    if extractor is None:
+        extracter = MicroscopySAMMed3DPipeline(
+            sammed3d_path=SAMMed3D_model_path,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+        )
+    else:
+        extracter = extractor
 
     for index, label in enumerate(labels):
         selected_label_object = label_object.copy()
@@ -542,6 +550,7 @@ def call_whole_image_sammed3d_pipeline(
     image: np.ndarray,
     SAMMed3D_model_path: Optional[str] = None,
     feature_type: str | List = ["global", "patch", "cls"],
+    extractor: Optional["MicroscopySAMMed3DPipeline"] = None,
 ) -> dict:
     """
     Call the SAMMed3D pipeline to extract features for the whole image.
@@ -554,9 +563,12 @@ def call_whole_image_sammed3d_pipeline(
     image : np.ndarray
         3D numpy array of the image
     SAMMed3D_model_path : Optional[str], optional
-        Path to the SAMMed3D model, by default None
+        Path to the SAMMed3D model, by default None. Ignored if extractor is provided.
     feature_type : str | List, optional
         Type of features to extract, by default ["global", "patch", "cls"]
+    extractor : Optional[MicroscopySAMMed3DPipeline], optional
+        Pre-loaded extractor instance. If provided, SAMMed3D_model_path is ignored.
+        Use this to avoid reloading the model in loops. By default None.
 
     Returns
     -------
@@ -579,10 +591,14 @@ def call_whole_image_sammed3d_pipeline(
         "compartment": [],
     }
 
-    extracter = MicroscopySAMMed3DPipeline(
-        sammed3d_path=SAMMed3D_model_path,
-        device="cuda" if torch.cuda.is_available() else "cpu",
-    )
+    # Use provided extractor or create new one
+    if extractor is None:
+        extracter = MicroscopySAMMed3DPipeline(
+            sammed3d_path=SAMMed3D_model_path,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+        )
+    else:
+        extracter = extractor
 
     if isinstance(feature_type, list):
         for ft in feature_type:
