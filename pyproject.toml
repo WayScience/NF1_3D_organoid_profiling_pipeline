@@ -1,14 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "nf1-3d-organoid-profiling-pipeline"
 version = "0.1.0"
-description = "Add your description here"
+description = "NF1 3D organoid profiling pipeline"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "image-analysis-3d",
+    "arrow>=1.4.0",
+    "basicpy>=1.1.0",
     "ipykernel>=6.31.0",
+    "matplotlib>=3.10.8",
+    "pandas>=3.0.1",
     "pip>=26.0.1",
+    "pyarrow>=23.0.0",
+    "scikit-image>=0.26.0",
+    "transformers<5.0",
 ]
+
+[tool.uv]
+index-url = "https://download.pytorch.org/whl/cu118"
+extra-index-url = ["https://pypi.org/simple"]
 
 [tool.pycln]
 all = true
+
+[tool.setuptools]
+packages = []

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import itertools
@@ -65,8 +65,8 @@ features = [
 
 channel_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "BF": "TRANS",
     "Nuclei": "nuclei_",

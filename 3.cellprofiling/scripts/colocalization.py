@@ -6,6 +6,7 @@
 
 import os
 import pathlib
+import sys
 import time
 import warnings
 
@@ -14,23 +15,40 @@ import psutil
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-from notebook_init_utils import init_notebook
 
-root_dir, in_notebook = init_notebook()
-
-
-from colocalization_utils import (
+from image_analysis_3D.featurization_utils.colocalization_utils import (
     measure_3D_colocalization,
     prepare_two_images_for_colocalization,
 )
-from colocalization_utils_gpu import (
-    measure_3D_colocalization_gpu,
-    prepare_two_images_for_colocalization_gpu,
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
 )
-from loading_classes import ImageSetLoader, TwoObjectLoader
-from notebook_init_utils import bandicoot_check, init_notebook
-from resource_profiling_util import get_mem_and_time_profiling
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    TwoObjectLoader,
+)
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
 
+# from image_analysis_3D.featurization_utils.colocalization_utils_gpu import (
+#     measure_3D_colocalization_gpu,
+#     prepare_two_images_for_colocalization_gpu,
+# )
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+
+root_dir, in_notebook = init_notebook()
+
+# this is the NAS-mounted bandicoot directory
+# we use this to grab raw and processed data
+# while we us the root dir to save things to the git repo
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
@@ -51,17 +69,17 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "D11-2"
-    patient = "NF0016_T1"
-    channel = "ER.Mito"
+    well_fov = "C4-1"
+    patient = "NF0014_T1"
+    channel = "ER-DNA"
     compartment = "Nuclei"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
     output_features_subparent_name = "extracted_features"
 
-channel1 = channel.split(".")[0] if "." in channel else channel
-channel2 = channel.split(".")[1] if "." in channel else None
+channel1 = channel.split("-")[0] if "-" in channel else channel
+channel2 = channel.split("-")[1] if "-" in channel else None
 image_set_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
 )
@@ -79,10 +97,10 @@ output_parent_path.mkdir(parents=True, exist_ok=True)
 # In[3]:
 
 
-channel_mapping = {
+channel_n_compartment_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "BF": "TRANS",
     "Nuclei": "nuclei_",
@@ -99,9 +117,9 @@ image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
-    channel_mapping=channel_mapping,
+    channel_mapping=channel_n_compartment_mapping,
+    image_set_name=well_fov,
 )
-image_set_loader.image_set_dict.keys()
 
 
 # In[5]:
@@ -123,7 +141,7 @@ coloc_loader = TwoObjectLoader(
 )
 
 
-# In[ ]:
+# In[7]:
 
 
 output_dir = pathlib.Path(
@@ -168,7 +186,12 @@ for object_id in coloc_loader.object_ids:
         )
     coloc_df = pd.DataFrame(colocalization_features, index=[0])
     coloc_df.columns = [
-        f"Colocalization_{compartment}_{channel1}.{channel2}_{col}"
+        format_morphology_feature_name(
+            compartment=compartment,
+            channel=f"{channel1}-{channel2}",
+            feature_type="Colocalization",
+            measurement=col,
+        )
         for col in coloc_df.columns
     ]
     # retype the columns to float32

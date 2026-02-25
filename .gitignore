@@ -155,6 +155,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Ignore VSCode settings
+.vscode/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
@@ -163,37 +166,45 @@ cython_debug/
 #.idea/
 
 # Ignore data due to size
+# base dir hides
 data/*
-0.preprocessing_data/animations
-2.segment_images/examples/raw_z_input/*
-2.segment_images/processed_data/*
-2.segment_images/notebooks/output.zarr
-2.segment_images/scripts/output.zarr
-2.segment_images/animations/NF*
-2.segment_images/animations/test/mp4/*
-2.segment_images/animations/NF*
-2.segment_images/animations/gif/*
-2.segment_images/rerun_jobs.txt
-2.segment_images/animations/*
+docs/doctrees/*
+docs/html/*
+models/*
+profile_prep_for_sage/data_for_sage/*
 
 # Ignore experiment files from QC results
 *Experiment*.csv
-3.cellprofiling/analysis_output/*
-3.cellprofiling/results/*
-3.cellprofiling/models/*
-
-4.processing_image_based_profiles/notebooks/runinfo/*
-4.processing_image_based_profiles/scripts/runinfo/*
-4.processing_image_based_profiles/results/*
-nextflow_pipeline/.nextflow/*
-nextflow_pipeline/work/*
-nextflow_pipeline/.nextflow.log*
-.nextflow*
-5.EDA/results/*
-6.dynamic_viz_Rshiny/.Renviron
 *Rplots.pdf
-profile_prep_for_sage/data_for_sage/*
 
+# module 0
+0.preprocessing_data/animations
+# module 2
+2.segment_images/animations/*
+2.segment_images/animations/NF*
+2.segment_images/animations/gif/*
+2.segment_images/animations/test/mp4/*
+2.segment_images/data/compressed_images/*
+2.segment_images/examples/raw_z_input/*
+2.segment_images/figures/platemaps/*
+2.segment_images/models/*
+2.segment_images/notebooks/output.zarr
+2.segment_images/processed_data/*
+2.segment_images/rerun_jobs.txt
+2.segment_images/scripts/output.zarr
+# module 3
+3.cellprofiling/analysis_output/*
+3.cellprofiling/logs/*
+3.cellprofiling/models/*
+3.cellprofiling/results/*
+# module 4
+4.processing_image_based_profiles/notebooks/runinfo/*
+4.processing_image_based_profiles/results/*
+4.processing_image_based_profiles/scripts/runinfo/*
+# module 5
+5.technical_analysis/processed_data/*
+5.technical_analysis/results/*
+7.technical_analysis/results/*
 3.cellprofiling/models/*
 7.technical_analysis/processed_data/*
 7.technical_analysis/results/*
@@ -205,5 +216,7 @@ docs/html/*
 2.segment_images/data/compressed_images/*
 2.segment_images/models/*
 3.cellprofiling/logs/*
-5.technical_analysis/processed_data/*
 5.technical_analysis/results/*
+5.technical_analysis/processed_data/*
+7.technical_analysis/results/*
+7.technical_analysis/processed_data/*

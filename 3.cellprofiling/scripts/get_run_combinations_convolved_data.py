@@ -7,6 +7,7 @@
 import itertools
 import os
 import pathlib
+import sys
 from itertools import product
 
 import numpy as np
@@ -57,8 +58,8 @@ features = [
 
 channel_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "BF": "TRANS",
     "Nuclei": "nuclei_",
@@ -123,7 +124,7 @@ for i in iterations:
 list_of_subdirs_to_scan.append("deconvolved_images")
 
 
-# In[10]:
+# In[ ]:
 
 
 for patient in patients:

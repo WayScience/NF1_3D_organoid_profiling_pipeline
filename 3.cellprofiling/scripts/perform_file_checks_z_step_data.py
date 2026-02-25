@@ -7,16 +7,23 @@
 import itertools
 import os
 import pathlib
+import sys
 
 import numpy as np
 import pandas as pd
-from arg_parsing_utils import check_for_missing_args, parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
-from file_checking import check_number_of_files
-from loading_classes import ImageSetLoader
+from image_analysis_3D.featurization_utils.loading_classes import ImageSetLoader
+from image_analysis_3D.file_utils.file_checking import check_number_of_files
 
 # In[2]:
 
@@ -67,8 +74,8 @@ patient_ids = [
 
 channel_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "Nuclei": "nuclei_",
     "Cell": "cell_",

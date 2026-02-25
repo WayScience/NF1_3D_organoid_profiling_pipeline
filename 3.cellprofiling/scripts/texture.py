@@ -1,23 +1,38 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
+import sys
 import time
 
 import pandas as pd
 import psutil
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
-from loading_classes import ImageSetLoader, ObjectLoader
-from notebook_init_utils import bandicoot_check, init_notebook
-from resource_profiling_util import get_mem_and_time_profiling
-from texture_utils import measure_3D_texture
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
+    format_morphology_feature_name,
+)
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.resource_profiling_util import (
+    get_mem_and_time_profiling,
+)
+from image_analysis_3D.featurization_utils.texture_utils import measure_3D_texture
 
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
@@ -25,7 +40,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -66,8 +81,8 @@ output_parent_path.mkdir(parents=True, exist_ok=True)
 
 channel_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "BF": "TRANS",
     "Nuclei": "nuclei_",
@@ -93,8 +108,8 @@ image_set_loader = ImageSetLoader(
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
+    image_set_name=well_fov,
 )
-image_set_loader.image_set_dict.keys()
 
 
 # In[6]:
@@ -118,14 +133,20 @@ final_df = final_df.pivot(
     values="texture_value",
 )
 final_df.reset_index(inplace=True)
-for col in final_df.columns:
-    if col == "object_id":
-        continue
-    else:
-        final_df.rename(
-            columns={col: f"Texture_{compartment}_{channel}_{col}"},
-            inplace=True,
+final_df.rename(
+    columns={
+        col: format_morphology_feature_name(
+            compartment=compartment,
+            channel=channel,
+            feature_type="Granularity",
+            measurement=col,
         )
+        if col != "object_id"
+        else col
+        for col in final_df.columns
+    },
+    inplace=True,
+)
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
 final_df.columns.name = None
 
@@ -135,6 +156,7 @@ output_file = pathlib.Path(
 )
 output_file.parent.mkdir(parents=True, exist_ok=True)
 final_df.to_parquet(output_file)
+final_df.head()
 
 
 # In[7]:

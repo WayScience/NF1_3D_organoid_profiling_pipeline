@@ -63,28 +63,23 @@ def measure_3D_texture(
         Texture names include: Angular Second Moment, Contrast, Correlation,
         Variance, Inverse Difference Moment, Sum Average, Sum Variance,
         Sum Entropy, Entropy, and related texture measures.
-
-            - Difference.Variance
-            - Difference.Entropy
-            - Information.Measure.of.Correlation.1
-            - Information.Measure.of.Correlation.2
     """
     label_object = object_loader.label_image
     labels = object_loader.object_ids
     feature_names = [
-        "Angular.Second.Moment",
+        "AngularSecondMoment",
         "Contrast",
         "Correlation",
         "Variance",
-        "Inverse.Difference.Moment",
-        "Sum.Average",
-        "Sum.Variance",
-        "Sum.Entropy",
+        "InverseDifferenceMoment",
+        "SumAverage",
+        "SumVariance",
+        "SumEntropy",
         "Entropy",
-        "Difference.Variance",
-        "Difference.Entropy",
-        "Information.Measure.of.Correlation.1",
-        "Information.Measure.of.Correlation.2",
+        "DifferenceVariance",
+        "DifferenceEntropy",
+        "InformationMeasureOfCorrelation1",
+        "InformationMeasureOfCorrelation2",
     ]
 
     output_texture_dict = {
@@ -108,7 +103,7 @@ def measure_3D_texture(
         for i, feature_name in enumerate(feature_names):
             output_texture_dict["object_id"].append(label)
             output_texture_dict["texture_name"].append(
-                f"{feature_name}_{grayscale}.{distance}"
+                f"{feature_name}-{grayscale}-{distance}"
             )
             output_texture_dict["texture_value"].append(haralick_mean[i])
         del haralick_mean

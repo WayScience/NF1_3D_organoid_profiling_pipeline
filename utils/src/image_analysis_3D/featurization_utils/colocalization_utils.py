@@ -1,8 +1,10 @@
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple
 
 import numpy
 import scipy.ndimage
 import skimage
+
+from ..image_utils.image_utils import crop_3D_image, select_objects_from_label
 
 
 def linear_costes_threshold_calculation(
@@ -153,223 +155,6 @@ def bisection_costes_threshold_calculation(
     return thr_first_image_c, thr_second_image_c
 
 
-def select_objects_from_label(
-    label_image: numpy.ndarray, object_ids: list
-) -> numpy.ndarray:
-    """
-    Selects objects from a label image based on the provided object IDs.
-
-    Parameters
-    ----------
-    label_image : numpy.ndarray
-        The segmented label image.
-    object_ids : list
-        The object IDs to select.
-
-    Returns
-    -------
-    numpy.ndarray
-        The label image with only the selected objects.
-    """
-    label_image = label_image.copy()
-    label_image[label_image != object_ids] = 0
-    return label_image
-
-
-def expand_box(
-    min_coor: int, max_coord: int, current_min: int, current_max: int, expand_by: int
-) -> Union[Tuple[int, int], ValueError]:
-    """
-    Expand the bounding box of an object in a 3D image.
-
-    Parameters
-    ----------
-    min_coor : int
-        The minimum coordinate of the image for any dimension.
-    max_coord : int
-        The maximum coordinate of the image for any dimension.
-    current_min : int
-        The current minimum coordinate of the bounding box of an object for any dimension.
-    current_max : int
-        The current maximum coordinate of the bounding box of an object for any dimension.
-    expand_by : int
-        The amount to expand the bounding box by.
-
-    Returns
-    -------
-    Union[Tuple[int, int], ValueError]
-        The new minimum and maximum coordinates of the bounding box.
-        Raises ValueError if the expansion is not possible.
-    """
-
-    if max_coord - min_coor - (current_max - current_min) < expand_by:
-        return ValueError("Cannot expand box by the requested amount")
-    while expand_by > 0:
-        if current_min > min_coor:
-            current_min -= 1
-            expand_by -= 1
-        elif current_max < max_coord:
-            current_max += 1
-            expand_by -= 1
-
-    return current_min, current_max
-
-
-def new_crop_border(
-    bbox1: Tuple[
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-    ],
-    bbox2: Tuple[
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-    ],
-    image: numpy.ndarray,
-) -> Tuple[
-    Tuple[
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-    ],
-    Tuple[
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-    ],
-]:
-    """
-    Expand the bounding boxes of two objects in a 3D image to match their sizes.
-
-    Parameters
-    ----------
-    bbox1 : Tuple[Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float]]
-        The bounding box of the first object.
-    bbox2 : Tuple[Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float]]
-        The bounding box of the second object.
-    image : numpy.ndarray
-        The image to crop for each of the bounding boxes.
-
-    Returns
-    -------
-    Tuple[Tuple[Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float]], Tuple[Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float]]]
-        The new bounding boxes of the two objects.
-    Raises
-    ValueError
-        If the expansion is not possible.
-    """
-    i1z1, i1y1, i1x1, i1z2, i1y2, i1x2 = bbox1
-    i2z1, i2y1, i2x1, i2z2, i2y2, i2x2 = bbox2
-    z_range1 = i1z2 - i1z1
-    y_range1 = i1y2 - i1y1
-    x_range1 = i1x2 - i1x1
-    z_range2 = i2z2 - i2z1
-    y_range2 = i2y2 - i2y1
-    x_range2 = i2x2 - i2x1
-    z_diff = numpy.abs(z_range1 - z_range2)
-    y_diff = numpy.abs(y_range1 - y_range2)
-    x_diff = numpy.abs(x_range1 - x_range2)
-    min_z_coord = 0
-    max_z_coord = image.shape[0]
-    min_y_coord = 0
-    max_y_coord = image.shape[1]
-    min_x_coord = 0
-    max_x_coord = image.shape[2]
-    if z_range1 < z_range2:
-        i1z1, i1z2 = expand_box(
-            min_coor=min_z_coord,
-            max_coord=max_z_coord,
-            current_min=i1z1,
-            current_max=i1z2,
-            expand_by=z_diff,
-        )
-    elif z_range1 > z_range2:
-        i2z1, i2z2 = expand_box(
-            min_coor=min_z_coord,
-            max_coord=max_z_coord,
-            current_min=i2z1,
-            current_max=i2z2,
-            expand_by=z_diff,
-        )
-    if y_range1 < y_range2:
-        i1y1, i1y2 = expand_box(
-            min_coor=min_y_coord,
-            max_coord=max_y_coord,
-            current_min=i1y1,
-            current_max=i1y2,
-            expand_by=y_diff,
-        )
-    elif y_range1 > y_range2:
-        i2y1, i2y2 = expand_box(
-            min_coor=min_y_coord,
-            max_coord=max_y_coord,
-            current_min=i2y1,
-            current_max=i2y2,
-            expand_by=y_diff,
-        )
-    if x_range1 < x_range2:
-        i1x1, i1x2 = expand_box(
-            min_coor=min_x_coord,
-            max_coord=max_x_coord,
-            current_min=i1x1,
-            current_max=i1x2,
-            expand_by=x_diff,
-        )
-    elif x_range1 > x_range2:
-        i2x1, i2x2 = expand_box(
-            min_coor=min_x_coord,
-            max_coord=max_x_coord,
-            current_min=i2x1,
-            current_max=i2x2,
-            expand_by=x_diff,
-        )
-    return (i1z1, i1y1, i1x1, i1z2, i1y2, i1x2), (i2z1, i2y1, i2x1, i2z2, i2y2, i2x2)
-
-
-# crop the image to the bbox of the mask
-def crop_3D_image(
-    image: numpy.ndarray,
-    bbox: Tuple[
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-        Union[int, float],
-    ],
-) -> numpy.ndarray:
-    """
-    Crop a 3D image to the bounding box of a mask.
-
-    Parameters
-    ----------
-    image : numpy.ndarray
-        The image to crop.
-    bbox : Tuple[Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float], Union[int, float]]
-        The bounding box of the mask.
-
-    Returns
-    -------
-    numpy.ndarray
-        The cropped image.
-    """
-    z1, y1, x1, z2, y2, x2 = bbox
-    return image[z1:z2, y1:y2, x1:x2]
-
-
 def prepare_two_images_for_colocalization(
     label_object1: numpy.ndarray,
     label_object2: numpy.ndarray,
@@ -463,7 +248,6 @@ def measure_3D_colocalization(
         The output features for colocalization analysis.
     """
     results = {}
-    thr = 15
     ################################################################################################
     # Calculate the correlation coefficient between the two images
     # This is the Pearson correlation coefficient
@@ -476,13 +260,13 @@ def measure_3D_colocalization(
     # std(X) = sqrt(sum((X - mean(X)) ** 2) / (N - 1))
     # thus N -1 cancels out in the calculation below
     ################################################################################################
-    mean1 = scipy.ndimage.mean(cropped_image_1, 1)
-    mean2 = scipy.ndimage.mean(cropped_image_2, 1)
-    std1 = numpy.sqrt(scipy.ndimage.sum((cropped_image_1 - mean1) ** 2))
-    std2 = numpy.sqrt(scipy.ndimage.sum((cropped_image_2 - mean2) ** 2))
+    mean1 = numpy.mean(cropped_image_1)
+    mean2 = numpy.mean(cropped_image_2)
+    std1 = numpy.sqrt(numpy.sum((cropped_image_1 - mean1) ** 2))
+    std2 = numpy.sqrt(numpy.sum((cropped_image_2 - mean2) ** 2))
     x = cropped_image_1 - mean1  # x is not the same as the x dimension here
     y = cropped_image_2 - mean2  # y is not the same as the y dimension here
-    corr = scipy.ndimage.sum(x * y / (std1 * std2))
+    corr = numpy.sum(x * y) / (std1 * std2)
 
     ################################################################################################
     # Calculate the Manders' coefficients
@@ -490,28 +274,34 @@ def measure_3D_colocalization(
 
     # Threshold as percentage of maximum intensity of objects in each channel
     try:
-        tff = (thr / 100) * scipy.ndimage.maximum(cropped_image_1)
-        tss = (thr / 100) * scipy.ndimage.maximum(cropped_image_2)
+        tff = (thr / 100) * numpy.max(cropped_image_1)
+        tss = (thr / 100) * numpy.max(cropped_image_2)
         # Ensure thresholds are at least 1 to avoid zero thresholding
         # if an errors occurs this is probably due to empty images
         # or images where the bbox is incredibly small and inconsistent
         # or the bbox is on the border of the image
         # in which case we want to remove anyway
     except ValueError:
-        tff = 1
-        tss = 1
-    combined_thresh = (cropped_image_1 >= tff) & (cropped_image_2 >= tss)
+        M1, M2 = 0.0, 0.0
+    else:
+        # get the thresholds
+        combined_thresh = (cropped_image_1 >= tff) & (cropped_image_2 >= tss)
 
-    first_image_thresh = cropped_image_1[combined_thresh]
-    second_image_thresh = cropped_image_2[combined_thresh]
-    tot_first_image_thr = scipy.ndimage.sum(
-        cropped_image_1[cropped_image_1 >= tff],
-    )
-    tot_second_image_thr = scipy.ndimage.sum(cropped_image_2[cropped_image_2 >= tss])
+        first_image_thresh = cropped_image_1[combined_thresh]
+        second_image_thresh = cropped_image_2[combined_thresh]
 
-    M1 = scipy.ndimage.sum(first_image_thresh) / numpy.array(tot_first_image_thr)
-    M2 = scipy.ndimage.sum(second_image_thresh) / numpy.array(tot_second_image_thr)
+        tot_first_image_thr = scipy.ndimage.sum(
+            cropped_image_1[cropped_image_1 >= tff],
+        )
+        tot_second_image_thr = scipy.ndimage.sum(
+            cropped_image_2[cropped_image_2 >= tss]
+        )
 
+        if tot_first_image_thr > 0 and tot_second_image_thr > 0:
+            M1 = scipy.ndimage.sum(first_image_thresh) / tot_first_image_thr
+            M2 = scipy.ndimage.sum(second_image_thresh) / tot_second_image_thr
+        else:
+            M1, M2 = 0.0, 0.0
     ################################################################################################
     # Calculate the overlap coefficient
     ################################################################################################
@@ -536,6 +326,53 @@ def measure_3D_colocalization(
         cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
     ) / (numpy.array(spsq))
 
+    # first_pixels, second_pixels = flattened image arrays
+    # combined_thresh = boolean mask of pixels above threshold in both channels
+    # fi_thresh, si_thresh = thresholded intensities (same shape as pixels)
+
+    # --- Rank computation ---
+    # Flatten images for ranking
+    img1_flat = cropped_image_1.flatten()
+    img2_flat = cropped_image_2.flatten()
+
+    # --- Rank computation ---
+    sorted_idx_1 = numpy.argsort(img1_flat)
+    sorted_idx_2 = numpy.argsort(img2_flat)
+
+    # Create rank arrays
+    rank_1_flat = numpy.empty_like(sorted_idx_1, dtype=float)
+    rank_2_flat = numpy.empty_like(sorted_idx_2, dtype=float)
+    rank_1_flat[sorted_idx_1] = numpy.arange(len(sorted_idx_1))
+    rank_2_flat[sorted_idx_2] = numpy.arange(len(sorted_idx_2))
+
+    # Reshape back to original shape
+    rank_im1 = rank_1_flat.reshape(cropped_image_1.shape)
+    rank_im2 = rank_2_flat.reshape(cropped_image_2.shape)
+
+    # --- Rank difference weight ---
+    R = max(rank_im1.max(), rank_im2.max()) + 1
+    Di = numpy.abs(rank_im1 - rank_im2)
+    weight = (R - Di) / R
+
+    # Get weights for thresholded pixels
+    weight_thresh = weight[combined_thresh]
+
+    # Get thresholded values (no double-thresholding!)
+    first_image_thresh_final = first_image_thresh
+    second_image_thresh_final = second_image_thresh
+
+    # --- Calculate weighted colocalization ---
+    if numpy.any(combined_thresh) and len(first_image_thresh_final) > 0:
+        weighted_sum_1 = numpy.sum(first_image_thresh_final * weight_thresh)
+        weighted_sum_2 = numpy.sum(second_image_thresh_final * weight_thresh)
+
+        total_1 = numpy.sum(first_image_thresh_final)
+        total_2 = numpy.sum(second_image_thresh_final)
+
+        RWC1 = weighted_sum_1 / total_1 if total_1 > 0 else 0.0
+        RWC2 = weighted_sum_2 / total_2 if total_2 > 0 else 0.0
+    else:
+        RWC1, RWC2 = 0.0, 0.0
     ################################################################################################
     # Calculate the Costes' coefficient
     ################################################################################################
@@ -569,43 +406,22 @@ def measure_3D_colocalization(
     tot_second_image_thr_c = scipy.ndimage.sum(
         cropped_image_2[cropped_image_2 >= thr_second_image_c],
     )
-    C1 = scipy.ndimage.sum(first_image_thresh_c) / numpy.array(tot_first_image_thr_c)
-    C2 = scipy.ndimage.sum(second_image_thresh_c) / numpy.array(tot_second_image_thr_c)
-
+    if tot_first_image_thr_c > 0 and tot_second_image_thr_c > 0:
+        C1 = scipy.ndimage.sum(first_image_thresh_c) / tot_first_image_thr_c
+        C2 = scipy.ndimage.sum(second_image_thresh_c) / tot_second_image_thr_c
+    else:
+        C1, C2 = 0.0, 0.0
     ################################################################################################
     # write the results to the output dictionary
     ################################################################################################
 
-    results["MEAN.CORRELATION.COEFF"] = numpy.mean(corr)
-    results["MEDIAN.CORRELATION.COEFF"] = numpy.median(corr)
-    results["MIN.CORRELATION.COEFF"] = numpy.min(corr)
-    results["MAX.CORRELATION.COEFF"] = numpy.max(corr)
-    results["MEAN.MANDERS.COEFF.M1"] = numpy.mean(M1)
-    results["MEDIAN.MANDERS.COEFF.M1"] = numpy.median(M1)
-    results["MIN.MANDERS.COEFF.M1"] = numpy.min(M1)
-    results["MAX.MANDERS.COEFF.M1"] = numpy.max(M1)
-    results["MEAN.MANDERS.COEFF.M2"] = numpy.mean(M2)
-    results["MEDIAN.MANDERS.COEFF.M2"] = numpy.median(M2)
-    results["MIN.MANDERS.COEFF.M2"] = numpy.min(M2)
-    results["MAX.MANDERS.COEFF.M2"] = numpy.max(M2)
-    results["MEAN.OVERLAP.COEFF"] = numpy.mean(overlap)
-    results["MEDIAN.OVERLAP.COEFF"] = numpy.median(overlap)
-    results["MIN.OVERLAP.COEFF"] = numpy.min(overlap)
-    results["MAX.OVERLAP.COEFF"] = numpy.max(overlap)
-    results["MEAN.K1"] = numpy.mean(K1)
-    results["MEDIAN.K1"] = numpy.median(K1)
-    results["MIN.K1"] = numpy.min(K1)
-    results["MAX.K1"] = numpy.max(K1)
-    results["MEAN.K2"] = numpy.mean(K2)
-    results["MEDIAN.K2"] = numpy.median(K2)
-    results["MIN.K2"] = numpy.min(K2)
-    results["MAX.K2"] = numpy.max(K2)
-    results["MEAN.MANDERS.COEFF.COSTES.M1"] = numpy.mean(C1)
-    results["MEDIAN.MANDERS.COEFF.COSTES.M1"] = numpy.median(C1)
-    results["MIN.MANDERS.COEFF.COSTES.M1"] = numpy.min(C1)
-    results["MAX.MANDERS.COEFF.COSTES.M1"] = numpy.max(C1)
-    results["MEAN.MANDERS.COEFF.COSTES.M2"] = numpy.mean(C2)
-    results["MEDIAN.MANDERS.COEFF.COSTES.M2"] = numpy.median(C2)
-    results["MIN.MANDERS.COEFF.COSTES.M2"] = numpy.min(C2)
-    results["MAX.MANDERS.COEFF.COSTES.M2"] = numpy.max(C2)
+    results["Correlation"] = corr
+    results["MandersCoeffM1"] = M1
+    results["MandersCoeffM2"] = M2
+    results["OverlapCoeff"] = overlap
+    results["MandersCoeffCostesM1"] = C1
+    results["MandersCoeffCostesM2"] = C2
+    results["RankWeightedColocalizationCoeff1"] = RWC1
+    results["RankWeightedColocalizationCoeff2"] = RWC2
+
     return results
