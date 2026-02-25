@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
-
-pytest.importorskip("skimage")
 from segmentation_utils.general_segmentation_utils import (
     calculate_bbox_area,
     calculate_mask_iou,

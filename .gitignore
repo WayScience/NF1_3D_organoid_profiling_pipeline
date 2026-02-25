@@ -204,7 +204,7 @@ profile_prep_for_sage/data_for_sage/*
 # module 5
 5.technical_analysis/processed_data/*
 5.technical_analysis/results/*
-
+7.technical_analysis/results/*
 3.cellprofiling/models/*
 7.technical_analysis/processed_data/*
 7.technical_analysis/results/*

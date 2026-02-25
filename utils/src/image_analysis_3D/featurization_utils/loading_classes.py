@@ -145,6 +145,7 @@ class ImageSetLoader:
         self.unique_compartment_objects = {}
         if len(self.compartments) == 0:
             self.compartments = None
+            return
         for compartment in self.compartments:
             self.unique_compartment_objects[compartment] = numpy.unique(
                 self.image_set_dict[compartment]
@@ -177,9 +178,15 @@ class ImageSetLoader:
         list[str]
             List of image names excluding compartment masks.
         """
+        compartments = (
+            self.compartments
+            if self.compartments is not None and isinstance(self.compartments, list)
+            else []
+        )
         self.image_names = [
-            x for x in self.image_set_dict.keys() if x not in self.compartments
+            x for x in self.image_set_dict.keys() if x not in compartments
         ]
+        return self.image_names
 
     def get_compartments(self) -> list[str]:
         """Populate compartment names from available keys.
@@ -194,6 +201,7 @@ class ImageSetLoader:
             for x in self.image_set_dict.keys()
             if "Nuclei" in x or "Cell" in x or "Cytoplasm" in x or "Organoid" in x
         ]
+        return self.compartments
 
     def get_anisotropy(self) -> float:
         """Return the anisotropy factor for the image set.

@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
-
-pytest.importorskip("skimage")
 from file_utils.segmentation_decoupling import (
     check_coordinate_inside_box,
     euclidian_2D_distance,
