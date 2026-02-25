@@ -178,7 +178,11 @@ class ImageSetLoader:
         list[str]
             List of image names excluding compartment masks.
         """
-        compartments = self.compartments if self.compartments is not None else []
+        compartments = (
+            self.compartments
+            if self.compartments is not None and isinstance(self.compartments, list)
+            else []
+        )
         self.image_names = [
             x for x in self.image_set_dict.keys() if x not in compartments
         ]

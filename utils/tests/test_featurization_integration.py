@@ -7,23 +7,23 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from src.image_analysis_3D.featurization_utils.area_size_shape_utils import (
+from image_analysis_3D.featurization_utils.area_size_shape_utils import (
     measure_3D_area_size_shape,
 )
-from src.image_analysis_3D.featurization_utils.colocalization_utils import (
+from image_analysis_3D.featurization_utils.colocalization_utils import (
     measure_3D_colocalization,
 )
-from src.image_analysis_3D.featurization_utils.granularity_utils import (
+from image_analysis_3D.featurization_utils.granularity_utils import (
     measure_3D_granularity,
 )
-from src.image_analysis_3D.featurization_utils.intensity_utils import (
+from image_analysis_3D.featurization_utils.intensity_utils import (
     measure_3D_intensity_CPU,
 )
-from src.image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
-from src.image_analysis_3D.featurization_utils.neighbors_utils import (
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.neighbors_utils import (
     measure_3D_number_of_neighbors,
 )
-from src.image_analysis_3D.featurization_utils.texture_utils import measure_3D_texture
+from image_analysis_3D.featurization_utils.texture_utils import measure_3D_texture
 
 # ============================================================================
 # INTEGRATION TESTS
@@ -32,39 +32,6 @@ from src.image_analysis_3D.featurization_utils.texture_utils import measure_3D_t
 
 class TestFeaturizationPipeline:
     """Integration tests for the complete featurization pipeline."""
-
-    @pytest.fixture
-    def realistic_3d_volume(self):
-        """Create a more realistic 3D volume."""
-        volume = np.zeros((30, 50, 50), dtype=np.uint16)
-
-        # Add 3 objects with varying intensities
-        # Object 1: bright nucleus
-        volume[5:15, 10:20, 10:20] = np.random.randint(150, 255, (10, 10, 10))
-
-        # Object 2: medium intensity
-        volume[10:20, 25:40, 25:40] = np.random.randint(100, 200, (10, 15, 15))
-
-        # Object 3: lower intensity
-        volume[15:25, 5:15, 35:50] = np.random.randint(50, 150, (10, 10, 15))
-
-        return volume
-
-    @pytest.fixture
-    def realistic_label_image(self):
-        """Create a realistic label image."""
-        labels = np.zeros((30, 50, 50), dtype=np.uint8)
-
-        # Object 1
-        labels[5:15, 10:20, 10:20] = 1
-
-        # Object 2
-        labels[10:20, 25:40, 25:40] = 2
-
-        # Object 3
-        labels[15:25, 5:15, 35:50] = 3
-
-        return labels
 
     def test_all_features_single_object_loader(
         self, realistic_3d_volume, realistic_label_image
@@ -178,28 +145,6 @@ class TestFeaturizationPipeline:
 
 class TestPerformance:
     """Performance and efficiency tests."""
-
-    @pytest.fixture
-    def large_volume(self):
-        """Create a larger volume for performance testing."""
-        return np.random.randint(50, 200, (50, 100, 100), dtype=np.uint8)
-
-    @pytest.fixture
-    def large_label_image(self):
-        """Create larger label image."""
-        labels = np.zeros((50, 100, 100), dtype=np.uint8)
-
-        # Create multiple objects
-        label_id = 1
-        for z in range(5, 45, 10):
-            for y in range(10, 90, 20):
-                for x in range(10, 90, 20):
-                    labels[z : z + 8, y : y + 15, x : x + 15] = label_id
-                    label_id += 1
-                    if label_id > 10:  # Limit number of objects
-                        break
-
-        return labels
 
     def test_area_shape_performance(self, large_volume, large_label_image):
         """Test performance of area/shape measurement."""
@@ -329,7 +274,7 @@ class TestParameterValidation:
 
     def test_texture_scale_image_with_different_dtypes(self):
         """Test texture scaling with various input dtypes."""
-        from src.image_analysis_3D.featurization_utils.texture_utils import scale_image
+        from image_analysis_3D.featurization_utils.texture_utils import scale_image
 
         dtypes = [np.uint8, np.uint16, np.float32, np.float64]
 
@@ -982,7 +927,3 @@ class TestErrorRecovery:
 
         # At least one should succeed
         assert successful_extractions > 0
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

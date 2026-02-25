@@ -5,12 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import skimage.io
-from src.image_analysis_3D.featurization_utils.errors import ProcessorTypeError
-from src.image_analysis_3D.featurization_utils.feature_writing_utils import (
+from image_analysis_3D.featurization_utils.errors import ProcessorTypeError
+from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
     remove_underscores_from_string,
 )
-from src.image_analysis_3D.featurization_utils.loading_classes import (
+from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
     ObjectLoader,
 )
