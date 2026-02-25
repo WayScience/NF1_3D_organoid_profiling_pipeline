@@ -90,8 +90,8 @@ output_parent_path.mkdir(parents=True, exist_ok=True)
 
 channel_n_compartment_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "BF": "TRANS",
     "Nuclei": "nuclei_",

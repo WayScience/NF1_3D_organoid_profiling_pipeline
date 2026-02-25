@@ -35,7 +35,7 @@ for patient_id in "${patient_array[@]}"; do
         well_fov_log_path="../logs/whole_image_featurization/${patient_id}_${well_fov}_log.txt"
         touch "$well_fov_log_path"
         {
-            python run_chami_75_on_all_images.py --patient "$patient_id" --well_fov "$well_fov" --input_subparent_name "zstack_images"
+            python run_chammi_75_on_all_images.py --patient "$patient_id" --well_fov "$well_fov" --input_subparent_name "zstack_images"
         } &> "$well_fov_log_path"
         ((well_fov_counter++))
         echo -e "$well_fov ($well_fov_counter/$total_well_fovs) - $patient_id ($patient_counter/$total_patients)"

@@ -124,7 +124,7 @@ class PerImageNormalize(nn.Module):
         return x
 
 
-def featurize_2D_image_w_chami75(
+def featurize_2D_image_w_chammi75(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
 ):
     # Bag of Channels (BoC) - process each channel independently
@@ -232,9 +232,9 @@ for image_index in range(images.shape[0]):
     )
     feature_dict["feature_value"].extend(output_dict["value"])
 
-    batch_feat = featurize_2D_image_w_chami75(images, model, device)
+    batch_feat = featurize_2D_image_w_chammi75(images, model, device)
     for f_idx in range(batch_feat.shape[1]):
-        feature_name = f"{channel_id}_CHAMI75_feature_{f_idx}"
+        feature_name = f"{channel_id}_chammi75_feature_{f_idx}"
         feature_value = batch_feat[image_index, f_idx]
         feature_dict["patient"].extend([f"{patient}"])
         feature_dict["well_fov"].extend([f"{well_fov}"])
