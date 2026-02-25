@@ -12,8 +12,9 @@ from transformers import AutoModel
 
 
 # get the model
-def get_chami75_model(device):
-    device = "cuda"
+def get_chammi75_model(device):
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     model = AutoModel.from_pretrained("CaicedoLab/MorphEm", trust_remote_code=True)
     model.to(device).eval()
 
@@ -40,7 +41,14 @@ class SaturationNoiseInjector(nn.Module):
 
 # Self Normalize transformation
 class PerImageNormalize(nn.Module):
+    """Normalize each image independently using InstanceNorm2d."""
+
     def __init__(self, eps=1e-7):
+        """Parameters
+        ----------
+        eps : float, optional
+            A small value added to the denominator for numerical stability. Default is 1e-7
+        """
         super().__init__()
         self.eps = eps
         self.instance_norm = nn.InstanceNorm2d(
@@ -51,6 +59,20 @@ class PerImageNormalize(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass on the network
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (N, C, H, W) where N is batch size, C is number of channels, H and W are height and width.
+
+        Returns
+        -------
+        torch.Tensor
+            Normalized tensor of the same shape as input.
+
+        """
         if x.dim() == 3:
             x = x.unsqueeze(0)
         x = self.instance_norm(x)
@@ -59,7 +81,7 @@ class PerImageNormalize(nn.Module):
         return x
 
 
-def featurize_2D_image_w_chami75(
+def featurize_2D_image_w_chammi75(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
 ):
     # Define transforms
@@ -90,19 +112,17 @@ def featurize_2D_image_w_chami75(
             output = model.forward_features(single_channel)
             feat_temp = output["x_norm_clstoken"].cpu().detach().numpy()
             batch_feat.append(feat_temp)
-    return batch_feat[0]
+    return batch_feat
 
 
-def call_chami75_featurization_pipeline(
+def call_chammi75_featurization_pipeline(
     cropped_image: numpy.ndarray, model: torch.nn.Module
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    images = torch.tensor(cropped_image, dtype=torch.float32).unsqueeze(
-        0
-    )  # Add batch dimension
+    images = torch.from_numpy(cropped_image).float().unsqueeze(0)  # Add batch dimension
     # images is now (B, Y, X), add channel dimension -> (B, 1, Y, X)
     images = images.unsqueeze(1)
     # Replicate channel 3 times to get (B, 3, Y, X)
     images = images.repeat(1, 3, 1, 1)
-    batch_feat = featurize_2D_image_w_chami75(images, model, device)
+    batch_feat = featurize_2D_image_w_chammi75(images, model, device)
     return batch_feat

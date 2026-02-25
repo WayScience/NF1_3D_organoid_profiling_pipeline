@@ -238,7 +238,7 @@ def single_3D_image_expand_bbox(
         3D bbox in the format (zmin, ymin, xmin, zmax, ymax, xmax)
     expand_pixels : int
         number of pixels to expand the bbox in each direction (z, y, x)
-        the corrdinates become isotropic here so the expansion is the same across dimensions,
+        the coordinates become isotropic here so the expansion is the same across dimensions,
         but the anisotropy factor is used to adjust for the z dimension
     anisotropy_factor : int
         The ratio of "pixel" size in um between the z dimension and the x/y dimensions.
@@ -304,7 +304,13 @@ def check_for_xy_squareness(bbox: tuple[int, int, int, int, int, int]) -> float:
         The ratio of the y length to the x length of the bbox. A value of 1 indicates a square bbox.
     """
     z_min, y_min, x_min, z_max, y_max, x_max = bbox
-    xy_squareness = (y_max - y_min) / (x_max - x_min)
+    x_length = x_max - x_min
+    if x_length == 0:
+        raise ValueError(
+            "Cannot compute xy squareness for bbox with zero width in x dimension "
+            f"(bbox={bbox})."
+        )
+    xy_squareness = (y_max - y_min) / x_length
     return xy_squareness
 
 
