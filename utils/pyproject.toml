@@ -26,10 +26,11 @@ dependencies = [
     "jupyter",
     "ipykernel",
     "mahotas",
+    "matplotlib",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "black", "ruff", "pre-commit"]
+dev = ["pytest", "pytest-cov", "pytest-xdist", "black", "ruff", "pre-commit"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
