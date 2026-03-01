@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import psutil
 import scipy
+import seaborn as sns
 import tifffile
 from arg_parsing_utils import check_for_missing_args, parse_args
 from file_reading import *
@@ -31,8 +32,16 @@ from notebook_init_utils import bandicoot_check, init_notebook
 from skimage.filters import sobel
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    balanced_accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 # In[2]:
 
@@ -78,29 +87,23 @@ patient_list_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolv
 raw_image_base_dir = pathlib.Path(f"{image_base_dir}/data/").resolve()
 
 
-# In[ ]:
+# In[5]:
 
 
-labels_save_file = pathlib.Path("../image_labels/annotations.parquet").resolve(
-    strict=True
-)
+labels_save_file = pathlib.Path(
+    "../image_labels/segmentation_classes.parquet"
+).resolve()
+annotations_save_file = pathlib.Path("../image_labels/annotations.parquet").resolve()
 all_features_save_path = pathlib.Path(f"../results/all_features.parquet").resolve(
     strict=True
 )
-labels = read_labels(labels_save_file)
+labels = read_labels(annotations_save_file)
 labels_df = pd.DataFrame(labels)
-labels_df["patient"] = labels_df["image_filename"].apply(
-    lambda x: (
-        "_".join(x.split("_")[0:2]) if not "CQ1" in x else "_".join(x.split("_")[0:3])
-    )
-)
-labels_df["well_fov"] = labels_df["image_filename"].apply(
-    lambda x: x.split("_")[2] if not "CQ1" in x else x.split("_")[3]
-)
+print(labels_df.shape)
 labels_df.head()
 
 
-# In[7]:
+# In[6]:
 
 
 all_features_df = pd.read_parquet(all_features_save_path)
@@ -111,24 +114,32 @@ df = pd.merge(
     on=["patient", "well_fov"],
     how="right",
 )
+df
+
+
+# In[7]:
+
+
 # drop rows with na
-df = df.dropna(subset=["label"])
+df = df.dropna(subset=["label_name"])
 # drop the failed labels
 df = df[df["label_name"] != "fail"]
 # drop the blank labels
 df = df[df["label_name"] != "blank"]
 # drop na
 df = df.dropna()
+print(df.shape)
+df.head()
 
 
 # In[8]:
 
 
 # holdout a single patient
-holdout_patient = "NF0021_T1"
-holdout_df = df[df["patient"] == holdout_patient]
+holdout_patients = ["NF0021_T1", "NF0030_T1"]
+holdout_df = df[df["patient"].isin(holdout_patients)]
 # drop the holdout patient from the main df
-df = df[df["patient"] != holdout_patient]
+df = df[~df["patient"].isin(holdout_patients)]
 # set up data splits
 # train: 80%, val: 10%, test: 10%
 # stratify by label, patient
@@ -137,13 +148,13 @@ train_df, test_df = train_test_split(
     df,
     test_size=0.10,
     random_state=0,
-    stratify=df[["label"]],
+    stratify=df[["label_name"]],
 )
 train_df, val_df = train_test_split(
     train_df,
     test_size=0.1111,  # 0.1111 * 0.90 = 0.10 (10% test)
     random_state=0,
-    stratify=train_df[["label"]],
+    stratify=train_df[["label_name"]],
 )
 print(f"Train size: {len(train_df)}")
 print(f"Validation size: {len(val_df)}")
@@ -161,12 +172,48 @@ if len(train_df) + len(val_df) + len(test_df) + len(holdout_df) != len(df) + len
 non_feature_cols = [
     "patient",
     "well_fov",
+    "label_name",
     "image_filename",
     "annotator",
     "label",
-    "label_name",
     "timestamp",
 ]
+
+
+# In[10]:
+
+
+# fit the train data to the z score normalization
+
+
+scaler = StandardScaler()
+feature_cols = train_df.drop(columns=non_feature_cols).columns
+
+# Fit scaler on training features only
+scaler.fit(train_df[feature_cols])
+
+# Transform each split and reconstruct DataFrames
+train_scaled = pd.DataFrame(
+    scaler.transform(train_df[feature_cols]), columns=feature_cols, index=train_df.index
+)
+train_df = pd.concat([train_df[non_feature_cols], train_scaled], axis=1)
+
+val_scaled = pd.DataFrame(
+    scaler.transform(val_df[feature_cols]), columns=feature_cols, index=val_df.index
+)
+val_df = pd.concat([val_df[non_feature_cols], val_scaled], axis=1)
+
+test_scaled = pd.DataFrame(
+    scaler.transform(test_df[feature_cols]), columns=feature_cols, index=test_df.index
+)
+test_df = pd.concat([test_df[non_feature_cols], test_scaled], axis=1)
+
+holdout_scaled = pd.DataFrame(
+    scaler.transform(holdout_df[feature_cols]),
+    columns=feature_cols,
+    index=holdout_df.index,
+)
+holdout_df = pd.concat([holdout_df[non_feature_cols], holdout_scaled], axis=1)
 
 
 # In[11]:
@@ -196,7 +243,7 @@ joblib.dump(log_reg_model, "../models/logistic_regression_model.joblib")
 joblib.dump(rf_model, "../models/random_forest_model.joblib")
 
 
-# In[10]:
+# In[12]:
 
 
 # log reg preds
@@ -214,7 +261,7 @@ test_rf_preds = rf_model.predict(test_df.drop(columns=non_feature_cols))
 holdout_rf_preds = rf_model.predict(holdout_df.drop(columns=non_feature_cols))
 
 
-# In[11]:
+# In[13]:
 
 
 label_names = {
@@ -228,7 +275,7 @@ label_names = {
 }
 
 
-# In[12]:
+# In[14]:
 
 
 ############################################
@@ -405,7 +452,7 @@ plt.tight_layout()
 plt.show()
 
 
-# In[13]:
+# In[15]:
 
 
 # concatenate the train, val, test df with the predections
@@ -433,56 +480,45 @@ all_preds_df["image_path"] = all_preds_df.apply(
 all_preds_df.head()
 
 
-# In[14]:
+# In[16]:
 
-
-from sklearn.metrics import (
-    classification_report,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-)
 
 # calculate the model-wise per split performance metrics
-metrics_to_compute = ["accuracy", "precision", "recall", "f1"]
 performance_metrics = []
 for model in ["log_reg_prediction", "rf_prediction"]:
     for split in ["train", "val", "test", "holdout"]:
         subset_df = all_preds_df[all_preds_df["split"] == split].copy()
         y_true = subset_df["label_name"]
         y_pred = subset_df[model]
-        accuracy = np.mean(y_true == y_pred)
+        balanced_acc = balanced_accuracy_score(y_true, y_pred)
         performance_metrics.append(
             {
                 "model": model,
                 "split": split,
-                "accuracy": accuracy,
+                "balanced_accuracy": balanced_acc,
             }
         )
 performance_metrics_df = pd.DataFrame(performance_metrics)
 performance_metrics_df
 
 
-# In[15]:
+# In[17]:
 
-
-import seaborn as sns
 
 # plot the accuracy for each split with each model as a different color
 # split bar plot
 plt.figure(figsize=(8, 6))
-plt.title("Model Accuracy by Split")
-sns.barplot(data=performance_metrics_df, x="split", y="accuracy", hue="model")
+plt.title("Model balanced accuracy by Split")
+sns.barplot(data=performance_metrics_df, x="split", y="balanced_accuracy", hue="model")
 plt.ylim(0, 1)
-plt.ylabel("Accuracy")
+plt.ylabel("Balanced Accuracy")
 plt.xlabel("Data Split")
-plt.legend(title="Model", loc="upper left")
+plt.legend(title="Model", loc="upper right")
 plt.tight_layout()
 plt.show()
 
 
-# In[16]:
+# In[18]:
 
 
 # pick three random images from each predicted class to show
@@ -527,5 +563,81 @@ for row_idx, (pred_label, group) in enumerate(sampled_df.groupby("log_reg_predic
         title = label_names.get(pred_label, str(pred_label))
         ax.set_title(title)
 
+plt.tight_layout()
+plt.show()
+
+
+# ## Show wrong predictions
+
+# In[ ]:
+
+
+n_images_per_split = 15
+# plot 1 wrong prediction per data split and model
+wrong_preds = all_preds_df[
+    all_preds_df["label_name"] != all_preds_df["log_reg_prediction"]
+].copy()
+wrong_preds["model"] = "Logistic Regression"
+wrong_rf_preds = all_preds_df[
+    all_preds_df["label_name"] != all_preds_df["rf_prediction"]
+].copy()
+wrong_rf_preds["model"] = "Random Forest"
+wrong_preds_combined = pd.concat([wrong_preds, wrong_rf_preds], ignore_index=True)
+wrong_preds_combined["split_model"] = (
+    wrong_preds_combined["split"] + " - " + wrong_preds_combined["model"]
+)
+# pick one random wrong prediction per split_model
+rng = np.random.default_rng(0)
+sampled_wrong_preds = []
+for split in wrong_preds_combined["split"].unique():
+    group = wrong_preds_combined[wrong_preds_combined["split"] == split]
+    sampled_wrong_preds.append(
+        group.sample(n=n_images_per_split, random_state=rng.integers(0, 1_000_000))
+    )
+sampled_wrong_preds_df = pd.concat(sampled_wrong_preds, ignore_index=True)
+
+
+# In[ ]:
+
+
+# plot in a grid with rows as splits and columns as models
+splits = ["train", "val", "test", "holdout"]
+n_images_to_visualize = 5
+fig, axes = plt.subplots(
+    len(splits),
+    n_images_to_visualize,  # n  images per data split
+    figsize=(8, 16),
+)
+for row_idx, split in enumerate(splits):
+    for col_idx in range(
+        n_images_to_visualize
+    ):  # n_images_to_visualize images per data split
+        ax = axes[row_idx, col_idx]
+        sample = sampled_wrong_preds_df[(sampled_wrong_preds_df["split"] == split)]
+        label = (
+            sample["label_name"].iloc[col_idx]
+            if not sample.empty and col_idx < len(sample)
+            else "N/A"
+        )
+        log_reg_model_pred = (
+            sample["log_reg_prediction"].iloc[col_idx]
+            if not sample.empty and col_idx < len(sample)
+            else "N/A"
+        )
+        rf_model_pred = (
+            sample["rf_prediction"].iloc[col_idx]
+            if not sample.empty and col_idx < len(sample)
+            else "N/A"
+        )
+        if sample.empty or col_idx >= len(sample):
+            ax.axis("off")
+            continue
+        image_path = sample.iloc[col_idx]["image_path"]
+        img = read_zstack_image(image_path)
+        mid = img[img.shape[0] // 2]
+        ax.imshow(mid, cmap="inferno")
+        ax.axis("off")
+        title = f"{split}\nTrue: {label}\nLog Reg: {log_reg_model_pred}\nRF: {rf_model_pred}"
+        ax.set_title(title)
 plt.tight_layout()
 plt.show()

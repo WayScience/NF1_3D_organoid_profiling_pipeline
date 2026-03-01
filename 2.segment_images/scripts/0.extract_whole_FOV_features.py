@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# This notebook extracts whole volume and whole (middle slice) image deep learning metrics.
+# These metrics are SAMMed3D and CHAMMI-75 extracted features.
+
 # In[1]:
 
 
+import logging
 import os
 import pathlib
 import time
 import urllib.request
 import warnings
+from multiprocessing import Pool, cpu_count
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,6 +32,10 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from torchvision import transforms as v2
 from transformers import AutoModel
+
+# Suppress transformers warnings
+logging.getLogger("transformers").setLevel(logging.ERROR)
+
 
 # In[2]:
 
@@ -71,6 +80,8 @@ def generate_umap_and_pca(
 
 
 # Noise Injector transformation
+
+
 class SaturationNoiseInjector(nn.Module):
     def __init__(self, low=200, high=255):
         super().__init__()
@@ -78,6 +89,18 @@ class SaturationNoiseInjector(nn.Module):
         self.high = high
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Run the forward pass of the SaturationNoiseInjector transformation.
+        Parameters
+        ----------
+        x : torch.Tensor
+                A tensor of shape (N, C, Y, X) representing the input image batch.
+
+        Returns
+        -------
+        torch.Tensor
+                A tensor of the same shape as input, with noise injected into saturated pixels.
+        """
         channel = x[0].clone()
         noise = torch.empty_like(channel).uniform_(self.low, self.high)
         mask = (channel == 255).float()
@@ -109,7 +132,7 @@ class PerImageNormalize(nn.Module):
         return x
 
 
-def featurize_2D_image_w_chami75(
+def featurize_2D_image_w_chammi75(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
 ):
     # Bag of Channels (BoC) - process each channel independently
@@ -144,10 +167,17 @@ if not sam3dmed_checkpoint_path.exists():
     sam3dmed_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     urllib.request.urlretrieve(sam3dmed_checkpoint_url, str(sam3dmed_checkpoint_path))
 
-# Load model
+# Load model - suppress unused weights warning
 device = "cuda"
-model = AutoModel.from_pretrained("CaicedoLab/MorphEm", trust_remote_code=True)
-model.to(device).eval()
+warnings.filterwarnings(
+    "ignore",
+    message="Some weights of the model checkpoint.*were not used when initializing.*",
+)
+warnings.filterwarnings(
+    "ignore", category=UserWarning, module="torch.nn.modules.instancenorm"
+)
+chammi75_model = AutoModel.from_pretrained("CaicedoLab/MorphEm", trust_remote_code=True)
+chammi75_model.to(device).eval()
 # Define transforms
 transform = v2.Compose(
     [
@@ -186,77 +216,165 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve()
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 
 
-# In[ ]:
+# In[7]:
 
+
+# Suppress warnings
+import warnings
 
 warnings.filterwarnings(
-    "ignore",
-    message="input's size at dim=1 does not match num_features.*",
-    category=UserWarning,
+    "ignore", category=UserWarning, module="torch.nn.modules.instancenorm"
 )
-# loop through patients, then well fovs, get the image list
+
+
+# Define transforms (same as before)
+class SaturationNoiseInjector(nn.Module):
+    def __init__(self, low=200, high=255):
+        super().__init__()
+        self.low = low
+        self.high = high
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        channel = x[0].clone()
+        noise = torch.empty_like(channel).uniform_(self.low, self.high)
+        mask = (channel == 255).float()
+        noise_masked = noise * mask
+        channel[channel == 255] = 0
+        channel = channel + noise_masked
+        x[0] = channel
+        return x
+
+
+class PerImageNormalize(nn.Module):
+    def __init__(self, eps=1e-7):
+        super().__init__()
+        self.eps = eps
+        self.instance_norm = nn.InstanceNorm2d(
+            num_features=1,
+            affine=False,
+            track_running_stats=False,
+            eps=self.eps,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
+        x = self.instance_norm(x)
+        if x.shape[0] == 1:
+            x = x.squeeze(0)
+        return x
+
+
+def featurize_2D_image_w_chammi75_worker(
+    image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device, transform
+):
+    with torch.no_grad():
+        batch_feat = []
+        image_tensor = image_tensor.to(device)
+
+        for c in range(image_tensor.shape[1]):
+            single_channel = image_tensor[:, c, :, :].unsqueeze(1)
+            single_channel = transform(single_channel.squeeze(1)).unsqueeze(1)
+            output = model.forward_features(single_channel)
+            feat_temp = output["x_norm_clstoken"].cpu().detach().numpy()
+            batch_feat.append(feat_temp)
+    return batch_feat[
+        0
+    ]  # the channels are duplicated in the batch dimension, so we can just return the first one
+
+
+transform = v2.Compose(
+    [
+        SaturationNoiseInjector(),
+        PerImageNormalize(),
+        v2.Resize(size=(224, 224), antialias=True),
+    ]
+)
+
+
+# In[8]:
+
+
+# Build list of all patient/well_fov combinations to process
 for patient_id in tqdm.tqdm(patients, desc="Processing patients", leave=True):
     input_dir = pathlib.Path(
         f"{image_base_dir}/data/{patient_id}/zstack_images/"
     ).resolve(strict=True)
     well_fovs = input_dir.glob("*")
     well_fovs = [f.stem for f in well_fovs if f.is_dir()]
-    for well_fov_dir in tqdm.tqdm(
+    for well_fov in tqdm.tqdm(
         well_fovs, desc=f"Processing well FOVs for patient {patient_id}", leave=False
     ):
-        well_fov = pathlib.Path(well_fov_dir).name
+        input_dir = pathlib.Path(
+            f"{image_base_dir}/data/{patient_id}/zstack_images/"
+        ).resolve(strict=True)
         well_fov_dir = pathlib.Path(f"{input_dir}/{well_fov}").resolve(strict=True)
-        # save path
-        feature_save_path = pathlib.Path(
-            f"{image_base_dir}/data/{patient_id}/whole_image_features/{well_fov}_whole_image_features.parquet"
-        ).resolve()
-        feature_save_path.parent.mkdir(exist_ok=True, parents=True)
-        # if feature_save_path.exists():
-        #     continue
-
         # get all well fovs for this patient
-        images_to_process = {
-            "patient": [],
-            "well_fov": [],
-            "2D_image": [],
-            "3D_image": [],
-            "channel": [],
-        }
+        # Filter for only TIFF files to avoid reading non-image files
         images_to_load = [
-            x for x in pathlib.Path(well_fov_dir).glob("*") if x.is_file()
+            x for x in pathlib.Path(well_fov_dir).glob("*.tif*") if x.is_file()
         ]
-        for image_file in images_to_load:
+        images_to_load = sorted(
+            images_to_load, key=lambda x: x.stem.split("_")[1]
+        )  # sort by channel
+        for image_file in tqdm.tqdm(
+            images_to_load,
+            desc=f"Processing {patient_id} {well_fov} images",
+            leave=False,
+        ):
+            images_to_process = {
+                "patient": [],
+                "well_fov": [],
+                "2D_image": [],
+                "3D_image": [],
+                "channel": [],
+            }
+            channel = image_file.stem.split("_")[1]
+            # save path
+            feature_save_path = pathlib.Path(
+                f"{image_base_dir}/data/{patient_id}/whole_image_features/{well_fov}_{channel}_whole_image_features.parquet"
+            ).resolve()
+            feature_save_path.parent.mkdir(exist_ok=True, parents=True)
+
+            if feature_save_path.exists():
+                continue
+
             try:
                 image = read_zstack_image(image_file)
             except Exception as e:
-                print(f"Error reading image {image_file}: {e}, skipping...")
+                print(f"Skipping corrupted/invalid file {image_file.name}: {e}")
                 continue
-            # load the middle slice
-            mid_slice = image.shape[0] // 2
-            image_mid = image[mid_slice, :, :]
+
+            if channel == "640" and patient_id == "NF0037_T1":
+                print(
+                    f"Padding missing slice for patient {patient_id}, channel {channel} {well_fov}"
+                )
+                # pad the 640 channel to copy the first slice to be the new first slice
+                # the 640 channel for this patient is missing the first slice
+                # we removed it due to corruptions
+                first_slice = image[0:1, :, :]
+                image = np.concatenate([first_slice, image], axis=0)
+
+            # get the size of
+            # max z projection
+            max_z = np.max(image, axis=0)
             images_to_process["patient"].append(patient_id)
             images_to_process["well_fov"].append(well_fov)
-            images_to_process["2D_image"].append(image_mid)
+            images_to_process["2D_image"].append(max_z)
             images_to_process["3D_image"].append(image)
-            images_to_process["channel"].append(f"{image_file.stem.split('_')[1]}")
+            images_to_process["channel"].append(channel)
 
-        # Convert list of 2D images (Y, X) to tensor (B, C, Y, X)
-        # where B is batch size (number of images),
-        # C is number of channels (1 in this case),
-        # Y and X are spatial dimensions
-        # Stack images and add channel dimension
-        if len(images_to_process["2D_image"]) == 0:
-            print(
-                f"No images found for patient {patient_id}, well FOV {well_fov}, skipping..."
+            if len(images_to_process["2D_image"]) == 0:
+                print(
+                    f"No images found for patient {patient_id}, well FOV {well_fov}, skipping..."
+                )
+
+            images = torch.stack(
+                [
+                    torch.tensor(img, dtype=torch.float32)
+                    for img in images_to_process["2D_image"]
+                ]
             )
-            continue
-        images = torch.stack(
-            [
-                torch.tensor(img, dtype=torch.float32)
-                for img in images_to_process["2D_image"]
-            ]
-        )
-        try:
             volumes = torch.stack(
                 [
                     torch.tensor(vol, dtype=torch.float32)
@@ -274,17 +392,19 @@ for patient_id in tqdm.tqdm(patients, desc="Processing patients", leave=True):
                 "feature_name": [],
                 "feature_value": [],
             }
-            # featurize with SAM-Med3D and CHAMI75
 
+            # featurize with SAM-Med3D and CHAMMI75
             for image_index in range(volumes.shape[0]):
+                # assign the channel id for this image
                 channel_id = images_to_process["channel"][image_index]
 
-                image = volumes[image_index].cpu().numpy()
+                image_3D = volumes[image_index].cpu().numpy()
                 output_dict = call_whole_image_sammed3d_pipeline(
-                    image=image,
+                    image=image_3D,
                     SAMMed3D_model_path=str(sam3dmed_checkpoint_path),
                     feature_type="cls",
                 )
+                # add the sam-med3d features to the feature dict
                 feature_dict["patient"].extend(
                     [f"{patient_id}"] * len(output_dict["feature_name"])
                 )
@@ -297,14 +417,17 @@ for patient_id in tqdm.tqdm(patients, desc="Processing patients", leave=True):
                 )
                 feature_dict["feature_value"].extend(output_dict["value"])
 
-            batch_feat = featurize_2D_image_w_chami75(images, model, device)
-            for f_idx in range(batch_feat.shape[1]):
-                feature_name = f"{channel_id}_CHAMI75_feature_{f_idx}"
-                feature_value = batch_feat[image_index, f_idx]
-                feature_dict["patient"].extend([f"{patient_id}"])
-                feature_dict["well_fov"].extend([f"{well_fov}"])
-                feature_dict["feature_name"].append(feature_name)
-                feature_dict["feature_value"].append(feature_value)
+            for image_index in range(images.shape[0]):
+                image_2D = images[image_index]
+                batch_feat = featurize_2D_image_w_chammi75_worker(
+                    image_2D.unsqueeze(0), chammi75_model, device, transform
+                )
+                for f_idx, feature_value in enumerate(batch_feat[0]):
+                    feature_name = f"{channel_id}_CHAMMI-7575_feature_{f_idx}"
+                    feature_dict["patient"].extend([f"{patient_id}"])
+                    feature_dict["well_fov"].extend([f"{well_fov}"])
+                    feature_dict["feature_name"].append(feature_name)
+                    feature_dict["feature_value"].append(feature_value)
 
             df = pd.DataFrame(feature_dict)
             df = (
@@ -320,14 +443,9 @@ for patient_id in tqdm.tqdm(patients, desc="Processing patients", leave=True):
                 feature_save_path,
                 index=False,
             )
-        except Exception as e:
-            print(
-                f"Error processing patient {patient_id}, well FOV {well_fov}: {e}, skipping..."
-            )
-            continue
 
 
-# In[ ]:
+# In[9]:
 
 
 end_time = time.time()
@@ -338,14 +456,14 @@ print(f"Time taken: {end_time - start_time} seconds")
 print(f"Memory used: {end_mem - start_mem} MB")
 
 
-# In[ ]:
+# In[10]:
 
 
 patient_ids_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve()
 patient_ids = pd.read_csv(patient_ids_file_path, header=None)[0].tolist()
 
 
-# In[ ]:
+# In[11]:
 
 
 list_of_file_paths = []
@@ -357,70 +475,135 @@ for patient in patient_ids:
         continue
 
     list_of_file_paths.extend(list(whole_image_features_path.glob("*.parquet")))
+
+# sort the file paths to ensure consistent order
+list_of_file_paths = sorted(list_of_file_paths)
 print(f"Found {len(list_of_file_paths)} files to combine.")
 
 
-# In[ ]:
+# In[12]:
+
+
+file_list_dict = {
+    "patient": [],
+    "well_fov": [],
+    "channel": [],
+    "file_path": [],
+}
+for file_path in list_of_file_paths:
+    filename = file_path.stem
+    parts = filename.split("_")
+    patient_id = file_path.parent.parent.name
+    well_fov = parts[0]
+    channel = parts[1]
+
+    file_list_dict["patient"].append(patient_id)
+    file_list_dict["well_fov"].append(well_fov)
+    file_list_dict["channel"].append(channel)
+    file_list_dict["file_path"].append(str(file_path))
+file_list_df = pd.DataFrame(file_list_dict)
+file_list_df.head()
+
+
+# In[13]:
+
+
+df_list = []
+# concat by channel
+for channel in file_list_df["channel"].unique():
+    channel_files = file_list_df[file_list_df["channel"] == channel]
+    df = pd.concat(
+        [pd.read_parquet(file_path) for file_path in channel_files["file_path"]],
+        ignore_index=True,
+    )
+    df_list.append(df)
+# merge each df in the df list on patient and well fov
+# where each df in the df list is a different channel
+merged_df = df_list[0]
+for df in df_list[1:]:
+    merged_df = merged_df.merge(df, on=["patient", "well_fov"], how="outer")
+print(merged_df.shape)
+merged_df.head()
+
+
+# In[14]:
 
 
 # save the dfs
-chami_features_save_path = pathlib.Path(f"../results/chami_features.parquet").resolve()
-chami_features_save_path.parent.mkdir(exist_ok=True, parents=True)
+chammi_features_save_path = pathlib.Path(
+    f"../results/chammi_features.parquet"
+).resolve()
+chammi_features_save_path.parent.mkdir(exist_ok=True, parents=True)
 sammed_features_save_path = pathlib.Path(
     f"../results/sammed_features.parquet"
 ).resolve()
 all_features_save_path = pathlib.Path(f"../results/all_features.parquet").resolve()
 
 
-# In[ ]:
+# In[15]:
 
 
 if (
-    chami_features_save_path.exists()
+    chammi_features_save_path.exists()
     and sammed_features_save_path.exists()
     and all_features_save_path.exists()
 ):
     df = pd.read_parquet(all_features_save_path)
-    chami_df = pd.read_parquet(chami_features_save_path)
+    chammi_df = pd.read_parquet(chammi_features_save_path)
     sammed_df = pd.read_parquet(sammed_features_save_path)
 else:
-    df = pd.concat(
-        [pd.read_parquet(file_path) for file_path in list_of_file_paths],
-        ignore_index=True,
-    )
-    metadata_df = df[["patient", "well_fov"]]
-    chami_df = df[[x for x in df.columns if "chami" in x.lower()]]
-    chami_df = pd.concat([metadata_df, chami_df], axis=1)
-    sammed_df = df[[x for x in df.columns if "sammed" in x.lower()]]
+    metadata_df = merged_df[["patient", "well_fov"]]
+    chammi_df = merged_df[[x for x in merged_df.columns if "chammi" in x.lower()]]
+    chammi_df = pd.concat([metadata_df, chammi_df], axis=1)
+    sammed_df = merged_df[[x for x in merged_df.columns if "sammed" in x.lower()]]
     sammed_df = pd.concat([metadata_df, sammed_df], axis=1)
 
-    chami_df.to_parquet(chami_features_save_path)
+    chammi_df.to_parquet(chammi_features_save_path)
     sammed_df.to_parquet(sammed_features_save_path)
-    df.to_parquet(all_features_save_path)
+    merged_df.to_parquet(all_features_save_path)
+
+print(merged_df.shape)
+merged_df.head()
 
 
-# In[ ]:
+# In[16]:
 
 
-feature_df = df.drop(columns=["patient", "well_fov"])
-metadata_df = df[["patient", "well_fov"]]
-sammed_features = df[[x for x in df.columns if "sammed" in x.lower()]]
-chami_features = df[[x for x in df.columns if "chami" in x.lower()]]
+# shuffle the order of the rows such that the plotting is not biased by the order of the rows in the dataframe
+merged_df = merged_df.sample(frac=1, random_state=0).reset_index(drop=True)
+metadata_df = merged_df[["patient", "well_fov"]]
+sammed_features = merged_df[[x for x in merged_df.columns if "sammed" in x.lower()]]
+chammi_features = merged_df[[x for x in merged_df.columns if "chammi" in x.lower()]]
 
 
-all_features_projection_df = generate_umap_and_pca(feature_df, metadata_df.copy())
+all_features_projection_df = generate_umap_and_pca(
+    merged_df.drop(columns=["patient", "well_fov"]), metadata_df.copy()
+)
 sammed_features_projection_df = generate_umap_and_pca(
     sammed_features, metadata_df.copy()
 )
-chami_features_projection_df = generate_umap_and_pca(chami_features, metadata_df.copy())
+chammi_features_projection_df = generate_umap_and_pca(
+    chammi_features, metadata_df.copy()
+)
 
 
-# In[ ]:
+# In[17]:
 
 
+# set the order for the legend for the patient ID
+patient_order = sorted(merged_df["patient"].unique())
+all_features_projection_df["patient"] = pd.Categorical(
+    all_features_projection_df["patient"], categories=patient_order, ordered=True
+)
+sammed_features_projection_df["patient"] = pd.Categorical(
+    sammed_features_projection_df["patient"], categories=patient_order, ordered=True
+)
+chammi_features_projection_df["patient"] = pd.Categorical(
+    chammi_features_projection_df["patient"], categories=patient_order, ordered=True
+)
 # plot PCA and UMAP for both features
 # row 1: PCA, row 2: UMAP
-# column 1: all features, column 2: sammed features, column 3: chami features
+# column 1: all features, column 2: sammed features, column 3: CHAMMI-75 features
 fig, axes = plt.subplots(2, 3, figsize=(18, 12))
 sns.scatterplot(
     data=all_features_projection_df,
@@ -430,6 +613,7 @@ sns.scatterplot(
     ax=axes[0, 0],
     palette="tab10",
 )
+# hide the legend for this subplot since we will add a single legend for all subplots at the end
 axes[0, 0].set_title("PCA - All Features")
 sns.scatterplot(
     data=sammed_features_projection_df,
@@ -439,16 +623,16 @@ sns.scatterplot(
     ax=axes[0, 1],
     palette="tab10",
 )
-axes[0, 1].set_title("PCA - Sammed Features")
+axes[0, 1].set_title("PCA - SAMMed3D Features")
 sns.scatterplot(
-    data=chami_features_projection_df,
+    data=chammi_features_projection_df,
     x="pca_1",
     y="pca_2",
     hue="patient",
     ax=axes[0, 2],
     palette="tab10",
 )
-axes[0, 2].set_title("PCA - Chami Features")
+axes[0, 2].set_title("PCA - CHAMMI-75 Features")
 sns.scatterplot(
     data=all_features_projection_df,
     x="umap_1",
@@ -466,45 +650,71 @@ sns.scatterplot(
     ax=axes[1, 1],
     palette="tab10",
 )
-axes[1, 1].set_title("UMAP - Sammed Features")
+axes[1, 1].set_title("UMAP - SAMMed3D Features")
 sns.scatterplot(
-    data=chami_features_projection_df,
+    data=chammi_features_projection_df,
     x="umap_1",
     y="umap_2",
     hue="patient",
     ax=axes[1, 2],
     palette="tab10",
 )
-axes[1, 2].set_title("UMAP - Chami Features")
-plt.tight_layout()
+axes[1, 2].set_title("UMAP - CHAMMI-75 Features")
+# remove all subplot legends
+for ax in axes.flatten():
+    ax.get_legend().remove()
+# move the legend to the bottom center of all subplots
+handles, labels = axes[0, 0].get_legend_handles_labels()
+fig.legend(
+    handles,
+    labels,
+    loc="lower center",
+    ncol=len(patient_order) // 3 + 1,
+    title="Patient ID",
+)
+# add padding for the legend
+fig.subplots_adjust(bottom=0.15)
 plt.show()
 
 
 # ## Drop the CQ1 data
 
-# In[ ]:
+# In[18]:
 
 
-df = df.loc[df["patient"] != "NF0037_T1_CQ1"]
+df = merged_df.loc[merged_df["patient"] != "NF0037_T1_CQ1"].copy()
 feature_df = df.drop(columns=["patient", "well_fov"])
 metadata_df = df[["patient", "well_fov"]]
 sammed_features = df[[x for x in df.columns if "sammed" in x.lower()]]
-chami_features = df[[x for x in df.columns if "chami" in x.lower()]]
+chammi_features = df[[x for x in df.columns if "chammi" in x.lower()]]
 
 
 all_features_projection_df = generate_umap_and_pca(feature_df, metadata_df.copy())
 sammed_features_projection_df = generate_umap_and_pca(
     sammed_features, metadata_df.copy()
 )
-chami_features_projection_df = generate_umap_and_pca(chami_features, metadata_df.copy())
+chammi_features_projection_df = generate_umap_and_pca(
+    chammi_features, metadata_df.copy()
+)
 
 
-# In[ ]:
+# In[19]:
 
 
+# set the order for the legend for the patient ID
+patient_order = sorted(df["patient"].unique())
+all_features_projection_df["patient"] = pd.Categorical(
+    all_features_projection_df["patient"], categories=patient_order, ordered=True
+)
+sammed_features_projection_df["patient"] = pd.Categorical(
+    sammed_features_projection_df["patient"], categories=patient_order, ordered=True
+)
+chammi_features_projection_df["patient"] = pd.Categorical(
+    chammi_features_projection_df["patient"], categories=patient_order, ordered=True
+)
 # plot PCA and UMAP for both features
 # row 1: PCA, row 2: UMAP
-# column 1: all features, column 2: sammed features, column 3: chami features
+# column 1: all features, column 2: sammed features, column 3: CHAMMI-75 features
 fig, axes = plt.subplots(2, 3, figsize=(18, 12))
 sns.scatterplot(
     data=all_features_projection_df,
@@ -523,16 +733,16 @@ sns.scatterplot(
     ax=axes[0, 1],
     palette="tab10",
 )
-axes[0, 1].set_title("PCA - Sammed Features")
+axes[0, 1].set_title("PCA - SAMMed3D Features")
 sns.scatterplot(
-    data=chami_features_projection_df,
+    data=chammi_features_projection_df,
     x="pca_1",
     y="pca_2",
     hue="patient",
     ax=axes[0, 2],
     palette="tab10",
 )
-axes[0, 2].set_title("PCA - Chami Features")
+axes[0, 2].set_title("PCA - CHAMMI-75 Features")
 sns.scatterplot(
     data=all_features_projection_df,
     x="umap_1",
@@ -550,15 +760,28 @@ sns.scatterplot(
     ax=axes[1, 1],
     palette="tab10",
 )
-axes[1, 1].set_title("UMAP - Sammed Features")
+axes[1, 1].set_title("UMAP - SAMMed3D Features")
 sns.scatterplot(
-    data=chami_features_projection_df,
+    data=chammi_features_projection_df,
     x="umap_1",
     y="umap_2",
     hue="patient",
     ax=axes[1, 2],
     palette="tab10",
 )
-axes[1, 2].set_title("UMAP - Chami Features")
-plt.tight_layout()
+axes[1, 2].set_title("UMAP - CHAMMI-75 Features")
+# remove all subplot legends
+for ax in axes.flatten():
+    ax.get_legend().remove()
+# move the legend to the bottom center of all subplots
+handles, labels = axes[0, 0].get_legend_handles_labels()
+fig.legend(
+    handles,
+    labels,
+    loc="lower center",
+    ncol=len(patient_order) // 3 + 1,
+    title="Patient ID",
+)
+# add padding for the legend
+fig.subplots_adjust(bottom=0.15)
 plt.show()

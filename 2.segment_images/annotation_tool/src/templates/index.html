@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Annotation Tool</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- ── Header ──────────────────────────────────────────── -->
+    <div class="header">
+        <h1>📸 Image Annotation Tool</h1>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalCount">-</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="annotatedCount">-</div>
+                <div class="stat-label">Annotated</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="pendingCount">-</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Main content ─────────────────────────────────────── -->
+    <div class="container">
+
+        <div class="info-bar">
+            <p class="batch-info">
+                Batch <span id="batchNum">1</span> of <span id="batchTotal">1</span> (500 images)
+            </p>
+            <p>Click images to select, then click a label button to assign to all selected</p>
+            <div style="margin-top: 0.5rem;">
+                <span id="selectedCount" style="font-weight: 600; color: #e74c3c;">0 selected</span>
+                <button onclick="selectAll()"
+                        style="margin-left: 1rem; padding: 0.5rem 1rem; background: #00d4ff;
+                               color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Select All (500)
+                </button>
+                <button onclick="deselectAll()"
+                        style="margin-left: 0.5rem; padding: 0.5rem 1rem; background: #95a5a6;
+                               color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Deselect All
+                </button>
+            </div>
+        </div>
+
+        <!-- Per-label count badges -->
+        <div class="label-counts" id="labelCounts"></div>
+
+        <!-- Bulk-label buttons -->
+        <div class="bulk-buttons"
+             style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap;">
+            <button class="btn-globular"    onclick="bulkLabel('1')" title="Label all selected as Globular">🏷️ Globular</button>
+            <button class="btn-small"       onclick="bulkLabel('2')" title="Label all selected as Small">🏷️ Small</button>
+            <button class="btn-dissociated" onclick="bulkLabel('3')" title="Label all selected as Dissociated">🏷️ Dissociated</button>
+            <button class="btn-elongated"   onclick="bulkLabel('4')" title="Label all selected as Elongated">🏷️ Elongated</button>
+            <button class="btn-blank"       onclick="bulkLabel('5')" title="Label all selected as Blank">🏷️ Blank</button>
+            <button class="btn-cluster"     onclick="bulkLabel('6')" title="Label all selected as Cluster">🏷️ Cluster</button>
+            <button class="btn-failed"      onclick="bulkLabel('7')" title="Label all selected as Failed">🏷️ Failed</button>
+        </div>
+
+        <!-- Image grid -->
+        <div class="grid" id="grid"></div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button class="btn-primary" id="prevBtn" onclick="previousBatch()" disabled>← Previous</button>
+            <span id="batchInfo" style="align-self: center; color: #bbb; font-weight: 500;"></span>
+            <button class="btn-primary" id="nextBtn" onclick="nextBatch()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ── Annotator modal ──────────────────────────────────── -->
+    <div id="annotatorModal" class="modal show">
+        <div class="modal-content">
+            <h2>Welcome!</h2>
+            <p>Enter your name (annotator ID):</p>
+            <input type="text" id="annotatorInput" placeholder="Your name" autofocus>
+            <div class="modal-buttons">
+                <button class="btn-primary" onclick="setAnnotator()">Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Single-image label popup ─────────────────────────── -->
+    <div id="imagePopup" class="popup-menu">
+        <button onclick="selectLabel('1')"><span class="label-1">●</span> Globular</button>
+        <button onclick="selectLabel('2')"><span class="label-2">●</span> Small</button>
+        <button onclick="selectLabel('3')"><span class="label-3">●</span> Dissociated</button>
+        <button onclick="selectLabel('4')"><span class="label-4">●</span> Elongated</button>
+        <button onclick="selectLabel('5')"><span class="label-5">●</span> Blank</button>
+        <button onclick="selectLabel('6')"><span class="label-6">●</span> Cluster</button>
+        <button onclick="selectLabel('7')"><span class="label-7">●</span> Failed</button>
+    </div>
+
+    <!-- ── Floating controls panel ──────────────────────────── -->
+    <div class="resize-controls">
+        <div>
+            <label>Zoom:</label>
+            <input type="range" id="zoomSlider" class="resize-slider" min="80" max="200" value="140" step="10">
+            <div class="resize-value"><span id="zoomValue">140</span>px</div>
+        </div>
+        <div style="border-top: 1px solid #e9ecef; padding-top: 0.75rem;">
+            <label>Brightness:</label>
+            <input type="range" id="brightnessSlider" class="resize-slider" min="50" max="200" value="100" step="10">
+            <div class="resize-value"><span id="brightnessValue">100</span>%</div>
+        </div>
+        <div style="border-top: 1px solid #e9ecef; padding-top: 0.75rem;
+                    display: flex; flex-direction: column; gap: 0.5rem;">
+            <button onclick="previousBatch()"        class="btn-primary"      style="width: 100%; padding: 0.6rem;">← Previous Batch</button>
+            <button onclick="nextBatch()"            class="btn-primary"      style="width: 100%; padding: 0.6rem;">Next Batch →</button>
+            <button onclick="toggleSortMenu()"       class="btn-primary"      style="width: 100%; padding: 0.6rem;">Sort by Label ▼</button>
+            <button id="sortBatchesBtn"
+                    onclick="toggleSortBatchesMode()" class="btn-sort-batches" style="width: 100%; padding: 0.6rem;">📊 Sort Batches</button>
+            <button id="toggleLabelBtn"
+                    onclick="togglePatientWellFOV()"  class="btn-toggle-label" style="width: 100%; padding: 0.6rem;">👤 Patient</button>
+            <button onclick="saveAnnotations()"      class="btn-save"         style="width: 100%; padding: 0.6rem;">💾 Save All</button>
+        </div>
+    </div>
+
+    <!-- ── Sort-by-label dropdown ────────────────────────────── -->
+    <div id="sortMenu" class="sort-menu">
+        <button onclick="sortImages('all')">All Images (Grouped)</button>
+        <button onclick="sortImages('hide-labeled')">Hide Labeled (Unlabeled Only)</button>
+        <button onclick="sortImages('globular')">Globular (1)</button>
+        <button onclick="sortImages('small')">Small (2)</button>
+        <button onclick="sortImages('dissociated')">Dissociated (3)</button>
+        <button onclick="sortImages('elongated')">Elongated (4)</button>
+        <button onclick="sortImages('blank')">Blank (5)</button>
+        <button onclick="sortImages('cluster')">Cluster (6)</button>
+        <button onclick="sortImages('failed')">Failed (7)</button>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

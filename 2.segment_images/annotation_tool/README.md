@@ -87,8 +87,8 @@ Annotations are saved to a Parquet file with the following schema:
 ┌──────────────────┬───────────┬────────┬─────────────────────┐
 │ image_filename   │ annotator │ label  │ timestamp           │
 ├──────────────────┼───────────┼────────┼─────────────────────┤
-│ photo_001.jpg    │ alice     │ 1      │ 2024-02-07T10:30... │
-│ photo_002.jpg    │ alice     │ 2      │ 2024-02-07T10:31... │
+│ photo_001.jpg    │ Matt      │ 1      │ 2024-02-07T10:30... │
+│ photo_002.jpg    │ Matt      │ 2      │ 2024-02-07T10:31... │
 └──────────────────┴───────────┴────────┴─────────────────────┘
 ```
 
@@ -164,11 +164,3 @@ python3 annotation_tool.py /path/to/images
 - **Thumbnail generation**: ~50-100ms per image (cached in browser)
 - **Annotation save**: <100ms per click
 - **Database writes**: Append-only, no locks or conflicts
-
-## License
-
-This tool is provided as-is for your use.
-
-## Support
-
-For issues or feature requests, check the source code or modify as needed (it's a single Python file + embedded HTML/JS).

@@ -6,7 +6,7 @@
 # Running each individual task as its own script is modular but requires overhead to load the data each time.
 #
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -30,10 +30,11 @@ from file_reading import *
 from file_reading import read_zstack_image
 from general_segmentation_utils import *
 from notebook_init_utils import bandicoot_check, init_notebook
+from organoid_segmentation import *
 from segmentation_decoupling import *
 from skimage.filters import sobel
 
-# In[2]:
+# In[ ]:
 
 
 start_time = time.time()
@@ -41,7 +42,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[3]:
+# In[ ]:
 
 
 root_dir, in_notebook = init_notebook()
@@ -51,7 +52,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[4]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -87,13 +88,13 @@ mask_path = pathlib.Path(
 mask_path.mkdir(exist_ok=True, parents=True)
 
 
-# In[5]:
+# In[ ]:
 
 
 # look up the morphology of the organoid from json file
-image_label_path = pathlib.Path(
-    "../image_labels/segmentation_classes.parquet"
-).resolve()
+image_label_path = pathlib.Path("../image_labels/segmentation_classes.parquet").resolve(
+    strict=True
+)
 organoid_image_labels_df = pd.read_parquet(image_label_path)
 # look up the morphology for this well_fov
 morphology_class = organoid_image_labels_df.loc[
@@ -102,19 +103,19 @@ morphology_class = organoid_image_labels_df.loc[
         & (organoid_image_labels_df["patient"] == patient)
     ),
     "label",
-].values[0]
-print(f"Organoid morphology for {well_fov}: {morphology_class}")
+]
+if not morphology_class.empty and len(morphology_class) == 1:
+    morphology_class = morphology_class.iloc[0]
+elif morphology_class.empty:
+    print(f"No morphology label found for {well_fov} in {patient}.")
+elif len(morphology_class) > 1:
+    print(f"Multiple morphology labels found for {well_fov} in {patient}.")
 
+print(f"Organoid morphology for {well_fov}: {morphology_class}")
 # morphology = "elongated"  # FOR TESTING ONLY - REMOVE LATER
 
 
-# In[7]:
-
-
-organoid_image_labels_df["label"].unique()
-
-
-# In[6]:
+# In[ ]:
 
 
 return_dict = read_in_channels(
@@ -141,7 +142,7 @@ del cyto2_raw
 
 # ## Segment the cells
 
-# In[7]:
+# In[ ]:
 
 
 cell_mask = perform_morphology_dependent_segmentation(
@@ -151,7 +152,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[8]:
+# In[ ]:
 
 
 if in_notebook:
@@ -174,7 +175,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[9]:
+# In[ ]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -185,7 +186,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[10]:
+# In[ ]:
 
 
 nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
@@ -197,7 +198,7 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 )
 
 
-# In[11]:
+# In[ ]:
 
 
 if in_notebook:
@@ -213,7 +214,7 @@ if in_notebook:
     plt.show()
 
 
-# In[12]:
+# In[ ]:
 
 
 # refine the cell masks
@@ -227,7 +228,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[13]:
+# In[ ]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -238,7 +239,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Organoid segmentation (derived from cell segmentation)
 
-# In[14]:
+# In[ ]:
 
 
 # convert the cell masks to binary masks
@@ -254,7 +255,7 @@ for z in range(cell_binary_mask.shape[0]):
 organoid_mask = skimage.measure.label(cell_binary_mask)
 
 
-# In[15]:
+# In[ ]:
 
 
 if in_notebook:
@@ -277,7 +278,7 @@ if in_notebook:
 
 # ## Remove border objects
 
-# In[16]:
+# In[ ]:
 
 
 # nuclei should already have objects removed at the border from the previous notebook,
@@ -288,7 +289,7 @@ cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
 organoid_mask = clean_border_objects(organoid_mask, border_width=25)
 
 
-# In[17]:
+# In[ ]:
 
 
 # since the nuclei - cell masks should be 1:1
@@ -306,7 +307,7 @@ for label_id in unmatched_labels_to_remove:
 
 # ## Save the segmented masks
 
-# In[18]:
+# In[ ]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -319,7 +320,7 @@ tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 tifffile.imwrite(organoid_mask_output, organoid_mask)
 
 
-# In[19]:
+# In[ ]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

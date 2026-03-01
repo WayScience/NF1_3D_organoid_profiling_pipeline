@@ -78,7 +78,7 @@ patient_list_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolv
 raw_image_base_dir = pathlib.Path(f"{image_base_dir}/data/").resolve()
 
 
-# In[ ]:
+# In[5]:
 
 
 labels_input_file = pathlib.Path("../image_labels/annotations.parquet").resolve(
@@ -151,7 +151,7 @@ output_dict = {"patient": [], "well_fov": [], "label": [], "predicted_or_gt": []
 for index, row in prediction_df.iterrows():
     output_dict["patient"].append(row["patient"])
     output_dict["well_fov"].append(row["well_fov"])
-    if pd.isna(row["predicted_label"]):
+    if pd.isna(row["label_name"]):
         output_dict["label"].append(row["predicted_label"])
         output_dict["predicted_or_gt"].append("predicted")
     else:

@@ -16,10 +16,10 @@ for patient in "${patients[@]}"; do
         well_fov=$(basename "$well_fov")
         echo "Processing Patient: $patient, WellFOV: $well_fov"
 
-        input_subparent_name="zstack_images"
-        mask_subparent_name="segmentation_masks"
+#         input_subparent_name="zstack_images"
+#         mask_subparent_name="segmentation_masks"
 
-        echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
+#         echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
 
         echo "Beginning segmentation for $patient - $well_fov"
         python 4.nuclei_segmentation.py --patient "$patient" --well_fov "$well_fov" --input_subparent_name "$input_subparent_name" --mask_subparent_name "$mask_subparent_name" --clip_limit 0.01

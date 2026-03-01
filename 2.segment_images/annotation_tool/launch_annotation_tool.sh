@@ -2,6 +2,6 @@
 
 conda activate annotation-tool
 
-python annotation_tool.py "../data/compressed_images/"
+python src/annotation_tool.py "../data/compressed_images/"
 
 conda deactivate
