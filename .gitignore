@@ -222,6 +222,7 @@ docs/html/*
 5.technical_analysis/processed_data/*
 7.technical_analysis/results/*
 7.technical_analysis/processed_data/*
+2.segment_images/results/*
 2.segment_images/data/compressed_images/*
 2.segment_images/models/*
 2.segment_images/logs/*
