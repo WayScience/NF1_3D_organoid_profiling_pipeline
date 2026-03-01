@@ -59,7 +59,7 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 
 
-# In[3]:
+# In[ ]:
 
 
 def plot_plate_overview(
@@ -158,7 +158,7 @@ def plot_plate_overview(
                     mid_z = nuclei_mask.shape[0] // 2
                     nuclei_mask = nuclei_mask[mid_z]
                     # downscale for faster display
-                    if not "mask" in title_for_substring:
+                    if "mask" not in title_for_substring:
                         nuclei_mask = nuclei_mask[::10, ::10]
 
                     # Enhance contrast
