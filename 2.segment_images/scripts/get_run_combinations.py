@@ -52,8 +52,8 @@ rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 
 channel_mapping = {
     "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
+    "AGP": "488",
+    "ER": "555",
     "Mito": "640",
     "BF": "TRANS",
     "Nuclei": "nuclei_",

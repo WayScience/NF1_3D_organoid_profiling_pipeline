@@ -214,9 +214,31 @@ models/*
 docs/doctrees/*
 docs/html/*
 2.segment_images/data/compressed_images/*
+2.segment_images/examples/raw_z_input/*
+2.segment_images/figures/platemaps/*
 2.segment_images/models/*
 3.cellprofiling/logs/*
 5.technical_analysis/results/*
 5.technical_analysis/processed_data/*
 7.technical_analysis/results/*
 7.technical_analysis/processed_data/*
+2.segment_images/results/*
+2.segment_images/data/compressed_images/*
+2.segment_images/models/*
+2.segment_images/logs/*
+2.segment_images/results/*
+5.technical_analysis/processed_data/*
+5.technical_analysis/results/*
+7.technical_analysis/processed_data/*
+7.technical_analysis/results/*
+3.cellprofiling/logs/*
+3.cellprofiling/models/*
+3.cellprofiling/results/*
+# module 4
+4.processing_image_based_profiles/notebooks/runinfo/*
+4.processing_image_based_profiles/results/*
+4.processing_image_based_profiles/scripts/runinfo/*
+# module 5
+5.technical_analysis/processed_data/*
+5.technical_analysis/results/*
+
