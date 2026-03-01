@@ -1,47 +1,42 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[ ]:
+
+
+"""Visualize deconvolution outputs for QC and review."""
+
+
 # Thi document runs visualizations outputting `.mp4` and `.gif` files of 3D organoid data.
 # This notebok runs nviz to create the visualizations and napari.
 
 # ## Imports
 
-# In[1]:
-
+# In[ ]:
 
 import os
 import pathlib
 import shutil
-import sys
 
 # import matplotlib.pyplot as plt
 # import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import skimage.io as io
 import tifffile
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from moviepy.editor import VideoFileClip
 from napari.utils import nbscreenshot
 from napari_animation import Animation
 from napari_animation.easing import Easing
 from nviz.image import image_set_to_arrays
-from nviz.image_meta import extract_z_slice_number_from_filename, generate_ome_xml
+from nviz.image_meta import generate_ome_xml
 from nviz.view import view_ometiff_with_napari
-from PIL import Image
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-from arg_parsing_utils import check_for_missing_args, parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
@@ -49,8 +44,6 @@ image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
 
-sys.path.append(f"{root_dir}/utils")
-from segmentation_decoupling import euclidian_2D_distance
 
 # In[2]:
 

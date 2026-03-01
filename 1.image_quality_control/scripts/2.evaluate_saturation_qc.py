@@ -21,26 +21,12 @@
 
 
 import pathlib
-import sys
 
 import cosmicqc
 import cv2
 import matplotlib.pyplot as plt
 import pandas as pd
-
-# Get the current working directory
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-from notebook_init_utils import avoid_path_crash_bandicoot, init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 
 root_dir, in_notebook = init_notebook()
 
