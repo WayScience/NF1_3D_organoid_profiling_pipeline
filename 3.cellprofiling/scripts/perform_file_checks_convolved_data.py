@@ -69,8 +69,8 @@ patient_ids = [patient]  # for testing
 
 channel_mapping = {
     "DNA": "405",
-    "AGP": "488",
-    "ER": "555",
+    "AGP": "555",
+    "ER": "488",
     "Mito": "640",
     "Nuclei": "nuclei_",
     "Cell": "cell_",

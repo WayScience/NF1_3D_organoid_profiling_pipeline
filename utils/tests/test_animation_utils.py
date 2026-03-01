@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
-pytest.importorskip("moviepy")
-pytest.importorskip("napari_animation")
 from visualization_utils import animation_utils  # noqa: F401
 
 

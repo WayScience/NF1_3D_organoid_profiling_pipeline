@@ -27,7 +27,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 def paired_permutation_test(XA: np.array, XB: np.array, n_perm=10000):

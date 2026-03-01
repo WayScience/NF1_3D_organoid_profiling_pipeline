@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 from file_utils.file_reading import (
     find_files_available,
     read_in_channels,
@@ -22,7 +21,6 @@ def test_find_files_available(tmp_path: Path) -> None:
 
 
 def test_read_zstack_image_roundtrip(tmp_path: Path) -> None:
-    tifffile = pytest.importorskip("tifffile")
     img = np.zeros((2, 3, 3), dtype=np.uint16)
     file_path = tmp_path / "img_405.tif"
     tifffile.imwrite(file_path, img)
@@ -31,7 +29,6 @@ def test_read_zstack_image_roundtrip(tmp_path: Path) -> None:
 
 
 def test_read_in_channels(tmp_path: Path) -> None:
-    tifffile = pytest.importorskip("tifffile")
     img = np.zeros((2, 3, 3), dtype=np.uint16)
     file_path = tmp_path / "sample_405.tif"
     tifffile.imwrite(file_path, img)
