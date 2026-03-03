@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -26,7 +26,7 @@ else:
     import tqdm
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -58,7 +58,7 @@ if mp.cpu_count() < n_processes:
 print(f"Using {n_processes} processes")
 
 
-# In[3]:
+# In[ ]:
 
 
 def file_corruption_check(image: np.ndarray) -> bool:
@@ -250,7 +250,7 @@ def calculate_all_image_metrics(
     }
 
 
-# In[4]:
+# In[ ]:
 
 
 platemap_file_dir = pathlib.Path(
@@ -263,7 +263,7 @@ results_dir = pathlib.Path(
 results_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[5]:
+# In[ ]:
 
 
 # list of all file paths to analyze
@@ -272,7 +272,14 @@ file_paths_output_file = pathlib.Path(
 ).resolve()
 file_paths_output_file.parent.mkdir(parents=True, exist_ok=True)
 
-patients = ["NF0037_T1", "NF0037_T1_CQ1"]  # psuedo paired
+patients = [
+    "NF0014_T1",
+    "NF0014_T2",
+    "NF0021_T1",
+    "NF0030_T1",
+    "NF0037_T1",
+    "NF0037_T1_CQ1",
+]  # psuedo paired
 subparent_dirs = ["zstack_images", "basicpy_zstack_images"]
 file_paths = []
 for patient in tqdm.tqdm(patients, desc="Collecting image paths", leave=True):
@@ -299,7 +306,7 @@ file_paths_df = pd.DataFrame({"image_path": file_paths})
 file_paths_df.to_parquet(file_paths_output_file, index=False)
 
 
-# In[6]:
+# In[ ]:
 
 
 df = pd.DataFrame({"image_path": file_paths})
@@ -352,7 +359,7 @@ print(df.shape)
 df.head()
 
 
-# In[7]:
+# In[ ]:
 
 
 def calculate_slice_by_slice_metrics(
@@ -511,7 +518,7 @@ def calculate_whole_volume_metrics(
     return True
 
 
-# In[8]:
+# In[ ]:
 
 
 def process_single_task(task_params):
@@ -617,56 +624,19 @@ def process_single_task(task_params):
         )
 
 
-# In[9]:
+# In[ ]:
 
 
-# Prepare all tasks
-channels = ["405", "488", "555", "640"]
-compartments = ["nuclei", "cell", "organoid"]
-
-tasks = []
-for idx, row in df.iterrows():
-    row_dict = row.to_dict()
-    for compartment in compartments:
-        for channel in channels:
-            tasks.append((row_dict, compartment, channel, results_dir))
-
-print(f"Total tasks to process: {len(tasks)}")
-
-if run_parallel:
-    with mp.Pool(processes=n_processes) as pool:
-        results = list(
-            tqdm.tqdm(
-                pool.imap(process_single_task, tasks),
-                total=len(tasks),
-                desc="Processing images",
-            )
-        )
-
-    # Print summary
-    successful = sum(1 for success, _ in results if success)
-    failed = sum(1 for success, _ in results if not success)
-    print(
-        f"\nProcessing complete: {successful}/{len(results)} tasks successful, {failed} failed"
-    )
-
-    # Print any error messages
-    errors = [msg for success, msg in results if not success]
-    if errors:
-        print("\nErrors encountered:")
-        for error in errors[:10]:  # Print first 10 errors
-            print(f"  - {error}")
-        if len(errors) > 10:
-            print(f"  ... and {len(errors) - 10} more errors")
-else:
-    # Process tasks sequentially
-    for task in tqdm.tqdm(tasks, desc="Processing images sequentially"):
-        success, message = process_single_task(task)
-        if not success:
-            print(f"Error: {message}")
+for i, row in tqdm.tqdm(df.iterrows(), total=len(df)):
+    for compartment in ["nuclei", "cell", "organoid"]:
+        for channel in ["405", "488", "555", "640"]:
+            task_params = (row.to_dict(), compartment, channel, results_dir)
+            success, message = process_single_task(task_params)
+            if not success:
+                print(message)
 
 
-# In[10]:
+# In[ ]:
 
 
 # get a list of all files in the results directory
@@ -676,12 +646,11 @@ result_2D_files = [f for f in all_result_files if "2D" in f.name]
 result_3D_files = [f for f in all_result_files if "3D" in f.name]
 df_2D = pd.concat([pd.read_parquet(f) for f in result_2D_files], ignore_index=True)
 df_3D = pd.concat([pd.read_parquet(f) for f in result_3D_files], ignore_index=True)
-print(f"Combined 2D metrics dataframe shape: {df_2D.shape}")
-print(f"Combined 3D metrics dataframe shape: {df_3D.shape}")
 df_2D.head()
+# df_3D.head()
 
 
-# In[11]:
+# In[ ]:
 
 
 # merge the plate map info into the results
@@ -705,7 +674,7 @@ df_3D_results.sort_values(
 df_3D_results.to_parquet(concat_dir / "merged_results_3D.parquet", index=False)
 
 
-# In[12]:
+# In[ ]:
 
 
 len(df_2D_results["z_slice"].unique())

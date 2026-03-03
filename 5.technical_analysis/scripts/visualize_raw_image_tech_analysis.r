@@ -20,6 +20,8 @@ plot_theme <- theme_bw() + theme(
         strip.text = element_text(size = 14)
     )
 
+
+
 figures_2D_path <- file.path("../figures/microscope_comparisons_2D")
 figures_3D_path <- file.path("../figures/microscope_comparisons_3D")
 if (!dir.exists(figures_2D_path)) {
@@ -40,6 +42,9 @@ raw_image_3D_quality_metrics <- arrow::read_parquet(analysis_3D_file_path)
 
 raw_image_2D_quality_metrics <- as.data.frame(raw_image_2D_quality_metrics)
 raw_image_3D_quality_metrics <- as.data.frame(raw_image_3D_quality_metrics)
+
+
+
 # make the compartment a factor
 raw_image_2D_quality_metrics$compartment <- factor(
     raw_image_2D_quality_metrics$compartment,
@@ -60,12 +65,34 @@ raw_image_3D_quality_metrics$microscope <- ifelse(
     "CQ1", # set to CQ1 if CQ1 in patient
     "Echo" # else set to Echo
 )
+# replace the values of basicpy_status with "raw_image" and "corrected_image"
+raw_image_2D_quality_metrics$basicpy_status <- ifelse(
+    raw_image_2D_quality_metrics$basicpy_status == "raw_image",
+    "Raw image",
+    "Corrected image"
+)
+raw_image_3D_quality_metrics$basicpy_status <- ifelse(
+    raw_image_3D_quality_metrics$basicpy_status == "raw_image",
+    "Raw image",
+    "Corrected image"
+)
+# make the basicpy_status a factor
+raw_image_2D_quality_metrics$basicpy_status <- factor(
+    raw_image_2D_quality_metrics$basicpy_status,
+    levels = c("Raw image", "Corrected image")
+)
+raw_image_3D_quality_metrics$basicpy_status <- factor(
+    raw_image_3D_quality_metrics$basicpy_status,
+    levels = c("Raw image", "Corrected image")
+)
 head(raw_image_2D_quality_metrics)
 head(raw_image_3D_quality_metrics)
 
-height <- 6
-width <- 8
-options(repr.plot.width = width, repr.plot.height = height)
+
+height_3D <- 6
+width_3D <- 12
+
+options(repr.plot.width = width_3D, repr.plot.height = height_3D)
 s_n_ratio_plot <- (
     ggplot(
         data = raw_image_3D_quality_metrics,
@@ -93,7 +120,14 @@ s_n_ratio_plot <- (
     )
     + labs(
         x = "Channel",
-        y = "Signal to Noise Ratio"
+        y = "Signal to Noise Ratio\nper compartment, & 3D FOV"
+    )
+    + facet_wrap(~basicpy_status)
+    + guides(
+        fill = guide_legend(
+            title = "Microscope"
+        ),
+        color = "none"
     )
     + plot_theme
 )
@@ -103,16 +137,15 @@ ggsave(
         "signal_to_noise_ratio_by_microscope_and_channel_3D.png"
     ),
     plot = s_n_ratio_plot,
-    width = width,
-    height = height,
+    width = width_3D,
+    height = height_3D,
     units = "in",
     dpi = 600
 )
 s_n_ratio_plot
 
-height <- 6
-width <- 8
-options(repr.plot.width = width, repr.plot.height = height)
+
+options(repr.plot.width = width_3D, repr.plot.height = height_3D)
 michelson_contrast_plot <- (
     ggplot(
         data = raw_image_3D_quality_metrics,
@@ -140,7 +173,14 @@ michelson_contrast_plot <- (
     )
     + labs(
         x = "Channel",
-        y = "Michelson Contrast"
+        y = "Michelson Contrast\nper compartment, & 3D FOV"
+    )
+    + facet_wrap(~basicpy_status)
+    + guides(
+        fill = guide_legend(
+            title = "Microscope"
+        ),
+        color = "none"
     )
     + ylim(0,1)
     + plot_theme
@@ -152,16 +192,15 @@ ggsave(
         "michelson_contrast_by_microscope_and_channel_3D.png"
     ),
     plot = michelson_contrast_plot,
-    width = width,
-    height = height,
+    width = width_3D,
+    height = height_3D,
     units = "in",
     dpi = 600
 )
 michelson_contrast_plot
 
-height <- 6
-width <- 8
-options(repr.plot.width = width, repr.plot.height = height)
+
+options(repr.plot.width = width_3D, repr.plot.height = height_3D)
 RMS_contrast_plot <- (
     ggplot(
         data = raw_image_3D_quality_metrics,
@@ -187,9 +226,16 @@ RMS_contrast_plot <- (
         alpha = 0.3,
         size = 0.5
     )
+    + facet_wrap(~basicpy_status)
     + labs(
         x = "Channel",
-        y = "RMS Contrast"
+        y = "RMS Contrast\nper compartment, & 3D FOV"
+    )
+    + guides(
+        fill = guide_legend(
+            title = "Microscope"
+        ),
+        color = "none"
     )
     + plot_theme
 )
@@ -199,25 +245,30 @@ ggsave(
         "RMS_contrast_by_microscope_and_channel_3D.png"
     ),
     plot = RMS_contrast_plot,
-    width = width,
-    height = height,
+    width = width_3D,
+    height = height_3D,
     units = "in",
     dpi = 600
 )
 RMS_contrast_plot
 
+
+width_2D <- 12
+height_2D <- 12
+x_axis_label <- "Z-slice depth\n(Normalized per FOV to 0-1 scale)"
+
+
 # normalize the per channel per microscope per well fov the z slice values
 # to be between 0 and 1 for each channel and microscope combination
 raw_image_2D_quality_metrics <- raw_image_2D_quality_metrics %>%
-    group_by(microscope, channel, well_fov) %>%
+    group_by(patient, microscope, channel, well_fov) %>%
     mutate(
         z_slice_normalized = (z_slice - min(z_slice)) / (max(z_slice) - min(z_slice))
     )
 head(raw_image_2D_quality_metrics)
 
-height <- 6
-width <- 8
-options(repr.plot.width = width, repr.plot.height = height)
+
+options(repr.plot.width = width_2D, repr.plot.height = height_2D)
 s_n_ratio_plot <- (
     ggplot(
         data = raw_image_2D_quality_metrics,
@@ -227,19 +278,20 @@ s_n_ratio_plot <- (
             color = microscope
     )
     )
-    + geom_point(
+    + geom_line(
+        aes(group = interaction(well_fov, patient, channel,compartment, basicpy_status)),
         alpha = 0.1,
-        size = 0.2
+        linewidth = 0.2
     )
     + labs(
-        x = "Z Slice",
-        y = "Signal to Noise Ratio"
+        x = x_axis_label,
+        y = "Signal to Noise Ratio\nper channel,compartment, & FOV"
     )
-    + facet_wrap(. ~ channel, scales = "free_y", nrow = 2)
+    + facet_grid(channel ~ basicpy_status, scales = "free_y")
     + guides(
         color = guide_legend(
             title = "Microscope", override.aes = list(
-                size = 2,
+                linewidth = 4,
                 alpha = 1
             )
         ),
@@ -260,16 +312,15 @@ ggsave(
         "signal_to_noise_ratio_by_microscope_and_channel_2D.png"
     ),
     plot = s_n_ratio_plot,
-    width = width,
-    height = height,
+    width = width_2D,
+    height = height_2D,
     units = "in",
     dpi = 600
 )
 s_n_ratio_plot
 
-height <- 6
-width <- 8
-options(repr.plot.width = width, repr.plot.height = height)
+
+options(repr.plot.width = width_2D, repr.plot.height = height_2D)
 michelson_contrast_plot <- (
     ggplot(
         data = raw_image_2D_quality_metrics,
@@ -279,20 +330,21 @@ michelson_contrast_plot <- (
             color = microscope
     )
     )
-    + geom_point(
+    + geom_line(
+        aes(group = interaction(well_fov, patient, channel,compartment, basicpy_status)),
         alpha = 0.1,
-        size = 0.2
+        linewidth = 0.2
     )
     + labs(
-        x = "Channel",
-        y = "Michelson Contrast"
+        x = x_axis_label,
+        y = "Michelson Contrast\nper channel,compartment, & FOV"
     )
     + ylim(0,1)
-    + facet_wrap(. ~ channel, scales = "free_y", nrow = 2)
+    + facet_grid(channel ~ basicpy_status, scales = "free_y")
     + guides(
         color = guide_legend(
             title = "Microscope", override.aes = list(
-                size = 2,
+                linewidth = 4,
                 alpha = 1
             )
         )
@@ -306,16 +358,15 @@ ggsave(
         "michelson_contrast_by_microscope_and_channel_2D.png"
     ),
     plot = michelson_contrast_plot,
-    width = width,
-    height = height,
+    width = width_2D,
+    height = height_2D,
     units = "in",
     dpi = 600
 )
 michelson_contrast_plot
 
-height <- 6
-width <- 8
-options(repr.plot.width = width, repr.plot.height = height)
+
+options(repr.plot.width = width_2D, repr.plot.height = height_2D)
 RMS_contrast_plot <- (
     ggplot(
         data = raw_image_2D_quality_metrics,
@@ -325,19 +376,20 @@ RMS_contrast_plot <- (
             color = microscope
     )
     )
-    + geom_point(
+    + geom_line(
+        aes(group = interaction(well_fov, patient, channel,compartment, basicpy_status)),
         alpha = 0.1,
-        size = 0.2
+        linewidth = 0.2
     )
     + labs(
-        x = "Z Slice Normalized",
-        y = "RMS Contrast"
+        x = x_axis_label,
+        y = "RMS Contrast\nper channel,compartment, & FOV"
     )
-    + facet_wrap(. ~ channel, scales = "free_y", nrow = 2)
+    + facet_grid(channel ~ basicpy_status, scales = "free_y")
     + guides(
         color = guide_legend(
             title = "Microscope", override.aes = list(
-                size = 2,
+                linewidth = 4,
                 alpha = 1
             )
         )
@@ -351,8 +403,8 @@ ggsave(
         "RMS_contrast_by_microscope_and_channel_2D.png"
     ),
     plot = RMS_contrast_plot,
-    width = width,
-    height = height,
+    width = width_2D,
+    height = height_2D,
     units = "in",
     dpi = 600
 )
