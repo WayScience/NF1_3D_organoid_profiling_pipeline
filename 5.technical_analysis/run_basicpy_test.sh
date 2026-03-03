@@ -3,10 +3,10 @@
 # CONFIG
 # --------------------------
 NOTEBOOK="test_basicpy.ipynb"      # your notebook filename
-PATIENT_ID="NF0037_T1_CQ1"         # patient to process
-NBCONVERT_DIR="nbconverted"        # folder to save converted scripts
+NBCONVERT_DIR="scripts"        # folder to save converted scripts
 ENV_NAME="NF1_3D_basicpy_env"      # mamba/conda environment to activate
-
+patient_id_file_path="../data/patient_IDs.txt"  # path to text file containing patient IDs (one per line)
+readarray -t patients < "$patient_id_file_path"  # read patient IDs into an array
 # --------------------------
 # Resolve paths relative to script
 # --------------------------
@@ -33,4 +33,8 @@ SCRIPT_PATH="$OUTPUT_DIR/$SCRIPT_NAME"
 # --------------------------
 # 2️⃣ Run the converted script with patient ID
 # --------------------------
-python "$SCRIPT_PATH" "$PATIENT_ID"
+for patient_id in "${patients[@]}"; do
+    echo "Running script for patient: $patient_id"
+    python "$SCRIPT_PATH" "$patient_id"
+done
+

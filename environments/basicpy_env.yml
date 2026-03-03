@@ -15,5 +15,9 @@ dependencies:
   - conda-forge::nbconvert
   - conda-forge::tqdm
   - pip:
+      - jax==0.4.23 # to avoid errors c:
+      - jaxlib==0.4.23
       - basicpy
       - hyperactive==4.0.0
+      - ../utils/
+
