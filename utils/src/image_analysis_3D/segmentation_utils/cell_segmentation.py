@@ -88,6 +88,9 @@ def perform_morphology_dependent_segmentation(
     np.ndarray
         3D numpy array representing the segmented cell mask.
     """
+    if organoid_label in {"failed", "blank"}:
+        print("Failed/blank morphology selected, skipping cell segmentation")
+        return np.zeros_like(cyto_signal, dtype=np.int32)
     # generate the low frequency elevation map
     # all morphology types use the same initial elevation map
     elevation_map = skimage.filters.butterworth(
@@ -112,14 +115,14 @@ def perform_morphology_dependent_segmentation(
     connectivity = 1
     compactness = 0
 
-    if organoid_label == "globular":
+    if organoid_label in {"globular"}:
         elevation_map = skimage.filters.gaussian(cyto_signal, sigma=1.0)
         elevation_map = sobel(elevation_map)
         # update compactness for globular morphology to reduce oversegmentation
         connectivity = 0
         compactness = 0
 
-    elif organoid_label == "small/dissociated":
+    elif organoid_label in {"small", "dissociated"}:
         print("Dissociated morphology selected")
         elevation_map = skimage.morphology.binary_dilation(
             elevation_map_threshold_signal,
@@ -130,11 +133,14 @@ def perform_morphology_dependent_segmentation(
         connectivity = 0
         compactness = 0
 
-    elif organoid_label == "elongated":
+    elif organoid_label in {"elongated"}:
         elevation_map = sobel(elevation_map_threshold_signal)
         elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
         connectivity = 0
         compactness = 0
+    elif organoid_label == "failed" or organoid_label == "blank":
+        print("Failed morphology selected, skipping cell segmentation")
+        return np.zeros_like(cyto_signal, dtype=np.int32)
     else:
         raise ValueError(f"Unknown morphology label: {organoid_label}")
 

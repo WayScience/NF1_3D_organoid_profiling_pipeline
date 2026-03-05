@@ -16,7 +16,10 @@ Requirements:
     pip install medim
 """
 
-from pathlib import Path
+import logging
+import os
+import sys
+from io import StringIO
 from typing import Dict, List, Optional, Union
 
 import medim
@@ -26,7 +29,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .loading_classes import ObjectLoader
-
+from featurization_utils.loading_classes import ObjectLoader
 
 class SAMMed3DFeatureExtractor:
     """
@@ -70,6 +73,13 @@ class SAMMed3DFeatureExtractor:
 
     def _load_model(self, model_path: Optional[str], use_medim: bool):
         """Load SAM-Med3D model."""
+        # Suppress logging and stdout
+        import sys
+
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("torch").setLevel(logging.ERROR)
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
 
         if use_medim:
             try:
@@ -467,6 +477,7 @@ def call_SAMMed3D_pipeline(
         Pre-loaded extractor instance. If provided, SAMMed3D_model_path is ignored.
         Use this to avoid reloading the model in loops. By default None.
 
+
     Returns
     -------
     dict
@@ -566,6 +577,7 @@ def call_whole_image_sammed3d_pipeline(
         Path to the SAMMed3D model, by default None. Ignored if extractor is provided.
     feature_type : str | List, optional
         Type of features to extract, by default ["global", "patch", "cls"]
+
     extractor : Optional[MicroscopySAMMed3DPipeline], optional
         Pre-loaded extractor instance. If provided, SAMMed3D_model_path is ignored.
         Use this to avoid reloading the model in loops. By default None.
@@ -578,7 +590,7 @@ def call_whole_image_sammed3d_pipeline(
         - "feature_name": List of feature names
         - "value": List of feature values
         - "feature_type": List of feature types
-        - "compartment": List of compartment names
+        - "compartment": List of compartments (will be "Image" for whole image features)
     """
     assert isinstance(feature_type, (str, list)), (
         "feature_type must be a string or list of strings"

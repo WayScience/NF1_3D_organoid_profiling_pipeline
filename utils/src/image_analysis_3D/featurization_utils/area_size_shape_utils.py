@@ -6,7 +6,15 @@ import skimage.measure
 from .loading_classes import ImageSetLoader, ObjectLoader
 
 
+<<<<<<< HEAD
+<<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/area_size_shape_utils.py
 def calculate_surface_area(
+========
+def calulate_surface_area(
+>>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/area_size_shape_utils.py
+=======
+def calculate_surface_area(
+>>>>>>> 8af3f0c (Refactor featurization (#121))
     label_object: numpy.ndarray,
     props: dict[str, numpy.ndarray],
     spacing: tuple[float, float, float],

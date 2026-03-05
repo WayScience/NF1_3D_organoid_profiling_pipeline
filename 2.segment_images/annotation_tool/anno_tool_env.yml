@@ -1,0 +1,13 @@
+name: annotation-tool
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - Flask==3.0.0
+    - Pillow==10.1.0
+    - pyarrow==14.0.1
+    - pandas==2.1.3
+    - numpy==1.24.3

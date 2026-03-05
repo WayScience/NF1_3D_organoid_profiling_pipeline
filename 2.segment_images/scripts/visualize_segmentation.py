@@ -91,6 +91,17 @@ frame_zstacks = image_set_to_arrays(
     channel_map=channel_map,
 )
 
+
+# In[7]:
+
+
+print(frame_zstacks["images"].keys())
+print(frame_zstacks["labels"].keys())
+
+
+# In[8]:
+
+
 images_data = []
 labels_data = []
 channel_names = []
