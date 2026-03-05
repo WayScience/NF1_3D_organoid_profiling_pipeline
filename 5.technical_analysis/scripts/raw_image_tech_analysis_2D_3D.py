@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -26,7 +26,7 @@ else:
     import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -58,7 +58,7 @@ if mp.cpu_count() < n_processes:
 print(f"Using {n_processes} processes")
 
 
-# In[ ]:
+# In[3]:
 
 
 def file_corruption_check(image: np.ndarray) -> bool:
@@ -250,118 +250,6 @@ def calculate_all_image_metrics(
     }
 
 
-# In[ ]:
-
-
-platemap_file_dir = pathlib.Path(
-    f"{image_base_dir}/data/NF0037_T1/platemap/platemap.csv"
-).resolve(strict=True)
-plate_map_df = pd.read_csv(platemap_file_dir)
-results_dir = pathlib.Path(
-    "../results/raw_image_quality_metrics/individual_files/"
-).resolve()
-results_dir.mkdir(parents=True, exist_ok=True)
-
-
-# In[ ]:
-
-
-# list of all file paths to analyze
-file_paths_output_file = pathlib.Path(
-    "../results/list_of_zstack_image_paths.parquet"
-).resolve()
-file_paths_output_file.parent.mkdir(parents=True, exist_ok=True)
-
-patients = [
-    "NF0014_T1",
-    "NF0014_T2",
-    "NF0021_T1",
-    "NF0030_T1",
-    "NF0037_T1",
-    "NF0037_T1_CQ1",
-]  # psuedo paired
-subparent_dirs = ["zstack_images", "basicpy_zstack_images"]
-file_paths = []
-for patient in tqdm.tqdm(patients, desc="Collecting image paths", leave=True):
-    for subparent_dir in subparent_dirs:
-        image_dir = pathlib.Path(
-            f"{image_base_dir}/data/{patient}/{subparent_dir}/"
-        ).resolve()
-        image_paths = sorted(list(image_dir.glob("*")))
-        image_paths = [p for p in image_paths if p.is_dir()]
-        # actually faster to parse multiple dirs than to
-        # recursively glob for all tif files in one dir with many subdirs
-        # anecdotally, interesting
-        # >30mins for recursive glob vs <2 mins for parsing nested dirs
-        for image_path in tqdm.tqdm(
-            image_paths,
-            desc=f"Collecting image paths for {patient} in {subparent_dir}",
-            leave=False,
-        ):
-            zstack_image_paths = sorted(list(image_path.glob("*.tif")))
-            zstack_image_paths = [str(p) for p in zstack_image_paths if p.is_file()]
-            file_paths.extend(zstack_image_paths)
-print(f"Found {len(file_paths)} zstack image files for patients: {patients}")
-file_paths_df = pd.DataFrame({"image_path": file_paths})
-file_paths_df.to_parquet(file_paths_output_file, index=False)
-
-
-# In[ ]:
-
-
-df = pd.DataFrame({"image_path": file_paths})
-df["patient"] = df["image_path"].apply(
-    lambda x: pathlib.Path(x).parent.parent.parent.name
-)
-df["well_fov"] = df["image_path"].apply(lambda x: pathlib.Path(x).parent.name)
-df["channel"] = df["image_path"].apply(lambda x: pathlib.Path(x).stem.split("_")[-1])
-
-image_path = df.pop("image_path")
-df.insert(3, "image_path", image_path)
-
-# filter out rows that contain channel = TRANS
-df = df[df["channel"] != "TRANS"].reset_index(drop=True)
-
-# Ensure we pivot patient x well_fov -> one column per channel (values are the image_path)
-df = df[["patient", "well_fov", "channel", "image_path"]].copy()
-# convert paths to strings (optional)
-df["image_path"] = df["image_path"].astype(str)
-df["basicpy_status"] = df["image_path"].apply(
-    lambda x: "basicpy" if "basicpy" in str(x) else "raw_image"
-)
-df = df.pivot_table(
-    index=["patient", "well_fov", "basicpy_status"],
-    columns="channel",
-    values="image_path",
-    aggfunc="first",  # if multiple entries per channel, keep first
-).reset_index()
-
-df.columns.name = None
-df["nuclei_mask_path"] = df.apply(
-    lambda row: pathlib.Path(
-        f"{image_base_dir}/data/{row['patient']}/segmentation_masks/{row['well_fov']}/nuclei_mask.tiff"
-    ),
-    axis=1,
-)
-df["cell_mask_path"] = df.apply(
-    lambda row: pathlib.Path(
-        f"{image_base_dir}/data/{row['patient']}/segmentation_masks/{row['well_fov']}/cell_mask.tiff"
-    ),
-    axis=1,
-)
-df["organoid_mask_path"] = df.apply(
-    lambda row: pathlib.Path(
-        f"{image_base_dir}/data/{row['patient']}/segmentation_masks/{row['well_fov']}/organoid_mask.tiff"
-    ),
-    axis=1,
-)
-print(df.shape)
-df.head()
-
-
-# In[ ]:
-
-
 def calculate_slice_by_slice_metrics(
     image: np.ndarray,
     mask: np.ndarray,
@@ -518,7 +406,109 @@ def calculate_whole_volume_metrics(
     return True
 
 
-# In[ ]:
+# In[4]:
+
+
+platemap_file_dir = pathlib.Path(
+    f"{image_base_dir}/data/NF0037_T1/platemap/platemap.csv"
+).resolve(strict=True)
+plate_map_df = pd.read_csv(platemap_file_dir)
+results_dir = pathlib.Path(
+    "../results/raw_image_quality_metrics/individual_files/"
+).resolve()
+results_dir.mkdir(parents=True, exist_ok=True)
+patients_file_path = pathlib.Path("../../data/patient_IDs.txt").resolve(strict=True)
+patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
+
+
+# In[5]:
+
+
+# list of all file paths to analyze
+file_paths_output_file = pathlib.Path(
+    "../results/list_of_zstack_image_paths.parquet"
+).resolve()
+file_paths_output_file.parent.mkdir(parents=True, exist_ok=True)
+subparent_dirs = ["zstack_images", "basicpy_zstack_images"]
+file_paths = []
+for patient in tqdm.tqdm(patients, desc="Collecting image paths", leave=True):
+    for subparent_dir in subparent_dirs:
+        image_dir = pathlib.Path(
+            f"{image_base_dir}/data/{patient}/{subparent_dir}/"
+        ).resolve()
+        image_paths = sorted(list(image_dir.glob("*")))
+        image_paths = [p for p in image_paths if p.is_dir()]
+        # actually faster to parse multiple dirs than to
+        # recursively glob for all tif files in one dir with many subdirs
+        # anecdotally, interesting
+        # >30mins for recursive glob vs <2 mins for parsing nested dirs
+        for image_path in tqdm.tqdm(
+            image_paths,
+            desc=f"Collecting image paths for {patient} in {subparent_dir}",
+            leave=False,
+        ):
+            zstack_image_paths = sorted(list(image_path.glob("*.tif")))
+            zstack_image_paths = [str(p) for p in zstack_image_paths if p.is_file()]
+            file_paths.extend(zstack_image_paths)
+print(f"Found {len(file_paths)} zstack image files for patients: {patients}")
+file_paths_df = pd.DataFrame({"image_path": file_paths})
+file_paths_df.to_parquet(file_paths_output_file, index=False)
+
+
+# In[6]:
+
+
+df = pd.DataFrame({"image_path": file_paths})
+df["patient"] = df["image_path"].apply(
+    lambda x: pathlib.Path(x).parent.parent.parent.name
+)
+df["well_fov"] = df["image_path"].apply(lambda x: pathlib.Path(x).parent.name)
+df["channel"] = df["image_path"].apply(lambda x: pathlib.Path(x).stem.split("_")[-1])
+
+image_path = df.pop("image_path")
+df.insert(3, "image_path", image_path)
+
+# filter out rows that contain channel = TRANS
+df = df[df["channel"] != "TRANS"].reset_index(drop=True)
+
+# Ensure we pivot patient x well_fov -> one column per channel (values are the image_path)
+df = df[["patient", "well_fov", "channel", "image_path"]].copy()
+# convert paths to strings (optional)
+df["image_path"] = df["image_path"].astype(str)
+df["basicpy_status"] = df["image_path"].apply(
+    lambda x: "basicpy" if "basicpy" in str(x) else "raw_image"
+)
+df = df.pivot_table(
+    index=["patient", "well_fov", "basicpy_status"],
+    columns="channel",
+    values="image_path",
+    aggfunc="first",  # if multiple entries per channel, keep first
+).reset_index()
+
+df.columns.name = None
+df["nuclei_mask_path"] = df.apply(
+    lambda row: pathlib.Path(
+        f"{image_base_dir}/data/{row['patient']}/segmentation_masks/{row['well_fov']}/nuclei_mask.tiff"
+    ),
+    axis=1,
+)
+df["cell_mask_path"] = df.apply(
+    lambda row: pathlib.Path(
+        f"{image_base_dir}/data/{row['patient']}/segmentation_masks/{row['well_fov']}/cell_mask.tiff"
+    ),
+    axis=1,
+)
+df["organoid_mask_path"] = df.apply(
+    lambda row: pathlib.Path(
+        f"{image_base_dir}/data/{row['patient']}/segmentation_masks/{row['well_fov']}/organoid_mask.tiff"
+    ),
+    axis=1,
+)
+print(df.shape)
+df.head()
+
+
+# In[7]:
 
 
 def process_single_task(task_params):
@@ -624,7 +614,7 @@ def process_single_task(task_params):
         )
 
 
-# In[ ]:
+# In[8]:
 
 
 for i, row in tqdm.tqdm(df.iterrows(), total=len(df)):
@@ -636,26 +626,55 @@ for i, row in tqdm.tqdm(df.iterrows(), total=len(df)):
                 print(message)
 
 
-# In[ ]:
+# In[9]:
 
 
 # get a list of all files in the results directory
 all_result_files = list(results_dir.rglob("*.parquet"))
 # split the lists into 2D and 3D files based on the filename
-result_2D_files = [f for f in all_result_files if "2D" in f.name]
-result_3D_files = [f for f in all_result_files if "3D" in f.name]
-df_2D = pd.concat([pd.read_parquet(f) for f in result_2D_files], ignore_index=True)
-df_3D = pd.concat([pd.read_parquet(f) for f in result_3D_files], ignore_index=True)
-df_2D.head()
-# df_3D.head()
+result_raw_image_2D_files = [
+    f for f in all_result_files if "raw_image" in f.name and "2D" in f.name
+]
+result_basicpy_2D_files = [
+    f for f in all_result_files if "basicpy" in f.name and "2D" in f.name
+]
+result_raw_image_3D_files = [
+    f for f in all_result_files if "raw_image" in f.name and "3D" in f.name
+]
+result_basicpy_3D_files = [
+    f for f in all_result_files if "basicpy" in f.name and "3D" in f.name
+]
+
+result_basicpy_2D_df = pd.concat(
+    [pd.read_parquet(f) for f in result_basicpy_2D_files], ignore_index=True
+)
+result_basicpy_3D_df = pd.concat(
+    [pd.read_parquet(f) for f in result_basicpy_3D_files], ignore_index=True
+)
+result_raw_2D_df = pd.concat(
+    [pd.read_parquet(f) for f in result_raw_image_2D_files], ignore_index=True
+)
+result_raw_3D_df = pd.concat(
+    [pd.read_parquet(f) for f in result_raw_image_3D_files], ignore_index=True
+)
+result_basicpy_2D_df["basicpy_status"] = "basicpy"
+result_basicpy_3D_df["basicpy_status"] = "basicpy"
+result_raw_2D_df["basicpy_status"] = "raw_image"
+result_raw_3D_df["basicpy_status"] = "raw_image"
+final_result_2D_df = pd.concat(
+    [result_basicpy_2D_df, result_raw_2D_df], ignore_index=True
+)
+final_result_3D_df = pd.concat(
+    [result_basicpy_3D_df, result_raw_3D_df], ignore_index=True
+)
 
 
-# In[ ]:
+# In[10]:
 
 
 # merge the plate map info into the results
-df_2D["well"] = df_2D["well_fov"].str.split("-").str[0]
-df_2D_results = df_2D.merge(
+final_result_2D_df["well"] = final_result_2D_df["well_fov"].str.split("-").str[0]
+df_2D_results = final_result_2D_df.merge(
     plate_map_df, how="left", left_on="well", right_on="well_position"
 )
 df_2D_results.sort_values(
@@ -664,17 +683,11 @@ df_2D_results.sort_values(
 concat_dir = pathlib.Path("../results/raw_image_quality_metrics/").resolve()
 df_2D_results.to_parquet(concat_dir / "merged_results_2D.parquet", index=False)
 
-df_3D["well"] = df_3D["well_fov"].str.split("-").str[0]
-df_3D_results = df_3D.merge(
+final_result_3D_df["well"] = final_result_3D_df["well_fov"].str.split("-").str[0]
+df_3D_results = final_result_3D_df.merge(
     plate_map_df, how="left", left_on="well", right_on="well_position"
 )
 df_3D_results.sort_values(
     by=["patient", "well_fov", "channel", "compartment"], inplace=True
 )
 df_3D_results.to_parquet(concat_dir / "merged_results_3D.parquet", index=False)
-
-
-# In[ ]:
-
-
-len(df_2D_results["z_slice"].unique())
