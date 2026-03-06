@@ -37,6 +37,9 @@ from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
 )
+from image_analysis_3D.file_utils.read_in_channel_mapping import (
+    retrieve_channel_mapping,
+)
 from image_analysis_3D.segmentation_utils.cell_segmentation import *
 from image_analysis_3D.segmentation_utils.general_segmentation_utils import *
 from image_analysis_3D.segmentation_utils.segmentation_decoupling import *
@@ -80,7 +83,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "G7-2"
+    well_fov = "C4-2"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -94,6 +97,7 @@ mask_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
+channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
 # In[5]:
@@ -128,16 +132,10 @@ print(f"Organoid morphology for {well_fov}: {morphology_class}")
 
 return_dict = read_in_channels(
     find_files_available(input_dir),
-    channel_dict={
-        "nuclei": "405",
-        "cyto1": "488",
-        "cyto2": "555",
-        "cyto3": "640",
-        "brightfield": "TRANS",
-    },
-    channels_to_read=["cyto2"],
+    channel_dict=channel_dict,
+    channels_to_read=["AGP"],
 )
-cyto2_raw = return_dict["cyto2"]
+cyto2_raw = return_dict["AGP"]
 del return_dict
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 nuclei_mask = read_zstack_image(nuclei_mask_output)

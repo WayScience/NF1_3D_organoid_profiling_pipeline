@@ -18,6 +18,7 @@ import pandas as pd
 import psutil
 import skimage
 import tifffile
+import tomli
 import torch
 from cellpose import models
 from image_analysis_3D.file_utils.arg_parsing_utils import (
@@ -78,7 +79,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "E7-2"
+    well_fov = "C4-2"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -92,7 +93,7 @@ mask_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}"
 ).resolve()
 mask_path.mkdir(exist_ok=True, parents=True)
-channel_dict = retrieve_channel_mapping(f"{root_dir}/data/channel_mapping.toml")
+channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
 # In[5]:
@@ -185,7 +186,6 @@ nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
 
 
 nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
-np.unique(nuclei_mask)
 
 
 # In[11]:
@@ -211,7 +211,7 @@ if in_notebook:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
-tifffile.imwrite(nuclei_mask_output, nuclei_mask)
+tifffile.imwrite(nuclei_mask_output, nuclei_mask, dtype=np.uint8)
 
 
 # In[13]:
