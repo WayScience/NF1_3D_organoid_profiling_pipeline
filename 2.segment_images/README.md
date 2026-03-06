@@ -1,131 +1,122 @@
-# Featurization
-
-All scripts pull data from a Way-lab specific NAS-mounted directory.
-We have a function that parses if the path is available and if not defaults to a local path (./data).
-We use the `root_dir` variable to specify that some files should be saved to the local git repo directory and not the NAS-mounted directory.
-We use the `image_base_dir` variable to specify that some files should be pulled from the NAS-mounted directory.
-This includes both raw and processed data.
-
-![Featurization pipeline](./diagram/featurization_strategy.png)
-
-The approach to the featurization is to run each feature extraction function for each cell compartment for each channel in a distributed manner.
-The results are then combined into a single dataframe for each cell compartment and channel.
-Distinct features from this dataframe are saved as parquet files.
-These parquet files are then merged by the following cell compartments as:
-
+# Segmentation of 3D organoid images
+To extract features in the next module, we need to segment the images to tell the machine where in the image the objects are.
+We segment the following objects:
 - Nuclei
+    - This is the nucleus of the cell.
 - Cell
+    - This is the whole cell, including the nucleus and cytoplasm.
 - Cytoplasm
+    - This is the part of the cell that excludes the nucleus.
 - Organoid
+    - This is the whole organoid, including all cells and the surrounding matrix.
 
-These are stored as related tables in a SQLite database.
-The SQLite database tables are then integrated as a single-cell feature table using CytoTable.
+We take an interesting approach to segmentation.
+This is due to the data we are working with.
+The data are NF1 patient-derived 3D organoids with a pilot drug screen applied to them.
+The data are heterogeneous, meaning that the organoids vary in size, shape, and stain intensity.
+This is due to the difference in patient samples, the difference in drug treatments, and the difference in imaging quality.
+This leaves us with a classic Computer Science problem: how do we apply a method that is "one size fits all" to a heterogeneous dataset?
+The short answer is that we can't.
+The long answer is the methods used which I will describe in more detail below.
 
-## Running the featurization
+## The workflow (what we do, why we do it, and how we do it)
+1. Establishing diverging gross morphology segmentation pipelines depending on the whole field of view (FOV) morphology.
+    - We featurize the entire FOV using pre-trained ViT models (SAMMed3D and CHAMMI-75).
+        - SAMMed3D returns 384 features per channel, per volumetric FOV.
+        - CHAMMI-75 returns 75 features per channel, per z-maximum projection of the FOV.
+    - We train a logistic regression classifier to classify the FOVs into seven (7) morphological classes based on the features extracted from the FOVs.
+        - The seven classes were manually annotated by looking at the FOVs and categorizing them based on their morphology.
+        - The seven classes are:
+            1. Small
+                - Small organoids with few cells clumped together.
+            2. Globular
+                - Large organoids with many cells clumped together in a globular shape.
+            3. Elongated
+                - Large organoids with many cells clumped together in an elongated shape.
+            4. Dissociated
+                - Small/medium organoids with many cells dissociated from each other.
+            5. Cluster
+                - Single cells in a cluster, but not clumped together in a globular or elongated shape.
+            6. Blank
+                - No organoids, just background.
+            7. Fail
+                - Black images, likely an image corruption issue.
+    - We annoted 3013 FOVs out of 4156 (72.5%) present in the dataset set.
+        | Class | Count |
+        | --- | --- |
+        | Small | 828 |
+        | Globular | 276 |
+        | Elongated | 234 |
+        | Dissociated | 1078 |
+        | Cluster | 587 |
+        | Blank | 6 |
+        | Fail | 4 |
+        - After removing the "blank" and "fail" classes, we are left with 3003 annotated FOVs.
+    - We train a logistic regression classifier to classify the FOVs into the seven classes based on the features extracted from the FOVs.
+    - We used the following training/testing split:
+        - Train: 80% (1960 FOVs)
+        - Validation: 10% (245 FOVs)
+        - Test: 10% (245 FOVs)
+        - Holdout: 22.57% (553 FOVs) (not included in the training/testing split, used for final evaluation of the model)
+    - We use the trained classifier to predict the class of each FOV in the dataset, including the 1143 FOVs that were not annotated.
+2. Segmenting the nuclei, cell, cytoplasm, and organoid in each FOV using the appropriate pipeline.
+    - Regardless of the predicted class, we segment the nuclei using CellposeSAM, a pre-trained deep learning model for cell segmentation.
+    - We then use the nuclei masks to perfomrm 3D seeded watershed segmentation.
+        - We change the parameters and preprocessing of the images depending on the predicted class of the FOV.
+        - All labels have the raw signal run throguh a butterworth low pass filter to smooth the image and make the watershed segmentation more robust.
+        - Then the the image is thresholded using a global thresholding method (Otsu's method) to create a binary mask of the organoid as a way to limit the watershed segmentation to the organoid and not segment the background.
+        - This thresholding is perfomed on a gaussian smoothed version of the raw signal to make the thresholding more robust - this is parameterized based on the predicted class of the FOV.
+        - Depending on the predicted class of the FOV, we dialate the thresholded mask to make sure we are capturing the whole organoid and not just the core of the organoid.
+        - We then apply a gaussian filter and a sobel filter to the raw signal to smooth it and make the watershed segmentation more robust - this is parameterized based on the predicted class of the FOV.
 
-A parent/child approach is used to perform featurization.
-Each parent process runs child processes.
-Each grandparent process runs multiple parent processes.
-Each great grandparent process runs multiple grandparent processes.
-
-### The great grandparent process
-The great grandparent process is responsible for running the grandparent processes.
-Where each grandparent process is responsible for a given patient.
-
-### The grandparent process
-
-The grandparent process spins off the parent processes.
-Where each parent process is responsible for the well and FOV of a given organoid(s).
-
-### The parent process
-
-The parent process is responsible for running the child processes.
-Where each child process is responsible for a given cell compartment and channel.
-
-### The child process
-
-The child process is responsible for running the feature extraction functions, where each feature extraction function is run in a separate process.
-The child process is responsible for saving the results to a parquet file.
-The child process ultimately recieves arguments from the parent process to run the feature extraction functions on either CPU or GPU.
-
-#### Example of the grandparent process through the parent process to the child process
-
-- Grandparent process spins of the parent process for Well 1, FOV 1
-- Parent process spins off the child process for AreaSizeShape feauture extraction
-- The child process runs the AreaSizeShape feature extraction function for each channel and compartment and saves the results to a parquet file
-
-For this dataset we have:
-
-- 5 channels
-- 4 compartments
-
-We extract features for each of the feature types:
-
-- AreaSizeShape (4 compartments = 4 parquet files)
-- Colocalization (10 channel combinations \* 4 compartments = 40 parquet files)
-- Granularity (5 channels \* 4 compartments = 20 parquet files)
-- Intensity (5 channels \* 4 compartments = 20 parquet files)
-- Neighbors (one metric at one compartment level = 1 parquet file)
-- Texture (5 channels \* 4 compartments = 20 parquet files)
-
-Note that the following features can be extracted using a GPU processor:
-- AreaSizeShape
-- Colocalization
-- Intensity
-All features can be extracted using a CPU processor.
-
-So each parent process will result in the child processes generating 105 parquet files per well and FOV combination.
-
-Usage of featurization vs feature extraction:
-
-- Featurization: The process of running the feature extraction functions on the images and saving the results to a parquet file.
-- Feature extraction: The process of extracting features from the images using the feature extraction functions.
-
-### Submission strategy
-
-- Great grand parent has the lowest urgency to submit jobs and will spawn off tens of grandparent jobs.
-- Grandparent has a higher urgency to submit jobs and will spawn off thousands of parent jobs.
-- Parent has the highest urgency to submit jobs and will spawn off one child job per parent.
-  The parent job handles the slurm scheduling for differences in resources needed for each child job.
-
-The HPC we are using only allows a max of 999 jobs to be running or queued at a time.
-This ensures efficient resource management and prevents overloading the system.
-Thus,, we will be taking steps to ensure that we never exceed this limit.
-Additionally, there is a compute max wall time of 7 days for each job.
-To prevent exceeding this limit, we will ensure that the great grandparent and grandparent jobs are prioritized to finish prior to submiting the parent and child jobs.
-What tthis looks like in practice is limiting the submissionss based on the current number of jobs running and queued.
-Great--grandparent jobs will be submitted when the total number of jobs drops below 500.
-Grandparent jobs will be submitted when the total number of jobs drops below 990.
-Parent jobs take no such precautions as they are only submitting a single child job and thus will not exceed the 999 job limit as there should be a 1:1 job replacement.
-
-Essentially, this places a decent time gap between the submission of the great grandparent and grandparent jobs (e.g., individual patients) so that the grandparent jobs can be submitted in a timely manner and are not competing for resources with the great grandparent jobs or other grandparent jobs.
+## Cell segmentation workflow diagram
+```mermaid
+graph TD
+A[Raw image] --> B[Thresholding]
+A --> C[Butterworth low pass filter]
 
 
-## Feature naming conventions
-The feature names are standardized to ensure consistency across the dataset. The naming convention is as follows:
-<FeatureType>_<Compartment>_<Channel>_<FeatureName>_<Parameters>
+B --> D1[Globular & Cluster]
+B --> D2[Small & Dissociated]
+B --> D3[Elongated]
 
-Where:
-- `<FeatureType>`: The type of feature being extracted:
-    - AreaSizeShape
-    - Colocalization
-    - Granularity
-    - Intensity
-    - Neighbors
-    - Texture
-- `<Compartment>`: The compartment from which the feature is extracted:
-    - Nuclei
-    - Cell
-    - Cytoplasm
-    - Organoid
-- `<Channel>`: The channel from which the feature is extracted:
-    - Mito
-    - DAPI
-    - ER
-    - AGP
-    - Brightfield
-    note if the FeatueType is Colocalization, the channel will be a combination of channels
-    and separated by a . e.g. Mito.DAPI
-- `<FeatureName>`: The name of the feature being extracted:
-- `<Parameters>`: Any additional parameters used in the feature extraction, such as the size of the texture window or the number of bins for intensity features.
-- For example, `Texture_Organoid_Mito_Entropy_256.1` indicates that the feature is a texture feature extracted from the organoid compartment using the Mito channel, with the feature being entropy and parameters of 256.1.
+D1 --> E1[Gaussian smoothing with sigma=2.5]
+D2 --> E2[Gaussian smoothing with sigma=3.0]
+D3 --> E3[Gaussian smoothing with sigma=4.0]
+
+E1 --> F1[Otsu's thresholding]
+E2 --> F1
+E3 --> F1
+
+F1 --> I1[Binary mask of organoid]
+I1 --> J1[No dilation of the mask]
+I1 --> J2[Dilation ball radius=1]
+I1 --> J3[Dilation ball radius=10]
+J1 --> H1[3D seeded watershed segmentation with nuclei masks as seeds]
+J2 --> H1
+J3 --> H1
+
+
+
+C --> Z1[Globular & Cluster]
+C --> Z2[Small & Dissociated]
+C --> Z3[Elongated]
+Z1 --> Y1[No Gaussian smoothing]
+Z2 --> Y2[Gaussian smoothing with sigma=1.0]
+Z3 --> Y3[Gaussian smoothing with sigma=1.0]
+
+Y1 --> X1[Sobel filter]
+Y2 --> X1
+Y3 --> X1
+
+X1 --> W1[Connectivity=1; Compactness=1]
+X1 --> W2[Connectivity=1; Compactness=0]
+X1 --> W3[Connectivity=0; Compactness=0]
+
+W1 --> H1
+W2 --> H1
+W3 --> H1
+
+```
+
+

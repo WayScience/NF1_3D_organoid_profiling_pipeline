@@ -22,10 +22,16 @@ import skimage.io
 import tifffile
 import torch
 import torch.nn as nn
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import *
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import *
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from matplotlib.colors import ListedColormap
-from notebook_init_utils import bandicoot_check, init_notebook
 
 # In[2]:
 
@@ -65,7 +71,6 @@ cyan_lut[0] = [0, 0, 0]
 
 patients_file_path = root_dir / "data/patient_IDs.txt"
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
-patients = ["NF0037_T1_CQ1"]
 for patient_id in tqdm.tqdm(patients, desc=f"Processing patients"):
     input_dir = pathlib.Path(
         f"{image_base_dir}/data/{patient_id}/zstack_images/"
@@ -81,8 +86,8 @@ for patient_id in tqdm.tqdm(patients, desc=f"Processing patients"):
         save_path = pathlib.Path(
             f"{image_file_path}/{patient_id}_{image_path.stem}_downsampled.png"
         )
-        # if save_path.exists():
-        #     continue
+        if save_path.exists():
+            continue
         # read the image
         image = read_zstack_image(image_path)
         # get the middle slice of the z-stack

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -13,9 +13,15 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import read_zstack_image
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from skimage import exposure
 
 root_dir, in_notebook = init_notebook()
@@ -27,7 +33,6 @@ if in_notebook:
     import tqdm.notebook as tqdm
 else:
     import tqdm
-image_base_dir
 
 
 # In[2]:
@@ -36,17 +41,14 @@ image_base_dir
 if not in_notebook:
     args = parse_args()
     clip_limit = args["clip_limit"]
-    patient = args["patient"]
     input_subparent_name = args["input_subparent_name"]
     mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
-        patient=patient,
         input_subparent_name=input_subparent_name,
         mask_subparent_name=mask_subparent_name,
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T1"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
@@ -59,7 +61,7 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 
 
-# In[ ]:
+# In[3]:
 
 
 def plot_plate_overview(
@@ -252,11 +254,7 @@ for patient in tqdm.tqdm(
     input_dir = pathlib.Path(
         f"{image_base_dir}/data/{patient}/{input_subparent_name}/"
     ).resolve(strict=True)
-    mask_path = pathlib.Path(
-        f"{image_base_dir}/data/{patient}/{mask_subparent_name}/"
-    ).resolve()
     # get the well_fov paths
-
     well_fovs = input_dir.glob("*")
     image_available_wells = {}
     for well_fov_path in well_fovs:
@@ -268,7 +266,6 @@ for patient in tqdm.tqdm(
 
     # plot and save the plate view
     channels_to_show = ["405", "488", "555", "640"]
-    masks_to_show = ["organoid", "nuclei", "cell"]
 
     for channel in tqdm.tqdm(
         channels_to_show, desc="Generating channel platemaps", leave=False
@@ -314,46 +311,53 @@ for patient in tqdm.tqdm(
         plt.close(fig)
 
 
-# In[6]:
+# In[ ]:
 
 
-for patient in tqdm.tqdm(
-    patients, desc="Generating platemaps for patients", unit="patient"
-):
-    well_fovs = mask_path.glob("*")
-    mask_available_wells = {}
-    for well_fov_path in well_fovs:
-        if not well_fov_path.is_dir():
-            continue
-        well_fov_name = well_fov_path.stem.split("-")[0]
-        if well_fov_name not in mask_available_wells:
-            mask_available_wells[well_fov_name] = well_fov_path
+# for patient in tqdm.tqdm(
+#     patients, desc="Generating platemaps for patients", unit="patient"
+# ):
+#     mask_path = pathlib.Path(
+#         f"{image_base_dir}/data/{patient}/{mask_subparent_name}/"
+#     ).resolve()
 
-    for mask in tqdm.tqdm(masks_to_show, desc="Generating mask platemaps", leave=False):
-        if mask == "organoid":
-            mask_title = "Organoid Mask"
-        elif mask == "nuclei":
-            mask_title = "Nuclei Mask"
-        elif mask == "cell":
-            mask_title = "Cell Mask"
-        else:
-            mask_title = mask
-        fig = plot_plate_overview(
-            plate=patient,
-            image_sub_string_to_search=mask,
-            title_for_substring=mask_title,
-            available_wells=mask_available_wells,
-            layout="96",
-            skip_outer_wells=True,
-            image_color_map="nipy_spectral",
-        )
-        # Save using matplotlib
-        output_path = figures_path / f"{patient}_platemap_{mask}.png"
-        fig.savefig(
-            output_path,
-            dpi=600,
-            bbox_inches="tight",
-            facecolor="white",
-            edgecolor="none",
-        )
-        plt.close(fig)
+#     well_fovs = mask_path.glob("*")
+
+#     # plot and save the plate view
+#     masks_to_show = ["organoid", "nuclei", "cell"]
+#     mask_available_wells = {}
+#     for well_fov_path in well_fovs:
+#         if not well_fov_path.is_dir():
+#             continue
+#         well_fov_name = well_fov_path.stem.split("-")[0]
+#         if well_fov_name not in mask_available_wells:
+#             mask_available_wells[well_fov_name] = well_fov_path
+
+#     for mask in tqdm.tqdm(masks_to_show, desc="Generating mask platemaps", leave=False):
+#         if mask == "organoid":
+#             mask_title = "Organoid Mask"
+#         elif mask == "nuclei":
+#             mask_title = "Nuclei Mask"
+#         elif mask == "cell":
+#             mask_title = "Cell Mask"
+#         else:
+#             mask_title = mask
+#         fig = plot_plate_overview(
+#             plate=patient,
+#             image_sub_string_to_search=mask,
+#             title_for_substring=mask_title,
+#             available_wells=mask_available_wells,
+#             layout="96",
+#             skip_outer_wells=True,
+#             image_color_map="nipy_spectral",
+#         )
+#         # Save using matplotlib
+#         output_path = figures_path / f"{patient}_platemap_{mask}.png"
+#         fig.savefig(
+#             output_path,
+#             dpi=600,
+#             bbox_inches="tight",
+#             facecolor="white",
+#             edgecolor="none",
+#         )
+#         plt.close(fig)

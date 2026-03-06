@@ -6,7 +6,7 @@
 # Running each individual task as its own script is modular but requires overhead to load the data each time.
 #
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -23,18 +23,26 @@ import psutil
 import scipy
 import tifffile
 import torch
-from arg_parsing_utils import check_for_missing_args, parse_args
-from cell_segmentation import *
 from cellpose import models
-from file_reading import *
-from file_reading import read_zstack_image
-from general_segmentation_utils import *
-from notebook_init_utils import bandicoot_check, init_notebook
-from organoid_segmentation import *
-from segmentation_decoupling import *
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import (
+    find_files_available,
+    read_in_channels,
+    read_zstack_image,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+from image_analysis_3D.segmentation_utils.cell_segmentation import *
+from image_analysis_3D.segmentation_utils.general_segmentation_utils import *
+from image_analysis_3D.segmentation_utils.segmentation_decoupling import *
 from skimage.filters import sobel
 
-# In[ ]:
+# In[2]:
 
 
 start_time = time.time()
@@ -42,7 +50,7 @@ start_time = time.time()
 start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
-# In[ ]:
+# In[3]:
 
 
 root_dir, in_notebook = init_notebook()
@@ -52,7 +60,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[4]:
 
 
 if not in_notebook:
@@ -72,8 +80,8 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "F10-1"
-    clip_limit = 0.01
+    well_fov = "G7-2"
+    clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
@@ -88,7 +96,7 @@ mask_path = pathlib.Path(
 mask_path.mkdir(exist_ok=True, parents=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 # look up the morphology of the organoid from json file
@@ -112,10 +120,10 @@ elif len(morphology_class) > 1:
     print(f"Multiple morphology labels found for {well_fov} in {patient}.")
 
 print(f"Organoid morphology for {well_fov}: {morphology_class}")
-# morphology = "elongated"  # FOR TESTING ONLY - REMOVE LATER
+# morphology_class = "small"  # FOR TESTING ONLY - REMOVE LATER
 
 
-# In[ ]:
+# In[6]:
 
 
 return_dict = read_in_channels(
@@ -142,31 +150,34 @@ del cyto2_raw
 
 # ## Segment the cells
 
-# In[ ]:
+# In[7]:
 
 
+# call the morphology dependent segmentation function with the appropriate parameters based on morphology class
 cell_mask = perform_morphology_dependent_segmentation(
     organoid_label=morphology_class,  # use morphology label instead of generic label
     cyto_signal=cyto2,  # use the clipped and equalized cyto signal for segmentation
     nuclei_mask=nuclei_mask,  # use the nuclei mask for segmentation
+    min_size=1_000,  # set a minimum size for cell segments to remove small objects
+    max_size=10_000_000,  # set a maximum size for cell segments to remove large objects
 )
 
 
-# In[ ]:
+# In[8]:
 
 
 if in_notebook:
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(20, 20))
     plt.subplot(131)
     plt.imshow(cyto2[cyto2.shape[0] // 2], cmap="inferno")
     plt.title("Cytoplasm Signal (Cyto2)")
     plt.axis("off")
     plt.subplot(132)
-    plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="nipy_spectral")
+    plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="tab20")
     plt.title(f"Segmented Cell Mask - Morphology: {morphology_class}")
     plt.axis("off")
     plt.subplot(133)
-    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="nipy_spectral")
+    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="tab20")
     plt.title("Nuclei Mask")
     plt.axis("off")
     plt.show()
@@ -175,7 +186,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[ ]:
+# In[9]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -186,7 +197,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[ ]:
+# In[10]:
 
 
 nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
@@ -198,7 +209,7 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 )
 
 
-# In[ ]:
+# In[11]:
 
 
 if in_notebook:
@@ -214,7 +225,7 @@ if in_notebook:
     plt.show()
 
 
-# In[ ]:
+# In[12]:
 
 
 # refine the cell masks
@@ -228,7 +239,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[ ]:
+# In[13]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -239,7 +250,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Organoid segmentation (derived from cell segmentation)
 
-# In[ ]:
+# In[14]:
 
 
 # convert the cell masks to binary masks
@@ -255,21 +266,25 @@ for z in range(cell_binary_mask.shape[0]):
 organoid_mask = skimage.measure.label(cell_binary_mask)
 
 
-# In[ ]:
+# In[15]:
 
 
 if in_notebook:
     z = cell_mask.shape[0] // 2
     plt.figure(figsize=(10, 10))
-    plt.subplot(131)
+    plt.subplot(141)
     plt.title("Nuclei Mask")
     plt.imshow(nuclei_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
-    plt.subplot(132)
+    plt.subplot(142)
     plt.title("Cell Mask")
     plt.imshow(cell_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
-    plt.subplot(133)
+    plt.subplot(143)
+    plt.title("Cytoplasm Mask")
+    plt.imshow(cytoplasm_mask[z, :, :], cmap="nipy_spectral")
+    plt.axis("off")
+    plt.subplot(144)
     plt.title("Organoid Mask")
     plt.imshow(organoid_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
@@ -278,7 +293,7 @@ if in_notebook:
 
 # ## Remove border objects
 
-# In[ ]:
+# In[16]:
 
 
 # nuclei should already have objects removed at the border from the previous notebook,
@@ -289,7 +304,7 @@ cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
 organoid_mask = clean_border_objects(organoid_mask, border_width=25)
 
 
-# In[ ]:
+# In[17]:
 
 
 # since the nuclei - cell masks should be 1:1
@@ -307,7 +322,7 @@ for label_id in unmatched_labels_to_remove:
 
 # ## Save the segmented masks
 
-# In[ ]:
+# In[18]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -320,7 +335,7 @@ tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 tifffile.imwrite(organoid_mask_output, organoid_mask)
 
 
-# In[ ]:
+# In[19]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

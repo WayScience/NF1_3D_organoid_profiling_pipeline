@@ -22,7 +22,7 @@ except NameError:
 
 from notebook_init_utils import bandicoot_check, init_notebook
 
-# In[2]:
+# In[ ]:
 
 
 root_dir, in_notebook = init_notebook()
@@ -37,11 +37,8 @@ patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
 patients += ["NF0037_T1-Z-1", "NF0037_T1-Z-0.5", "NF0037_T1-Z-0.2", "NF0037_T1-Z-0.1"]
-input_combinations_path = pathlib.Path(
-    f"{root_dir}/2.segment_images/load_data/input_combinations.txt"
-)
 rerun_combinations_path = pathlib.Path(
-    f"{root_dir}/2.segment_images/load_data/rerun_combinations.txt"
+    f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
 )
 input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,14 +135,6 @@ for patient in patients:
 df = pd.DataFrame(output_dict)
 print(f"Total combinations: {df.shape[0]}")
 df.head()
-
-
-# In[8]:
-
-
-# write to a txt file with each row as a combination
-# each column is a feature of the combination
-df.to_csv(input_combinations_path, sep="\t", index=False)
 
 
 # ## Rerun list

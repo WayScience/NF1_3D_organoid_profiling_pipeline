@@ -12,13 +12,8 @@ if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
 fi
-rerun=$1
 
-if [ "$rerun" == "rerun" ]; then
-    txt_file="${git_root}/2.segment_images/load_data/rerun_combinations.txt"
-else
-    txt_file="${git_root}/2.segment_images/load_data/input_combinations.txt"
-fi
+txt_file="${git_root}/2.segment_images/load_data/rerun_combinations.txt"
 
 # Check if TXT file exists
 if [ ! -f "$txt_file" ]; then
@@ -57,7 +52,7 @@ while IFS= read -r line; do
         --partition=amilan \
         --qos=normal \
         --account=amc-general \
-        --time=20:00 \
+        --time=3:00 \
         --output=logs/child/segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 

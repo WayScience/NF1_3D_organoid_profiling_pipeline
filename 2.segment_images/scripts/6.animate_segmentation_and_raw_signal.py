@@ -12,31 +12,23 @@ import pathlib
 import sys
 
 import imageio
+import napari
 
 # import matplotlib.pyplot as plt
 import numpy as np
-from moviepy.editor import VideoFileClip
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import *
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+from moviepy import VideoFileClip
 from napari_animation import Animation
 from napari_animation.easing import Easing
-from nviz.image import image_set_to_arrays
-from nviz.image_meta import generate_ome_xml
-from nviz.view import view_ometiff_with_napari
 from PIL import Image
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
@@ -78,10 +70,10 @@ label_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 ).resolve(strict=True)
 mp4_file_dir = pathlib.Path(
-    f"{image_base_dir}/2.segment_images/{amimation_subparent_name}/mp4/{well_fov}/"
+    f"{root_dir}/data/{patient}/{amimation_subparent_name}/mp4/{well_fov}/"
 ).resolve()
 gif_file_dir = pathlib.Path(
-    f"{image_base_dir}/2.segment_images/{amimation_subparent_name}/gif/{well_fov}/"
+    f"{root_dir}/data/{patient}/{amimation_subparent_name}/gif/{well_fov}/"
 ).resolve()
 
 mp4_file_dir.mkdir(parents=True, exist_ok=True)
@@ -92,19 +84,76 @@ tmp_output_path = "output.zarr"
 # In[3]:
 
 
-def mp4_to_gif(input_mp4, output_gif, fps=10):
-    clip = VideoFileClip(input_mp4)
-    clip = clip.set_fps(fps)  # Reduce FPS to control file size
-    clip.write_gif(output_gif, loop=0)  # loop=0 makes it loop forever
-    print(f"Converted {input_mp4} to {output_gif}")
+def mp4_to_gif(input_mp4: pathlib.Path, output_gif: pathlib.Path, fps: int = 30):
+    """
+    Convert an mp4 file to a gif file using moviepy.
+    Parameters
+    ----------
+    input_mp4 : pathlib.Path
+        The path to the input mp4 file.
+    output_gif : pathlib.Path
+        The path to the output gif file.
+    fps : int, optional
+        The frames per second for the output gif file, by default 30.
+
+    Returns
+    -------
+    None
+    """
+    with VideoFileClip(str(input_mp4)) as clip:
+        width, height = clip.size
+        side = min(width, height)
+
+        # keep codec-friendly dimensions
+        if side % 2 != 0:
+            side -= 1
+
+        x1 = int((width - side) // 2)
+        y1 = int((height - side) // 2)
+
+        square_clip = clip.cropped(
+            x1=x1,
+            y1=y1,
+            x2=x1 + side,
+            y2=y1 + side,
+        )
+
+        # Write only GIF (do not overwrite source mp4)
+        square_clip.write_gif(
+            str(output_gif),
+            fps=fps,
+            loop=0,
+        )
 
 
 # In[4]:
 
 
 def animate_view(
-    viewer, output_path_name: str, steps: int = 30, easing: str = "linear", dim: int = 3
+    viewer: napari.Viewer,
+    output_path_name: str,
+    steps: int = 30,
+    easing: str = "linear",
+    dim: int = 3,
 ):
+    """
+    Animate a napari viewer by rotating around the y-axis and then back to the original position.
+    Parameters
+    ----------
+    viewer : napari.Viewer
+        The napari viewer to animate.
+    output_path_name : str
+        The path to save the output mp4 file.
+    steps : int, optional
+        The number of steps for each keyframe, by default 30.
+    easing : str, optional
+        The easing style for the animation, by default "linear".
+    dim : int, optional
+        The number of dimensions to display, by default 3.
+    Returns
+    -------
+    None
+    """
     animation = Animation(viewer)
     if easing == "linear":
         ease_style = Easing.LINEAR
@@ -134,6 +183,8 @@ def animate_view(
 # In[5]:
 
 
+label_dir
+output_path = "output.zarr"
 channel_map = {
     "405": "Nuclei",
     "488": "Endoplasmic Reticulum",
@@ -142,105 +193,68 @@ channel_map = {
     "TRANS": "Brightfield",
 }
 scaling_values = [1, 0.1, 0.1]
+image_metadata = f"{patient}_{well_fov}"
 
 
 # In[6]:
 
 
-frame_zstacks = image_set_to_arrays(
-    image_dir,
-    label_dir,
-    channel_map=channel_map,
+image_return_dict = read_in_channels(
+    find_files_available(image_dir),
+    channel_dict={
+        "DNA": "405",
+        "Endoplasmic Reticulum": "488",
+        "AGP": "555",
+        "Mitochondria": "640",
+    },
+    channels_to_read=[
+        "DNA",
+        "Endoplasmic Reticulum",
+        "AGP",
+        "Mitochondria",
+    ],
 )
 
-print(frame_zstacks["images"].keys())
-print(frame_zstacks["labels"].keys())
+mask_return_dict = read_in_channels(
+    find_files_available(label_dir),
+    channel_dict={
+        "Nuclei mask": "nuclei",
+        "Cell mask": "cell",
+        "Cytoplasm mask": "cytoplasm",
+        "Organoid mask": "organoid",
+    },
+    channels_to_read=[
+        "Nuclei mask",
+        "Cell mask",
+        "Cytoplasm mask",
+        "Organoid mask",
+    ],
+)
+
+headless = False
+viewer = napari.Viewer(ndisplay=3, show=bool(not headless))
 
 
 # In[7]:
 
 
-images_data = []
-labels_data = []
-channel_names = []
-label_names = []
-
-
-for channel, stack in frame_zstacks["images"].items():
-    dim = len(stack.shape)
-    images_data.append(stack)
-    channel_names.append(channel)
-
-# Collect label data
-if label_dir:
-    for compartment_name, stack in frame_zstacks["labels"].items():
-        print(compartment_name, stack.shape)
-        if len(stack.shape) != dim:
-            if len(stack.shape) == 3:
-                stack = np.expand_dims(stack, axis=0)
-        labels_data.append(stack)
-        label_names.append(f"{compartment_name} (labels)")
-# Stack the images and labels along a new axis for channels
-images_data = np.stack(images_data, axis=0)
+for image_name, image_array in image_return_dict.items():
+    viewer.add_image(
+        image_array,
+        name=f"{image_metadata}_{image_name}",
+        scale=scaling_values,
+    )
+for mask_name, mask_array in mask_return_dict.items():
+    viewer.add_labels(
+        mask_array,
+        name=f"{image_metadata}_{mask_name}",
+        scale=scaling_values,
+    )
 
 
 # In[8]:
 
 
-if label_dir:
-    labels_data = np.stack(labels_data, axis=0)
-    combined_data = np.concatenate((images_data, labels_data), axis=0)
-    combined_channel_names = channel_names + label_names
-else:
-    combined_data = images_data
-    combined_channel_names = channel_names
-# Generate OME-XML metadata
-ome_metadata = {
-    "SizeC": combined_data.shape[0],
-    "SizeZ": combined_data.shape[1],
-    "SizeY": combined_data.shape[2],
-    "SizeX": combined_data.shape[3],
-    "PhysicalSizeX": scaling_values[2],
-    "PhysicalSizeY": scaling_values[1],
-    "PhysicalSizeZ": scaling_values[0],
-    # note: we use 7-bit ascii compatible characters below
-    # due to tifffile limitations
-    "PhysicalSizeXUnit": "um",
-    "PhysicalSizeYUnit": "um",
-    "PhysicalSizeZUnit": "um",
-    "Channel": [{"Name": name} for name in combined_channel_names],
-}
-ome_xml = generate_ome_xml(ome_metadata)
-import tifffile as tiff
-
-# Write the combined data to a single OME-TIFF
-with tiff.TiffWriter(tmp_output_path, bigtiff=True) as tif:
-    tif.write(combined_data, description=ome_xml, photometric="minisblack")
-
-
-# In[ ]:
-
-
-# import shutil
-# shutil.rmtree(output_path, ignore_errors=True)
-# nviz.image.tiff_to_ometiff(
-#     image_dir=image_dir,
-#     label_dir=label_dir,
-#     output_path=output_path,
-#     channel_map=channel_map,
-#     scaling_values=scaling_values,
-#     ignore=[],
-# )
-
-
-# In[ ]:
-
-
-viewer = view_ometiff_with_napari(
-    ometiff_path=tmp_output_path,
-    scaling_values=scaling_values,
-    headless=True,
-)
 # make the viewer full screen
 viewer.window._qt_window.showMaximized()
 # hide the layer controls
@@ -250,9 +264,10 @@ viewer.window._qt_viewer.dockLayerControls.setVisible(False)
 
 # set the viewer to a set window size
 viewer.window._qt_window.resize(1000, 1000)
+viewer.camera.zoom = 10.0
 
 
-# In[ ]:
+# In[9]:
 
 
 # get the layer names in the viewer
@@ -263,7 +278,7 @@ for layer_name in layer_names:
     viewer.layers[layer_name].visible = False
 
 
-# In[ ]:
+# In[10]:
 
 
 for layer_name in layer_names:
@@ -274,7 +289,7 @@ for layer_name in layer_names:
         save_name = layer_name
 
     # map the layer name to the channel name
-    if "Nuclei" in layer_name:
+    if "DNA" in layer_name:
         save_name = "DNA"
     elif "Endoplasmic" in layer_name:
         save_name = "ER"
@@ -282,8 +297,6 @@ for layer_name in layer_names:
         save_name = "AGP"
     elif "Mitochondria" in layer_name:
         save_name = "mitochondria"
-    elif "Brightfield" in layer_name:
-        save_name = "brightfield"
     else:
         save_name = layer_name
 
@@ -296,7 +309,7 @@ for layer_name in layer_names:
 print("All layers animated")
 
 
-# In[ ]:
+# In[11]:
 
 
 # get all gifs in the directory

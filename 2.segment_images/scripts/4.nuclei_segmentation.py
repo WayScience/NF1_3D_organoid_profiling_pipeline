@@ -19,14 +19,24 @@ import psutil
 import skimage
 import tifffile
 import torch
-from arg_parsing_utils import check_for_missing_args, parse_args
 from cellpose import models
-from file_reading import find_files_available, read_in_channels, read_zstack_image
-from general_segmentation_utils import *
-from notebook_init_utils import bandicoot_check, init_notebook
-from nuclei_segmentation import *
-from read_in_channel_mapping import *
-from segmentation_decoupling import *
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import (
+    find_files_available,
+    read_in_channels,
+    read_zstack_image,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+from image_analysis_3D.file_utils.read_in_channel_mapping import *
+from image_analysis_3D.segmentation_utils.general_segmentation_utils import *
+from image_analysis_3D.segmentation_utils.nuclei_segmentation import *
+from image_analysis_3D.segmentation_utils.segmentation_decoupling import *
 from skimage.filters import sobel
 from skimage.segmentation import relabel_sequential
 
@@ -68,7 +78,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "C4-2"
+    well_fov = "E7-2"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -109,6 +119,7 @@ del nuclei_raw
 
 
 nuclei_image_shape = nuclei.shape
+# nuclei = skimage.filters.sobel(nuclei)
 nuclei_masks = np.array(  # convert to array
     list(  # send to list
         decouple_masks(  # 4. decouple masks
@@ -135,15 +146,18 @@ nuclei_masks = np.array(  # convert to array
 
 # Remove small objects while preserving label IDs
 # we avoid using the built-in skimage remove small objects function to preserve label IDs
-props = skimage.measure.regionprops(nuclei_masks)
+for zslice in range(nuclei_masks.shape[0]):
+    props = skimage.measure.regionprops(nuclei_masks[zslice])
 
-# Remove objects smaller than threshold
-for prop in props:
-    if prop.area < 1000:  # 10 X 10 X 10 cube equivalent to 1000 voxels
-        # for context in this dataset eahc pixel is 0.1um
-        # so the 10x10x10 cube is 1um x 1um x 1um
-        # which is a reasonable size threshold for nuclei
-        nuclei_masks[nuclei_masks == prop.label] = 0
+    # Remove objects smaller than threshold
+    for prop in props:
+        if prop.area < 250:  # 10 X 10
+            # for context in this dataset eahc pixel is 0.1um
+            # so the 10x10x10 cube is 1um x 1um x 1um
+            # which is a reasonable size threshold for nuclei
+            nuclei_masks[zslice] = np.where(
+                nuclei_masks[zslice] == prop.label, 0, nuclei_masks[zslice]
+            )
 
 
 # In[8]:
@@ -152,7 +166,7 @@ for prop in props:
 nuclei_mask, diag = object_stitching_and_relation(
     input_masks=nuclei_masks,
     max_match_distance=100,
-    max_trajectory_length=12,  # 12 slice length (12 = 12 um)
+    max_trajectory_length=15,  # 15 slice length (15 = 15 um)
     verbose=False,
 )
 
@@ -171,9 +185,10 @@ nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
 
 
 nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
+np.unique(nuclei_mask)
 
 
-# In[12]:
+# In[11]:
 
 
 if in_notebook:
@@ -184,7 +199,7 @@ if in_notebook:
     plt.title("Nuclei Masks After 3D Graph-Based Segmentation")
     plt.axis("off")
     plt.subplot(122)
-    plt.imshow(nuclei[z], cmap="inferno")
+    plt.imshow(nuclei[z], cmap="magma")
     plt.axis("off")
     plt.title("Nuclei signal")
     plt.show()
@@ -192,14 +207,14 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[13]:
+# In[12]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[14]:
+# In[13]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
