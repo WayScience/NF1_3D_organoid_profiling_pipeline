@@ -15,7 +15,13 @@ def remove_underscores_from_string(string: str) -> str:
     str
         The string with unwanted delimiters removed and replaced with hyphens.
     """
-
+    if not isinstance(string, str):
+        try:
+            string = str(string)
+        except Exception as e:
+            raise ValueError(
+                f"Input string must be a string or convertible to a string. Received input: {string} of type {type(string)}"
+            ) from e
     string = string.translate(
         str.maketrans(
             {

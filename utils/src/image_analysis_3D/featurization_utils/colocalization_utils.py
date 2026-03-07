@@ -4,7 +4,11 @@ import numpy
 import scipy.ndimage
 import skimage
 
-from ..image_utils.image_utils import crop_3D_image, select_objects_from_label
+from ..image_utils.image_utils import (
+    crop_3D_image,
+    new_crop_border,
+    select_objects_from_label,
+)
 
 
 def linear_costes_threshold_calculation(

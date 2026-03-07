@@ -11,6 +11,7 @@ import time
 
 import pandas as pd
 import psutil
+import tomli
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -35,7 +36,8 @@ from image_analysis_3D.featurization_utils.loading_classes import (
     ObjectLoader,
 )
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
-    get_mem_and_time_profiling,
+    start_profiling,
+    stop_profiling,
 )
 
 image_base_dir = bandicoot_check(
@@ -77,30 +79,24 @@ output_parent_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 
 
 # In[3]:
 
 
-channel_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
 # In[4]:
 
 
-start_time = time.time()
-# get starting memory (cpu)
-start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+start_time, start_mem = start_profiling()
 
 
 # In[5]:
@@ -110,8 +106,10 @@ image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
-    channel_mapping=channel_mapping,
+    channel_mapping=channel_n_compartment_mapping,
     image_set_name=well_fov,
+    mask_key_name=[channel_n_compartment_mapping[compartment]],
+    raw_image_key_name=[channel_n_compartment_mapping[channel]],
 )
 
 
@@ -131,11 +129,11 @@ else:
 if processor_type == "CPU":
     object_measurements = measure_3D_granularity(
         object_loader=object_loader,
-        radius=1,  # radius of the sphere to use for granularity measurement in pixels
-        granular_spectrum_length=16,  # usually 16 but 2 is used for testing for now
-        subsample_image_value=0.5,  # subsample the image for faster processing. Value should be between 0 and 1. 1 means no subsampling
-        z_to_xy_ratio=10.0,  # ratio of z spacing to xy spacing (anisotropy)
-        mask_threshold=0.9,  # threshold for determining if an object is too close
+        radius=10,  # radius of the structuring element for background removal (CellProfiler default)
+        granular_spectrum_length=16,  # range of the granular spectrum
+        subsample_size=0.25,  # subsample the image for faster processing
+        image_sample_size=0.25,  # further subsample for background removal
+        mask_threshold=0.9,  # threshold for determining mask after interpolation
         verbose=verbose,
     )
 else:
@@ -175,16 +173,12 @@ final_df.to_parquet(output_file)
 final_df.head()
 
 
-# In[ ]:
+# In[7]:
 
 
-end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
-end_time = time.time()
-get_mem_and_time_profiling(
-    start_mem=start_mem,
-    end_mem=end_mem,
+stop_profiling(
     start_time=start_time,
-    end_time=end_time,
+    start_mem=start_mem,
     feature_type="Granularity",
     well_fov=well_fov,
     patient_id=patient,

@@ -7,7 +7,7 @@ name = "nf1-3d-organoid-profiling-pipeline"
 version = "0.1.0"
 description = "NF1 3D organoid profiling pipeline"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "arrow>=1.4.0",
     "ipykernel>=6.31.0",
@@ -17,6 +17,7 @@ dependencies = [
     "pip>=26.0.1",
     "pyarrow>=23.0.0",
     "scikit-image>=0.26.0",
+    "tomli>=2.4.0",
     "transformers<5.0",
 ]
 

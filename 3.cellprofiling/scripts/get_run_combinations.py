@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import itertools
@@ -10,8 +10,12 @@ import pathlib
 
 import numpy as np
 import pandas as pd
-from loading_classes import ImageSetLoader
-from notebook_init_utils import bandicoot_check, init_notebook
+import tomli
+from image_analysis_3D.featurization_utils.loading_classes import ImageSetLoader
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -37,7 +41,9 @@ input_combinations_path = pathlib.Path(
     f"{root_dir}/3.cellprofiling/load_data/input_combinations.txt"
 )
 input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
-
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 patients = [
     "NF0037_T1-Z-1",
     "NF0037_T1-Z-0.5",
@@ -63,17 +69,10 @@ features = [
 # In[5]:
 
 
-channel_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
 # In[6]:
@@ -86,15 +85,16 @@ image_set_path = pathlib.Path(
 mask_set_path = pathlib.Path(
     f"{bandicoot_mount_path}/data/NF0014_T1/segmentation_masks/C2-1/"
 )
-image_set_loader = ImageSetLoader(
-    image_set_path=image_set_path,
-    mask_set_path=mask_set_path,
-    anisotropy_spacing=(1, 0.1, 0.1),
-    channel_mapping=channel_mapping,
-)
 
 
 # In[7]:
+
+
+channels = ["DNA", "ER", "Mito", "AGP"]
+compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
+
+
+# In[8]:
 
 
 output_dict = {
@@ -114,14 +114,14 @@ processor_types = [
 ]
 
 
-# In[8]:
+# In[9]:
 
 
 # get all channel combinations
-channel_combinations = list(itertools.combinations(image_set_loader.image_names, 2))
+channel_combinations = list(itertools.combinations(channels, 2))
 
 
-# In[9]:
+# In[10]:
 
 
 for patient in patients:
@@ -142,7 +142,7 @@ for patient in patients:
                 output_dict["subdir_input"].append("zstack_images")
                 output_dict["subdir_mask"].append("segmentation_masks")
                 output_dict["subdir_output"].append("extracted_features")
-            for compartment in image_set_loader.compartments:
+            for compartment in compartments:
                 if feature == "AreaSizeShape":
                     for processor_type in processor_types:
                         output_dict["patient"].append(patient)
@@ -167,7 +167,7 @@ for patient in patients:
                             output_dict["subdir_input"].append("zstack_images")
                             output_dict["subdir_mask"].append("segmentation_masks")
                             output_dict["subdir_output"].append("extracted_features")
-                for channel in image_set_loader.image_names:
+                for channel in channels:
                     if (
                         feature != "Neighbors"
                         and feature != "AreaSizeShape"
@@ -223,7 +223,7 @@ for patient in patients:
                             raise ValueError(f"Unknown feature: {feature}")
 
 
-# In[10]:
+# In[11]:
 
 
 df = pd.DataFrame(output_dict)
@@ -231,32 +231,18 @@ print(f"Total combinations: {df.shape[0]}")
 df.head()
 
 
-# In[11]:
+# In[13]:
 
 
 # number of combinations we should have
 # per well_fov
-area_combos = len(image_set_loader.compartments) * len(processor_types)
-coloc_combos = (
-    len(channel_combinations)
-    * len(image_set_loader.compartments)
-    * len(processor_types)
-)
-intensity_combos = (
-    len(image_set_loader.image_names)
-    * len(image_set_loader.compartments)
-    * len(processor_types)
-)
-granularity_combos = len(image_set_loader.image_names) * len(
-    image_set_loader.compartments
-)
-SAMMed3D_combos = (
-    len(image_set_loader.image_names)
-    * len(image_set_loader.compartments)
-    * len(processor_types)
-)
+area_combos = len(compartments) * len(processor_types)
+coloc_combos = len(channel_combinations) * len(compartments) * len(processor_types)
+intensity_combos = len(channels) * len(compartments) * len(processor_types)
+granularity_combos = len(channels) * len(compartments)
+SAMMed3D_combos = len(channels) * len(compartments) * len(processor_types)
 neighbors_combos = 1  # Neighbors is always DNA and Nuclei
-texture_combos = len(image_set_loader.image_names) * len(image_set_loader.compartments)
+texture_combos = len(channels) * len(compartments)
 total_well_fov_combos = (
     area_combos
     + coloc_combos
@@ -274,7 +260,7 @@ print(
 )
 
 
-# In[12]:
+# In[14]:
 
 
 # reorder columns
@@ -293,7 +279,7 @@ df = df[
 ]
 
 
-# In[13]:
+# In[15]:
 
 
 # write to a txt file with each row as a combination
@@ -301,7 +287,7 @@ df = df[
 df.to_csv(input_combinations_path, sep="\t", index=False)
 
 
-# In[14]:
+# In[16]:
 
 
 df.groupby(["patient"]).count()

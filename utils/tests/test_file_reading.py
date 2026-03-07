@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from file_utils.file_reading import (
+from image_analysis_3D.file_utils.file_reading import (
     find_files_available,
     read_in_channels,
     read_zstack_image,

@@ -125,4 +125,4 @@ def call_chammi75_featurization_pipeline(
     # Replicate channel 3 times to get (B, 3, Y, X)
     images = images.repeat(1, 3, 1, 1)
     batch_feat = featurize_2D_image_w_chammi75(images, model, device)
-    return batch_feat
+    return batch_feat[0]

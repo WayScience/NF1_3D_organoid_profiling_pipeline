@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from file_utils.file_checking import check_number_of_files
+from image_analysis_3D.file_utils.file_checking import check_number_of_files
 
 
 def test_check_number_of_files_matches(tmp_path: Path) -> None:

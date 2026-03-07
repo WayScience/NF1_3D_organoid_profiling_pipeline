@@ -11,6 +11,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import tomli
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -67,30 +68,25 @@ patient_ids = [
     "NF0037_T1-Z-0.5",
     "NF0037_T1-Z-1",
 ]
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 
 
 # In[4]:
 
 
-channel_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
-image_set_loader = ImageSetLoader(
-    image_set_path=image_set_path,
-    anisotropy_spacing=(1, 0.1, 0.1),
-    channel_mapping=channel_mapping,
-    mask_set_path=mask_set_path,
-)
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
-channels = image_set_loader.image_names
-compartments = image_set_loader.compartments
+
+# In[5]:
+
+
+channels = ["DNA", "ER", "Mito", "AGP"]
+compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 channel_combinations = list(itertools.combinations(channels, 2))
 
 
@@ -127,7 +123,7 @@ channel_combinations = list(itertools.combinations(channels, 2))
 #
 #
 
-# In[5]:
+# In[6]:
 
 
 feature_types = [
@@ -141,7 +137,7 @@ feature_types = [
 ]
 
 
-# In[6]:
+# In[7]:
 
 
 processor_types = [
@@ -150,7 +146,7 @@ processor_types = [
 ]
 
 
-# In[7]:
+# In[8]:
 
 
 feature_list = []
@@ -194,7 +190,7 @@ for channel in channels:
 len(feature_list)  # should be 105 or 169 depending on CPU vs CPU and GPU
 
 
-# In[8]:
+# In[9]:
 
 
 featurization_rerun_dict = {
@@ -210,7 +206,7 @@ featurization_rerun_dict = {
 }
 
 
-# In[9]:
+# In[10]:
 
 
 total_files = 0
@@ -312,7 +308,7 @@ for patient in patient_ids:
             files_present += len([f.stem for f in dir.glob("*") if f.is_file()])
 
 
-# In[10]:
+# In[11]:
 
 
 print(f"Total files expected: {total_files}")
@@ -326,7 +322,7 @@ else:
     )
 
 
-# In[11]:
+# In[12]:
 
 
 df = pd.DataFrame(featurization_rerun_dict)
@@ -334,7 +330,7 @@ df.to_csv(rerun_combinations_path, sep="\t", index=False)
 df.head()
 
 
-# In[12]:
+# In[13]:
 
 
 df.groupby(["patient", "input_subparent_name", "well_fov", "feature"]).count()

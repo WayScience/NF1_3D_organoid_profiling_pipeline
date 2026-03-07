@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy
 import numpy as np
 import pytest
 from image_analysis_3D.featurization_utils.area_size_shape_utils import (
@@ -14,8 +15,7 @@ from image_analysis_3D.featurization_utils.colocalization_utils import (
     measure_3D_colocalization,
 )
 from image_analysis_3D.featurization_utils.granularity_utils import (
-    _apply_tophat_filter,
-    _subsample_image,
+    _subsample_3d,
     measure_3D_granularity,
 )
 from image_analysis_3D.featurization_utils.intensity_utils import (
@@ -483,44 +483,42 @@ class TestColocationUtils:
 class TestGranularityUtils:
     """Tests for granularity feature extraction."""
 
-    def test_subsample_image_basic(self, simple_3d_image, simple_3d_binary_mask):
-        """Test basic image subsampling."""
-        subsampled_img, subsampled_mask = _subsample_image(
-            image=simple_3d_image,
-            mask=simple_3d_binary_mask,
+    def test_subsample_3d_basic(self, simple_3d_image, simple_3d_binary_mask):
+        """Test basic 3D subsampling."""
+        new_shape = numpy.array(simple_3d_image.shape, dtype=float) * 0.5
+        subsampled_img = _subsample_3d(
+            data=simple_3d_image.astype(float),
+            new_shape=new_shape,
             subsample_factor=0.5,
-            z_to_xy_ratio=10.0,
-            make_isotropic=True,
+            order=1,
+        )
+        subsampled_mask = (
+            _subsample_3d(
+                data=simple_3d_binary_mask.astype(float),
+                new_shape=new_shape,
+                subsample_factor=0.5,
+                order=0,
+            )
+            > 0.5
         )
 
-        # Note: when make_isotropic=True with high z_to_xy_ratio,
-        # the Z dimension may be upsampled, resulting in larger total size
-        # Just check that shapes are reasonable
+        # Check that shapes are reasonable and reduced
         assert subsampled_img.shape[0] > 0
         assert subsampled_mask.shape[0] > 0
+        assert subsampled_img.size < simple_3d_image.size
 
-    def test_subsample_image_factor_one(self, simple_3d_image, simple_3d_binary_mask):
+    def test_subsample_3d_factor_one(self, simple_3d_image, simple_3d_binary_mask):
         """Test subsampling with factor=1.0 (no subsampling)."""
-        subsampled_img, subsampled_mask = _subsample_image(
-            image=simple_3d_image,
-            mask=simple_3d_binary_mask,
+        new_shape = numpy.array(simple_3d_image.shape, dtype=float)  # factor 1.0
+        subsampled_img = _subsample_3d(
+            data=simple_3d_image.astype(float),
+            new_shape=new_shape,
             subsample_factor=1.0,
+            order=1,
         )
 
-        # Should return original images
+        # Should return same-shaped copy
         assert subsampled_img.shape == simple_3d_image.shape
-        assert subsampled_mask.shape == simple_3d_binary_mask.shape
-
-    def test_apply_tophat_filter_basic(self, simple_3d_image, simple_3d_binary_mask):
-        """Test tophat filter application."""
-        filtered = _apply_tophat_filter(
-            pixels=simple_3d_image.astype(float),
-            mask=simple_3d_binary_mask,
-            radius=2,
-        )
-
-        # Output should have same shape
-        assert filtered.shape == simple_3d_image.shape
 
     def test_measure_3d_granularity_basic(self, object_loader_simple):
         """Test basic granularity measurement."""
@@ -528,8 +526,8 @@ class TestGranularityUtils:
             object_loader=object_loader_simple,
             radius=10,
             granular_spectrum_length=16,
-            subsample_image_value=0.5,
-            z_to_xy_ratio=10.0,
+            subsample_size=0.5,
+            image_sample_size=0.25,
             mask_threshold=0.9,
         )
 
@@ -545,7 +543,7 @@ class TestGranularityUtils:
         with pytest.raises(ValueError):
             measure_3D_granularity(
                 object_loader=object_loader_simple,
-                subsample_image_value=1.5,
+                subsample_size=1.5,
             )
 
         # Invalid radius
@@ -577,7 +575,7 @@ class TestGranularityUtils:
             object_loader=loader,
             radius=5,
             granular_spectrum_length=8,
-            subsample_image_value=0.5,
+            subsample_size=0.5,
         )
 
         # Extract granularity values for each object
@@ -775,8 +773,8 @@ class TestNeighborsUtils:
         # Check result structure
         assert isinstance(result, dict)
         assert "object_id" in result
-        assert "Neighbors_adjacent" in result
-        assert "Neighbors_10" in result
+        assert "NeighborsCountAdjacent" in result
+        assert "NeighborsCountByDistance-10" in result
 
     def test_measure_3d_number_of_neighbors_different_thresholds(
         self, object_loader_simple
@@ -815,8 +813,8 @@ class TestNeighborsUtils:
         obj_neighbors = {}
         for obj_id, adj_count, dist_count in zip(
             result["object_id"],
-            result["Neighbors_adjacent"],
-            result["Neighbors_5"],
+            result["NeighborsCountAdjacent"],
+            result["NeighborsCountByDistance-5"],
         ):
             obj_neighbors[obj_id] = {"adjacent": adj_count, "distance_5": dist_count}
 
@@ -870,17 +868,16 @@ class TestEdgeCases:
     def test_very_large_image_subsampling(self, simple_3d_image, simple_3d_binary_mask):
         """Test subsampling with moderately aggressive factor (edge case)."""
         # Test with aggressive but viable subsampling - still an edge case
-        subsampled_img, subsampled_mask = _subsample_image(
-            image=simple_3d_image,
-            mask=simple_3d_binary_mask,
-            subsample_factor=0.1,  # Aggressive but viable subsampling
-            z_to_xy_ratio=1.0,  # Don't make isotropic to avoid size increase
-            make_isotropic=False,
+        new_shape = numpy.array(simple_3d_image.shape, dtype=float) * 0.1
+        subsampled_img = _subsample_3d(
+            data=simple_3d_image.astype(float),
+            new_shape=new_shape,
+            subsample_factor=0.1,
+            order=1,
         )
 
         # Should still be valid despite aggressive subsampling
         assert subsampled_img.size > 0
-        assert subsampled_mask.size > 0
         # Check dimensions are significantly reduced (at least 50% reduction)
         assert subsampled_img.size <= simple_3d_image.size * 0.5
 
@@ -1043,8 +1040,8 @@ class TestDataConsistency:
         )
 
         # All neighbor counts should be non-negative
-        assert all(n >= 0 for n in result["Neighbors_adjacent"])
-        assert all(n >= 0 for n in result["Neighbors_10"])
+        assert all(n >= 0 for n in result["NeighborsCountAdjacent"])
+        assert all(n >= 0 for n in result["NeighborsCountByDistance-10"])
 
 
 class TestDataTypes:
@@ -1147,8 +1144,8 @@ class TestBoundaryConditions:
             distance_threshold=2,
         )
 
-        assert "Neighbors_adjacent" in result
-        assert "Neighbors_2" in result
+        assert "NeighborsCountAdjacent" in result
+        assert "NeighborsCountByDistance-2" in result
 
     def test_colocalization_with_completely_separate_images(self):
         """Test colocalization when images have no overlap in signal."""
@@ -1203,7 +1200,7 @@ class TestParameterVariations:
                 object_loader=object_loader_simple,
                 distance_threshold=threshold,
             )
-            assert "Neighbors_adjacent" in result
+            assert "NeighborsCountAdjacent" in result
 
     def test_area_shape_with_varying_anisotropy(
         self, simple_3d_image, simple_3d_label_image

@@ -15,6 +15,7 @@ import urllib
 import numpy as np
 import pandas as pd
 import psutil
+import tomli
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
 )
@@ -23,7 +24,8 @@ from image_analysis_3D.featurization_utils.loading_classes import (
     ObjectLoader,
 )
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
-    get_mem_and_time_profiling,
+    start_profiling,
+    stop_profiling,
 )
 from image_analysis_3D.featurization_utils.sammed3d_featurizer import (
     call_SAMMed3D_pipeline,
@@ -84,6 +86,9 @@ output_parent_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 
 
 # In[4]:
@@ -101,25 +106,16 @@ if not sam3dmed_checkpoint_path.exists():
 # In[5]:
 
 
-channel_n_compartment_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
 # In[6]:
 
 
-start_time = time.time()
-# get starting memory (cpu)
-start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+start_time, start_mem = start_profiling()
 
 
 # In[7]:
@@ -131,6 +127,8 @@ image_set_loader = ImageSetLoader(
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
     image_set_name=well_fov,
+    mask_key_name=channel_n_compartment_mapping[compartment],
+    raw_image_key_name=channel_n_compartment_mapping[channel],
 )
 
 
@@ -217,20 +215,20 @@ for channel, compartment in all_channel_compartment_combinations:
     final_df.to_parquet(output_file, index=False)
     final_df.head()
 
-    end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
-    end_time = time.time()
-    get_mem_and_time_profiling(
-        start_mem=start_mem,
-        end_mem=end_mem,
-        start_time=start_time,
-        end_time=end_time,
-        feature_type="SAMMed3D",
-        well_fov=well_fov,
-        patient_id=patient,
-        channel="DNA",
-        compartment=compartment,
-        CPU_GPU="GPU",
-        output_file_dir=pathlib.Path(
-            f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_SAMMed3D_{channel}_{compartment}_GPU.parquet"
-        ),
-    )
+
+# In[10]:
+
+
+stop_profiling(
+    start_time=start_time,
+    start_mem=start_mem,
+    feature_type="SAMMed3D",
+    well_fov=well_fov,
+    patient_id=patient,
+    channel="DNA",
+    compartment=compartment,
+    CPU_GPU="GPU",
+    output_file_dir=pathlib.Path(
+        f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_SAMMed3D_{channel}_{compartment}_GPU.parquet"
+    ),
+)
