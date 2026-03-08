@@ -100,13 +100,13 @@ mask_path.mkdir(exist_ok=True, parents=True)
 channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
-# In[5]:
+# In[ ]:
 
 
 # look up the morphology of the organoid from json file
-image_label_path = pathlib.Path("../image_labels/segmentation_classes.parquet").resolve(
-    strict=True
-)
+image_label_path = pathlib.Path(
+    f"{git_root}/2.segment_images/image_labels/segmentation_classes.parquet"
+).resolve(strict=True)
 organoid_image_labels_df = pd.read_parquet(image_label_path)
 # look up the morphology for this well_fov
 morphology_class = organoid_image_labels_df.loc[
