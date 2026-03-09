@@ -4,7 +4,7 @@
 #SBATCH --partition=amilan
 #SBATCH --qos=long
 #SBATCH --account=amc-general
-#SBATCH --time=7-00:00
+#SBATCH --time=2-00:00 # 2 days
 #SBATCH --output=logs/parent/segmentation_parent-%j.out
 
 git_root=$(git rev-parse --show-toplevel)
@@ -13,7 +13,7 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-txt_file="${git_root}/2.segment_images/load_data/rerun_combinations.txt"
+txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
 # Check if TXT file exists
 if [ ! -f "$txt_file" ]; then
@@ -43,7 +43,7 @@ while IFS= read -r line; do
         number_of_jobs=$(squeue -u "$USER" | wc -l)
     done
 
-    # requesting 4 nodes (3.75GB per node) for 15GB total memory requirement
+    # requesting 2 nodes (3.75GB per node) for 7.5GB total memory requirement
     # --partition=aa100 \
     # --gres=gpu:1 \
     sbatch \
