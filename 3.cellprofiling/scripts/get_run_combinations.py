@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[61]:
+# In[1]:
 
 
 import itertools
@@ -20,14 +20,14 @@ from image_analysis_3D.file_utils.notebook_init_utils import (
 root_dir, in_notebook = init_notebook()
 
 
-# In[62]:
+# In[2]:
 
 
 bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[63]:
+# In[3]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -36,7 +36,7 @@ patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").r
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-patients = patients[:1]
+patients = ["NF0014_T1"]
 load_combinations_path = pathlib.Path(
     f"{root_dir}/3.cellprofiling/load_data/load_combinations.txt"
 )
@@ -46,7 +46,7 @@ channel_mapping_file_path = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[64]:
+# In[4]:
 
 
 features = [
@@ -60,7 +60,7 @@ features = [
 ]
 
 
-# In[65]:
+# In[5]:
 
 
 # read in channel mapping
@@ -69,26 +69,14 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[66]:
-
-
-# example image set path to get the image set loader working
-image_set_path = pathlib.Path(
-    f"{bandicoot_mount_path}/data/NF0014_T1/zstack_images/C2-1/"
-)
-mask_set_path = pathlib.Path(
-    f"{bandicoot_mount_path}/data/NF0014_T1/segmentation_masks/C2-1/"
-)
-
-
-# In[67]:
+# In[6]:
 
 
 channels = ["DNA", "ER", "Mito", "AGP"]
 compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 
 
-# In[68]:
+# In[7]:
 
 
 output_dict = {
@@ -104,14 +92,14 @@ output_dict = {
 }
 
 
-# In[69]:
+# In[8]:
 
 
 # get all channel combinations
 channel_combinations = list(itertools.combinations(channels, 2))
 
 
-# In[70]:
+# In[9]:
 
 
 for patient in patients:
@@ -245,15 +233,14 @@ for patient in patients:
 #
 #
 
-# In[71]:
+# In[10]:
 
 
 df = pd.DataFrame(output_dict)
 print(f"Total combinations: {df.shape[0]}")
-df.head()
 
 
-# In[72]:
+# In[11]:
 
 
 # reorder columns
@@ -272,7 +259,7 @@ df = df[
 ]
 
 
-# In[73]:
+# In[12]:
 
 
 df["feature_file_path"] = df.apply(
@@ -301,10 +288,9 @@ df.sort_values(
     by=["patient", "well_fov", "feature", "compartment", "channel", "processor_type"],
     inplace=True,
 )
-df.head()
 
 
-# In[74]:
+# In[13]:
 
 
 # write to a txt file with each row as a combination
@@ -312,7 +298,13 @@ df.head()
 df.to_csv(load_combinations_path, sep="\t", index=False)
 
 
-# In[75]:
+# In[14]:
+
+
+df.head()
+
+
+# In[15]:
 
 
 df.groupby(["patient"]).count()

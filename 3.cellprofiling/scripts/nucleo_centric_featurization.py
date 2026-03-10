@@ -180,7 +180,7 @@ label_ids = np.unique(object_loader.label_image)
 label_ids = label_ids[label_ids != 0]
 
 
-# In[9]:
+# In[15]:
 
 
 list_of_feature_dicts = []
@@ -223,7 +223,8 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
     combined_feature_dict = {
         "feature_name": [],
         "feature_value": [],
-        "object_label": [],
+        "object_id": [],
+        "image_set": [],
     }
     for i, feat_value in enumerate(sammed3d_output_dict["value"]):
         combined_feature_dict["feature_name"].append(
@@ -235,7 +236,8 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
             )
         )
         combined_feature_dict["feature_value"].append(feat_value)
-        combined_feature_dict["object_label"].append(label)
+        combined_feature_dict["object_id"].append(label)
+        combined_feature_dict["image_set"].append(well_fov)
     for i, feat_value in enumerate(chammi75_features[0]):
         print(feat_value)
         combined_feature_dict["feature_name"].append(
@@ -247,7 +249,8 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
             )
         )
         combined_feature_dict["feature_value"].append(feat_value.item())
-        combined_feature_dict["object_label"].append(label)
+        combined_feature_dict["object_id"].append(label)
+        combined_feature_dict["image_set"].append(well_fov)
     df = pd.DataFrame(combined_feature_dict)
     list_of_feature_dicts.append(df)
 
@@ -255,21 +258,21 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
 final_df = pd.concat(list_of_feature_dicts, ignore_index=True)
 # pivot the df such that the feature names are the columns and the feature values are the values, with object label as an id variable
 final_df = final_df.pivot(
-    index="object_label", columns="feature_name", values="feature_value"
+    index=["object_id", "image_set"], columns="feature_name", values="feature_value"
 ).reset_index()
 # remove the labeld name of the index
 final_df.columns.name = None
 final_df.head()
 
 
-# In[10]:
+# In[ ]:
 
 
 # split between SAMMed3D and CHAMMI75 features in the column names
 sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
 chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
-sammed_3d_df = final_df[["object_label"] + sammed3d_feature_cols]
-chammi75_df = final_df[["object_label"] + chammi75_feature_cols]
+sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
+chammi75_df = final_df[["object_id", "image_set"] + chammi75_feature_cols]
 # save the features as parquet files
 save_path = save_features_as_parquet(
     parent_path=output_parent_path,
@@ -358,7 +361,7 @@ if in_notebook:
     plt.show()
 
 
-# In[ ]:
+# In[14]:
 
 
 if in_notebook:
