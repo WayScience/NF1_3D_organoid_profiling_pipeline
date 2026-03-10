@@ -15,6 +15,7 @@ import psutil
 import tomli
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
@@ -158,12 +159,14 @@ final_df.rename(
 if not final_df.empty:
     final_df.insert(0, "image_set", image_set_loader.image_set_name)
 
-output_file = pathlib.Path(
-    output_parent_path
-    / f"Neighbors_{compartment}_{channel}_{processor_type}_features.parquet"
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=final_df,
+    feature_type="Neighbors",
+    channel=channel,
+    compartment=compartment,
+    cpu_or_gpu=processor_type,
 )
-output_file.parent.mkdir(parents=True, exist_ok=True)
-final_df.to_parquet(output_file)
 final_df.head()
 
 

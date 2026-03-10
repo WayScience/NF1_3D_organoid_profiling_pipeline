@@ -58,16 +58,6 @@ rerun_combinations_path = pathlib.Path(
     f"{root_dir}/3.cellprofiling/load_data/rerun_combinations.txt"
 ).resolve()
 rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
-patient_ids = pd.read_csv(
-    patient_id_file_path, header=None, names=["patient_id"]
-).patient_id.tolist()
-
-patient_ids = [
-    "NF0037_T1-Z-0.1",
-    "NF0037_T1-Z-0.2",
-    "NF0037_T1-Z-0.5",
-    "NF0037_T1-Z-1",
-]
 channel_mapping_file_path = pathlib.Path(
     f"{root_dir}/config/channel_mapping.toml"
 ).resolve(strict=True)
@@ -82,7 +72,7 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[5]:
+# In[6]:
 
 
 channels = ["DNA", "ER", "Mito", "AGP"]
@@ -97,29 +87,17 @@ channel_combinations = list(itertools.combinations(channels, 2))
 #
 # | Feature Type | No. Compartments | No. Channels | No. Processors | Total No. Files |
 # |--------------|------------------|---------------|----------------|-----------------|
-# | AreaSizeShape | 4 | 1 | 2 | 8 |
-# | Colocalization | 4 | 6 | 2 | 48 |
-# | Granularity | 4 | 4 | 1 | 16 |
-# | Intensity | 4 | 4 | 2 | 32 |
-# | Neighbors | 1 | 1 | 1 | 1 |
-# | SAMMed3D | 4 | 4 | 1 | 16 |
-# | Texture | 4 | 4 | 1 | 16 |
-#
-# Total no. files per well fov = 137
-#
-# ### OR
-# For CPU only:
-# For each well fov there should be the following number of files:
-# | Feature Type | No. Compartments | No. Channels | No. Processors | Total No. Files |
-# |--------------|------------------|---------------|----------------|-----------------|
-# | AreaSizeShape | 4 | 1 | 1 | 4 |
+# | AreaSizeShape | 4 | 1 | 1 | 8 |
 # | Colocalization | 4 | 6 | 1 | 24 |
 # | Granularity | 4 | 4 | 1 | 16 |
 # | Intensity | 4 | 4 | 1 | 16 |
 # | Neighbors | 1 | 1 | 1 | 1 |
 # | SAMMed3D | 4 | 4 | 1 | 16 |
 # | Texture | 4 | 4 | 1 | 16 |
-# Total no. files per well fov = 93
+# | Nucleocentric + SAMMed3D | 0 | 4 | 1 | 4 |
+# | Nulceocentric + CHAMMI75 | 0 | 4 | 1 | 4 |
+#
+# Total no. files per well fov = 105
 #
 #
 

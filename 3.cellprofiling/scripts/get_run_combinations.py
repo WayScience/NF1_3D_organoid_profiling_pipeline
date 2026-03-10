@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[61]:
 
 
 import itertools
@@ -20,14 +20,14 @@ from image_analysis_3D.file_utils.notebook_init_utils import (
 root_dir, in_notebook = init_notebook()
 
 
-# In[2]:
+# In[62]:
 
 
 bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[3]:
+# In[63]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -36,23 +36,17 @@ patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").r
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-
-input_combinations_path = pathlib.Path(
-    f"{root_dir}/3.cellprofiling/load_data/input_combinations.txt"
+patients = patients[:1]
+load_combinations_path = pathlib.Path(
+    f"{root_dir}/3.cellprofiling/load_data/load_combinations.txt"
 )
-input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
+load_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(
     f"{root_dir}/config/channel_mapping.toml"
 ).resolve(strict=True)
-patients = [
-    "NF0037_T1-Z-1",
-    "NF0037_T1-Z-0.5",
-    "NF0037_T1-Z-0.2",
-    "NF0037_T1-Z-0.1",
-]
 
 
-# In[4]:
+# In[64]:
 
 
 features = [
@@ -66,7 +60,7 @@ features = [
 ]
 
 
-# In[5]:
+# In[65]:
 
 
 # read in channel mapping
@@ -75,7 +69,7 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[6]:
+# In[66]:
 
 
 # example image set path to get the image set loader working
@@ -87,14 +81,14 @@ mask_set_path = pathlib.Path(
 )
 
 
-# In[7]:
+# In[67]:
 
 
 channels = ["DNA", "ER", "Mito", "AGP"]
 compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 
 
-# In[8]:
+# In[68]:
 
 
 output_dict = {
@@ -108,28 +102,24 @@ output_dict = {
     "subdir_mask": [],
     "subdir_output": [],
 }
-processor_types = [
-    "CPU",
-    # "GPU"
-]
 
 
-# In[9]:
+# In[69]:
 
 
 # get all channel combinations
 channel_combinations = list(itertools.combinations(channels, 2))
 
 
-# In[10]:
+# In[70]:
 
 
 for patient in patients:
     # get the well_fov for each patient
-    patient_well_fovs = pathlib.Path(
-        f"{bandicoot_mount_path}/data/{patient}/zstack_images/"
-    ).glob("*")
-    for well_fov in patient_well_fovs:
+    patient_well_fovs = list(
+        pathlib.Path(f"{bandicoot_mount_path}/data/{patient}/zstack_images/").glob("*")
+    )
+    for well_fov in patient_well_fovs[:2]:
         well_fov = well_fov.name
         for feature in features:
             if feature == "Neighbors":
@@ -137,93 +127,125 @@ for patient in patients:
                 output_dict["well_fov"].append(well_fov)
                 output_dict["feature"].append("Neighbors")
                 output_dict["compartment"].append("Nuclei")
-                output_dict["channel"].append("DNA")
+                output_dict["channel"].append("NoChannel")
                 output_dict["processor_type"].append("CPU")
                 output_dict["subdir_input"].append("zstack_images")
                 output_dict["subdir_mask"].append("segmentation_masks")
                 output_dict["subdir_output"].append("extracted_features")
             for compartment in compartments:
                 if feature == "AreaSizeShape":
-                    for processor_type in processor_types:
-                        output_dict["patient"].append(patient)
-                        output_dict["well_fov"].append(well_fov)
-                        output_dict["feature"].append("AreaSizeShape")
-                        output_dict["compartment"].append(compartment)
-                        output_dict["channel"].append("DNA")
-                        output_dict["processor_type"].append(processor_type)
-                        output_dict["subdir_input"].append("zstack_images")
-                        output_dict["subdir_mask"].append("segmentation_masks")
-
-                        output_dict["subdir_output"].append("extracted_features")
+                    output_dict["patient"].append(patient)
+                    output_dict["well_fov"].append(well_fov)
+                    output_dict["feature"].append("AreaSizeShape")
+                    output_dict["compartment"].append(compartment)
+                    output_dict["channel"].append("NoChannel")
+                    output_dict["processor_type"].append("CPU")
+                    output_dict["subdir_input"].append("zstack_images")
+                    output_dict["subdir_mask"].append("segmentation_masks")
+                    output_dict["subdir_output"].append("extracted_features")
                 elif feature == "Colocalization":
                     for channel in channel_combinations:
-                        for processor_type in processor_types:
-                            output_dict["patient"].append(patient)
-                            output_dict["well_fov"].append(well_fov)
-                            output_dict["feature"].append("Colocalization")
-                            output_dict["compartment"].append(compartment)
-                            output_dict["channel"].append(channel[0] + "." + channel[1])
-                            output_dict["processor_type"].append(processor_type)
-                            output_dict["subdir_input"].append("zstack_images")
-                            output_dict["subdir_mask"].append("segmentation_masks")
-                            output_dict["subdir_output"].append("extracted_features")
-                for channel in channels:
-                    if (
-                        feature != "Neighbors"
-                        and feature != "AreaSizeShape"
-                        and feature != "Colocalization"
-                    ):
-                        if feature == "Granularity":
-                            output_dict["patient"].append(patient)
-                            output_dict["well_fov"].append(well_fov)
-                            output_dict["feature"].append(feature)
-                            output_dict["compartment"].append(compartment)
-                            output_dict["channel"].append(channel)
-                            output_dict["processor_type"].append("CPU")
-                            output_dict["subdir_input"].append("zstack_images")
-                            output_dict["subdir_mask"].append("segmentation_masks")
-                            output_dict["subdir_output"].append("extracted_features")
-                        elif feature == "Intensity":
-                            for processor_type in processor_types:
+                        output_dict["patient"].append(patient)
+                        output_dict["well_fov"].append(well_fov)
+                        output_dict["feature"].append("Colocalization")
+                        output_dict["compartment"].append(compartment)
+                        output_dict["channel"].append(channel[0] + "-" + channel[1])
+                        output_dict["processor_type"].append("CPU")
+                        output_dict["subdir_input"].append("zstack_images")
+                        output_dict["subdir_mask"].append("segmentation_masks")
+                        output_dict["subdir_output"].append("extracted_features")
+                else:
+                    for channel in channels:
+                        if (
+                            feature != "Neighbors"
+                            and feature != "AreaSizeShape"
+                            and feature != "Colocalization"
+                        ):
+                            if feature == "Granularity":
                                 output_dict["patient"].append(patient)
                                 output_dict["well_fov"].append(well_fov)
                                 output_dict["feature"].append(feature)
                                 output_dict["compartment"].append(compartment)
                                 output_dict["channel"].append(channel)
-                                output_dict["processor_type"].append(processor_type)
+                                output_dict["processor_type"].append("CPU")
                                 output_dict["subdir_input"].append("zstack_images")
                                 output_dict["subdir_mask"].append("segmentation_masks")
                                 output_dict["subdir_output"].append(
                                     "extracted_features"
                                 )
-                        elif feature == "Texture":
-                            output_dict["patient"].append(patient)
-                            output_dict["well_fov"].append(well_fov)
-                            output_dict["feature"].append(feature)
-                            output_dict["compartment"].append(compartment)
-                            output_dict["channel"].append(channel)
-                            output_dict["processor_type"].append("CPU")
-                            output_dict["subdir_input"].append("zstack_images")
-                            output_dict["subdir_mask"].append("segmentation_masks")
-                            output_dict["subdir_output"].append("extracted_features")
-                        elif feature == "SAMMed3D":
-                            for processor_type in processor_types:
+                            elif feature == "Intensity":
                                 output_dict["patient"].append(patient)
                                 output_dict["well_fov"].append(well_fov)
                                 output_dict["feature"].append(feature)
                                 output_dict["compartment"].append(compartment)
                                 output_dict["channel"].append(channel)
-                                output_dict["processor_type"].append(processor_type)
+                                output_dict["processor_type"].append("CPU")
                                 output_dict["subdir_input"].append("zstack_images")
                                 output_dict["subdir_mask"].append("segmentation_masks")
                                 output_dict["subdir_output"].append(
                                     "extracted_features"
                                 )
-                        else:
-                            raise ValueError(f"Unknown feature: {feature}")
+                            elif feature == "Texture":
+                                output_dict["patient"].append(patient)
+                                output_dict["well_fov"].append(well_fov)
+                                output_dict["feature"].append(feature)
+                                output_dict["compartment"].append(compartment)
+                                output_dict["channel"].append(channel)
+                                output_dict["processor_type"].append("CPU")
+                                output_dict["subdir_input"].append("zstack_images")
+                                output_dict["subdir_mask"].append("segmentation_masks")
+                                output_dict["subdir_output"].append(
+                                    "extracted_features"
+                                )
+                            elif feature == "SAMMed3D":
+                                output_dict["patient"].append(patient)
+                                output_dict["well_fov"].append(well_fov)
+                                output_dict["feature"].append(feature)
+                                output_dict["compartment"].append(compartment)
+                                output_dict["channel"].append(channel)
+                                output_dict["processor_type"].append("GPU")
+                                output_dict["subdir_input"].append("zstack_images")
+                                output_dict["subdir_mask"].append("segmentation_masks")
+                                output_dict["subdir_output"].append(
+                                    "extracted_features"
+                                )
+                            else:
+                                raise ValueError(f"Unknown feature: {feature}")
+        for channel in channels:
+            for nulceo_centric_feature in ["SAMMed3D", "CHAMMI75"]:
+                output_dict["patient"].append(patient)
+                output_dict["well_fov"].append(well_fov)
+                output_dict["feature"].append(nulceo_centric_feature)
+                output_dict["compartment"].append("Nucleocentric")
+                output_dict["channel"].append(channel)
+                output_dict["processor_type"].append("GPU")
+                output_dict["subdir_input"].append("zstack_images")
+                output_dict["subdir_mask"].append("segmentation_masks")
+                output_dict["subdir_output"].append("extracted_features")
 
 
-# In[11]:
+# For each well fov there should be the following number of files:
+# Of course this depends on if both CPU and GPU versions are run, but the CPU version is always run.
+#
+# No BF here!
+#
+# | Feature Type | No. Compartments | No. Channels | Total No. Files |
+# |--------------|------------------|---------------|-----------------|
+# | AreaSizeShape | 4 | 1 | 4 |
+# | Colocalization | 4 | 6 | 24 |
+# | Granularity | 4 | 4 | 16 |
+# | Intensity | 4 | 4 | 16 |
+# | Neighbors | 1 | 1 | 1 |
+# | SAMMed3D | 4 | 4 | 16 |
+# | Texture | 4 | 4 | 16 |
+# | Nucleocentric + SAMMed3D | 0 | 4 | 4 |
+# | Nulceocentric + CHAMMI75 | 0 | 4 | 4 |
+#
+# Total no. files per well fov = 101
+#
+#
+
+# In[71]:
 
 
 df = pd.DataFrame(output_dict)
@@ -231,36 +253,7 @@ print(f"Total combinations: {df.shape[0]}")
 df.head()
 
 
-# In[13]:
-
-
-# number of combinations we should have
-# per well_fov
-area_combos = len(compartments) * len(processor_types)
-coloc_combos = len(channel_combinations) * len(compartments) * len(processor_types)
-intensity_combos = len(channels) * len(compartments) * len(processor_types)
-granularity_combos = len(channels) * len(compartments)
-SAMMed3D_combos = len(channels) * len(compartments) * len(processor_types)
-neighbors_combos = 1  # Neighbors is always DNA and Nuclei
-texture_combos = len(channels) * len(compartments)
-total_well_fov_combos = (
-    area_combos
-    + coloc_combos
-    + intensity_combos
-    + granularity_combos
-    + neighbors_combos
-    + texture_combos
-    + SAMMed3D_combos
-)
-total_patient_well_fov_combos = len(np.unique(df["patient"] + "_" + df["well_fov"]))
-total_combos = total_well_fov_combos * total_patient_well_fov_combos
-# print the total number of combinations
-print(
-    f"For {total_patient_well_fov_combos} patient-well_fov combinations, we have {total_combos} total combinations across all features."
-)
-
-
-# In[14]:
+# In[72]:
 
 
 # reorder columns
@@ -279,15 +272,47 @@ df = df[
 ]
 
 
-# In[15]:
+# In[73]:
+
+
+df["feature_file_path"] = df.apply(
+    lambda row: (
+        bandicoot_mount_path
+        / "data"
+        / row["patient"]
+        / row["subdir_output"]
+        / row["well_fov"]
+        / f"{row['compartment']}_{row['channel']}_{row['feature']}_{row['processor_type']}_features.parquet"
+    ),
+    axis=1,
+)
+df["feature_file_path_exists"] = df["feature_file_path"].apply(
+    lambda x: pathlib.Path(x).exists()
+)
+# filter by feature files that do not exist
+original_number_of_feature_files = df.shape[0]
+df = df[~df["feature_file_path_exists"]]
+print(
+    f"{original_number_of_feature_files - df.shape[0]}/{original_number_of_feature_files}: {((original_number_of_feature_files - df.shape[0]) / original_number_of_feature_files) * 100:.2f}% of combinations have feature files that exist."
+)
+df.drop(columns=["feature_file_path", "feature_file_path_exists"], inplace=True)
+# sort by patient, well_fov, feature, compartment, channel, processor_type
+df.sort_values(
+    by=["patient", "well_fov", "feature", "compartment", "channel", "processor_type"],
+    inplace=True,
+)
+df.head()
+
+
+# In[74]:
 
 
 # write to a txt file with each row as a combination
 # each column is a feature of the combination
-df.to_csv(input_combinations_path, sep="\t", index=False)
+df.to_csv(load_combinations_path, sep="\t", index=False)
 
 
-# In[16]:
+# In[75]:
 
 
 df.groupby(["patient"]).count()

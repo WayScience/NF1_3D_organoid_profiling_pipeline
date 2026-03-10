@@ -233,25 +233,27 @@ if [ "$feature" == "Intensity" ] ; then
 fi
 
 if [ "$feature" == "SAMMed3D" ] ; then
-    echo "Running SAMMed3D feature extraction"
-    sbatch \
-        --nodes=1 \
-        --ntasks=$ntasks_constant \
-        --partition=aa100 \
-        --qos=normal \
-        --gres=gpu:1 \
-        --account=amc-general \
-        --time=10:00 \
-        --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
-        --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_SAMMed3D_child-%j.out" \
-        "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
+    if [ "$compartment" == "Nucleocentric" ] ; then
+        source "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
             "$patient" \
             "$well_fov" \
             "$compartment" \
-            "$channel" \
+            "$channel"  \
             "$input_subparent_name" \
             "$mask_subparent_name" \
             "$output_features_subparent_name"
+    else
+        echo "Running SAMMed3D feature extraction"
+        # shellcheck disable=SC1091
+        source "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
+            "$patient" \
+            "$well_fov" \
+            "$compartment" \
+            "$channel"  \
+            "$input_subparent_name" \
+            "$mask_subparent_name" \
+            "$output_features_subparent_name"
+    fi
 fi
 
 echo "All Parent Jobs submitted"

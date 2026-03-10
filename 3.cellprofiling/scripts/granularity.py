@@ -25,6 +25,7 @@ root_dir, in_notebook = init_notebook()
 
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.featurization_utils.granularity_utils import (
     measure_3D_granularity,
@@ -164,12 +165,14 @@ final_df.rename(
     inplace=True,
 )
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
-output_file = pathlib.Path(
-    output_parent_path
-    / f"Granularity_{compartment}_{channel}_{processor_type}_features.parquet"
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=final_df,
+    feature_type="Granularity",
+    channel=channel,
+    compartment=compartment,
+    cpu_or_gpu=processor_type,
 )
-output_file.parent.mkdir(parents=True, exist_ok=True)
-final_df.to_parquet(output_file)
 final_df.head()
 
 

@@ -23,6 +23,7 @@ from image_analysis_3D.featurization_utils.colocalization_utils import (
 )
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
@@ -66,7 +67,7 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-1"
+    well_fov = "C4-2"
     patient = "NF0014_T1"
     channel = "ER-DNA"
     compartment = "Nuclei"
@@ -103,10 +104,25 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[4]:
+# In[ ]:
 
 
 channels_to_load = channel.split("-")
+
+channels_to_load
+
+
+# In[5]:
+
+
+[channel_n_compartment_mapping[ch] for ch in channels_to_load]
+
+
+# In[ ]:
+
+
+channels_to_load = channel.split("-")
+
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     mask_set_path=mask_set_path,
@@ -138,10 +154,6 @@ coloc_loader = TwoObjectLoader(
 # In[7]:
 
 
-output_dir = pathlib.Path(
-    output_parent_path
-    / f"Colocalization_{compartment}_{channel1}.{channel2}_{processor_type}_features.parquet"
-)
 list_of_dfs = []
 for object_id in coloc_loader.object_ids:
     if processor_type == "CPU":
@@ -199,10 +211,16 @@ if len(list_of_dfs) == 0:
     print("No objects found for colocalization.")
     # write an empty DataFrame to the output file
     coloc_df = pd.DataFrame(columns=["object_id", "image_set"])
-    coloc_df.to_parquet(output_dir)
 else:
     coloc_df = pd.concat(list_of_dfs, ignore_index=True)
-    coloc_df.to_parquet(output_dir)
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=coloc_df,
+    feature_type="Colocalization",
+    channel=channel,
+    compartment=compartment,
+    cpu_or_gpu=processor_type,
+)
 coloc_df.head()
 
 

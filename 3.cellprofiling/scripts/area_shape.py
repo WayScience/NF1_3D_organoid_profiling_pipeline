@@ -29,6 +29,7 @@ from image_analysis_3D.featurization_utils.area_size_shape_utils import (
 )
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 
 # bug in the cucim module but we are using CPU so it does not matter for now
@@ -168,11 +169,15 @@ final_df.rename(
 
 final_df.insert(1, "image_set", image_set_loader.image_set_name)
 
-output_file = pathlib.Path(
-    output_parent_path
-    / f"AreaSizeShape_{compartment}_{processor_type}_features.parquet"
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=final_df,
+    feature_type="AreaSizeShape",
+    channel=channel,
+    compartment=compartment,
+    cpu_or_gpu=processor_type,
 )
-final_df.to_parquet(output_file, index=False)
+
 final_df.head()
 
 

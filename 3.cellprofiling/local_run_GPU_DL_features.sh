@@ -10,15 +10,8 @@ fi
 
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
+txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
 
-rerun=$1
-
-
-if [ "$rerun" == "rerun" ]; then
-    txt_file="${git_root}/3.cellprofiling/load_data/rerun_combinations.txt"
-else
-    txt_file="${git_root}/3.cellprofiling/load_data/input_combinations.txt"
-fi
 
 # Check if TXT file exists
 if [ ! -f "$txt_file" ]; then
@@ -35,6 +28,9 @@ while IFS= read -r line; do
     # check if the feature is SAMMed3D
     if [ "$feature" == "SAMMed3D" ]; then
         total_sammed3d_entries=$((total_sammed3d_entries + 1))
+    else [ "$feature" == "CHAMMI75" ]
+        total_sammed3d_entries=$((total_sammed3d_entries + 1))
+
     fi
 done < "$txt_file"
 
@@ -63,22 +59,33 @@ while IFS= read -r line; do
     echo "Patient: $patient, WellFOV: $well_fov, Feature: $feature, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 
     if [ "$feature" == "SAMMed3D" ] ; then
-        echo "Running SAMMed3D feature extraction"
-        # ignore shellcheck SC1091
-        # shellcheck disable=SC1091
-        source "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
-            "$patient" \
-            "$well_fov" \
-            "$compartment" \
-            "$channel"  \
-            "$input_subparent_name" \
-            "$mask_subparent_name" \
-            "$output_features_subparent_name"
+        if [ "$compartment" == "Nucleocentric" ] ; then
+            source "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
+                "$patient" \
+                "$well_fov" \
+                "$compartment" \
+                "$channel"  \
+                "$input_subparent_name" \
+                "$mask_subparent_name" \
+                "$output_features_subparent_name"
+        else
+            echo "Running SAMMed3D feature extraction"
+            # shellcheck disable=SC1091
+            source "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
+                "$patient" \
+                "$well_fov" \
+                "$compartment" \
+                "$channel"  \
+                "$input_subparent_name" \
+                "$mask_subparent_name" \
+                "$output_features_subparent_name"
+        fi
     fi
     processed_entries=$((processed_entries + 1))
     echo "Processed $processed_entries/$total_sammed3d_entries"
 
-done < <(tac "$txt_file")
+# done < <(tac "$txt_file")
+done < "$txt_file"
 
 echo "Featurization done"
 

@@ -18,6 +18,7 @@ import psutil
 import tomli
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
@@ -67,8 +68,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "D11-2"
-    patient = "NF0016_T1"
+    well_fov = "C4-2"
+    patient = "NF0014_T1"
     compartment = "Nuclei"
     channel = "Mito"
     input_subparent_name = "zstack_images"
@@ -208,11 +209,14 @@ for channel, compartment in all_channel_compartment_combinations:
     final_df = final_df.copy()
     # add the image_set_name column
     final_df.insert(1, "image_set", image_set_loader.image_set_name)
-    # set the save path
-    output_file = pathlib.Path(
-        output_parent_path / f"SAMMed3D_{compartment}_{channel}_GPU_features.parquet"
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=final_df,
+        feature_type="SAMMed3D",
+        channel=channel,
+        compartment=compartment,
+        cpu_or_gpu="GPU",
     )
-    final_df.to_parquet(output_file, index=False)
     final_df.head()
 
 

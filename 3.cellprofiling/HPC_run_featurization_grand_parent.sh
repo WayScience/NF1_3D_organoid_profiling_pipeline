@@ -17,15 +17,12 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-rerun=$1
+
 
 jupyter nbconvert --to=script --FilesWriter.build_directory="$git_root"/3.cellprofiling/scripts/ "$git_root"/3.cellprofiling/notebooks/*.ipynb
 
-if [ "$rerun" == "rerun" ]; then
-    txt_file="${git_root}/3.cellprofiling/load_data/rerun_combinations.txt"
-else
-    txt_file="${git_root}/3.cellprofiling/load_data/input_combinations.txt"
-fi
+txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
+
 
 # Check if TXT file exists
 if [ ! -f "$txt_file" ]; then

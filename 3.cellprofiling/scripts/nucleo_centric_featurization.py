@@ -27,6 +27,7 @@ from image_analysis_3D.featurization_utils.chammi75_featurization import (
 )
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
@@ -72,10 +73,6 @@ else:
 # In[2]:
 
 
-# import torch
-# import sys
-# from pathlib import Path
-
 # Download SAM3D checkpoint
 sam3dmed_checkpoint_url = (
     "https://huggingface.co/blueyo0/SAM-Med3D/resolve/main/sam_med3d_turbo.pth"
@@ -107,11 +104,11 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "D5-2"
     patient = "NF0014_T1"
     channel = "DNA"
     compartment = "Nuclei"
-    processor_type = "CPU"
+    processor_type = "GPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
     output_features_subparent_name = "extracted_features"
@@ -129,6 +126,11 @@ output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(
     f"{root_dir}/config/channel_mapping.toml"
 ).resolve(strict=True)
+
+# given this is nucleocentric, we will hardcode the compartment to be nuclei for now
+# the feature name will read nucleocentric
+# the compartment to read in will be nuclei however.
+compartment = "Nuclei"
 
 
 # In[4]:
@@ -263,13 +265,58 @@ final_df.head()
 # In[10]:
 
 
+# split between SAMMed3D and CHAMMI75 features in the column names
+sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
+chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
+sammed_3d_df = final_df[["object_label"] + sammed3d_feature_cols]
+chammi75_df = final_df[["object_label"] + chammi75_feature_cols]
+# save the features as parquet files
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=final_df,
+    feature_type="SAMMed3D",
+    channel=channel,
+    compartment="Nucleocentric",
+    cpu_or_gpu=processor_type,
+)
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=chammi75_df,
+    feature_type="CHAMMI75",
+    channel=channel,
+    compartment="Nucleocentric",
+    cpu_or_gpu=processor_type,
+)
+
+
+# In[11]:
+
+
+stop_profiling(
+    start_time=start_time,
+    start_mem=start_mem,
+    feature_type="Nucleocentric",
+    well_fov=well_fov,
+    patient_id=patient,
+    channel=channel,
+    compartment=compartment,
+    CPU_GPU=processor_type,
+    output_file_dir=pathlib.Path(
+        f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_{channel}_{compartment}_Nucleocentric_{processor_type}.parquet"
+    ),
+)
+
+
+# In[12]:
+
+
 if in_notebook:
     # load the first label image to get the metadata for saving the features as a tiff
     label = label_ids[0]
     label_image = select_objects_from_label(object_loader.label_image, [label])
 
 
-# In[11]:
+# In[13]:
 
 
 if in_notebook:
@@ -311,7 +358,7 @@ if in_notebook:
     plt.show()
 
 
-# In[12]:
+# In[ ]:
 
 
 if in_notebook:
@@ -380,21 +427,3 @@ if in_notebook:
         ax.set_title(f"3D Visualization \ng+ {expand_pixel_by} pixels")
         ax.view_init(elev=10, azim=30)
     plt.show()
-
-
-# In[13]:
-
-
-stop_profiling(
-    start_time=start_time,
-    start_mem=start_mem,
-    feature_type="Intensity",
-    well_fov=well_fov,
-    patient_id=patient,
-    channel=channel,
-    compartment=compartment,
-    CPU_GPU=processor_type,
-    output_file_dir=pathlib.Path(
-        f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_{channel}_{compartment}_Intensity_{processor_type}.parquet"
-    ),
-)
