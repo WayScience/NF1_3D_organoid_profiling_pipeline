@@ -166,6 +166,7 @@ The `<FeatureCategory>` component MUST identify the type of metadata and MUST be
 - `Experiment` - Metadata related to experimental conditions and treatments.
 - `Imaging` - Metadata related to imaging parameters and conditions.
 - `Microscopy` - Metadata related to microscopy settings and configurations.
+- `Location` - Metadata related to spatial information and coordinates.
 
 ### 2.3 Complete Metadata Feature Name Examples
 Valid metadata feature names conforming to this specification:
@@ -176,6 +177,7 @@ Metadata_Biology_PatientID
 Metadata_Experiment_Treatment
 Metadata_Imaging_ExposureTime
 Metadata_Microscopy_Magnification
+Metadata_Location_Cell_CentroidX
 ```
 
 ## 3. References
