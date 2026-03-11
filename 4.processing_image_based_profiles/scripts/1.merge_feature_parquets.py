@@ -36,7 +36,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "E5-2"
+    well_fov = "C4-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -134,6 +134,12 @@ for compartment in output_dict.keys():
             ),
             [pd.read_parquet(file) for file in output_dict[compartment][feature_type]],
         )
+# ensure the object_id column is int before merging
+for compartment in final_df_dict.keys():
+    for feature_type in final_df_dict[compartment].keys():
+        final_df_dict[compartment][feature_type]["object_id"] = final_df_dict[
+            compartment
+        ][feature_type]["object_id"].astype(int)
 
 
 # In[7]:
@@ -146,6 +152,7 @@ for compartment in final_df_dict.keys():
         if compartment == "Nucleocentric":
             compartment_dfs[compartment] = df
             break
+
         compartment_dfs[compartment] = reduce(
             lambda left, right: pd.merge(
                 left,
@@ -182,6 +189,7 @@ dict_of_DB_structues = {
 # get the table from the DB_structue
 with duckdb.connect(sqlite_path, read_only=False) as cx:
     for compartment, df in compartment_dfs.items():
+        print(compartment, df.shape)
         if df.empty:
             cx.register("temp_df", dict_of_DB_structues[compartment])
             cx.execute(

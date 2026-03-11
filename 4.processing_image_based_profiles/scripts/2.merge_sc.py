@@ -33,7 +33,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "E5-2"
+    well_fov = "C2-2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -118,7 +118,7 @@ nucleocentric_table["object_id"] = [
 
 
 # save the organoid data as parquet
-print(f"Final organoid data shape: {merged_df.shape}")
+print(f"Final organoid data shape: {organoid_table.shape}")
 organoid_table.to_parquet(destination_organoid_parquet_file, index=False)
 organoid_table.head()
 

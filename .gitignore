@@ -242,3 +242,5 @@ docs/html/*
 5.technical_analysis/processed_data/*
 5.technical_analysis/results/*
 
+
+4.processing_image_based_profiles/data/DB_structures/*.duckdb

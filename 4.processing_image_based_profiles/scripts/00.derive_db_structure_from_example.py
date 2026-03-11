@@ -146,7 +146,6 @@ for compartment in output_dict.keys():
 compartment_dfs = {}
 for compartment in final_df_dict.keys():
     for df in final_df_dict[compartment].values():
-        print(df.shape)
         if compartment == "Nucleocentric":
             compartment_dfs[compartment] = df
             break
@@ -166,7 +165,7 @@ for compartment in final_df_dict.keys():
 
 # get the table from the DB_structue
 with duckdb.connect(sqlite_path, read_only=False) as cx:
-    for compartment, df in compartment_merged_dict.items():
+    for compartment, df in compartment_dfs.items():
         if df.empty:
             cx.register("temp_df", dict_of_DB_structues[compartment])
             cx.execute(
@@ -181,11 +180,11 @@ with duckdb.connect(sqlite_path, read_only=False) as cx:
             cx.unregister("temp_df")
 
 
-# In[ ]:
+# In[9]:
 
 
 with duckdb.connect(DB_structure_path) as cx:
-    for compartment, df in compartment_merged_dict.items():
+    for compartment, df in compartment_dfs.items():
         df = df.head(0)
         cx.register("temp_df", df)
         cx.execute(f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df")
