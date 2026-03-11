@@ -536,7 +536,7 @@ def call_SAMMed3D_pipeline(
                 )  # preprocess the volume
                 for i, feature_value in enumerate(features.flatten()):
                     output_dict["object_id"].append(label)
-                    output_dict["feature_name"].append(f"{ft}-feature-{i}")
+                    output_dict["feature_name"].append(f"Feature-{ft}{i}")
                     output_dict["channel"].append(object_loader.channel)
                     output_dict["compartment"].append(object_loader.compartment)
                     output_dict["value"].append(feature_value)
@@ -548,7 +548,7 @@ def call_SAMMed3D_pipeline(
             )  # preprocess the volume
             for i, feature_value in enumerate(features.flatten()):
                 output_dict["object_id"].append(label)
-                output_dict["feature_name"].append(f"{feature_type}-feature-{i}")
+                output_dict["feature_name"].append(f"{feature_type}Feature-{ft}{i}")
                 output_dict["channel"].append(object_loader.channel)
                 output_dict["compartment"].append(object_loader.compartment)
                 output_dict["value"].append(feature_value)

@@ -67,10 +67,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C4-1"
     patient = "NF0014_T1"
-    channel = "ER-DNA"
-    compartment = "Nuclei"
+    channel = "DNA-AGP"
+    compartment = "Cell"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -109,16 +109,8 @@ channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 channels_to_load = channel.split("-")
 
-channels_to_load
-
 
 # In[5]:
-
-
-[channel_n_compartment_mapping[ch] for ch in channels_to_load]
-
-
-# In[ ]:
 
 
 channels_to_load = channel.split("-")
@@ -134,13 +126,13 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[5]:
+# In[6]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[6]:
+# In[7]:
 
 
 coloc_loader = TwoObjectLoader(
@@ -151,7 +143,7 @@ coloc_loader = TwoObjectLoader(
 )
 
 
-# In[7]:
+# In[8]:
 
 
 list_of_dfs = []
@@ -224,7 +216,7 @@ save_path = save_features_as_parquet(
 coloc_df.head()
 
 
-# In[8]:
+# In[9]:
 
 
 stop_profiling(

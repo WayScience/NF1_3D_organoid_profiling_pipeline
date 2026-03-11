@@ -60,6 +60,7 @@ while IFS= read -r line; do
 
     if [ "$feature" == "SAMMed3D" ] ; then
         if [ "$compartment" == "Nucleocentric" ] ; then
+            # shellcheck disable=SC1091
             source "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
                 "$patient" \
                 "$well_fov" \
@@ -84,8 +85,8 @@ while IFS= read -r line; do
     processed_entries=$((processed_entries + 1))
     echo "Processed $processed_entries/$total_sammed3d_entries"
 
-# done < <(tac "$txt_file")
-done < "$txt_file"
+done < <(tac "$txt_file")
+# done < "$txt_file"
 
 echo "Featurization done"
 

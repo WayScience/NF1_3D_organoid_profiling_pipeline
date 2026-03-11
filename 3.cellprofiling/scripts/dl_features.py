@@ -148,7 +148,7 @@ else:
     all_channel_compartment_combinations = [(channel, compartment)]
 
 
-# In[9]:
+# In[ ]:
 
 
 for channel, compartment in all_channel_compartment_combinations:
@@ -164,25 +164,11 @@ for channel, compartment in all_channel_compartment_combinations:
     feature_dict = call_SAMMed3D_pipeline(
         object_loader=object_loader,
         SAMMed3D_model_path=str(sam3dmed_checkpoint_path),
-        feature_type="cls",
+        feature_type=["global", "cls"],
     )
     # write out the features to parquet
     # convert to dataframe
     final_df = pd.DataFrame(feature_dict)
-    try:
-        final_df["feature_name"] = (
-            final_df["feature_name"]
-            + "_"
-            + final_df["compartment"]
-            + "_"
-            + final_df["channel"]
-        )
-        final_df["feature_name"] = final_df["feature_name"].str.replace(
-            "_feature_", "."
-        )
-        final_df = final_df.drop(columns=["compartment", "channel"])
-    except Exception as e:
-        logging.error(f"Probably a zero object error: {e}")
     # reshape dataframe such that features are columns and the object_ids are rows
     final_df = final_df.pivot(
         index="object_id", columns="feature_name", values="value"
@@ -195,7 +181,7 @@ for channel, compartment in all_channel_compartment_combinations:
             col: format_morphology_feature_name(
                 compartment=compartment,
                 channel=channel,
-                feature_type="Granularity",
+                feature_type="SAMMed3D",
                 measurement=col,
             )
             if col != "object_id"

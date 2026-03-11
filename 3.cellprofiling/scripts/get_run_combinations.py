@@ -107,8 +107,9 @@ for patient in patients:
     patient_well_fovs = list(
         pathlib.Path(f"{bandicoot_mount_path}/data/{patient}/zstack_images/").glob("*")
     )
-    for well_fov in patient_well_fovs[:2]:
-        well_fov = well_fov.name
+    # for well_fov in patient_well_fovs:
+    # well_fov = well_fov.name
+    for well_fov in ["C4-1", "C4-2", "D5-2", "E5-2", "C2-1", "C2-2"]:
         for feature in features:
             if feature == "Neighbors":
                 output_dict["patient"].append(patient)

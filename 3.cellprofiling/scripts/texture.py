@@ -58,10 +58,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C4-1"
     patient = "NF0014_T1"
-    channel = "DNA"
-    compartment = "Cell"
+    channel = "Mito"
+    compartment = "Nuclei"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -111,7 +111,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[6]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -160,7 +160,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[7]:
+# In[ ]:
 
 
 stop_profiling(
