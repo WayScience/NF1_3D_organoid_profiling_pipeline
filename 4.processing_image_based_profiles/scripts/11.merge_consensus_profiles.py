@@ -6,15 +6,15 @@
 # In[ ]:
 
 
-import argparse
 import os
 import pathlib
-import sys
 
 import pandas as pd
-from arg_parsing_utils import parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
-from pycytominer import aggregate
+from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 

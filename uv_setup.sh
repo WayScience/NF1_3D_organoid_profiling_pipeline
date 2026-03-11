@@ -27,6 +27,7 @@ source .venv/bin/activate
 
 # Use RELATIVE path - simple and reliable
 uv pip install -e ./utils
+uv pip install -e cosmicqc
 
 
 echo "✓ Done! Activate with: source .venv/bin/activate"

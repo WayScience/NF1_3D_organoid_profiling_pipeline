@@ -4,19 +4,17 @@
 # In[1]:
 
 
-import argparse
 import os
 import pathlib
-import pprint
-import sqlite3
-import sys
-from contextlib import closing
 from functools import reduce
 
 import duckdb
 import pandas as pd
-from arg_parsing_utils import parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -38,8 +36,8 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C4-2"
-    patient = "NF0030_T1"
+    well_fov = "E5-2"
+    patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
 
@@ -63,7 +61,7 @@ parquet_files.sort()
 print(len(parquet_files), "parquet files found")
 
 
-# In[15]:
+# In[3]:
 
 
 # create the nested dictionary to hold the feature types and compartments
@@ -72,167 +70,94 @@ feature_types = [
     "Colocalization",
     "Intensity",
     "Granularity",
-    "Neighbor",
+    "Neighbors",
     "SAMMed3D",
     "Texture",
+    "CHAMMI75",
 ]
-compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm"]
-
-feature_types_dict = {cmp: {ft: [] for ft in feature_types} for cmp in compartments}
-# copy the feature types dictionary to another blank dictionary that will hold the parquet files
-
-merged_df_dict = {cmp: {ft: [] for ft in feature_types} for cmp in compartments}
+compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 
 
-for file in parquet_files:
-    for compartment in feature_types_dict.keys():
-        for feature_type in feature_types_dict[compartment].keys():
-            if compartment in str(file) and feature_type in str(file):
-                feature_types_dict[compartment][feature_type].append(file)
+# In[4]:
 
 
-# In[17]:
-
-
-for compartment in feature_types_dict.keys():
-    for feature_type in feature_types_dict[compartment].keys():
-        if len(feature_types_dict[compartment][feature_type]) > 0:
-            for file in feature_types_dict[compartment][feature_type]:
-                # check if the file exists
-                if not file.exists():
-                    if (
-                        "neighbor" in file.name.lower()
-                        and "nuclei" not in file.name.lower()
-                    ):
-                        print(f"File {file} does not exist")
-                        continue
-                # check if the file is a parquet file
-                if not file.name.endswith(".parquet"):
-                    print(f"File {file} is not a parquet file")
-                    continue
-                # read the parquet files
-                try:
-                    df = duckdb.read_parquet(str(file)).to_df()
-                except Exception as e:
-                    print(
-                        f"Error reading {feature_types_dict[compartment][feature_type]}: {e}"
-                    )
-
-                # add the dataframe to the dictionary
-                merged_df_dict[compartment][feature_type].append(df)
-        else:
-            if (
-                "neighbor" in feature_type.lower()
-                and "nuclei" not in compartment.lower()
-            ):
-                merged_df_dict[compartment][feature_type].append(pd.DataFrame())
-            else:
-                print(
-                    f"No files found for {compartment} {feature_type}. Please check the directory."
-                )
-                merged_df_dict[compartment][feature_type].append(pd.DataFrame())
-                for channel_df in merged_df_dict[compartment][feature_type]:
-                    if channel_df.empty:
-                        continue
-                    # check if the dataframe has the required columns
-                    if (
-                        "object_id" not in channel_df.columns
-                        or "image_set" not in channel_df.columns
-                    ):
-                        print(
-                            f"Dataframe {channel_df} does not have the required columns"
-                        )
-                        continue
-                    # check if the dataframe is empty
-                    if channel_df.empty:
-                        continue
-
-
-# In[18]:
-
-
-final_df_dict = {
-    cmp: {ft: pd.DataFrame() for ft in feature_types} for cmp in compartments
-}
-
-
-# In[19]:
-
-
-for compartment in merged_df_dict.keys():
-    for feature_type in merged_df_dict[compartment].keys():
-        for df in merged_df_dict[compartment][feature_type]:
-            if df.empty:
-                continue
-            final_df_dict[compartment][feature_type] = reduce(
-                lambda left, right: pd.merge(
-                    left, right, how="left", on=["object_id", "image_set"]
-                ),
-                merged_df_dict[compartment][feature_type],
-            )
-
-
-# In[20]:
-
-
-merged_df = pd.DataFrame(
-    {
-        "object_id": [],
-        "image_set": [],
+output_dict = {
+    compartment: {
+        feature_type: []
+        for feature_type in feature_types
+        if not (
+            compartment == "Nucleocentric"
+            and feature_type.lower() not in ["chammi75", "sammed3d"]
+        )
     }
-)
-
-
-# In[21]:
-
-
-compartment_merged_dict = {
-    "Organoid": pd.DataFrame(),
-    "Cell": pd.DataFrame(),
-    "Nuclei": pd.DataFrame(),
-    "Cytoplasm": pd.DataFrame(),
+    for compartment in compartments
 }
+output_dict
 
 
-# In[22]:
+# In[5]:
 
 
-final_df_dict["Nuclei"]["Neighbor"]
+files = list(result_path.rglob("*.parquet"))
+files_df = pd.DataFrame({"file_path": files})
+files_df["file_name"] = files_df["file_path"].apply(lambda x: x.name)
+files_df["compartment"] = files_df["file_name"].apply(lambda x: x.split("_")[0])
+files_df["channel"] = files_df["file_name"].apply(lambda x: x.split("_")[1])
+files_df["feature_type"] = files_df["file_name"].apply(
+    lambda x: x.split("_")[2].split(".parquet")[0]
+)
+file_path = files_df.pop("file_path")
+files_df.insert(4, "file_path", file_path)
+files_df.head()
 
 
-# In[23]:
+# In[6]:
 
 
-for compartment in final_df_dict.keys():
-    print(f"Processing compartment: {compartment}")
-    for feature_type in final_df_dict[compartment].keys():
-        print(feature_type, compartment)
-        if compartment != "Nuclei" and feature_type == "Neighbor":
-            print(
-                f"Skipping {compartment} {feature_type} as it is not applicable for this compartment."
-            )
+for i, row in files_df.iterrows():
+    compartment = row["compartment"]
+    feature_type = row["feature_type"]
+    channel = row["channel"]
+    file_path = row["file_path"]
+    output_dict[compartment][feature_type].append(file_path)
+final_df_dict = {compartment: {} for compartment in output_dict.keys()}
+for compartment in output_dict.keys():
+    for feature_type in output_dict[compartment].keys():
+        if not output_dict[compartment][feature_type]:
             continue
-        if compartment_merged_dict[compartment].empty:
-            compartment_merged_dict[compartment] = final_df_dict[compartment][
-                feature_type
-            ].copy()
-        else:
-            compartment_merged_dict[compartment] = pd.merge(
-                compartment_merged_dict[compartment],
-                final_df_dict[compartment][feature_type],
+        final_df_dict[compartment][feature_type] = reduce(
+            lambda left, right: pd.merge(
+                left,
+                right,
                 on=["object_id", "image_set"],
                 how="left",
-            )
+            ),
+            [pd.read_parquet(file) for file in output_dict[compartment][feature_type]],
+        )
 
 
-# In[24]:
+# In[7]:
 
 
-for compartment, df in compartment_merged_dict.items():
-    print(compartment, df.shape)
+# merge the dfs such that each compartment has a single df with all feature types as columns
+compartment_dfs = {}
+for compartment in final_df_dict.keys():
+    for df in final_df_dict[compartment].values():
+        if compartment == "Nucleocentric":
+            compartment_dfs[compartment] = df
+            break
+        compartment_dfs[compartment] = reduce(
+            lambda left, right: pd.merge(
+                left,
+                right,
+                on=["object_id", "image_set"],
+                how="left",
+            ),
+            final_df_dict[compartment].values(),
+        )
 
 
-# In[25]:
+# In[8]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -240,21 +165,23 @@ with duckdb.connect(DB_structure_path, read_only=True) as cx:
     cell_table = cx.execute("SELECT * FROM Cell").df()
     nuclei_table = cx.execute("SELECT * FROM Nuclei").df()
     cytoplasm_table = cx.execute("SELECT * FROM Cytoplasm").df()
+    nucleocentric_table = cx.execute("SELECT * FROM Nucleocentric").df()
 
 dict_of_DB_structues = {
     "Organoid": organoid_table,
     "Cell": cell_table,
     "Nuclei": nuclei_table,
     "Cytoplasm": cytoplasm_table,
+    "Nucleocentric": nucleocentric_table,
 }
 
 
-# In[26]:
+# In[9]:
 
 
 # get the table from the DB_structue
 with duckdb.connect(sqlite_path, read_only=False) as cx:
-    for compartment, df in compartment_merged_dict.items():
+    for compartment, df in compartment_dfs.items():
         if df.empty:
             cx.register("temp_df", dict_of_DB_structues[compartment])
             cx.execute(

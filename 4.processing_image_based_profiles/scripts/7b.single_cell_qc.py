@@ -3,17 +3,19 @@
 
 # # Perform single-cell level quality control
 
-# In[ ]:
+# In[1]:
 
 
 import os
 import pathlib
-import sys
 
 import pandas as pd
-from arg_parsing_utils import parse_args
 from cosmicqc import find_outliers
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -23,14 +25,16 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
     args = parse_args()
+    patient = args["patient"]
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -42,70 +46,118 @@ else:
 #    - Also add flag for if the `object_id` for a single-cell is NaN.
 # 3. Concat single-cell data together.
 
-# In[ ]:
+# In[3]:
+
+
+sc_file = pathlib.Path(
+    profile_base_dir
+    / "data"
+    / f"{patient}"
+    / f"{image_based_profiles_subparent_name}"
+    / "3.annotated_profiles/sc_anno.parquet"
+)
+organoid_file = pathlib.Path(
+    profile_base_dir
+    / "data"
+    / f"{patient}"
+    / f"{image_based_profiles_subparent_name}"
+    / "4.qc_profiles/organoid_flagged_outliers.parquet"
+)
+
+output_dir = pathlib.Path(
+    profile_base_dir
+    / "data"
+    / f"{patient}"
+    / f"{image_based_profiles_subparent_name}"
+    / "4.qc_profiles"
+)
+output_dir.mkdir(parents=True, exist_ok=True)
+
+orig_sc_profiles_df = pd.read_parquet(sc_file)
+organoid_qc_profiles_df = pd.read_parquet(organoid_file)
+# Print the shape and head of the combined organoid profiles DataFrame
+print(orig_sc_profiles_df.shape)
+orig_sc_profiles_df
+
+
+# In[4]:
+
+
+sc_profiles_df = orig_sc_profiles_df.copy()
+sc_profiles_df["Metadata_cqc_nan_detected"] = (
+    sc_profiles_df[
+        [
+            "Metadata_Object_ObjectID",
+            "Metadata_Object_ParentOrganoid",
+            "Cell_NoChannel_AreaSizeShape_Volume",
+        ]
+    ]
+    .isna()
+    .any(axis=1)
+)
+# Print the number of organoids flagged
+flagged_count = sc_profiles_df["Metadata_cqc_nan_detected"].sum()
+print(f"Number of organoids flagged: {flagged_count}")
+
+sc_profiles_df.head()
+
+
+# In[5]:
+
+
+[x for x in sc_profiles_df.columns if "Metadata" in x]
+
+
+# In[6]:
 
 
 # Path to patient folders
-path_to_patients = pathlib.Path(f"{profile_base_dir}/data/")
 
-dfs = []
-for patient_folder in path_to_patients.iterdir():
-    single_cell_file = (
-        patient_folder
-        / f"{image_based_profiles_subparent_name}/2.annotated_profiles"
-        / "sc_anno.parquet"
-    )
-    organoid_flags_file = (
-        patient_folder
-        / f"{image_based_profiles_subparent_name}/3.qc_profiles"
-        / "organoid_flagged_outliers.parquet"
-    )
 
-    if single_cell_file.exists():
-        sc_df = pd.read_parquet(single_cell_file)
+# Default QC flags
+sc_profiles_df["Metadata_cqc_organoid_flagged"] = False
+sc_profiles_df["Metadata_cqc_nan_detected"] = (
+    sc_profiles_df[
+        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_AreaSizeShape_Volume"]
+    ]
+    .isna()
+    .any(axis=1)
+)
+sc_profiles_df["Metadata_cqc_missing_parent_organoid"] = (
+    sc_profiles_df["Metadata_Object_ParentOrganoid"] == -1
+)
 
-        # Default QC flags
-        sc_df["Metadata_cqc_organoid_flagged"] = False
-        sc_df["Metadata_cqc_nan_detected"] = (
-            sc_df[["Metadata_object_id", "Area.Size.Shape_Nuclei_VOLUME"]]
-            .isna()
-            .any(axis=1)
-        )
-        sc_df["Metadata_cqc_missing_parent_organoid"] = (
-            sc_df["Metadata_parent_organoid"] == -1
-        )
 
-        if organoid_flags_file.exists():
-            organoid_flags_df = pd.read_parquet(organoid_flags_file)[
-                ["Metadata_object_id", "Metadata_image_set"]
-                + [
-                    col
-                    for col in pd.read_parquet(organoid_flags_file).columns
-                    if col.startswith("cqc")
-                ]
-            ]
+organoid_flags_df = organoid_qc_profiles_df[
+    ["Metadata_Object_ObjectID", "Metadata_Experiment_WellFOV"]
+    + [col for col in organoid_qc_profiles_df.columns if col.startswith("Metadata_cqc")]
+]
 
-            # Get flagged (object_id, image_set) pairs
-            flagged_pairs = set(
-                organoid_flags_df.loc[
-                    organoid_flags_df.filter(like="cqc").any(axis=1),
-                    ["Metadata_object_id", "Metadata_image_set"],
-                ].itertuples(index=False, name=None)
-            )
+# Get flagged (object_id, image_set) pairs
+flagged_pairs = set(
+    organoid_flags_df.loc[
+        organoid_flags_df.filter(like="cqc").any(axis=1),
+        ["Metadata_Object_ObjectID", "Metadata_Experiment_WellFOV"],
+    ].itertuples(index=False, name=None)
+)
 
-            # Flag SC rows where both parent_organoid & image_set match a flagged organoid
-            sc_df["Metadata_cqc_organoid_flagged"] = sc_df.apply(
-                lambda row: (row["Metadata_parent_organoid"], row["Metadata_image_set"])
-                in flagged_pairs,
-                axis=1,
-            )
+# Flag SC rows where both parent_organoid & image_set match a flagged organoid
+sc_profiles_df["Metadata_cqc_organoid_flagged"] = sc_profiles_df.apply(
+    lambda row: (
+        (row["Metadata_Object_ParentOrganoid"], row["Metadata_Experiment_WellFOV"])
+        in flagged_pairs
+    ),
+    axis=1,
+)
 
-        dfs.append(sc_df)
+print(sc_profiles_df.shape)
+sc_profiles_df.head()
 
-orig_single_cell_profiles_df = pd.concat(dfs, ignore_index=True)
 
-print(orig_single_cell_profiles_df.shape)
-orig_single_cell_profiles_df.head()
+# In[7]:
+
+
+sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
@@ -115,124 +167,89 @@ orig_single_cell_profiles_df.head()
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
-# In[ ]:
-
-
-orig_single_cell_profiles_df
-
-
-# In[ ]:
+# In[8]:
 
 
 # Set the metadata columns to be used in the QC process
-metadata_columns = [
-    "Metadata_patient_tumor",
-    "Metadata_image_set",
-    "Metadata_object_id",
-    "Metadata_parent_organoid",
-    "Area.Size.Shape_Nuclei_CENTER.X",
-    "Area.Size.Shape_Nuclei_CENTER.Y",
-    "Metadata_cqc_nan_detected",
-    "Metadata_cqc_organoid_flagged",
-    "Metadata_cqc_missing_parent_organoid",
+metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
+
+
+# In[9]:
+
+
+# Only process the rows that are not flagged
+filtered_plate_df = sc_profiles_df[
+    ~(
+        sc_profiles_df["Metadata_cqc_nan_detected"]
+        | sc_profiles_df["Metadata_cqc_organoid_flagged"]
+        | sc_profiles_df["Metadata_cqc_missing_parent_organoid"]
+    )
 ]
 
+# --- Find size based nuclei outliers ---
+print("Finding small nuclei outliers...")
+small_nuclei_outliers = find_outliers(
+    df=filtered_plate_df,
+    metadata_columns=metadata_columns,
+    feature_thresholds={
+        "Nuclei_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small nuclei
+    },
+)
 
-# In[ ]:
+# Ensure the column exists before assignment
+sc_profiles_df["Metadata_cqc_small_nuclei_outlier"] = False
+sc_profiles_df.loc[small_nuclei_outliers.index, "Metadata_cqc_small_nuclei_outlier"] = (
+    True
+)
 
+print("Finding large nuclei outliers...")
+large_nuclei_outliers = find_outliers(
+    df=filtered_plate_df,
+    metadata_columns=metadata_columns,
+    feature_thresholds={
+        "Nuclei_NoChannel_AreaSizeShape_Volume": 2,  # Detect very large nuclei
+    },
+)
 
-# Process each plate (patient_id) independently in the combined dataframe
-for plate_name, plate_df in orig_single_cell_profiles_df.groupby(
-    "Metadata_patient_tumor"
-):
-    print(f"Processing plate: {plate_name}")
+# Ensure the column exists before assignment
+sc_profiles_df["Metadata_cqc_large_nuclei_outlier"] = False
+sc_profiles_df.loc[large_nuclei_outliers.index, "Metadata_cqc_large_nuclei_outlier"] = (
+    True
+)
 
-    # Make a contiguous copy to prevent DataFrame fragmentation
-    plate_df = plate_df.copy()
+# --- Find mass displacement based nuclei outliers ---
+print("Finding high mass displacement outliers...")
+high_mass_displacement_outliers = find_outliers(
+    df=filtered_plate_df,
+    metadata_columns=metadata_columns,
+    feature_thresholds={
+        "Nuclei_DNA_Intensity_MassDisplacement": 2,  # Detect high mass displacement
+    },
+)
 
-    # Only process the rows that are not flagged
-    filtered_plate_df = plate_df[
-        ~(
-            plate_df["Metadata_cqc_nan_detected"]
-            | plate_df["Metadata_cqc_organoid_flagged"]
-            | plate_df["Metadata_cqc_missing_parent_organoid"]
-        )
-    ]
+# Ensure the column exists before assignment
+sc_profiles_df["Metadata_cqc_mass_displacement_outlier"] = False
+sc_profiles_df.loc[
+    high_mass_displacement_outliers.index, "Metadata_cqc_mass_displacement_outlier"
+] = True
 
-    # --- Find size based nuclei outliers ---
-    print("Finding small nuclei outliers...")
-    small_nuclei_outliers = find_outliers(
-        df=filtered_plate_df,
-        metadata_columns=metadata_columns,
-        feature_thresholds={
-            "Area.Size.Shape_Nuclei_VOLUME": -1,  # Detect very small nuclei
-        },
-    )
+# Print number of outliers (only in filtered rows)
+small_count = filtered_plate_df.index.intersection(small_nuclei_outliers.index).shape[0]
+large_count = filtered_plate_df.index.intersection(large_nuclei_outliers.index).shape[0]
+high_mass_count = filtered_plate_df.index.intersection(
+    high_mass_displacement_outliers.index
+).shape[0]
 
-    # Ensure the column exists before assignment
-    plate_df["Metadata_cqc_small_nuclei_outlier"] = False
-    plate_df.loc[small_nuclei_outliers.index, "Metadata_cqc_small_nuclei_outlier"] = (
-        True
-    )
+print(f"Small nuclei outliers found: {small_count}")
+print(f"Large nuclei outliers found: {large_count}")
+print(f"High mass displacement outliers found: {high_mass_count}")
 
-    print("Finding large nuclei outliers...")
-    large_nuclei_outliers = find_outliers(
-        df=filtered_plate_df,
-        metadata_columns=metadata_columns,
-        feature_thresholds={
-            "Area.Size.Shape_Nuclei_VOLUME": 2,  # Detect very large nuclei
-        },
-    )
-
-    # Ensure the column exists before assignment
-    plate_df["Metadata_cqc_large_nuclei_outlier"] = False
-    plate_df.loc[large_nuclei_outliers.index, "Metadata_cqc_large_nuclei_outlier"] = (
-        True
-    )
-
-    # --- Find mass displacement based nuclei outliers ---
-    print("Finding high mass displacement outliers...")
-    high_mass_displacement_outliers = find_outliers(
-        df=filtered_plate_df,
-        metadata_columns=metadata_columns,
-        feature_thresholds={
-            "Intensity_Nuclei_DNA_MASS.DISPLACEMENT": 2,  # Detect high mass displacement
-        },
-    )
-
-    # Ensure the column exists before assignment
-    plate_df["Metadata_cqc_mass_displacement_outlier"] = False
-    plate_df.loc[
-        high_mass_displacement_outliers.index, "Metadata_cqc_mass_displacement_outlier"
-    ] = True
-
-    # Print number of outliers (only in filtered rows)
-    small_count = filtered_plate_df.index.intersection(
-        small_nuclei_outliers.index
-    ).shape[0]
-    large_count = filtered_plate_df.index.intersection(
-        large_nuclei_outliers.index
-    ).shape[0]
-    high_mass_count = filtered_plate_df.index.intersection(
-        high_mass_displacement_outliers.index
-    ).shape[0]
-
-    print(f"Small nuclei outliers found: {small_count}")
-    print(f"Large nuclei outliers found: {large_count}")
-    print(f"High mass displacement outliers found: {high_mass_count}")
-
-    # Save updated plate_df with flag columns included
-    output_folder = path_to_patients / plate_name / "image_based_profiles/3.qc_profiles"
-    output_folder.mkdir(parents=True, exist_ok=True)
-    output_file = output_folder / "sc_flagged_outliers.parquet"
-    plate_df.to_parquet(output_file, index=False)
-    print(f"Saved single-cell profiles with outlier flags to {output_file}\n")
+# Save updated plate_df with flag columns included
+output_file_path = pathlib.Path(f"{output_dir}/sc_flagged_outliers.parquet").resolve()
+sc_profiles_df.to_parquet(output_file_path, index=False)
 
 
-# In[ ]:
+# In[10]:
 
 
-# Print example output of the flagged single-cell profiles
-print(f"Example flagged single-cell profiles: {plate_name}")
-print(plate_df.shape)
-plate_df.head()
+sc_profiles_df.head()

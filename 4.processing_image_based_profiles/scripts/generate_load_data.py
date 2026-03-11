@@ -4,14 +4,14 @@
 # In[1]:
 
 
-import itertools
 import os
 import pathlib
 
-import numpy as np
 import pandas as pd
-from arg_parsing_utils import check_for_missing_args, parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -20,14 +20,13 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-from file_checking import check_number_of_files
 
 # In[2]:
 
 
 patients_file_path = pathlib.Path("../../data/patient_IDs.txt").resolve(strict=True)
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
-patients
+patients = patients[:1]
 
 
 # In[3]:

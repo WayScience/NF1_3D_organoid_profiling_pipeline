@@ -303,6 +303,7 @@ def classify_cells_into_shells(
     n_shells: int = 5,
     method: str = "mahalanobis",
     min_cells_per_shell: int = 3,
+    centroid: numpy.ndarray = None,
 ) -> dict:
     """
     Classify cells into radial shells based on distance from centroid.
@@ -311,14 +312,16 @@ def classify_cells_into_shells(
 
     Parameters:
     -----------
-    coords : pandas.DataFrame or dict
-        Cell coordinates with columns/keys: object_id, x, y, z
+    coords : pandas.DataFrame or diccolumnst
+        Cell coordinates with /keys: object_id, x, y, z
     n_shells : int
         Number of concentric shells to create (will be adjusted if needed)
     method : str
         'euclidean' or 'mahalanobis'
     min_cells_per_shell : int
         Minimum average cells per shell (default: 3)
+    centroid : numpy.ndarray, optional
+        Pre-calculated centroid (if None, will be calculated from coords)
 
     Returns:
     --------
@@ -340,14 +343,16 @@ def classify_cells_into_shells(
         results = {
             "object_id": [],
             "ShellAssignments": [],
-            "distancesFromCenter": [],
-            "distancesFromExterior": [],
+            "DistancesFromCenter": [],
+            "DistancesFromExterior": [],
             "NormalizedDistancesFromCenter": [],
+            "MaxShellsUsed": [],
         }
         centroid = None
         return results, centroid
     n_cells = len(coords_array)
-    centroid = calculate_centroid(coords_array)
+    if centroid is None:
+        centroid = calculate_centroid(coords_array)
 
     # Adjust number of shells for small organoids
     max_shells = max(2, n_cells // min_cells_per_shell)
@@ -381,9 +386,10 @@ def classify_cells_into_shells(
     results = {
         "object_id": object_ids,
         "ShellAssignments": shell_assignments,
-        "distancesFromCenter": distances,
-        "distancesFromExterior": distance_from_exterior,
+        "DistancesFromCenter": distances,
+        "DistancesFromExterior": distance_from_exterior,
         "NormalizedDistancesFromCenter": normalized_distances,
+        "ShellsUsed": n_shells,
     }
 
     return results, centroid
@@ -449,7 +455,7 @@ def visualize_organoid_shells(
 
     shell_assignments = classification_results["ShellAssignments"]
     n_shells = classification_results.get(
-        "n_shells_used", len(numpy.unique(shell_assignments))
+        "ShellsUsed", len(numpy.unique(shell_assignments))
     )
 
     # Red to blue color gradient
@@ -538,19 +544,19 @@ def plot_distance_distributions(
     classification_results : dict
         Results from classify_cells_into_shells
     n_shells : int, optional
-        Number of shells (will use n_shells_used from results if not provided)
+        Number of shells (will use ShellsUsed from results if not provided)
     """
     if n_shells is None:
         n_shells = classification_results.get(
-            "n_shells_used",
+            "ShellsUsed",
             len(numpy.unique(classification_results["ShellAssignments"])),
         )
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     shell_assignments = classification_results["ShellAssignments"]
-    distances_from_center = classification_results["distancesFromCenter"]
-    distances_from_exterior = classification_results["distancesFromExterior"]
+    distances_from_center = classification_results["DistancesFromCenter"]
+    distances_from_exterior = classification_results["DistancesFromExterior"]
 
     colors = plt.cm.RdYlBu_r(numpy.linspace(0, 1, n_shells))
 

@@ -1,22 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
-import argparse
 import os
 import pathlib
-import pprint
-import sqlite3
-import sys
-from contextlib import closing
-from functools import reduce
 
-import duckdb
-import pandas as pd
-from arg_parsing_utils import parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 

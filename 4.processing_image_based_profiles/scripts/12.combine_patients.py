@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
-import argparse
 import os
 import pathlib
-import sys
 
-import duckdb
 import pandas as pd
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from pycytominer import aggregate, feature_select
 
 root_dir, in_notebook = init_notebook()
