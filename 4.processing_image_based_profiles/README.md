@@ -21,18 +21,25 @@ These features would be leaked data if used in a machine learning model.
 ## File and information flow diagram
 ```mermaid
 graph TD
-    A[Well Fovs] -->|Featurization| B[Nuclei features ]
-    A -->|Featurization| C[Cell features ]
-    A -->|Featurization| D[Cytoplasm features ]
-    A -->|Featurization| E[Organoid features ]
-    A -->|Featurization| F[Nucleocentric    features ]
-    B --> |Annotation| G[Single-cell features ]
-    C --> |Annotation|G[Single-cell features ]
-    D --> |Annotation|G[Single-cell features ]
-    E --> |Annotation|H[Organoid features ]
-    F --> |Annotation|I[Nucleocentric features ]
-    G --> J[Single-cell handcrafted features ]
-    G --> K[Single-cell deep learning features ]
+    A1[CellPainting Images and Segmentations]
+
+
+    A1 -->|Featurization| B[Nuclei features ]
+    A1 -->|Featurization| C[Cell features ]
+    A1 -->|Featurization| D[Cytoplasm features ]
+    A1 -->|Featurization| E[Organoid features ]
+    A1 -->|Featurization| F[Nucleocentric features ]
+
+
+    B --> |Merging| G[Single-cell features ]
+    C --> |Merging| G[Single-cell features ]
+    D --> |Merging| G[Single-cell features ]
+    G --> |Annotation| G1[Single-cell features ]
+
+    E --> |Annotation| H[Organoid features ]
+    F --> |Annotation| I[Nucleocentric features ]
+    G1 --> J[Single-cell handcrafted features ]
+    G1 --> K[Single-cell deep learning features ]
     H --> L[Organoid handcrafted features]
     H --> M[Organoid deep learning features]
     I --> N[Nucleocentric Volumetric features]
@@ -61,6 +68,12 @@ graph TD
     T4 --> U4[Aggregated profiles]
     T5 --> U5[Aggregated profiles]
     T6 --> U6[Aggregated profiles]
+    T1 --> V1[Consensus profiles]
+    T2 --> V2[Consensus profiles]
+    T3 --> V3[Consensus profiles]
+    T4 --> V4[Consensus profiles]
+    T5 --> V5[Consensus profiles]
+    T6 --> V6[Consensus profiles]
 ```
 
 
