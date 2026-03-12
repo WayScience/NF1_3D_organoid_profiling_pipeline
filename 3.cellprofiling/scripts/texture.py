@@ -60,8 +60,8 @@ if not in_notebook:
 else:
     well_fov = "C4-1"
     patient = "NF0014_T1"
-    channel = "AGP"
-    compartment = "Nuclei"
+    channel = "Mito"
+    compartment = "Cytoplasm"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"

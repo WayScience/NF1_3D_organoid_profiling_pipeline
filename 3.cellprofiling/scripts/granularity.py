@@ -46,7 +46,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:

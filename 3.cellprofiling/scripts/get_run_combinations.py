@@ -107,10 +107,9 @@ for patient in patients:
     patient_well_fovs = list(
         pathlib.Path(f"{bandicoot_mount_path}/data/{patient}/zstack_images/").glob("*")
     )
+    # for well_fov in patient_well_fovs:
+    #     well_fov = well_fov.name
     for well_fov in ["C2-1", "C2-2", "C4-1", "C4-2", "D5-2", "E5-2"]:
-        # for well_fov in patient_well_fovs:
-        #     well_fov = well_fov.name
-
         for feature in features:
             if feature == "Neighbors":
                 output_dict["patient"].append(patient)
@@ -304,7 +303,6 @@ nucleocentric_df = (
 # drop all nucleocentric entries from the original df and add back the filtered nucleocentric_df
 df = df[df["compartment"] != "Nucleocentric"]
 df = pd.concat([df, nucleocentric_df], ignore_index=True)
-print(df.shape[0])
 # filter by feature files that do not exist
 original_number_of_feature_files = df.shape[0]
 df = df[~df["feature_file_path_exists"]]
