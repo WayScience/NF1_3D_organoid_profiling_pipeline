@@ -296,7 +296,7 @@ nucleocentric_df = (
     nucleocentric_df.groupby(["patient", "well_fov", "channel"])
     .filter(lambda x: x["feature"].nunique() == 2)
     .groupby(["patient", "well_fov", "channel"])
-    .apply(lambda x: x[x["feature"] != "SAMMed3D"])
+    .apply(lambda x: x[x["feature"] != "CHAMMI75"])
     .reset_index()
     .drop(columns=["level_3"])
 )
