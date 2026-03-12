@@ -63,7 +63,7 @@ The long answer is the methods used which I will describe in more detail below.
     - Regardless of the predicted class, we segment the nuclei using CellposeSAM, a pre-trained deep learning model for cell segmentation.
     - We then use the nuclei masks to perfomrm 3D seeded watershed segmentation.
         - We change the parameters and preprocessing of the images depending on the predicted class of the FOV.
-        - All labels have the raw signal run throguh a butterworth low pass filter to smooth the image and make the watershed segmentation more robust.
+        - All labels have the raw signal run through a Butterworth low-pass filter to smooth the image and make the watershed segmentation more robust.
         - Then the the image is thresholded using a global thresholding method (Otsu's method) to create a binary mask of the organoid as a way to limit the watershed segmentation to the organoid and not segment the background.
         - This thresholding is perfomed on a gaussian smoothed version of the raw signal to make the thresholding more robust - this is parameterized based on the predicted class of the FOV.
         - Depending on the predicted class of the FOV, we dialate the thresholded mask to make sure we are capturing the whole organoid and not just the core of the organoid.
