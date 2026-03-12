@@ -58,9 +58,17 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
 )
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 # remove the NF0037CQ1 patient from the list
+# this is a test patient and we don't want to include it in the analysis
+# different microscope was used
 patients.remove("NF0037_T1_CQ1")
 
-table_df_save_path = pathlib.Path(f"../results/table2/file_info_df.parquet").resolve()
+table_df_save_path = pathlib.Path(
+    f"{root_dir}/figures/table2/results/table2_info.parquet"
+).resolve()
+png_figure_path = pathlib.Path(
+    f"{root_dir}/figures/table2/figures/image_file_counts_and_size.png"
+)
+png_figure_path.parent.mkdir(parents=True, exist_ok=True)
 table_df_save_path.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -70,9 +78,9 @@ table_df_save_path.parent.mkdir(parents=True, exist_ok=True)
 # Image extensions that we are looking to copy
 image_extensions = {".tif", ".tiff"}
 file_paths = {
-    "patient": [],
-    "well_fov": [],
-    "file_path": [],
+    "Patient": [],
+    "WellFOV": [],
+    "FilePath": [],
 }
 
 
@@ -106,29 +114,29 @@ else:
                 if any(
                     channel_name in image_file.name for channel_name in channel_names
                 ):
-                    file_paths["patient"].append(patient_id)
-                    file_paths["well_fov"].append(well_fov_name)
-                    file_paths["file_path"].append(str(image_file))
+                    file_paths["Patient"].append(patient_id)
+                    file_paths["WellFOV"].append(well_fov_name)
+                    file_paths["FilePath"].append(str(image_file))
                 else:
                     print(
                         f"Warning: File {image_file} does not contain a valid channel name and will be skipped."
                     )
     file_paths_df = pd.DataFrame(file_paths)
-    file_paths_df["file_name"] = file_paths_df["file_path"].apply(
+    file_paths_df["file_name"] = file_paths_df["FilePath"].apply(
         lambda x: pathlib.Path(x).stem
     )
-    file_paths_df["well_fov"] = file_paths_df["file_path"].apply(
+    file_paths_df["WellFOV"] = file_paths_df["FilePath"].apply(
         lambda x: pathlib.Path(x).stem.split("_")[0]
     )
-    file_paths_df["channel"] = file_paths_df["file_name"].apply(
+    file_paths_df["Channel"] = file_paths_df["file_name"].apply(
         lambda x: x.split("_")[1]
     )
-    file_paths_df["file_size_bytes"] = file_paths_df["file_path"].apply(
+    file_paths_df["file_size_bytes"] = file_paths_df["FilePath"].apply(
         lambda x: pathlib.Path(x).stat().st_size
     )
     tqdm.tqdm.pandas(desc="Reading Z dimension")
 
-    file_paths_df["z_dimension_size"] = file_paths_df["file_path"].progress_apply(
+    file_paths_df["z_dimension_size"] = file_paths_df["FilePath"].progress_apply(
         get_z_dimension_size
     )
     file_paths_df.to_parquet(table_df_save_path)
@@ -149,7 +157,7 @@ print(f"Total number of files: {len(file_paths_df)}")
 
 # sum and average file size by patient and channel
 file_paths_df_grouped = (
-    file_paths_df.groupby("patient")
+    file_paths_df.groupby("Patient")
     .agg(
         total_size_bytes=("file_size_bytes", "sum"),
         total_images=("z_dimension_size", "sum"),
@@ -159,7 +167,7 @@ file_paths_df_grouped = (
 file_paths_df_grouped
 # add a new row that is the totals of each column
 totals_row = file_paths_df_grouped.sum(numeric_only=True)
-totals_row["patient"] = "Total"
+totals_row["Patient"] = "Total"
 file_paths_df_grouped = pd.concat(
     [
         file_paths_df_grouped,
@@ -167,20 +175,30 @@ file_paths_df_grouped = pd.concat(
     ],
     ignore_index=True,
 )
-file_paths_df_grouped["total_size_TB"] = file_paths_df_grouped["total_size_bytes"] / (
+file_paths_df_grouped["TotalSize(TB)"] = file_paths_df_grouped["total_size_bytes"] / (
     1024**4
 )
 # round to two decimal places
-file_paths_df_grouped["total_size_TB"] = file_paths_df_grouped["total_size_TB"].round(2)
+file_paths_df_grouped["TotalSize(TB)"] = file_paths_df_grouped["TotalSize(TB)"].round(2)
 file_paths_df_grouped.drop(columns=["total_size_bytes"], inplace=True)
 
 
 # In[8]:
 
 
+file_paths_df_grouped.rename(
+    columns={
+        "total_images": "TotalImages",
+    },
+    inplace=True,
+)
+
+
+# In[9]:
+
+
 # save the table as a png
-png_figure_path = pathlib.Path(f"{root_dir}/figures/table2/figures/file_info_table.png")
-png_figure_path.parent.mkdir(parents=True, exist_ok=True)
+
 if in_notebook:
     import matplotlib.pyplot as plt
     from pandas.plotting import table
