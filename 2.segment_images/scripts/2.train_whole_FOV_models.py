@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This notebook trains a random forest model to predict the binning label of each image based on the features extracted from the cell profiling pipeline.
-# The model is trained on a balanced dataset, where each binning label is represented equally.
-# The dataset is split into training, validation, and test sets, and the model's performance is evaluated on the test set.
-# The predicted bins are used to adjust the segmentation parameters for each image, which is expected to improve the segmentation quality.
+# This notebook trains a random forest model to predict the binning label of each image based on the features extracted from whole well FOVs.
 
 # In[1]:
 

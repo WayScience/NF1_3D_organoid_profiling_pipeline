@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -156,33 +156,42 @@ def plot_plate_overview(
                     list(well_dir.glob(f"*{image_sub_string_to_search}*"))
                 )
                 if image_files:
-                    nuclei_mask = read_zstack_image(image_files[0])
-                    mid_z = nuclei_mask.shape[0] // 2
-                    nuclei_mask = nuclei_mask[mid_z]
-                    # downscale for faster display
-                    if "mask" not in title_for_substring:
+                    try:
+                        nuclei_mask = read_zstack_image(image_files[0])
+                        mid_z = nuclei_mask.shape[0] // 2
+                        nuclei_mask = nuclei_mask[mid_z]
+                        # downscale for faster display
                         nuclei_mask = nuclei_mask[::10, ::10]
 
-                    # Enhance contrast
-                    if contrast_enhance:
-                        nuclei_mask = exposure.equalize_adapthist(
-                            nuclei_mask, clip_limit=clip_limit
+                        # Enhance contrast
+                        if contrast_enhance:
+                            nuclei_mask = exposure.equalize_adapthist(
+                                nuclei_mask, clip_limit=clip_limit
+                            )
+
+                        # Display image with custom LUT or colormap
+                        if lut is not None:
+                            from matplotlib.colors import ListedColormap
+
+                            cmap = ListedColormap(lut)
+                            ax.imshow(nuclei_mask, cmap=cmap)
+                        else:
+                            ax.imshow(nuclei_mask, cmap=image_color_map)
+
+                        # Add bezel (border) around the image
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor("black")
+                            spine.set_linewidth(2)
+                            spine.set_visible(True)
+                    except Exception as e:
+                        print(
+                            f"Error loading image for well {well_position} in plate {plate}: {e}"
                         )
-
-                    # Display image with custom LUT or colormap
-                    if lut is not None:
-                        from matplotlib.colors import ListedColormap
-
-                        cmap = ListedColormap(lut)
-                        ax.imshow(nuclei_mask, cmap=cmap)
-                    else:
-                        ax.imshow(nuclei_mask, cmap=image_color_map)
-
-                    # Add bezel (border) around the image
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor("black")
-                        spine.set_linewidth(2)
-                        spine.set_visible(True)
+                        ax.set_facecolor("lightgray")
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor("gray")
+                            spine.set_linewidth(1)
+                            spine.set_visible(True)
                 else:
                     ax.set_facecolor("lightgray")
                     for spine in ax.spines.values():
@@ -245,114 +254,62 @@ red_lut[:, 0] = np.linspace(0, 1, 256)  # Red
 red_lut[0] = [0, 0, 0]
 
 
-# In[ ]:
-
-
-for patient in tqdm.tqdm(
-    patients, desc="Generating platemaps for patients", unit="patient"
-):
-    input_dir = pathlib.Path(
-        f"{image_base_dir}/data/{patient}/{input_subparent_name}/"
-    ).resolve(strict=True)
-    # get the well_fov paths
-    well_fovs = input_dir.glob("*")
-    image_available_wells = {}
-    for well_fov_path in well_fovs:
-        if not well_fov_path.is_dir():
-            continue
-        well_fov_name = well_fov_path.stem.split("-")[0]
-        if well_fov_name not in image_available_wells:
-            image_available_wells[well_fov_name] = well_fov_path
-
-    # plot and save the plate view
-    channels_to_show = ["405", "488", "555", "640"]
-
-    for channel in tqdm.tqdm(
-        channels_to_show, desc="Generating channel platemaps", leave=False
-    ):
-        if channel == "405":
-            lut = cyan_lut
-            channel_title = "Hoechst - 405nm"
-
-        elif channel == "488":
-            lut = green_lut
-            channel_title = "Endoplasmic Reticulum - 488nm"
-
-        elif channel == "555":
-            lut = magenta_lut
-            channel_title = "AGP - 555nm"
-
-        elif channel == "640":
-            lut = red_lut
-            channel_title = "Mitochondria - 640nm"
-
-        else:
-            lut = None
-        fig = plot_plate_overview(
-            plate=patient,
-            image_sub_string_to_search=channel,
-            title_for_substring=channel_title,
-            available_wells=image_available_wells,
-            layout="96",
-            skip_outer_wells=True,
-            lut=lut,
-            contrast_enhance=True,  # Enable contrast enhancement
-            clip_limit=0.03,  # Adjust this value (0-1)
-        )
-        # Save using matplotlib
-        output_path = figures_path / f"{patient}_platemap_{channel}.png"
-        fig.savefig(
-            output_path,
-            dpi=600,
-            bbox_inches="tight",
-            facecolor="white",
-            edgecolor="none",
-        )
-        plt.close(fig)
-
-
-# In[ ]:
+# In[5]:
 
 
 # for patient in tqdm.tqdm(
 #     patients, desc="Generating platemaps for patients", unit="patient"
 # ):
-#     mask_path = pathlib.Path(
-#         f"{image_base_dir}/data/{patient}/{mask_subparent_name}/"
-#     ).resolve()
-
-#     well_fovs = mask_path.glob("*")
-
-#     # plot and save the plate view
-#     masks_to_show = ["organoid", "nuclei", "cell"]
-#     mask_available_wells = {}
+#     input_dir = pathlib.Path(
+#         f"{image_base_dir}/data/{patient}/{input_subparent_name}/"
+#     ).resolve(strict=True)
+#     # get the well_fov paths
+#     well_fovs = input_dir.glob("*")
+#     image_available_wells = {}
 #     for well_fov_path in well_fovs:
 #         if not well_fov_path.is_dir():
 #             continue
 #         well_fov_name = well_fov_path.stem.split("-")[0]
-#         if well_fov_name not in mask_available_wells:
-#             mask_available_wells[well_fov_name] = well_fov_path
+#         if well_fov_name not in image_available_wells:
+#             image_available_wells[well_fov_name] = well_fov_path
 
-#     for mask in tqdm.tqdm(masks_to_show, desc="Generating mask platemaps", leave=False):
-#         if mask == "organoid":
-#             mask_title = "Organoid Mask"
-#         elif mask == "nuclei":
-#             mask_title = "Nuclei Mask"
-#         elif mask == "cell":
-#             mask_title = "Cell Mask"
+#     # plot and save the plate view
+#     channels_to_show = ["405", "488", "555", "640"]
+
+#     for channel in tqdm.tqdm(
+#         channels_to_show, desc="Generating channel platemaps", leave=False
+#     ):
+#         if channel == "405":
+#             lut = cyan_lut
+#             channel_title = "Hoechst - 405nm"
+
+#         elif channel == "488":
+#             lut = green_lut
+#             channel_title = "Endoplasmic Reticulum - 488nm"
+
+#         elif channel == "555":
+#             lut = magenta_lut
+#             channel_title = "AGP - 555nm"
+
+#         elif channel == "640":
+#             lut = red_lut
+#             channel_title = "Mitochondria - 640nm"
+
 #         else:
-#             mask_title = mask
+#             lut = None
 #         fig = plot_plate_overview(
 #             plate=patient,
-#             image_sub_string_to_search=mask,
-#             title_for_substring=mask_title,
-#             available_wells=mask_available_wells,
+#             image_sub_string_to_search=channel,
+#             title_for_substring=channel_title,
+#             available_wells=image_available_wells,
 #             layout="96",
 #             skip_outer_wells=True,
-#             image_color_map="nipy_spectral",
+#             lut=lut,
+#             contrast_enhance=True,  # Enable contrast enhancement
+#             clip_limit=0.03,  # Adjust this value (0-1)
 #         )
 #         # Save using matplotlib
-#         output_path = figures_path / f"{patient}_platemap_{mask}.png"
+#         output_path = figures_path / f"{patient}_platemap_{channel}.png"
 #         fig.savefig(
 #             output_path,
 #             dpi=600,
@@ -361,3 +318,55 @@ for patient in tqdm.tqdm(
 #             edgecolor="none",
 #         )
 #         plt.close(fig)
+
+
+# In[6]:
+
+
+for patient in tqdm.tqdm(
+    patients, desc="Generating platemaps for patients", unit="patient"
+):
+    mask_path = pathlib.Path(
+        f"{image_base_dir}/data/{patient}/{mask_subparent_name}/"
+    ).resolve()
+
+    well_fovs = mask_path.glob("*")
+
+    # plot and save the plate view
+    masks_to_show = ["organoid", "nuclei", "cell"]
+    mask_available_wells = {}
+    for well_fov_path in well_fovs:
+        if not well_fov_path.is_dir():
+            continue
+        well_fov_name = well_fov_path.stem.split("-")[0]
+        if well_fov_name not in mask_available_wells:
+            mask_available_wells[well_fov_name] = well_fov_path
+
+    for mask in tqdm.tqdm(masks_to_show, desc="Generating mask platemaps", leave=False):
+        if mask == "organoid":
+            mask_title = "Organoid Mask"
+        elif mask == "nuclei":
+            mask_title = "Nuclei Mask"
+        elif mask == "cell":
+            mask_title = "Cell Mask"
+        else:
+            mask_title = mask
+        fig = plot_plate_overview(
+            plate=patient,
+            image_sub_string_to_search=mask,
+            title_for_substring=mask_title,
+            available_wells=mask_available_wells,
+            layout="96",
+            skip_outer_wells=True,
+            image_color_map="nipy_spectral",
+        )
+        # Save using matplotlib
+        output_path = figures_path / f"{patient}_platemap_{mask}.png"
+        fig.savefig(
+            output_path,
+            dpi=600,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        plt.close(fig)

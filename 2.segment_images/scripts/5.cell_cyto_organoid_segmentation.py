@@ -83,7 +83,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "C4-2"
+    well_fov = "C4-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -100,7 +100,7 @@ mask_path.mkdir(exist_ok=True, parents=True)
 channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
-# In[ ]:
+# In[5]:
 
 
 # look up the morphology of the organoid from json file
@@ -124,7 +124,6 @@ elif len(morphology_class) > 1:
     print(f"Multiple morphology labels found for {well_fov} in {patient}.")
 
 print(f"Organoid morphology for {well_fov}: {morphology_class}")
-# morphology_class = "small"  # FOR TESTING ONLY - REMOVE LATER
 
 
 # In[6]:
@@ -171,11 +170,11 @@ if in_notebook:
     plt.title("Cytoplasm Signal (Cyto2)")
     plt.axis("off")
     plt.subplot(132)
-    plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="tab20")
+    plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="nipy_spectral")
     plt.title(f"Segmented Cell Mask - Morphology: {morphology_class}")
     plt.axis("off")
     plt.subplot(133)
-    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="tab20")
+    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="nipy_spectral")
     plt.title("Nuclei Mask")
     plt.axis("off")
     plt.show()
@@ -210,22 +209,6 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 # In[11]:
 
 
-if in_notebook:
-    plt.figure(figsize=(10, 10))
-    plt.subplot(121)
-    plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="nipy_spectral")
-    plt.title(f"Segmented Cell Mask - Morphology: {morphology_class}")
-    plt.axis("off")
-    plt.subplot(122)
-    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="nipy_spectral")
-    plt.title("Nuclei Mask")
-    plt.axis("off")
-    plt.show()
-
-
-# In[12]:
-
-
 # refine the cell masks
 # run the post hoc refinement step to reassign nuclei and cell masks to be the same label
 # if they are "connected" i.e. if the nucleus is within the cell mask, then assign the same label to the cell mask as the nucleus mask
@@ -237,7 +220,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[13]:
+# In[12]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -248,7 +231,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Organoid segmentation (derived from cell segmentation)
 
-# In[14]:
+# In[13]:
 
 
 # convert the cell masks to binary masks
@@ -264,7 +247,36 @@ for z in range(cell_binary_mask.shape[0]):
 organoid_mask = skimage.measure.label(cell_binary_mask)
 
 
+# ## Remove border objects
+
+# In[14]:
+
+
+# nuclei should already have objects removed at the border from the previous notebook,
+# but we can run this again just to be safe
+nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
+cell_mask = clean_border_objects(cell_mask, border_width=25)
+cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
+organoid_mask = clean_border_objects(organoid_mask, border_width=25)
+
+
 # In[15]:
+
+
+# since the nuclei - cell masks should be 1:1
+# check if there are any singletons and remove those labels
+unique_nuclei_labels = np.unique(nuclei_mask)
+unique_cell_labels = np.unique(cell_mask)
+unmatched_labels_to_remove = list(set(unique_nuclei_labels) - set(unique_cell_labels))
+
+
+for label_id in unmatched_labels_to_remove:
+    nuclei_mask = remove_label_id(nuclei_mask, label_id)
+    cell_mask = remove_label_id(cell_mask, label_id)
+    cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
+
+
+# In[16]:
 
 
 if in_notebook:
@@ -289,38 +301,9 @@ if in_notebook:
     plt.show()
 
 
-# ## Remove border objects
-
-# In[16]:
-
-
-# nuclei should already have objects removed at the border from the previous notebook,
-# but we can run this again just to be safe
-nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
-cell_mask = clean_border_objects(cell_mask, border_width=25)
-cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
-organoid_mask = clean_border_objects(organoid_mask, border_width=25)
-
-
-# In[17]:
-
-
-# since the nuclei - cell masks should be 1:1
-# check if there are any singletons and remove those labels
-unique_nuclei_labels = np.unique(nuclei_mask)
-unique_cell_labels = np.unique(cell_mask)
-unmatched_labels_to_remove = list(set(unique_nuclei_labels) - set(unique_cell_labels))
-
-
-for label_id in unmatched_labels_to_remove:
-    nuclei_mask = remove_label_id(nuclei_mask, label_id)
-    cell_mask = remove_label_id(cell_mask, label_id)
-    cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
-
-
 # ## Save the segmented masks
 
-# In[18]:
+# In[17]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -333,7 +316,7 @@ tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 tifffile.imwrite(organoid_mask_output, organoid_mask)
 
 
-# In[19]:
+# In[18]:
 
 
 end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2

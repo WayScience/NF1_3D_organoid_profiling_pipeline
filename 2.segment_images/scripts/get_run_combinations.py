@@ -20,9 +20,12 @@ except NameError:
     in_notebook = False
 
 
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
-# In[ ]:
+# In[2]:
 
 
 root_dir, in_notebook = init_notebook()
@@ -36,11 +39,10 @@ patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(stric
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-patients += ["NF0037_T1-Z-1", "NF0037_T1-Z-0.5", "NF0037_T1-Z-0.2", "NF0037_T1-Z-0.1"]
+# patients += ["NF0037_T1-Z-1", "NF0037_T1-Z-0.5", "NF0037_T1-Z-0.2", "NF0037_T1-Z-0.1"]
 rerun_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
 )
-input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -78,16 +80,16 @@ convolution_iters = [x for x in range(1, 26)]
 convolution_iters = convolution_iters + [50, 75, 100]
 
 
-# In[ ]:
+# In[6]:
 
 
-z_stack_testing_patients = [
-    "NF0037_T1-Z-1",
-    "NF0037_T1-Z-0.5",
-    "NF0037_T1-Z-0.2",
-    "NF0037_T1-Z-0.1",
-    # "NF0055_T1-0.1"
-]
+# z_stack_testing_patients = [
+#     "NF0037_T1-Z-1",
+#     "NF0037_T1-Z-0.5",
+#     "NF0037_T1-Z-0.2",
+#     "NF0037_T1-Z-0.1",
+#     # "NF0055_T1-0.1"
+# ]
 for patient in patients:
     # get the well_fov for each patient
     patient_well_fovs = pathlib.Path(
@@ -116,17 +118,17 @@ for patient in patients:
             output_dict["input_subparent_name"].append("deconvolved_images")
             output_dict["mask_subparent_name"].append("deconvolved_segmentation_masks")
 
-        elif patient in z_stack_testing_patients:
-            # original
-            output_dict["patient"].append(patient)
-            output_dict["well_fov"].append(well_fov)
-            output_dict["input_subparent_name"].append("zstack_images")
-            output_dict["mask_subparent_name"].append("segmentation_masks")
-            # masks from 0.1
-            output_dict["patient"].append(patient)
-            output_dict["well_fov"].append(well_fov)
-            output_dict["input_subparent_name"].append("zstack_images")
-            output_dict["mask_subparent_name"].append("segmentation_masks_from_0_1um")
+        # elif patient in z_stack_testing_patients:
+        #     # original
+        #     output_dict["patient"].append(patient)
+        #     output_dict["well_fov"].append(well_fov)
+        #     output_dict["input_subparent_name"].append("zstack_images")
+        #     output_dict["mask_subparent_name"].append("segmentation_masks")
+        #     # masks from 0.1
+        #     output_dict["patient"].append(patient)
+        #     output_dict["well_fov"].append(well_fov)
+        #     output_dict["input_subparent_name"].append("zstack_images")
+        #     output_dict["mask_subparent_name"].append("segmentation_masks_from_0_1um")
 
 
 # In[7]:
@@ -139,7 +141,7 @@ df.head()
 
 # ## Rerun list
 
-# In[9]:
+# In[8]:
 
 
 # check which to rerun by checking if file exists
@@ -161,7 +163,7 @@ print(f"{df_rerun.shape[0]} combinations to rerun")
 df_rerun.head()
 
 
-# In[10]:
+# In[9]:
 
 
 df_rerun = df_rerun.drop(columns=["file_path", "exists"])
@@ -170,7 +172,7 @@ df_rerun = df_rerun.drop(columns=["file_path", "exists"])
 df_rerun.to_csv(rerun_combinations_path, sep="\t", index=False)
 
 
-# In[11]:
+# In[10]:
 
 
 df_rerun.groupby("patient").size().to_frame().reset_index().rename(

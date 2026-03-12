@@ -116,11 +116,10 @@ del nuclei_raw
 
 # ## Nuclei Segmentation
 
-# In[6]:
+# In[ ]:
 
 
 nuclei_image_shape = nuclei.shape
-# nuclei = skimage.filters.sobel(nuclei)
 nuclei_masks = np.array(  # convert to array
     list(  # send to list
         decouple_masks(  # 4. decouple masks
@@ -142,7 +141,7 @@ nuclei_masks = np.array(  # convert to array
 
 # ## remove small masks in each slice
 
-# In[7]:
+# In[ ]:
 
 
 # Remove small objects while preserving label IDs
@@ -152,9 +151,8 @@ for zslice in range(nuclei_masks.shape[0]):
 
     # Remove objects smaller than threshold
     for prop in props:
-        if prop.area < 250:  # 10 X 10
-            # for context in this dataset eahc pixel is 0.1um
-            # so the 10x10x10 cube is 1um x 1um x 1um
+        if prop.area < 250:  # ~15x15 pixel region for nuclei
+            # removed prior to the stitching.
             # which is a reasonable size threshold for nuclei
             nuclei_masks[zslice] = np.where(
                 nuclei_masks[zslice] == prop.label, 0, nuclei_masks[zslice]

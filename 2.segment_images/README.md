@@ -58,6 +58,7 @@ The long answer is the methods used which I will describe in more detail below.
         - Validation: 10% (245 FOVs)
         - Test: 10% (245 FOVs)
         - Holdout: 22.57% (553 FOVs) (not included in the training/testing split, used for final evaluation of the model)
+            - Patients NF0021_T1 and NF0030_T1 were held out.
     - We use the trained classifier to predict the class of each FOV in the dataset, including the 1143 FOVs that were not annotated.
 2. Segmenting the nuclei, cell, cytoplasm, and organoid in each FOV using the appropriate pipeline.
     - Regardless of the predicted class, we segment the nuclei using CellposeSAM, a pre-trained deep learning model for cell segmentation.

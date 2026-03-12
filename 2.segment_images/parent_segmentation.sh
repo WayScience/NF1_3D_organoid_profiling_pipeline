@@ -4,7 +4,7 @@
 #SBATCH --partition=amilan
 #SBATCH --qos=long
 #SBATCH --account=amc-general
-#SBATCH --time=2-00:00 # 2 days
+#SBATCH --time=1-00:00
 #SBATCH --output=logs/parent/segmentation_parent-%j.out
 
 git_root=$(git rev-parse --show-toplevel)
@@ -12,6 +12,8 @@ if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
 fi
+
+uv run "$git_root"/2.segment_images/scripts/get_run_combinations.py
 
 txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
@@ -53,7 +55,7 @@ while IFS= read -r line; do
         --gres=gpu:1 \
         --qos=normal \
         --account=amc-general \
-        --time=5:00 \
+        --time=7:00 \
         --output=logs/child/segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
