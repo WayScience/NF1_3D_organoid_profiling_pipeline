@@ -67,7 +67,7 @@ The long answer is the methods used which I will describe in more detail below.
         - Then the the image is thresholded using a global thresholding method (Otsu's method) to create a binary mask of the organoid as a way to limit the watershed segmentation to the organoid and not segment the background.
         - This thresholding is performed on a Gaussian-smoothed version of the raw signal to make the thresholding more robust - this is parameterized based on the predicted class of the FOV.
         - Depending on the predicted class of the FOV, we dialate the thresholded mask to make sure we are capturing the whole organoid and not just the core of the organoid.
-        - We then apply a gaussian filter and a sobel filter to the raw signal to smooth it and make the watershed segmentation more robust - this is parameterized based on the predicted class of the FOV.
+        - We then apply a Gaussian filter and a Sobel filter to the raw signal to smooth it and make the watershed segmentation more robust - this is parameterized based on the predicted class of the FOV.
 
 ## Cell segmentation workflow diagram
 ```mermaid
