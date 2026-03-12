@@ -13,10 +13,6 @@ for _ in $(seq 1 $loops); do
 done
 unset VIRTUAL_ENV
 
-set -e
-
-cd "$(dirname "$0")"  # Go to project directory
-
 rm -f uv.lock
 rm -rf .venv
 
