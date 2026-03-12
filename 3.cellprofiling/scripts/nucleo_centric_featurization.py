@@ -70,7 +70,7 @@ else:
     import tqdm
 
 
-# In[2]:
+# In[ ]:
 
 
 # Download SAM3D checkpoint
@@ -89,7 +89,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 chammi75_model = get_chammi75_model(device)
 
 
-# In[3]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -133,7 +133,7 @@ channel_mapping_file_path = pathlib.Path(
 compartment = "Nuclei"
 
 
-# In[4]:
+# In[ ]:
 
 
 # read in channel mapping
@@ -142,13 +142,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[5]:
+# In[ ]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[6]:
+# In[ ]:
 
 
 image_set_loader = ImageSetLoader(
@@ -162,7 +162,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[7]:
+# In[ ]:
 
 
 object_loader = ObjectLoader(
@@ -173,14 +173,14 @@ object_loader = ObjectLoader(
 )
 
 
-# In[8]:
+# In[ ]:
 
 
 label_ids = np.unique(object_loader.label_image)
 label_ids = label_ids[label_ids != 0]
 
 
-# In[15]:
+# In[ ]:
 
 
 list_of_feature_dicts = []
@@ -262,6 +262,7 @@ final_df = final_df.pivot(
 ).reset_index()
 # remove the labeld name of the index
 final_df.columns.name = None
+final_df["object_id"] = final_df["object_id"].astype(int)
 final_df.head()
 
 
@@ -292,7 +293,7 @@ save_path = save_features_as_parquet(
 )
 
 
-# In[11]:
+# In[ ]:
 
 
 stop_profiling(
@@ -310,7 +311,7 @@ stop_profiling(
 )
 
 
-# In[12]:
+# In[ ]:
 
 
 if in_notebook:
@@ -319,7 +320,7 @@ if in_notebook:
     label_image = select_objects_from_label(object_loader.label_image, [label])
 
 
-# In[13]:
+# In[ ]:
 
 
 if in_notebook:
@@ -361,7 +362,7 @@ if in_notebook:
     plt.show()
 
 
-# In[14]:
+# In[ ]:
 
 
 if in_notebook:

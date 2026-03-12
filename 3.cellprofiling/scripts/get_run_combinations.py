@@ -107,9 +107,10 @@ for patient in patients:
     patient_well_fovs = list(
         pathlib.Path(f"{bandicoot_mount_path}/data/{patient}/zstack_images/").glob("*")
     )
-    # for well_fov in patient_well_fovs:
-    # well_fov = well_fov.name
-    for well_fov in ["C4-1", "C4-2", "D5-2", "E5-2", "C2-1", "C2-2"]:
+    for well_fov in ["C2-1", "C2-2", "C4-1", "C4-2", "D5-2", "E5-2"]:
+        # for well_fov in patient_well_fovs:
+        #     well_fov = well_fov.name
+
         for feature in features:
             if feature == "Neighbors":
                 output_dict["patient"].append(patient)
@@ -238,7 +239,9 @@ for patient in patients:
 
 
 df = pd.DataFrame(output_dict)
-print(f"Total combinations: {df.shape[0]}")
+print(
+    f"Total combinations: {df.shape[0]}"
+)  # 582 when counting nucleocentric features as grouped
 
 
 # In[11]:
@@ -277,17 +280,44 @@ df["feature_file_path"] = df.apply(
 df["feature_file_path_exists"] = df["feature_file_path"].apply(
     lambda x: pathlib.Path(x).exists()
 )
+# if wellfov for nulceocentric exists for both chammi75 and sammed3d
+# we drop the sammed3d entry since we compute both in the same run
+nucleocentric_df = df[df["compartment"] == "Nucleocentric"]
+nucleocentric_df = nucleocentric_df[
+    nucleocentric_df["feature"].isin(["SAMMed3D", "CHAMMI75"])
+]
+nucleocentric_df = nucleocentric_df.sort_values(
+    by=["patient", "well_fov", "channel", "feature"]
+)
+# find where there are two entries for the same patient, well_fov, channel
+# but different feature (SAMMed3D and CHAMMI75)
+# remove the SAMMed3D entry in those cases
+nucleocentric_df = (
+    nucleocentric_df.groupby(["patient", "well_fov", "channel"])
+    .filter(lambda x: x["feature"].nunique() == 2)
+    .groupby(["patient", "well_fov", "channel"])
+    .apply(lambda x: x[x["feature"] != "SAMMed3D"])
+    .reset_index()
+    .drop(columns=["level_3"])
+)
+
+# drop all nucleocentric entries from the original df and add back the filtered nucleocentric_df
+df = df[df["compartment"] != "Nucleocentric"]
+df = pd.concat([df, nucleocentric_df], ignore_index=True)
+print(df.shape[0])
 # filter by feature files that do not exist
 original_number_of_feature_files = df.shape[0]
 df = df[~df["feature_file_path_exists"]]
-print(
-    f"{original_number_of_feature_files - df.shape[0]}/{original_number_of_feature_files}: {((original_number_of_feature_files - df.shape[0]) / original_number_of_feature_files) * 100:.2f}% of combinations have feature files that exist."
-)
+
 df.drop(columns=["feature_file_path", "feature_file_path_exists"], inplace=True)
 # sort by patient, well_fov, feature, compartment, channel, processor_type
 df.sort_values(
-    by=["patient", "well_fov", "feature", "compartment", "channel", "processor_type"],
+    by=["feature", "patient", "well_fov", "compartment", "channel", "processor_type"],
     inplace=True,
+)
+
+print(
+    f"{original_number_of_feature_files - df.shape[0]}/{original_number_of_feature_files}: {((original_number_of_feature_files - df.shape[0]) / original_number_of_feature_files) * 100:.2f}% of combinations have feature files that exist."
 )
 
 

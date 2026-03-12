@@ -7,19 +7,12 @@
 #SBATCH --time=3-00:00:00 # D-HH:MM:SS
 #SBATCH --output="logs/grand_parent/grand_parent-%j.out"
 
-module load anaconda
-conda init bash
-conda activate GFF_featurization
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
 fi
-
-
-
-jupyter nbconvert --to=script --FilesWriter.build_directory="$git_root"/3.cellprofiling/scripts/ "$git_root"/3.cellprofiling/notebooks/*.ipynb
 
 txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
 

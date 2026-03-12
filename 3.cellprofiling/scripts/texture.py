@@ -111,7 +111,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[ ]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -160,7 +160,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[ ]:
+# In[7]:
 
 
 stop_profiling(

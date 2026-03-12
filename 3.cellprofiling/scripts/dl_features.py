@@ -190,7 +190,7 @@ for channel, compartment in all_channel_compartment_combinations:
         },
         inplace=True,
     )
-
+    final_df["object_id"] = final_df["object_id"].astype(int)
     # de-fragment
     final_df = final_df.copy()
     # add the image_set_name column
