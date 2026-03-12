@@ -13,10 +13,6 @@ for _ in $(seq 1 $loops); do
 done
 unset VIRTUAL_ENV
 
-set -e
-
-cd "$(dirname "$0")"  # Go to project directory
-
 rm -f uv.lock
 rm -rf .venv
 
@@ -27,7 +23,7 @@ source .venv/bin/activate
 
 # Use RELATIVE path - simple and reliable
 uv pip install -e ./utils
-uv pip install -e cosmicqc
+uv pip install cosmicqc
 
 
 echo "✓ Done! Activate with: source .venv/bin/activate"
