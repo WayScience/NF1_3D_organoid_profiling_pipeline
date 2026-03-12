@@ -73,7 +73,7 @@ The long answer is the methods used which I will describe in more detail below.
 ```mermaid
 graph TD
 A[Raw image] --> B[Thresholding]
-A --> C[Butterworth low pass filter]
+A --> C[Butterworth low-pass filter]
 
 
 B --> D1[Globular & Cluster]
