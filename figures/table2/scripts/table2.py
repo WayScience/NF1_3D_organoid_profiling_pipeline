@@ -172,7 +172,6 @@ file_paths_df_grouped["total_size_TB"] = file_paths_df_grouped["total_size_bytes
 )
 # round to two decimal places
 file_paths_df_grouped["total_size_TB"] = file_paths_df_grouped["total_size_TB"].round(2)
-# add a new column that is the average file
 file_paths_df_grouped.drop(columns=["total_size_bytes"], inplace=True)
 
 
