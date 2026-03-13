@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "arrow>=1.4.0",
+    "cytotable>=1.1.4",
     "duckdb>=1.4.4",
     "ipykernel>=6.31.0",
     "matplotlib>=3.10.8",

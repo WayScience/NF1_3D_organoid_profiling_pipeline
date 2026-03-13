@@ -41,7 +41,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "E5-2"
+    well_fov = "C4-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -306,40 +306,71 @@ x_y_z_organoid_bbox_colnames = [
 
 
 results = []
+
 # get the organoid id and the single-cells for each
+
 organoid_ids = organoid_profile_df["object_id"]
+
 # organoid_id = organoid_ids[0]
+
 for organoid_id in organoid_ids:
-    organoid_centroid = organoid_profile_df.loc[
-        organoid_profile_df["object_id"] == organoid_id
-    ][x_y_z_organoid_centroid_colnames].values[0]
+    organoid_centroid = (
+        organoid_profile_df.loc[
+            organoid_profile_df["object_id"] == organoid_id,
+            x_y_z_organoid_centroid_colnames,
+        ]
+        .apply(pd.to_numeric, errors="coerce")
+        .iloc[0]
+        .to_numpy(dtype=float)
+    )
 
     organoid_bbox = organoid_profile_df.loc[
         organoid_profile_df["object_id"] == organoid_id, x_y_z_organoid_bbox_colnames
     ].values[0]
+
     single_cells_in_organoid = sc_profile_df[
         sc_profile_df["ParentOrganoid"] == organoid_id
     ]
+
     if single_cells_in_organoid.empty:
         print(f"No single cells assigned to organoid {organoid_id}")
+
         continue
 
-    single_cells_centroids = single_cells_in_organoid[x_y_z_sc_colnames]
+    single_cells_centroids = (
+        single_cells_in_organoid[x_y_z_sc_colnames]
+        .apply(pd.to_numeric, errors="coerce")
+        .to_numpy(dtype=float)
+    )
+
+    valid_rows = ~pd.isna(single_cells_centroids).any(axis=1)
+
+    single_cells_centroids = single_cells_centroids[valid_rows]
+
+    single_cells_in_organoid = single_cells_in_organoid.loc[valid_rows]
+
+    if single_cells_centroids.shape[0] == 0:
+        continue
+
     # convert to a dict with the key being the object_id
+
     # rename the centroids to z,y.x
+
     single_cells_centroids_dict = {
-        "object_id": single_cells_in_organoid["object_id"].values,
-        "z": single_cells_in_organoid[x_y_z_sc_colnames[2]].values,
-        "y": single_cells_in_organoid[x_y_z_sc_colnames[1]].values,
-        "x": single_cells_in_organoid[x_y_z_sc_colnames[0]].values,
+        "object_id": single_cells_in_organoid["object_id"].to_numpy(),
+        "z": single_cells_in_organoid[x_y_z_sc_colnames[2]].to_numpy(dtype=float),
+        "y": single_cells_in_organoid[x_y_z_sc_colnames[1]].to_numpy(dtype=float),
+        "x": single_cells_in_organoid[x_y_z_sc_colnames[0]].to_numpy(dtype=float),
     }
 
     euclidean_distance = euclidean_distance_from_centroid(
         single_cells_centroids, organoid_centroid
     )
+
     mahalanobis_distance = mahalanobis_distance_from_centroid(
         single_cells_centroids, organoid_centroid
     )
+
     shell_classification, centroid = classify_cells_into_shells(
         coords=single_cells_centroids_dict,
         n_shells=4,
@@ -347,16 +378,25 @@ for organoid_id in organoid_ids:
         min_cells_per_shell=3,
         centroid=organoid_centroid,
     )
+
     shell_classification_df = pd.DataFrame(shell_classification)
+
     shell_classification_df["ParentOrganoid"] = organoid_id
+
     results.append(shell_classification_df)
 
 
 # In[19]:
 
 
-df = pd.concat([pd.DataFrame(r) for r in results], ignore_index=True)
+if results:
+    df = pd.concat([pd.DataFrame(r) for r in results], ignore_index=True)
+
+else:
+    df = pd.DataFrame(columns=["object_id", "ParentOrganoid"])
+
 # rename the columns
+
 df.rename(
     columns={
         col: format_morphology_feature_name(

@@ -229,6 +229,8 @@ def euclidean_distance_from_centroid(
     coords: numpy.ndarray, centroid: numpy.ndarray
 ) -> numpy.ndarray:
     """Calculate Euclidean distance from centroid for each cell."""
+    coords = numpy.asarray(coords, dtype=float)
+    centroid = numpy.asarray(centroid, dtype=float)
     return numpy.sqrt(numpy.sum((coords - centroid) ** 2, axis=1))
 
 
@@ -255,6 +257,9 @@ def mahalanobis_distance_from_centroid(
     distances : ndarray
         Mahalanobis distances for each cell
     """
+    coords = numpy.asarray(coords, dtype=float)
+    centroid = numpy.asarray(centroid, dtype=float)
+
     n_cells = len(coords)
 
     # For very small samples, use Euclidean distance instead

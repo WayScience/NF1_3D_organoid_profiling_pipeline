@@ -8,7 +8,7 @@ import os
 import pathlib
 
 import duckdb
-from arg_parsing_utils import parse_args
+from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
