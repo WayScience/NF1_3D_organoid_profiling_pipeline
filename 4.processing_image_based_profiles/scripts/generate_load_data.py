@@ -29,7 +29,7 @@ patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 patients = patients[:1]
 
 
-# In[3]:
+# In[4]:
 
 
 features_to_check_for = {
@@ -71,7 +71,7 @@ print(f"Missing files: {missing_files}")
 features_to_check_for_df.head()
 
 
-# In[4]:
+# In[5]:
 
 
 load_file_path = pathlib.Path("../load_data/load_file.txt").resolve()
@@ -82,7 +82,7 @@ with open(load_file_path, "w") as f:
             f.write(f"{row['patient']}\t{row['well_fov']}\n")
 
 
-# In[5]:
+# In[6]:
 
 
 grouped_df = (

@@ -87,7 +87,7 @@ aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
 consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
 
 
-# In[ ]:
+# In[7]:
 
 
 for profile_type, files in levels_to_merge_dict.items():

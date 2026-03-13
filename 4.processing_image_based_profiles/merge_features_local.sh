@@ -1,9 +1,5 @@
 #!/bin/bash
 
-
-
-start_time=$(date +%s)
-
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
@@ -12,7 +8,9 @@ fi
 jupyter nbconvert --to=script --FilesWriter.build_directory="$git_root"/4.processing_image_based_profiles/scripts/ "$git_root"/4.processing_image_based_profiles/notebooks/*.ipynb
 
 load_data_file_path="$git_root/4.processing_image_based_profiles/load_data/load_file.txt"
-
+patient_ids_file_path="$git_root/data/patient_IDs.txt"
+# read the patient IDs into an array
+mapfile -t patient_array < "$patient_ids_file_path"
 # setup the logs dir
 if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ]; then
     rm -rf "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/"
@@ -38,40 +36,31 @@ while IFS= read -r line; do
     } >> "$log_file" 2>&1
 done < "$load_data_file_path"
 
-# for patient in "${patient_array[@]}"; do
-#     echo "Processing patient: $patient"
+for patient in "${patient_array[@]}"; do
+    echo "Processing patient: $patient"
 
-#     patient_log_file="$git_root/4.processing_image_based_profiles/logs/patients/${patient}.log"
-#     mkdir -p "$(dirname "$patient_log_file")"  # create the patients directory if it doesn't exist
-#     touch "$patient_log_file"  # create the patient log file if it doesn't exist
-#     {
-#         python "$git_root"/4.processing_image_based_profiles/scripts/5.combining_profiles.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/6.annotation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/7a.organoid_qc.py --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/7b.single_cell_qc.py --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/8.normalization.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/9.feature_selection.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/10.aggregation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-#         python "$git_root"/4.processing_image_based_profiles/scripts/11.merge_consensus_profiles.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-#     } >> "$patient_log_file" 2>&1
+    patient_log_file="$git_root/4.processing_image_based_profiles/logs/patients/${patient}.log"
+    mkdir -p "$(dirname "$patient_log_file")"  # create the patients directory if it doesn't exist
+    touch "$patient_log_file"  # create the patient log file if it doesn't exist
+    {
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/5.combining_profiles.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/6.annotation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/7a.organoid_qc.py  --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/7b.single_cell_qc.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/8.normalization.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/9.feature_selection.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        uv run "$git_root"/4.processing_image_based_profiles/scripts/10.aggregation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+    } >> "$patient_log_file" 2>&1
 
-# done
-
+done
 
 
-# conda activate nf1_image_based_profiling_env
-
-# python "$git_root"/4.processing_image_based_profiles/scripts/12.combine_patients.py --image_based_profiles_subparent_name "image_based_profiles"
-# python "$git_root"/4.processing_image_based_profiles/scripts/0a.get_profiling_stats.py --image_based_profiles_subparent_name "image_based_profiles"
+# uv run "$git_root"/4.processing_image_based_profiles/scripts/11.combine_patients.py --image_based_profiles_subparent_name "image_based_profiles"
+# uv run "$git_root"/4.processing_image_based_profiles/scripts/0a.get_profiling_stats.py --image_based_profiles_subparent_name "image_based_profiles"
 # conda deactivate
 # conda activate gff_figure_env
 # Rscript "$git_root"/4.processing_image_based_profiles/scripts/0b.plot_profiling_stats.r
 # conda deactivate
 
-# echo "All features merged for patients" "${patient_array[@]}"
+echo "All features merged for patients" "${patient_array[@]}"
 
-end_time=$(date +%s)
-elapsed_time=$((end_time - start_time))
-echo "Total elapsed time: $elapsed_time seconds"
-echo "Total elapsed time: $((elapsed_time / 60)) minutes"
-echo "Total elapsed time: $((elapsed_time / 3600)) hours"

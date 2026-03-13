@@ -41,7 +41,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C4-1"
+    well_fov = "C4-2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -139,6 +139,7 @@ x_y_z_sc_colnames = [
     for x in sc_profile_df.columns
     if "area" in x.lower() and "center" in x.lower() and "nuclei" in x.lower()
 ]
+x_y_z_sc_colnames
 
 
 # In[8]:
@@ -323,18 +324,14 @@ for organoid_id in organoid_ids:
         .iloc[0]
         .to_numpy(dtype=float)
     )
-
     organoid_bbox = organoid_profile_df.loc[
         organoid_profile_df["object_id"] == organoid_id, x_y_z_organoid_bbox_colnames
     ].values[0]
-
     single_cells_in_organoid = sc_profile_df[
         sc_profile_df["ParentOrganoid"] == organoid_id
     ]
-
     if single_cells_in_organoid.empty:
         print(f"No single cells assigned to organoid {organoid_id}")
-
         continue
 
     single_cells_centroids = (
@@ -344,18 +341,14 @@ for organoid_id in organoid_ids:
     )
 
     valid_rows = ~pd.isna(single_cells_centroids).any(axis=1)
-
     single_cells_centroids = single_cells_centroids[valid_rows]
-
     single_cells_in_organoid = single_cells_in_organoid.loc[valid_rows]
 
     if single_cells_centroids.shape[0] == 0:
         continue
 
     # convert to a dict with the key being the object_id
-
     # rename the centroids to z,y.x
-
     single_cells_centroids_dict = {
         "object_id": single_cells_in_organoid["object_id"].to_numpy(),
         "z": single_cells_in_organoid[x_y_z_sc_colnames[2]].to_numpy(dtype=float),
@@ -366,11 +359,9 @@ for organoid_id in organoid_ids:
     euclidean_distance = euclidean_distance_from_centroid(
         single_cells_centroids, organoid_centroid
     )
-
     mahalanobis_distance = mahalanobis_distance_from_centroid(
         single_cells_centroids, organoid_centroid
     )
-
     shell_classification, centroid = classify_cells_into_shells(
         coords=single_cells_centroids_dict,
         n_shells=4,
@@ -380,13 +371,11 @@ for organoid_id in organoid_ids:
     )
 
     shell_classification_df = pd.DataFrame(shell_classification)
-
     shell_classification_df["ParentOrganoid"] = organoid_id
-
     results.append(shell_classification_df)
 
 
-# In[19]:
+# In[23]:
 
 
 if results:
@@ -412,7 +401,7 @@ df.rename(
 )
 
 
-# In[20]:
+# In[24]:
 
 
 # concat the shell classification with the single cell profile df to get the full single cell profile with the shell classification and the parent organoid id
@@ -427,21 +416,21 @@ sc_profile_with_shells_df = pd.merge(
 
 # ### Save the profiles
 
-# In[21]:
+# In[25]:
 
 
 organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
 organoid_profile_df.head()
 
 
-# In[22]:
+# In[26]:
 
 
 sc_profile_with_shells_df.to_parquet(sc_profile_output_path, index=False)
 sc_profile_with_shells_df.head()
 
 
-# In[23]:
+# In[27]:
 
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)

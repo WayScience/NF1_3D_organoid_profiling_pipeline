@@ -191,10 +191,7 @@ for profile_name in run_dict.keys():
     fs_profiles.to_parquet(output_path, index=False)
 
 
-# In[ ]:
+# In[8]:
 
 
-fs_profiles
-
-
-# In[ ]:
+fs_profiles.head()

@@ -38,9 +38,16 @@ else:
     patient = "NF0014_T1"
 
 
+# In[3]:
+
+
+print(f"Processing patient: {patient}")
+print("This should not read none....")
+
+
 # ## Load in all the organoid profiles and concat together
 
-# In[3]:
+# In[4]:
 
 
 organoid_file = pathlib.Path(
@@ -48,8 +55,9 @@ organoid_file = pathlib.Path(
     / "data"
     / f"{patient}"
     / f"{image_based_profiles_subparent_name}"
-    / "3.annotated_profiles/organoid_anno.parquet"
-)
+    / "3.annotated_profiles"
+    / "organoid_anno.parquet"
+).resolve(strict=True)
 
 output_dir = pathlib.Path(
     profile_base_dir
@@ -73,7 +81,7 @@ orig_organoid_profiles_df.head()
 #    - An organoid can not exist if there aren't any cells.
 #    - NaN in object_id would be incorrect as that means the object/organoid does not exist (will have all NaNs in the feature space).
 
-# In[4]:
+# In[5]:
 
 
 organoid_profiles_df = orig_organoid_profiles_df.copy()
@@ -97,14 +105,14 @@ organoid_profiles_df.head()
 
 # ## Process non-NaN rows to detect abnormally small and large organoids and flag them
 
-# In[5]:
+# In[6]:
 
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in organoid_profiles_df.columns if "Metadata" in x]
 
 
-# In[6]:
+# In[7]:
 
 
 # Process each plate (patient_id) independently in the combined dataframe
@@ -162,7 +170,7 @@ output_file_path = pathlib.Path(
 organoid_profiles_df.to_parquet(output_file_path, index=False)
 
 
-# In[7]:
+# In[8]:
 
 
 # Print example output of the flagged organoid profiles

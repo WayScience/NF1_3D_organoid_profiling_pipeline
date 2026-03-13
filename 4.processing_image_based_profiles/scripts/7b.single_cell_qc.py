@@ -102,12 +102,6 @@ print(f"Number of organoids flagged: {flagged_count}")
 sc_profiles_df.head()
 
 
-# In[5]:
-
-
-[x for x in sc_profiles_df.columns if "Metadata" in x]
-
-
 # In[6]:
 
 
