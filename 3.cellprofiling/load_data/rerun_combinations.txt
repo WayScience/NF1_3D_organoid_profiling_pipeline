@@ -1,1 +1,0 @@
-patient	well_fov	compartment	channel	feature	processor_type	input_subparent_name	mask_subparent_name	output_features_subparent_name

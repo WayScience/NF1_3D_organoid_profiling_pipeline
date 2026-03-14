@@ -9,9 +9,6 @@ mask_subparent_name=$6
 output_features_subparent_name=$7
 
 echo "Texture feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: CPU"
-module load miniforge
-conda init bash
-conda activate GFF_featurization
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
@@ -19,11 +16,7 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-echo "Running featurization for $patient $well_fov"
-
-# start the timer
-start_timestamp=$(date +%s)
-python "$git_root"/3.cellprofiling/scripts/texture.py \
+uv run "$git_root"/3.cellprofiling/scripts/texture.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
     --compartment "$compartment" \
@@ -32,8 +25,3 @@ python "$git_root"/3.cellprofiling/scripts/texture.py \
     --input_subparent_name "$input_subparent_name" \
     --mask_subparent_name "$mask_subparent_name" \
     --output_features_subparent_name "$output_features_subparent_name"
-
-end=$(date +%s)
-echo "Time taken to run the featurization: (($end-$start_timestamp))"
-
-conda deactivate

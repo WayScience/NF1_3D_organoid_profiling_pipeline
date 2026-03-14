@@ -1,0 +1,10 @@
+[channel_mapping]
+DNA = "405"
+ER = "488"
+AGP = "555"
+Mito = "640"
+BF = "TRANS"
+Nuclei = "nuclei_"
+Cell = "cell_"
+Cytoplasm = "cytoplasm_"
+Organoid = "organoid_"

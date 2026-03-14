@@ -12,6 +12,7 @@ import warnings
 
 import pandas as pd
 import psutil
+import tomli
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -22,19 +23,16 @@ from image_analysis_3D.featurization_utils.colocalization_utils import (
 )
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
     TwoObjectLoader,
 )
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
-    get_mem_and_time_profiling,
+    start_profiling,
+    stop_profiling,
 )
-
-# from image_analysis_3D.featurization_utils.colocalization_utils_gpu import (
-#     measure_3D_colocalization_gpu,
-#     prepare_two_images_for_colocalization_gpu,
-# )
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -71,8 +69,8 @@ if not in_notebook:
 else:
     well_fov = "C4-1"
     patient = "NF0014_T1"
-    channel = "ER-DNA"
-    compartment = "Nuclei"
+    channel = "DNA-AGP"
+    compartment = "Cell"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -92,26 +90,30 @@ output_parent_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 
 
 # In[3]:
 
 
-channel_n_compartment_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[4]:
+# In[ ]:
 
+
+channels_to_load = channel.split("-")
+
+
+# In[5]:
+
+
+channels_to_load = channel.split("-")
 
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
@@ -119,18 +121,18 @@ image_set_loader = ImageSetLoader(
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_n_compartment_mapping,
     image_set_name=well_fov,
+    mask_key_name=[channel_n_compartment_mapping[compartment]],
+    raw_image_key_name=[channel_n_compartment_mapping[ch] for ch in channels_to_load],
 )
 
 
-# In[5]:
-
-
-start_time = time.time()
-# get starting memory (cpu)
-start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
-
-
 # In[6]:
+
+
+start_time, start_mem = start_profiling()
+
+
+# In[7]:
 
 
 coloc_loader = TwoObjectLoader(
@@ -141,13 +143,9 @@ coloc_loader = TwoObjectLoader(
 )
 
 
-# In[7]:
+# In[8]:
 
 
-output_dir = pathlib.Path(
-    output_parent_path
-    / f"Colocalization_{compartment}_{channel1}.{channel2}_{processor_type}_features.parquet"
-)
 list_of_dfs = []
 for object_id in coloc_loader.object_ids:
     if processor_type == "CPU":
@@ -205,22 +203,25 @@ if len(list_of_dfs) == 0:
     print("No objects found for colocalization.")
     # write an empty DataFrame to the output file
     coloc_df = pd.DataFrame(columns=["object_id", "image_set"])
-    coloc_df.to_parquet(output_dir)
 else:
     coloc_df = pd.concat(list_of_dfs, ignore_index=True)
-    coloc_df.to_parquet(output_dir)
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=coloc_df,
+    feature_type="Colocalization",
+    channel=channel,
+    compartment=compartment,
+    cpu_or_gpu=processor_type,
+)
+coloc_df.head()
 
 
-# In[8]:
+# In[9]:
 
 
-end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
-end_time = time.time()
-get_mem_and_time_profiling(
-    start_mem=start_mem,
-    end_mem=end_mem,
+stop_profiling(
     start_time=start_time,
-    end_time=end_time,
+    start_mem=start_mem,
     feature_type="Colocalization",
     well_fov=well_fov,
     patient_id=patient,

@@ -27,6 +27,8 @@ dependencies = [
     "ipykernel",
     "mahotas",
     "matplotlib",
+    "tomli",
+    "moviepy",
 ]
 
 [project.optional-dependencies]
