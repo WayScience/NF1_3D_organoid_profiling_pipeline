@@ -10,49 +10,49 @@ File Utilities
 Argument Parsing
 ----------------
 
-.. automodule:: 3D_image_analysis.file_utils.arg_parsing_utils
+.. automodule:: image_analysis_3D.file_utils.arg_parsing_utils
    :members:
 
 File Checking
 -------------
 
-.. automodule:: 3D_image_analysis.file_utils.file_checking
+.. automodule:: image_analysis_3D.file_utils.file_checking
    :members:
 
 File Reading
 ------------
 
-.. automodule:: 3D_image_analysis.file_utils.file_reading
+.. automodule:: image_analysis_3D.file_utils.file_reading
    :members:
 
 Notebook Initialization
 -----------------------
 
-.. automodule:: 3D_image_analysis.file_utils.notebook_init_utils
+.. automodule:: image_analysis_3D.file_utils.notebook_init_utils
    :members:
 
 Preprocessing Functions
 -----------------------
 
-.. automodule:: 3D_image_analysis.file_utils.preprocessing_funcs
+.. automodule:: image_analysis_3D.file_utils.preprocessing_funcs
    :members:
 
 Channel Mapping
 ---------------
 
-.. automodule:: 3D_image_analysis.file_utils.read_in_channel_mapping
+.. automodule:: image_analysis_3D.file_utils.read_in_channel_mapping
    :members:
 
-Segmentation Decoupling
------------------------
+Segmentation Decoupling (File Utilities)
+-----------------------------------------
 
-.. automodule:: 3D_image_analysis.file_utils.segmentation_decoupling
+.. automodule:: image_analysis_3D.file_utils.segmentation_decoupling
    :members:
 
 Errors
 ------
 
-.. automodule:: 3D_image_analysis.file_utils.errors.exceptions
+.. automodule:: image_analysis_3D.errors.exceptions
    :members:
 
 Segmentation Utilities
@@ -61,25 +61,34 @@ Segmentation Utilities
 General Segmentation
 --------------------
 
-.. automodule:: 3D_image_analysis.segmentation_utils.general_segmentation_utils
+.. automodule:: image_analysis_3D.segmentation_utils.general_segmentation_utils
    :members:
 
 Nuclei Segmentation
 -------------------
 
-.. automodule:: 3D_image_analysis.segmentation_utils.nuclei_segmentation
+.. automodule:: image_analysis_3D.segmentation_utils.nuclei_segmentation
    :members:
 
 Cell Segmentation
 -----------------
 
-.. automodule:: 3D_image_analysis.segmentation_utils.cell_segmentation
+.. automodule:: image_analysis_3D.segmentation_utils.cell_segmentation
    :members:
 
 Segmentation Decoupling
 -----------------------
 
-.. automodule:: 3D_image_analysis.segmentation_utils.segmentation_decoupling
+.. automodule:: image_analysis_3D.segmentation_utils.segmentation_decoupling
+   :members:
+
+Image Utilities
+===============
+
+Image Processing
+----------------
+
+.. automodule:: image_analysis_3D.image_utils.image_utils
    :members:
 
 Featurization Utilities
@@ -88,68 +97,74 @@ Featurization Utilities
 Area & Size & Shape
 -------------------
 
-.. automodule:: 3D_image_analysis.featurization_utils.area_size_shape_utils
-   :members:
-
-.. automodule:: 3D_image_analysis.featurization_utils.area_size_shape_utils_gpu
+.. automodule:: image_analysis_3D.featurization_utils.area_size_shape_utils
    :members:
 
 Colocalization
 --------------
 
-.. automodule:: 3D_image_analysis.featurization_utils.colocalization_utils
-   :members:
-
-.. automodule:: 3D_image_analysis.featurization_utils.colocalization_utils_gpu
+.. automodule:: image_analysis_3D.featurization_utils.colocalization_utils
    :members:
 
 Granularity
 -----------
 
-.. automodule:: 3D_image_analysis.featurization_utils.granularity_utils
+.. automodule:: image_analysis_3D.featurization_utils.granularity_utils
    :members:
 
 Intensity
 ---------
 
-.. automodule:: 3D_image_analysis.featurization_utils.intensity_utils
+.. automodule:: image_analysis_3D.featurization_utils.intensity_utils
    :members:
 
 Neighbors
 ---------
 
-.. automodule:: 3D_image_analysis.featurization_utils.neighbors_utils
+.. automodule:: image_analysis_3D.featurization_utils.neighbors_utils
    :members:
 
 Texture
 -------
 
-.. automodule:: 3D_image_analysis.featurization_utils.texture_utils
+.. automodule:: image_analysis_3D.featurization_utils.texture_utils
    :members:
 
 SAMMED3D Featurizer
 -------------------
 
-.. automodule:: 3D_image_analysis.featurization_utils.sammed3d_featurizer
+.. automodule:: image_analysis_3D.featurization_utils.sammed3d_featurizer
+   :members:
+
+CHAMMI-75 Featurizer
+--------------------
+
+.. automodule:: image_analysis_3D.featurization_utils.chammi75_featurization
+   :members:
+
+Feature Writing
+---------------
+
+.. automodule:: image_analysis_3D.featurization_utils.feature_writing_utils
    :members:
 
 Resource Profiling
 ------------------
 
-.. automodule:: 3D_image_analysis.featurization_utils.resource_profiling_util
+.. automodule:: image_analysis_3D.featurization_utils.resource_profiling_util
    :members:
 
 Loading Classes
 ---------------
 
-.. automodule:: 3D_image_analysis.featurization_utils.loading_classes
+.. automodule:: image_analysis_3D.featurization_utils.loading_classes
    :members:
    :no-index:
 
-Errors
-------
+Featurization Errors
+--------------------
 
-.. automodule:: 3D_image_analysis.featurization_utils.errors
+.. automodule:: image_analysis_3D.featurization_utils.errors
    :members:
 
 Visualization Utilities
@@ -158,5 +173,5 @@ Visualization Utilities
 Animation
 ---------
 
-.. automodule:: 3D_image_analysis.visualization_utils.animation_utils
+.. automodule:: image_analysis_3D.visualization_utils.animation_utils
    :members:

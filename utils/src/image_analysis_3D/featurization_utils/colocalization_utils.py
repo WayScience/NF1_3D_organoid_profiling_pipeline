@@ -1,3 +1,10 @@
+"""Colocalization feature extraction utilities for 3D image objects.
+
+Computes per-object colocalization metrics (Pearson correlation, Manders
+coefficients, overlap coefficient, K1/K2 coefficients) between pairs of
+fluorescence channels using the Costes automatic thresholding method.
+"""
+
 from typing import Dict, Tuple
 
 import numpy

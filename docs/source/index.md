@@ -11,7 +11,7 @@ We initially applied this to pipeline to Neurofibromatosis Type 1 (NF1) patient-
 :maxdepth: 2
 :caption: Getting Started
 
-overview
+readme
 introduction
 libraries
 ```
@@ -27,6 +27,7 @@ features/intensity
 features/neighbors
 features/texture
 features/sammed3d
+features/chammi75
 ```
 
 ```{toctree}

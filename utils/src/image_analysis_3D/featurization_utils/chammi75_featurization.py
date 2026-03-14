@@ -13,6 +13,19 @@ from transformers import AutoModel
 
 # get the model
 def get_chammi75_model(device):
+    """Load the CHAMMI-75 (MorphEm) model from Hugging Face.
+
+    Parameters
+    ----------
+    device : str or None
+        The device to load the model on (``'cuda'`` or ``'cpu'``). If
+        ``None``, CUDA is used when available, otherwise CPU.
+
+    Returns
+    -------
+    torch.nn.Module
+        The CHAMMI-75 (MorphEm) model in evaluation mode.
+    """
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     model = AutoModel.from_pretrained("CaicedoLab/MorphEm", trust_remote_code=True)
@@ -23,12 +36,43 @@ def get_chammi75_model(device):
 
 # Noise Injector transformation
 class SaturationNoiseInjector(nn.Module):
+    """Inject uniform random noise into saturated pixels of an image tensor.
+
+    This transformation replaces saturated pixels (value == 255) in the first
+    channel of an image with uniform random noise sampled from
+    ``[low, high]``. It is applied as a pre-processing step before
+    passing the image to the CHAMMI-75 model.
+    """
+
     def __init__(self, low=200, high=255):
+        """Initialise the noise injector.
+
+        Parameters
+        ----------
+        low : int, optional
+            Lower bound of the uniform noise distribution, by default 200.
+        high : int, optional
+            Upper bound of the uniform noise distribution, by default 255.
+        """
         super().__init__()
         self.low = low
         self.high = high
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply saturation-noise injection to the first channel.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Image tensor of shape ``(C, H, W)`` where saturated pixels in the
+            first channel (index 0) have value 255.
+
+        Returns
+        -------
+        torch.Tensor
+            Tensor with the same shape as ``x`` where saturated pixels in
+            channel 0 have been replaced by uniform random noise.
+        """
         channel = x[0].clone()
         noise = torch.empty_like(channel).uniform_(self.low, self.high)
         mask = (channel == 255).float()
@@ -84,7 +128,31 @@ class PerImageNormalize(nn.Module):
 def featurize_2D_image_w_chammi75(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
 ):
-    # Define transforms
+    """Extract CHAMMI-75 CLS-token features from a multi-channel 2D image.
+
+    Each channel of the input image is processed independently (Bag-of-Channels
+    strategy). The image tensor is resized to 224×224, noise-injected at
+    saturation, and per-image normalised before being passed through the
+    Vision Transformer encoder. The ``x_norm_clstoken`` output is collected
+    per channel.
+
+    Parameters
+    ----------
+    image_tensor : torch.Tensor
+        Batch of images with shape ``(N, C, H, W)`` where *N* is the batch
+        size, *C* is the number of channels, and *H*, *W* are the spatial
+        dimensions.
+    model : torch.nn.Module
+        The loaded CHAMMI-75 (MorphEm) model (see :func:`get_chammi75_model`).
+    device : torch.device
+        Device on which to run inference (``'cuda'`` or ``'cpu'``).
+
+    Returns
+    -------
+    list of numpy.ndarray
+        A list of length *C* where each element is a ``(N, 384)`` array
+        containing the CLS-token embedding for that channel.
+    """
     transform = v2.Compose(
         [
             SaturationNoiseInjector(),
@@ -118,7 +186,27 @@ def featurize_2D_image_w_chammi75(
 def call_chammi75_featurization_pipeline(
     cropped_image: numpy.ndarray, model: torch.nn.Module
 ):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    """Run the CHAMMI-75 featurization pipeline on a single cropped 2D image.
+
+    Converts the input NumPy array to a three-channel PyTorch tensor (by
+    replicating the single channel) and extracts CLS-token features from the
+    first channel. Because the ViT architecture expects three-channel input
+    but we feed it a single fluorescence channel, the channel is replicated
+    three times yet only the first copy's features are returned.
+
+    Parameters
+    ----------
+    cropped_image : numpy.ndarray
+        A 2D single-channel image array of shape ``(H, W)`` containing the
+        cropped object region.
+    model : torch.nn.Module
+        The loaded CHAMMI-75 model (see :func:`get_chammi75_model`).
+
+    Returns
+    -------
+    numpy.ndarray
+        A ``(1, 384)`` array of CLS-token embeddings for the input image.
+    """
     images = torch.from_numpy(cropped_image).float().unsqueeze(0)  # Add batch dimension
     # images is now (B, Y, X), add channel dimension -> (B, 1, Y, X)
     images = images.unsqueeze(1)

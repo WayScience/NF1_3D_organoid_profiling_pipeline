@@ -1,3 +1,10 @@
+"""Intensity feature extraction utilities for 3D image objects.
+
+Provides functions to compute intensity statistics (mean, median, min, max,
+standard deviation, quartiles), edge-based measurements, center-of-mass
+coordinates, and mass displacement for segmented 3D objects.
+"""
+
 import numpy
 import scipy.ndimage
 import skimage.segmentation
