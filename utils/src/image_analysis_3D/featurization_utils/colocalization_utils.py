@@ -29,6 +29,22 @@ def linear_costes_threshold_calculation(
     If "Fast" mode is enabled the "steps" between tested thresholds will be increased
     when Pearson R is much greater than 0. The other mode is "Accurate" which
     will always step down by the same amount.
+
+    Parameters
+    ----------
+    first_image : numpy.ndarray
+        The first fluorescence image.
+    second_image : numpy.ndarray
+        The second fluorescence image.
+    scale_max : int, optional
+        The maximum value for the image scale, by default 255.
+    fast_costes : str, optional
+        The mode for the Costes threshold calculation, by default "Accurate".
+
+    Returns
+    -------
+    Tuple[float, float]
+        The calculated thresholds for the first and second images.
     """
     i_step = 1 / scale_max  # Step size for the threshold as a float
     non_zero = (first_image > 0) | (second_image > 0)
@@ -106,6 +122,20 @@ def bisection_costes_threshold_calculation(
     We're looking for the first point at 0, and R value can become highly variable
     at lower thresholds in some samples. Therefore the candidate tested in each
     loop is 1/6th of the window size below the maximum value (as opposed to the midpoint).
+
+    Parameters
+    ----------
+    first_image : numpy.ndarray
+        The first fluorescence image.
+    second_image : numpy.ndarray
+        The second fluorescence image.
+    scale_max : int, optional
+        The maximum value for the image scale, by default 255.
+
+    Returns
+    -------
+    Tuple[float, float]
+        The calculated thresholds for the first and second images.
     """
 
     non_zero = (first_image > 0) | (second_image > 0)

@@ -318,20 +318,25 @@ def square_off_xy_crop_bbox(
     bbox: tuple[int, int, int, int, int, int],
 ) -> tuple[int, int, int, int, int, int]:
     """
-    This function adjusts the bbox to be square in the xy plane
-    based on the current x,y dimensions of the bbox.
+    Adjust the bbox to be square in the XY plane.
+
+    The new bbox is computed from the current X/Y dimensions.
+
     Parameters
     ----------
-    bbox : tuple[int,int,int,int,int,int]
-        The bbox to adjust
+    bbox : tuple[int, int, int, int, int, int]
+        The bbox to adjust:
         (z_min, y_min, x_min, z_max, y_max, x_max)
-        Where each value is an int representing the pixel coordinate of the bbox in that dimension
+
+        Each value is an integer pixel coordinate in that dimension.
+
     Returns
     -------
-    tuple[int,int,int,int,int,int]
-        The adjusted bbox that is square in the xy plane
+    tuple[int, int, int, int, int, int]
+        The adjusted bbox that is square in the XY plane:
         (z_min, new_y_min, new_x_min, z_max, new_y_max, new_x_max)
-        Where each value is an int representing the pixel coordinate of the bbox in that dimension
+
+        Each value is an integer pixel coordinate in that dimension.
     """
     zmin, ymin, xmin, zmax, ymax, xmax = bbox
     # first find the larger dimension between x and y

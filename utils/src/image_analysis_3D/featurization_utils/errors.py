@@ -4,6 +4,6 @@ class ProcessorTypeError(Exception):
     Use 'CPU' or 'GPU' as valid processor types.
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a standardized error message."""
         return "Processor type not recognized. Use 'CPU' or 'GPU'. "

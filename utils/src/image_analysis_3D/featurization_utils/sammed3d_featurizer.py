@@ -16,6 +16,8 @@ Requirements:
     pip install medim
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
@@ -47,16 +49,24 @@ class SAMMed3DFeatureExtractor:
         image_size: int = 128,
     ):
         """
-        Args:
-            model_path: Path to SAM-Med3D checkpoint (.pth file)
-            device: Device to run inference on
-            use_medim: Whether to use MedIM package for easy loading
-            image_size: Input image size (SAM-Med3D typically uses 128)
-            feature_type: Type of features to extract:
-                - 'global': Global average pooled features
-                - 'patch': Patch-level features (grid of embeddings)
-                - 'cls': CLS token (if available)
-                - 'multiscale': Multi-resolution features
+        Initialize the SAM-Med3D feature extractor.
+
+        Parameters
+        ----------
+        model_path : str or None, optional
+            Path to SAM-Med3D checkpoint (.pth file).
+        device : str, optional
+            Device to run inference on.
+        use_medim : bool, optional
+            Whether to use MedIM package for easy loading.
+        image_size : int, optional
+            Input image size (SAM-Med3D typically uses 128).
+        feature_type : str, optional
+            Type of features to extract:
+            - 'global': Global average pooled features
+            - 'patch': Patch-level features (grid of embeddings)
+            - 'cls': CLS token (if available)
+            - 'multiscale': Multi-resolution features
         """
         self.device = device
         self.image_size = image_size
@@ -70,7 +80,7 @@ class SAMMed3DFeatureExtractor:
         # Get feature dimensions
         self.feature_dim = self._get_feature_dim()
 
-    def _load_model(self, model_path: Optional[str], use_medim: bool):
+    def _load_model(self, model_path: Optional[str], use_medim: bool) -> tuple:
         """Load SAM-Med3D model."""
         # Suppress logging and stdout
         import sys
@@ -171,7 +181,7 @@ class SAMMed3DFeatureExtractor:
 
                 return model, model
 
-    def _build_sammed3d_model(self):
+    def _build_sammed3d_model(self) -> None:
         """Build SAM-Med3D model architecture."""
         # This would require the actual SAM-Med3D code
         # Placeholder for the actual implementation
@@ -180,7 +190,7 @@ class SAMMed3DFeatureExtractor:
             "Please install MedIM: pip install medim"
         )
 
-    def _get_feature_dim(self):
+    def _get_feature_dim(self) -> int | dict:
         """Get the dimension of extracted features."""
         with torch.no_grad():
             # Create dummy input
@@ -200,11 +210,15 @@ class SAMMed3DFeatureExtractor:
         """
         Extract features from encoder.
 
-        Args:
-            x: Input tensor (B, C, Z, Y, X)
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor (B, C, Z, Y, X).
 
-        Returns:
-            Features based on feature_type
+        Returns
+        -------
+        torch.Tensor or dict
+            Features based on feature_type.
         """
         # Get encoder features
         if hasattr(self.encoder, "forward_features"):
@@ -248,12 +262,17 @@ class SAMMed3DFeatureExtractor:
         """
         Extract features from a 3D volume.
 
-        Args:
-            volume: 3D volume (Z, Y, X) or (C, Z, Y, X) or (B, C, Z, Y, X)
-            normalize: Whether to normalize the volume
+        Parameters
+        ----------
+        volume : numpy.ndarray or torch.Tensor
+            3D volume (Z, Y, X) or (C, Z, Y, X) or (B, C, Z, Y, X).
+        normalize : bool, optional
+            Whether to normalize the volume.
 
-        Returns:
-            Feature vector(s) as numpy array
+        Returns
+        -------
+        numpy.ndarray
+            Feature vector(s) as numpy array.
         """
         # Convert to tensor
         if isinstance(volume, np.ndarray):
@@ -299,12 +318,17 @@ class SAMMed3DFeatureExtractor:
         """
         Extract features from multiple volumes in batches.
 
-        Args:
-            volumes: List of 3D volumes
-            batch_size: Batch size for processing
+        Parameters
+        ----------
+        volumes : list
+            List of 3D volumes.
+        batch_size : int, optional
+            Batch size for processing.
 
-        Returns:
-            (N, Z) array of features
+        Returns
+        -------
+        numpy.ndarray
+            (N, Z) array of features.
         """
         all_features = []
 
@@ -413,12 +437,17 @@ class MicroscopySAMMed3DPipeline:
         """
         Extract features from microscopy volume.
 
-        Args:
-            volume: 3D numpy array (Z, Y, X)
-            preprocess: Whether to preprocess the volume
+        Parameters
+        ----------
+        volume : numpy.ndarray
+            3D numpy array (Z, Y, X).
+        preprocess : bool, optional
+            Whether to preprocess the volume.
 
-        Returns:
-            Feature vector
+        Returns
+        -------
+        numpy.ndarray
+            Feature vector.
         """
         if preprocess:
             volume = self.preprocess_volume(volume)

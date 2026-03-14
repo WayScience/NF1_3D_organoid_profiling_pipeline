@@ -1,5 +1,7 @@
 """Argument parsing helpers for pipeline scripts."""
 
+from __future__ import annotations
+
 import argparse
 from typing import Any
 

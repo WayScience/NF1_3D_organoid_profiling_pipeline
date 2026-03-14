@@ -6,7 +6,7 @@ import tqdm
 from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
-def scale_image(image: numpy.ndarray, num_gray_levels=256) -> numpy.ndarray:
+def scale_image(image: numpy.ndarray, num_gray_levels: int = 256) -> numpy.ndarray:
     """
     Scale the image to a specified number of gray levels.
     Example: 1024 gray levels will be scaled to 256 gray levels if num_gray_levels=256.

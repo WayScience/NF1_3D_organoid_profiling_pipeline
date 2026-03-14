@@ -2,6 +2,8 @@
 # Nuclei segmentation using cellpose in a two-D manner
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 
 import cellpose.models as models  # CPSAM
@@ -16,7 +18,7 @@ from scipy.spatial.distance import cdist
 # ----------------------------------------------------------------------
 # cellpose segementation
 # ----------------------------------------------------------------------
-def segmentaion_on_two_D(imgs):
+def segmentaion_on_two_D(imgs: np.ndarray) -> dict:
     """Run 2D Cellpose segmentation slice-by-slice.
 
     Parameters
@@ -56,21 +58,30 @@ def segmentaion_on_two_D(imgs):
 # ----------------------------------------------------------------------
 
 
-def build_complete_bipartite_graph(input_masks, distance_threshold=None):
+def build_complete_bipartite_graph(
+    input_masks: list[np.ndarray],
+    distance_threshold: float | None = None,
+) -> tuple[nx.Graph, pd.DataFrame]:
     """
     Build a complete bipartite graph from 2D segmentation masks.
 
     For each pair of consecutive slices, connect EVERY object in slice N
     to EVERY object in slice N+1, computing Euclidean distance between centroids.
 
-    Args:
-        input_masks: List of 2D segmentation masks (numpy arrays)
-        distance_threshold: Optional maximum distance to include edges.
-                           If None, ALL pairs are connected (truly complete).
+    Parameters
+    ----------
+    input_masks : list
+        List of 2D segmentation masks (numpy arrays).
+    distance_threshold : float or None, optional
+        Optional maximum distance to include edges.
+        If None, ALL pairs are connected (truly complete).
 
-    Returns:
-        G: NetworkX graph
-        df: DataFrame with all edges
+    Returns
+    -------
+    G : networkx.Graph
+        NetworkX graph.
+    df : pandas.DataFrame
+        DataFrame with all edges.
     """
     from scipy import ndimage
 
@@ -156,7 +167,12 @@ def build_complete_bipartite_graph(input_masks, distance_threshold=None):
     return G, df
 
 
-def solve_graph_improved(G, max_distance=100.0, slices=None, verbose=False):
+def solve_graph_improved(
+    G: nx.Graph,
+    max_distance: float = 100.0,
+    slices: list | None = None,
+    verbose: bool = False,
+) -> list:
     """
     Solve bipartite matching across consecutive slices using greedy matching
     based on edge weights (distances).
@@ -165,14 +181,21 @@ def solve_graph_improved(G, max_distance=100.0, slices=None, verbose=False):
     objects in order of smallest distance. This ensures we only connect objects
     that are genuinely close.
 
-    Args:
-        G: NetworkX graph with edges between different slices
-        max_distance: Maximum distance to accept a match.
-        slices: Optional list of slice numbers to process
-        verbose: Print debugging info
+    Parameters
+    ----------
+    G : networkx.Graph
+        NetworkX graph with edges between different slices.
+    max_distance : float, optional
+        Maximum distance to accept a match.
+    slices : list or None, optional
+        Optional list of slice numbers to process.
+    verbose : bool, optional
+        Print debugging info.
 
-    Returns:
-        List of paths, where each path is a list of node IDs
+    Returns
+    -------
+    list
+        List of paths, where each path is a list of node IDs.
     """
 
     if G.number_of_nodes() == 0:
@@ -288,16 +311,21 @@ def solve_graph_improved(G, max_distance=100.0, slices=None, verbose=False):
     return list(trajectories.values())
 
 
-def split_long_trajectories(paths, max_length):
+def split_long_trajectories(paths: list, max_length: int) -> list:
     """
     Split trajectories that exceed max_length into shorter ones.
 
-    Args:
-        paths: List of node paths
-        max_length: Maximum number of consecutive nodes per trajectory
+    Parameters
+    ----------
+    paths : list
+        List of node paths.
+    max_length : int
+        Maximum number of consecutive nodes per trajectory.
 
-    Returns:
-        List of split trajectories
+    Returns
+    -------
+    list
+        List of split trajectories.
     """
     split_paths = []
 
@@ -314,16 +342,23 @@ def split_long_trajectories(paths, max_length):
     return split_paths
 
 
-def collapse_labels_from_paths(input_masks, paths):
+def collapse_labels_from_paths(
+    input_masks: list[np.ndarray], paths: list
+) -> list[np.ndarray]:
     """
     Assign unified labels based on trajectories.
 
-    Args:
-        input_masks: List of 2D masks
-        paths: List of node paths from solve_graph_improved
+    Parameters
+    ----------
+    input_masks : list
+        List of 2D masks.
+    paths : list
+        List of node paths from solve_graph_improved.
 
-    Returns:
-        List of 3D masks with unified labels
+    Returns
+    -------
+    list
+        List of 3D masks with unified labels.
     """
     # Create mapping from node ID to trajectory label
     node_to_label = {}
@@ -350,20 +385,24 @@ def collapse_labels_from_paths(input_masks, paths):
     return relabeled_masks
 
 
-def stack_3d_segmentation(relabeled_masks):
+def stack_3d_segmentation(relabeled_masks: list[np.ndarray]) -> np.ndarray:
     """Stack 2D relabeled masks into 3D volume."""
     return np.stack(relabeled_masks, axis=0)
 
 
-def remove_single_slice_objects(segmentation_3d):
+def remove_single_slice_objects(segmentation_3d: np.ndarray) -> np.ndarray:
     """
     Remove objects that only appear in a single z-slice.
 
-    Args:
-        segmentation_3d: 3D segmentation array
+    Parameters
+    ----------
+    segmentation_3d : numpy.ndarray
+        3D segmentation array.
 
-    Returns:
-        Cleaned 3D segmentation with single-slice objects removed
+    Returns
+    -------
+    numpy.ndarray
+        Cleaned 3D segmentation with single-slice objects removed.
     """
     cleaned = segmentation_3d.copy()
 
@@ -382,20 +421,25 @@ def remove_single_slice_objects(segmentation_3d):
     return cleaned
 
 
-def fill_object_gaps(segmentation_3d, max_gap_size=2):
+def fill_object_gaps(segmentation_3d: np.ndarray, max_gap_size: int = 2) -> np.ndarray:
     """
     Fill gaps in object trajectories (missing slices between appearances).
 
     For example, if object ID 5 appears in slices [10, 11, 14, 15],
     the gap between 11 and 14 will be filled if gap_size <= max_gap_size.
 
-    Args:
-        segmentation_3d: 3D segmentation array
-        max_gap_size: Maximum number of consecutive missing slices to fill
-                     (default: 2, meaning fill gaps of 1-2 slices)
+    Parameters
+    ----------
+    segmentation_3d : numpy.ndarray
+        3D segmentation array.
+    max_gap_size : int, optional
+        Maximum number of consecutive missing slices to fill
+        (default: 2, meaning fill gaps of 1-2 slices).
 
-    Returns:
-        Filled 3D segmentation
+    Returns
+    -------
+    numpy.ndarray
+        Filled 3D segmentation.
     """
     filled = segmentation_3d.copy()
 
@@ -432,19 +476,29 @@ def fill_object_gaps(segmentation_3d, max_gap_size=2):
 
 
 def postprocess_segmentation(
-    segmentation_3d, remove_singletons=True, fill_gaps=True, max_gap_size=2
-):
+    segmentation_3d: np.ndarray,
+    remove_singletons: bool = True,
+    fill_gaps: bool = True,
+    max_gap_size: int = 2,
+) -> np.ndarray:
     """
     Post-process 3D segmentation to clean up artifacts.
 
-    Args:
-        segmentation_3d: 3D segmentation array
-        remove_singletons: If True, remove objects that only appear in 1 slice
-        fill_gaps: If True, fill small gaps in object trajectories
-        max_gap_size: Maximum gap size to fill (only used if fill_gaps=True)
+    Parameters
+    ----------
+    segmentation_3d : numpy.ndarray
+        3D segmentation array.
+    remove_singletons : bool, optional
+        If True, remove objects that only appear in 1 slice.
+    fill_gaps : bool, optional
+        If True, fill small gaps in object trajectories.
+    max_gap_size : int, optional
+        Maximum gap size to fill (only used if fill_gaps=True).
 
-    Returns:
-        Cleaned 3D segmentation
+    Returns
+    -------
+    numpy.ndarray
+        Cleaned 3D segmentation.
     """
     result = segmentation_3d.copy()
 
@@ -458,22 +512,33 @@ def postprocess_segmentation(
 
 
 def object_stitching_and_relation(
-    input_masks, max_match_distance=100.0, max_trajectory_length=None, verbose=False
-):
+    input_masks: list[np.ndarray],
+    max_match_distance: float = 100.0,
+    max_trajectory_length: int | None = None,
+    verbose: bool = False,
+) -> tuple[np.ndarray, dict]:
     """
     Complete pipeline: build complete bipartite graph -> solve matching -> relabel.
 
-    Args:
-        input_masks: List of 2D segmentation masks
-        max_match_distance: Maximum distance to accept a match (in pixels).
-        max_trajectory_length: Optional maximum number of consecutive slices an object
-                              can span. If None, no limit. Use to prevent unrealistic
-                              tall objects (e.g., set to 10 if cells shouldn't span >10 slices).
-        verbose: Print diagnostics
+    Parameters
+    ----------
+    input_masks : list
+        List of 2D segmentation masks.
+    max_match_distance : float, optional
+        Maximum distance to accept a match (in pixels).
+    max_trajectory_length : int or None, optional
+        Optional maximum number of consecutive slices an object
+        can span. If None, no limit. Use to prevent unrealistic
+        tall objects (e.g., set to 10 if cells shouldn't span >10 slices).
+    verbose : bool, optional
+        Print diagnostics.
 
-    Returns:
-        segmentation_3d: 3D array with unified instance labels across slices
-        diagnostics: Dict with stats about the matching
+    Returns
+    -------
+    segmentation_3d : numpy.ndarray
+        3D array with unified instance labels across slices.
+    diagnostics : dict
+        Dict with stats about the matching.
     """
     if verbose:
         print("Building complete bipartite graph...")

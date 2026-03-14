@@ -1,0 +1,25 @@
+name: Container Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  run-call-test:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.12-slim
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: pip install --no-cache-dir uv
+
+      - name: Run call_test.sh
+        working-directory: utils
+        run: bash call_test.sh

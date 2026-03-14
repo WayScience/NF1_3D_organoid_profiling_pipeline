@@ -66,6 +66,7 @@ autodoc_mock_imports = [
     "scipy.spatial",
     "scipy.spatial.distance",
     "skimage",
+    "skimage.io",
     "skimage.segmentation",
     "skimage.morphology",
     "skimage.filters",

@@ -4,6 +4,8 @@ This used a self-supervised deep-learning model
 that uses a Vision Transformer (ViT) architecture
 """
 
+from __future__ import annotations
+
 import numpy
 import torch
 import torch.nn as nn
@@ -12,7 +14,7 @@ from transformers import AutoModel
 
 
 # get the model
-def get_chammi75_model(device):
+def get_chammi75_model(device: str | None) -> torch.nn.Module:
     """Load the CHAMMI-75 (MorphEm) model from Hugging Face.
 
     Parameters
@@ -44,7 +46,7 @@ class SaturationNoiseInjector(nn.Module):
     passing the image to the CHAMMI-75 model.
     """
 
-    def __init__(self, low=200, high=255):
+    def __init__(self, low: int = 200, high: int = 255) -> None:
         """Initialise the noise injector.
 
         Parameters
@@ -87,8 +89,10 @@ class SaturationNoiseInjector(nn.Module):
 class PerImageNormalize(nn.Module):
     """Normalize each image independently using InstanceNorm2d."""
 
-    def __init__(self, eps=1e-7):
-        """Parameters
+    def __init__(self, eps: float = 1e-7) -> None:
+        """Initialize with a numerical stability epsilon.
+
+        Parameters
         ----------
         eps : float, optional
             A small value added to the denominator for numerical stability. Default is 1e-7
@@ -127,7 +131,7 @@ class PerImageNormalize(nn.Module):
 
 def featurize_2D_image_w_chammi75(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
-):
+) -> list[numpy.ndarray]:
     """Extract CHAMMI-75 CLS-token features from a multi-channel 2D image.
 
     Each channel of the input image is processed independently (Bag-of-Channels
@@ -184,8 +188,10 @@ def featurize_2D_image_w_chammi75(
 
 
 def call_chammi75_featurization_pipeline(
-    cropped_image: numpy.ndarray, model: torch.nn.Module
-):
+    cropped_image: numpy.ndarray,
+    model: torch.nn.Module,
+    device: str | torch.device = "cpu",
+) -> numpy.ndarray:
     """Run the CHAMMI-75 featurization pipeline on a single cropped 2D image.
 
     Converts the input NumPy array to a three-channel PyTorch tensor (by
