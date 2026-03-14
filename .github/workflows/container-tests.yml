@@ -22,7 +22,10 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             fontconfig \
-            libfreetype6
+            libfreetype6 \
+            libegl1 \
+            libgles2 \
+            libgl1
           rm -rf /var/lib/apt/lists/*
 
       - name: Install uv
