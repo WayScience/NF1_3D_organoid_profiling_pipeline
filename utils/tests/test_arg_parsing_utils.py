@@ -5,7 +5,10 @@ from __future__ import annotations
 import sys
 
 import pytest
-from file_utils.arg_parsing_utils import check_for_missing_args, parse_args
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
 
 
 def test_check_for_missing_args_raises() -> None:

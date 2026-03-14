@@ -8,15 +8,8 @@ fi
 
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
+txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
 
-rerun=$1
-
-
-if [ "$rerun" == "rerun" ]; then
-    txt_file="${git_root}/3.cellprofiling/load_data/rerun_combinations.txt"
-else
-    txt_file="${git_root}/3.cellprofiling/load_data/input_combinations.txt"
-fi
 
 # Check if TXT file exists
 if [ ! -f "$txt_file" ]; then
@@ -54,7 +47,7 @@ while IFS= read -r line; do
         "$mask_subparent_name" \
         "$output_features_subparent_name"
 
+# done < <(tac "$txt_file")
 done < "$txt_file"
-
 
 echo "Featurization done"

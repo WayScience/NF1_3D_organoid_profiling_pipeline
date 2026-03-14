@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import tifffile
-from file_utils.preprocessing_funcs import (
+from image_analysis_3D.file_utils.preprocessing_funcs import (
     check_well_dir_name_format,
     get_to_the_unested_dir,
     get_well_fov_dirs,
