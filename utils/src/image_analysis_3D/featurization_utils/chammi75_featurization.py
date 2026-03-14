@@ -125,4 +125,13 @@ def call_chammi75_featurization_pipeline(
     # Replicate channel 3 times to get (B, 3, Y, X)
     images = images.repeat(1, 3, 1, 1)
     batch_feat = featurize_2D_image_w_chammi75(images, model, device)
-    return batch_feat
+    # return the first element
+    # the other elements are duplications as we copied the channel into 3
+    # the ViT framework is designed for 3-channel input,
+    # so we replicated the single channel into 3 channels
+    # we only want to feature once
+    # loop loop this per channel image input
+    # and not using channels here.
+    # hence the CHAMMI name
+    # channel adaptive -
+    return batch_feat[0]

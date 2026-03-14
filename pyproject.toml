@@ -17,6 +17,7 @@ dependencies = [
     "pip>=26.0.1",
     "pyarrow>=23.0.0",
     "scikit-image>=0.26.0",
+    "tomli>=2.4.0",
     "transformers<5.0",
 ]
 

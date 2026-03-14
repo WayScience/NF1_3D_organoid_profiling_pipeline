@@ -12,8 +12,12 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
-from loading_classes import ImageSetLoader
-from notebook_init_utils import bandicoot_check, init_notebook
+import tomli
+from image_analysis_3D.featurization_utils.loading_classes import ImageSetLoader
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -37,6 +41,11 @@ rerun_combinations_path = pathlib.Path(
 )
 input_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
+channels = ["DNA", "ER", "Mito", "AGP"]
+compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 
 
 # In[4]:
@@ -56,17 +65,10 @@ features = [
 # In[5]:
 
 
-channel_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
 # In[6]:
@@ -78,12 +80,6 @@ image_set_path = pathlib.Path(
 )
 mask_set_path = pathlib.Path(
     f"{bandicoot_mount_path}/data/NF0014_T1/segmentation_masks/C2-1/"
-)
-image_set_loader = ImageSetLoader(
-    image_set_path=image_set_path,
-    mask_set_path=mask_set_path,
-    anisotropy_spacing=(1, 0.1, 0.1),
-    channel_mapping=channel_mapping,
 )
 
 
@@ -111,7 +107,7 @@ processor_types = [
 
 
 # get all channel combinations
-channel_combinations = list(itertools.combinations(image_set_loader.image_names, 2))
+channel_combinations = list(itertools.combinations(channels, 2))
 
 
 # In[9]:
@@ -124,7 +120,7 @@ for i in iterations:
 list_of_subdirs_to_scan.append("deconvolved_images")
 
 
-# In[ ]:
+# In[10]:
 
 
 for patient in patients:
@@ -150,7 +146,7 @@ for patient in patients:
                     output_dict["subdir_input"].append(subdir)
                     output_dict["subdir_mask"].append("segmentation_masks")
                     output_dict["subdir_output"].append(f"{subdir}_extracted_features")
-                for compartment in image_set_loader.compartments:
+                for compartment in compartments:
                     if feature == "AreaSizeShape":
                         for processor_type in processor_types:
                             output_dict["patient"].append(patient)
@@ -180,7 +176,7 @@ for patient in patients:
                                 output_dict["subdir_output"].append(
                                     f"{subdir}_extracted_features"
                                 )
-                    for channel in image_set_loader.image_names:
+                    for channel in channels:
                         if (
                             feature != "Neighbors"
                             and feature != "AreaSizeShape"
@@ -258,27 +254,13 @@ df.head()
 # number of combinations we should have
 subdir_inputs = np.unique(df["subdir_input"])
 # per well_fov
-area_combos = len(image_set_loader.compartments) * len(processor_types)
-coloc_combos = (
-    len(channel_combinations)
-    * len(image_set_loader.compartments)
-    * len(processor_types)
-)
-intensity_combos = (
-    len(image_set_loader.image_names)
-    * len(image_set_loader.compartments)
-    * len(processor_types)
-)
-granularity_combos = len(image_set_loader.image_names) * len(
-    image_set_loader.compartments
-)
-SAMMed3D_combos = (
-    len(image_set_loader.image_names)
-    * len(image_set_loader.compartments)
-    * len(processor_types)
-)
+area_combos = len(compartments) * len(processor_types)
+coloc_combos = len(channel_combinations) * len(compartments) * len(processor_types)
+intensity_combos = len(channels) * len(compartments) * len(processor_types)
+granularity_combos = len(channels) * len(compartments)
+SAMMed3D_combos = len(channels) * len(compartments) * len(processor_types)
 neighbors_combos = 1  # Neighbors is always DNA and Nuclei
-texture_combos = len(image_set_loader.image_names) * len(image_set_loader.compartments)
+texture_combos = len(channels) * len(compartments)
 total_well_fov_combos = (
     area_combos
     + coloc_combos

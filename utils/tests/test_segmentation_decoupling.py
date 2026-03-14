@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from file_utils.segmentation_decoupling import (
+from image_analysis_3D.file_utils.segmentation_decoupling import (
     check_coordinate_inside_box,
     euclidian_2D_distance,
     extract_unique_masks,

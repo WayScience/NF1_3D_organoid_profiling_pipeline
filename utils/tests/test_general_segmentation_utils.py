@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from segmentation_utils.general_segmentation_utils import (
+from image_analysis_3D.segmentation_utils.general_segmentation_utils import (
     calculate_bbox_area,
     calculate_mask_iou,
     calculate_overlap,
