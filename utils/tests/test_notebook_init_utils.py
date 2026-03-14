@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from file_utils.notebook_init_utils import init_notebook
+from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 
 
 def test_init_notebook_finds_git_root(

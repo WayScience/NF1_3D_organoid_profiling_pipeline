@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import numpy
 import pandas
 import skimage.measure
-
-from .loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 def neighbors_expand_box(
@@ -112,8 +111,8 @@ def measure_3D_number_of_neighbors(
 
     neighbors_out_dict = {
         "object_id": [],
-        "Neighbors_adjacent": [],
-        f"Neighbors_{distance_threshold}": [],
+        "NeighborsCountAdjacent": [],
+        f"NeighborsCountByDistance-{distance_threshold}": [],
     }
     for index, label in enumerate(labels):
         selected_label_object = label_object.copy()
@@ -179,8 +178,8 @@ def measure_3D_number_of_neighbors(
             len(numpy.unique(croppped_neighbor_image[croppped_neighbor_image > 0])) - 1
         )
         neighbors_out_dict["object_id"].append(label)
-        neighbors_out_dict["Neighbors_adjacent"].append(n_neighbors_adjacent)
-        neighbors_out_dict[f"Neighbors_{distance_threshold}"].append(
+        neighbors_out_dict["NeighborsCountAdjacent"].append(n_neighbors_adjacent)
+        neighbors_out_dict[f"NeighborsCountByDistance-{distance_threshold}"].append(
             n_neighbors_by_distance
         )
 
@@ -333,8 +332,8 @@ def classify_cells_into_shells(
     results : dict
         Dictionary containing:
         - 'ShellAssignments': Shell number for each cell (0 = innermost)
-        - 'distancesFromCenter': Distance from centroid for each cell
-        - 'distancesFromExterior': Distance from exterior for each cell
+        - 'DistancesFromCenter': Distance from centroid for each cell
+        - 'DistancesFromExterior': Distance from exterior for each cell
         - 'NormalizedDistancesFromCenter': Normalized distances (0-1)
     """
     # Handle both DataFrame and dict input
@@ -379,11 +378,18 @@ def classify_cells_into_shells(
         distances, 95
     )  # Use 95 percentile to avoid outliers
     # max_distance = numpy.max(distances)
-    normalized_distances = distances / max_distance
+    max_distance = numpy.max(distances)
+    if max_distance == 0:
+        # All cells are at the same location; assign all to shell 0
+        normalized_distances = numpy.zeros_like(distances)
+    else:
+        normalized_distances = distances / max_distance
 
     # Assign shells (0 = innermost, n_shells-1 = outermost)
-    shell_assignments = numpy.floor(normalized_distances * n_shells).astype(int)
-    shell_assignments = numpy.clip(shell_assignments, 0, n_shells - 1)
+    shell_assignments = numpy.minimum(
+        numpy.floor(normalized_distances * n_shells).astype(int),
+        n_shells - 1,
+    )
 
     # Calculate distance from exterior (inverse of distance from center)
     distance_from_exterior = max_distance - distances

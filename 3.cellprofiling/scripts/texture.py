@@ -11,6 +11,7 @@ import time
 
 import pandas as pd
 import psutil
+import tomli
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -24,13 +25,15 @@ root_dir, in_notebook = init_notebook()
 
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
+    save_features_as_parquet,
 )
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
     ObjectLoader,
 )
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
-    get_mem_and_time_profiling,
+    start_profiling,
+    stop_profiling,
 )
 from image_analysis_3D.featurization_utils.texture_utils import measure_3D_texture
 
@@ -55,10 +58,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "D11-2"
-    patient = "NF0016_T1"
-    channel = "DNA"
-    compartment = "Cell"
+    well_fov = "C4-1"
+    patient = "NF0014_T1"
+    channel = "Mito"
+    compartment = "Cytoplasm"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -74,30 +77,24 @@ output_parent_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 
 
 # In[3]:
 
 
-channel_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
 # In[4]:
 
 
-start_time = time.time()
-# get starting memory (cpu)
-start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+start_time, start_mem = start_profiling()
 
 
 # In[5]:
@@ -107,8 +104,10 @@ image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
-    channel_mapping=channel_mapping,
+    channel_mapping=channel_n_compartment_mapping,
     image_set_name=well_fov,
+    mask_key_name=[channel_n_compartment_mapping[compartment]],
+    raw_image_key_name=[channel_n_compartment_mapping[channel]],
 )
 
 
@@ -138,7 +137,7 @@ final_df.rename(
         col: format_morphology_feature_name(
             compartment=compartment,
             channel=channel,
-            feature_type="Granularity",
+            feature_type="Texture",
             measurement=col,
         )
         if col != "object_id"
@@ -150,25 +149,23 @@ final_df.rename(
 final_df.insert(0, "image_set", image_set_loader.image_set_name)
 final_df.columns.name = None
 
-output_file = pathlib.Path(
-    output_parent_path
-    / f"Texture_{compartment}_{channel}_{processor_type}_features.parquet"
+save_path = save_features_as_parquet(
+    parent_path=output_parent_path,
+    df=final_df,
+    feature_type="Texture",
+    channel=channel,
+    compartment=compartment,
+    cpu_or_gpu=processor_type,
 )
-output_file.parent.mkdir(parents=True, exist_ok=True)
-final_df.to_parquet(output_file)
 final_df.head()
 
 
 # In[7]:
 
 
-end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
-end_time = time.time()
-get_mem_and_time_profiling(
-    start_mem=start_mem,
-    end_mem=end_mem,
+stop_profiling(
     start_time=start_time,
-    end_time=end_time,
+    start_mem=start_mem,
     feature_type="Texture",
     well_fov=well_fov,
     patient_id=patient,

@@ -11,6 +11,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import tomli
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -65,27 +66,31 @@ rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 patient_ids = pd.read_csv(
     patient_id_file_path, header=None, names=["patient_id"]
 ).patient_id.tolist()
+channel_mapping_file_path = pathlib.Path(
+    f"{root_dir}/config/channel_mapping.toml"
+).resolve(strict=True)
 
 
 # In[4]:
 
 
-channel_mapping = {
-    "DNA": "405",
-    "AGP": "555",
-    "ER": "488",
-    "Mito": "640",
-    "BF": "TRANS",
-    "Nuclei": "nuclei_",
-    "Cell": "cell_",
-    "Cytoplasm": "cytoplasm_",
-    "Organoid": "organoid_",
-}
+# read in channel mapping
+with open(channel_mapping_file_path, "rb") as f:
+    channel_mapping_dict = tomli.load(f)
+channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
+
+
+# In[5]:
+
+
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
+    mask_set_path=mask_set_path,
     anisotropy_spacing=(1, 0.1, 0.1),
     channel_mapping=channel_mapping,
-    mask_set_path=mask_set_path,
+    image_set_name=well_fov,
+    mask_key_name=[channel_mapping[compartment]],
+    raw_image_key_name=[channel_mapping[channel]],
 )
 
 channels = image_set_loader.image_names
@@ -124,7 +129,7 @@ channel_combinations = list(itertools.combinations(channels, 2))
 #
 #
 
-# In[5]:
+# In[ ]:
 
 
 feature_types = [
@@ -137,7 +142,7 @@ feature_types = [
 ]
 
 
-# In[6]:
+# In[ ]:
 
 
 processor_types = [
@@ -146,7 +151,7 @@ processor_types = [
 ]
 
 
-# In[7]:
+# In[ ]:
 
 
 feature_list = []
@@ -188,7 +193,7 @@ for channel in channels:
 len(feature_list)  # should be 105 or 169 depending on CPU vs CPU and GPU
 
 
-# In[8]:
+# In[ ]:
 
 
 featurization_rerun_dict = {
@@ -204,7 +209,7 @@ featurization_rerun_dict = {
 }
 
 
-# In[9]:
+# In[ ]:
 
 
 total_files = 0
@@ -315,7 +320,7 @@ for patient in tqdm(patient_ids):
                 files_present += len([f.stem for f in dir.glob("*") if f.is_file()])
 
 
-# In[10]:
+# In[ ]:
 
 
 print(f"Total files expected: {total_files}")
@@ -329,7 +334,7 @@ else:
     )
 
 
-# In[11]:
+# In[ ]:
 
 
 df = pd.DataFrame(featurization_rerun_dict)
@@ -360,20 +365,20 @@ df = pd.concat(
 )
 
 
-# In[12]:
+# In[ ]:
 
 
 df.to_csv(rerun_combinations_path, sep="\t", index=False)
 df.head()
 
 
-# In[13]:
+# In[ ]:
 
 
 df.groupby(["patient"]).count()
 
 
-# In[14]:
+# In[ ]:
 
 
 df.groupby(["feature"]).count()

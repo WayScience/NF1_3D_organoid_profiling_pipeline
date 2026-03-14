@@ -4,7 +4,7 @@
 # This notebook extracts whole volume and whole (middle slice) image deep learning metrics.
 # These metrics are SAMMed3D and CHAMMI-75 extracted features.
 
-# In[1]:
+# In[ ]:
 
 
 import logging
@@ -26,8 +26,13 @@ import torch
 import torch.nn as nn
 import umap
 from file_reading import *
-from notebook_init_utils import bandicoot_check, init_notebook
-from sammed3d_featurizer import call_whole_image_sammed3d_pipeline
+from image_analysis_3D.featurization_utils.sammed3d_featurizer import (
+    call_whole_image_sammed3d_pipeline,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from torchvision import transforms as v2
@@ -381,6 +386,7 @@ for patient_id in tqdm.tqdm(patients, desc="Processing patients", leave=True):
                     for vol in images_to_process["3D_image"]
                 ]
             )
+
             # images is now (B, Y, X), add channel dimension -> (B, 1, Y, X)
             images = images.unsqueeze(1)
             # Replicate channel 3 times to get (B, 3, Y, X)

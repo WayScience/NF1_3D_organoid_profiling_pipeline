@@ -75,6 +75,8 @@ class ImageSetLoader:
         anisotropy_spacing: tuple[float, float, float],
         channel_mapping: dict[str, str],
         image_set_name: str | None = None,
+        mask_key_name: list[str] | None = None,
+        raw_image_key_name: list[str] | None = None,
     ) -> None:
         """
         Initialize the ImageSetLoader with the path to the image set, spacing, and channel mapping.
@@ -91,7 +93,15 @@ class ImageSetLoader:
         image_set_name : str | None
             Optional name for the image set.
             This is typuically the well_fov name, but can be set to None if not applicable.
+        mask_key_name : list[str] | None
+            Optional list of strings to identify mask files in the file names. If None, no specific string is used to identify mask files.
+        raw_image_key_name : list[str] | None
+            Optional list of strings to identify raw image files in the file names. If None, no specific string is used to identify raw image files.
         """
+        if mask_key_name is None:
+            mask_key_name = []
+        if raw_image_key_name is None:
+            raw_image_key_name = []
         self.anisotropy_spacing = anisotropy_spacing
         self.anisotropy_factor = self.anisotropy_spacing[0] / self.anisotropy_spacing[1]
         self.image_set_name = image_set_name
@@ -99,12 +109,22 @@ class ImageSetLoader:
             channel_files = []
         else:
             channel_files = sorted(image_set_path.glob("*"))
-            channel_files = [f for f in channel_files if f.suffix in [".tif", ".tiff"]]
+            channel_files = [
+                f
+                for f in channel_files
+                if f.suffix in [".tif", ".tiff"]
+                and any(key in f.name for key in raw_image_key_name)
+            ]
 
         self.mask_set_path = mask_set_path
 
         mask_files = sorted(mask_set_path.glob("*")) if mask_set_path else []
-        mask_files = [f for f in mask_files if f.suffix in [".tif", ".tiff"]]
+        mask_files = [
+            f
+            for f in mask_files
+            if f.suffix in [".tif", ".tiff"]
+            and any(key in f.name for key in mask_key_name)
+        ]
 
         # Load images into a dictionary
         self.image_set_dict = {}

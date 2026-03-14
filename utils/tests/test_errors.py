@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from featurization_utils.errors import ProcessorTypeError
+from image_analysis_3D.featurization_utils.errors import ProcessorTypeError
 
 
 def test_processor_type_error_message() -> None:
