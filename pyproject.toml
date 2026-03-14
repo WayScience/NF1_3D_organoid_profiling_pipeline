@@ -10,18 +10,29 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "arrow>=1.4.0",
+    "basicpy>=1.1.0",
+    "imageio-ffmpeg>=0.6.0",
     "ipykernel>=6.31.0",
+    "matplotlib>=3.10.8",
+    "moviepy>=2.2.1",
+    "napari-animation>=0.0.9",
+    "napari[pyside6,qt]>=0.6.5",
     "matplotlib>=3.10.8",
     "numpy>=2.4.2",
     "pandas>=3.0.1",
     "pip>=26.0.1",
     "pyarrow>=23.0.0",
+    "pyside6<6.10",
     "scikit-image>=0.26.0",
+    "seaborn>=0.13.2",
     "tomli>=2.4.0",
     "transformers<5.0",
 ]
 
 [tool.uv]
+required-environments = [
+  "sys_platform == 'linux' and platform_machine == 'x86_64'"
+]
 index-url = "https://download.pytorch.org/whl/cu118"
 extra-index-url = ["https://pypi.org/simple"]
 

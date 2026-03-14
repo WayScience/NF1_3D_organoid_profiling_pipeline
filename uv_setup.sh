@@ -21,6 +21,8 @@ uv sync
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
+# shellcheck disable=SC1091
+source .venv/bin/activate
 # Use RELATIVE path - simple and reliable
 uv pip install -e ./utils
 

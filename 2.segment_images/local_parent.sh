@@ -7,13 +7,8 @@ if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
 fi
-rerun=$1
 
-if [ "$rerun" == "rerun" ]; then
-    txt_file="${git_root}/2.segment_images/load_data/rerun_combinations.txt"
-else
-    txt_file="${git_root}/2.segment_images/load_data/input_combinations.txt"
-fi
+txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
 # Check if TXT file exists
 if [ ! -f "$txt_file" ]; then
