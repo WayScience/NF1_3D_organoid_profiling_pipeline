@@ -13,6 +13,7 @@ from skimage.filters import sobel
 def segment_cells_with_3D_watershed(
     cyto_signal: np.ndarray,
     nuclei_mask: np.ndarray,
+    thresholded_signal: np.ndarray,
     connectivity: int = 1,
     compactness: float = 0,
 ) -> np.ndarray:
@@ -28,6 +29,8 @@ def segment_cells_with_3D_watershed(
         3D numpy array representing the cytoplasm signal.
     nuclei_mask : np.ndarray
         3D numpy array representing the nuclei mask.
+    thresholded_signal : np.ndarray
+        3D numpy array representing the thresholded cytoplasm signal to be used as a mask for watershed.
     connectivity : int, optional
         Connectivity parameter for the watershed algorithm. Default is 1.
         A value of 1 means only directly adjacent pixels (6-connectivity in 3D)
@@ -53,7 +56,8 @@ def segment_cells_with_3D_watershed(
         # A value of 0 means that the watershed will not enforce compactness,
         # allowing for more irregularly shaped segments,
         # which is often desirable in cell segmentation to capture the true morphology of cells.
-        compactness=compactness,  # keep at 0
+        compactness=compactness,
+        mask=thresholded_signal,
     )
 
     # change the largest label (by area) to 0
@@ -68,6 +72,8 @@ def perform_morphology_dependent_segmentation(
     organoid_label: str,
     cyto_signal: np.ndarray,
     nuclei_mask: np.ndarray,
+    min_size: int = 1_000,
+    max_size: int = 10_000_000,
 ) -> np.ndarray:
     """
     Perform morphology-dependent cell segmentation.
@@ -82,6 +88,10 @@ def perform_morphology_dependent_segmentation(
         3D numpy array representing the cytoplasm signal.
     nuclei_mask : np.ndarray
         3D numpy array representing the nuclei mask.
+    min_size : int, optional
+        Minimum size threshold for segmented objects. Default is 1,000 voxels.
+    max_size : int, optional
+        Maximum size threshold for segmented objects. Default is 10,000,000 voxels.
 
     Returns
     -------
@@ -93,54 +103,59 @@ def perform_morphology_dependent_segmentation(
         return np.zeros_like(cyto_signal, dtype=np.int32)
     # generate the low frequency elevation map
     # all morphology types use the same initial elevation map
-    elevation_map = skimage.filters.butterworth(
+    butterworth_filter = skimage.filters.butterworth(
         cyto_signal,
         cutoff_frequency_ratio=0.08,
         order=2,
         high_pass=False,
         squared_butterworth=False,
     )
-    # generate threshold using otsu
-    threshold = skimage.filters.threshold_otsu(elevation_map)
-    # generate thresholded signal
-    elevation_map_threshold_signal = elevation_map.copy()
-    elevation_map_threshold_signal = elevation_map_threshold_signal > threshold
 
-    min_size = 1000  # volume in voxels 10x10x10
-    max_size = (
-        10_000_000  # volume in voxels ~215x215x215 (max size of a cell in this dataset)
-    )
+    if organoid_label in {"globular", "cluster"}:
+        # apply gaussian filter to smooth the signal for better thresholding
+        elevation_map_threshold_signal = skimage.filters.gaussian(
+            cyto_signal, sigma=2.5
+        )
+        threshold = skimage.filters.threshold_otsu(elevation_map_threshold_signal)
 
-    # set connectivity and compactness parameters for watershed based on morphology
-    connectivity = 1
-    compactness = 0
+        elevation_map_threshold_signal[elevation_map_threshold_signal < threshold] = 0
+        elevation_map_threshold_signal[elevation_map_threshold_signal > 0] = 1
 
-    if organoid_label in {"globular"}:
-        elevation_map = skimage.filters.gaussian(cyto_signal, sigma=1.0)
-        elevation_map = sobel(elevation_map)
-        # update compactness for globular morphology to reduce oversegmentation
-        connectivity = 0
-        compactness = 0
+        elevation_map = sobel(butterworth_filter)
+        connectivity = 1
+        compactness = 1
 
     elif organoid_label in {"small", "dissociated"}:
-        print("Dissociated morphology selected")
-        elevation_map = skimage.morphology.binary_dilation(
+        elevation_map_threshold_signal = skimage.filters.gaussian(cyto_signal, sigma=3)
+        threshold = skimage.filters.threshold_otsu(elevation_map_threshold_signal)
+        elevation_map_threshold_signal[elevation_map_threshold_signal < threshold] = 0
+        elevation_map_threshold_signal[elevation_map_threshold_signal > 0] = 1
+        elevation_map_threshold_signal = skimage.morphology.dilation(
             elevation_map_threshold_signal,
-            skimage.morphology.ball(2),
+            skimage.morphology.ball(1),
         )
+
+        elevation_map = skimage.filters.gaussian(butterworth_filter, sigma=1)
         elevation_map = sobel(elevation_map)
-        elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
-        connectivity = 0
+
+        connectivity = 1
         compactness = 0
 
     elif organoid_label in {"elongated"}:
-        elevation_map = sobel(elevation_map_threshold_signal)
-        elevation_map = skimage.filters.gaussian(elevation_map, sigma=3)
+        elevation_map_threshold_signal = skimage.filters.gaussian(cyto_signal, sigma=4)
+        threshold = skimage.filters.threshold_otsu(elevation_map_threshold_signal)
+        elevation_map_threshold_signal[elevation_map_threshold_signal < threshold] = 0
+        elevation_map_threshold_signal[elevation_map_threshold_signal > 0] = 1
+        elevation_map_threshold_signal = skimage.morphology.dilation(
+            elevation_map_threshold_signal,
+            skimage.morphology.ball(10),
+        )
+
+        elevation_map = skimage.filters.gaussian(butterworth_filter, sigma=1)
+        elevation_map = sobel(elevation_map)
+
         connectivity = 0
         compactness = 0
-    elif organoid_label == "failed" or organoid_label == "blank":
-        print("Failed morphology selected, skipping cell segmentation")
-        return np.zeros_like(cyto_signal, dtype=np.int32)
     else:
         raise ValueError(f"Unknown morphology label: {organoid_label}")
 
@@ -149,6 +164,7 @@ def perform_morphology_dependent_segmentation(
         nuclei_mask=nuclei_mask,
         connectivity=connectivity,
         compactness=compactness,
+        thresholded_signal=elevation_map_threshold_signal,
     )
     # Remove small objects while preserving label IDs
     # we avoid using the built-in skimage function to preserve label IDs

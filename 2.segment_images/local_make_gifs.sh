@@ -24,7 +24,7 @@ for dir in "${input_dirs[@]}"; do
     well_fov=$(basename "$dir")
     current_dir=$((current_dir + 1))
     echo -ne "Processing directory $current_dir of $total_dirs\r"
-    python "$git_root"/2.segment_images/scripts/8.animate_segmentation_and_raw_signal.py --well_fov "$well_fov"
+    python "$git_root"/2.segment_images/scripts/6.animate_segmentation_and_raw_signal.py --well_fov "$well_fov"
 done
 
 # deactivate cellprofiler environment

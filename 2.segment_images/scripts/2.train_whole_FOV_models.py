@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This notebook trains a random forest model to predict the binning label of each image based on the features extracted from the cell profiling pipeline.
-# The model is trained on a balanced dataset, where each binning label is represented equally.
-# The dataset is split into training, validation, and test sets, and the model's performance is evaluated on the test set.
-# The predicted bins are used to adjust the segmentation parameters for each image, which is expected to improve the segmentation quality.
+# This notebook trains a random forest model to predict the binning label of each image based on the features extracted from whole well FOVs.
 
 # In[1]:
 
@@ -25,10 +22,15 @@ import psutil
 import scipy
 import seaborn as sns
 import tifffile
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import *
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import *
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from skimage.filters import sobel
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -114,25 +116,36 @@ df = pd.merge(
     on=["patient", "well_fov"],
     how="right",
 )
-df
 
 
 # In[7]:
 
 
-# drop rows with na
-df = df.dropna(subset=["label_name"])
-# drop the failed labels
-df = df[df["label_name"] != "fail"]
-# drop the blank labels
-df = df[df["label_name"] != "blank"]
-# drop na
-df = df.dropna()
-print(df.shape)
-df.head()
+# label stats
+print("Label distribution:")
+print(df["label_name"].value_counts())
 
 
 # In[8]:
+
+
+original_shape = df.shape
+# drop rows with na
+df = df.dropna(subset=["label_name"])
+# drop the failed labels
+# print the number of failed labels
+print(f"Number of failed labels: {df[df['label_name'] == 'fail'].shape[0]}")
+df = df[df["label_name"] != "fail"]
+# drop the blank labels
+print(f"Number of blank labels: {df[df['label_name'] == 'blank'].shape[0]}")
+df = df[df["label_name"] != "blank"]
+dropped = original_shape[0] - df.shape[0]
+print(f"Dropped {dropped} rows with NA values.")
+print(f"Remaining shape: {df.shape}")
+df.head()
+
+
+# In[9]:
 
 
 # holdout a single patient
@@ -156,17 +169,26 @@ train_df, val_df = train_test_split(
     random_state=0,
     stratify=train_df[["label_name"]],
 )
-print(f"Train size: {len(train_df)}")
-print(f"Validation size: {len(val_df)}")
-print(f"Test size: {len(test_df)}")
-print(f"Holdout size: {len(holdout_df)}")
+print(
+    f"Train size: {len(train_df)}; percentage: {np.round(len(train_df) / len(df) * 100, 2)}%"
+)
+print(
+    f"Validation size: {len(val_df)}; percentage: {np.round(len(val_df) / len(df) * 100, 2)}%"
+)
+print(
+    f"Test size: {len(test_df)}; percentage: {np.round(len(test_df) / len(df) * 100, 2)}%"
+)
+print(
+    f"Holdout size: {len(holdout_df)}; percentage: {np.round(len(holdout_df) / len(df) * 100, 2)}%"
+)
+
 if len(train_df) + len(val_df) + len(test_df) + len(holdout_df) != len(df) + len(
     holdout_df
 ):
     raise ValueError("Data split sizes do not add up to total dataset size.")
 
 
-# In[9]:
+# In[10]:
 
 
 non_feature_cols = [
@@ -180,7 +202,7 @@ non_feature_cols = [
 ]
 
 
-# In[10]:
+# In[11]:
 
 
 # fit the train data to the z score normalization
@@ -216,7 +238,7 @@ holdout_scaled = pd.DataFrame(
 holdout_df = pd.concat([holdout_df[non_feature_cols], holdout_scaled], axis=1)
 
 
-# In[11]:
+# In[12]:
 
 
 # train a multi-class logistic regression model for the organoid labels
@@ -243,7 +265,7 @@ joblib.dump(log_reg_model, "../models/logistic_regression_model.joblib")
 joblib.dump(rf_model, "../models/random_forest_model.joblib")
 
 
-# In[12]:
+# In[13]:
 
 
 # log reg preds
@@ -261,7 +283,7 @@ test_rf_preds = rf_model.predict(test_df.drop(columns=non_feature_cols))
 holdout_rf_preds = rf_model.predict(holdout_df.drop(columns=non_feature_cols))
 
 
-# In[13]:
+# In[14]:
 
 
 label_names = {
@@ -275,7 +297,7 @@ label_names = {
 }
 
 
-# In[14]:
+# In[15]:
 
 
 ############################################
@@ -452,7 +474,7 @@ plt.tight_layout()
 plt.show()
 
 
-# In[15]:
+# In[16]:
 
 
 # concatenate the train, val, test df with the predections
@@ -480,7 +502,7 @@ all_preds_df["image_path"] = all_preds_df.apply(
 all_preds_df.head()
 
 
-# In[16]:
+# In[17]:
 
 
 # calculate the model-wise per split performance metrics
@@ -502,7 +524,7 @@ performance_metrics_df = pd.DataFrame(performance_metrics)
 performance_metrics_df
 
 
-# In[17]:
+# In[18]:
 
 
 # plot the accuracy for each split with each model as a different color
@@ -518,7 +540,7 @@ plt.tight_layout()
 plt.show()
 
 
-# In[18]:
+# In[19]:
 
 
 # pick three random images from each predicted class to show
@@ -569,7 +591,7 @@ plt.show()
 
 # ## Show wrong predictions
 
-# In[ ]:
+# In[20]:
 
 
 n_images_per_split = 15
@@ -597,7 +619,7 @@ for split in wrong_preds_combined["split"].unique():
 sampled_wrong_preds_df = pd.concat(sampled_wrong_preds, ignore_index=True)
 
 
-# In[ ]:
+# In[21]:
 
 
 # plot in a grid with rows as splits and columns as models

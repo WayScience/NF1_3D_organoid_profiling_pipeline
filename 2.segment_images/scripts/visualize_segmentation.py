@@ -11,29 +11,26 @@ import os
 import pathlib
 import sys
 
+import napari
+
 # import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import skimage.io as io
 import tifffile
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import (
+    find_files_available,
+    read_in_channels,
+)
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from napari.utils import nbscreenshot
-from nviz.image import image_set_to_arrays
-from nviz.image_meta import extract_z_slice_number_from_filename, generate_ome_xml
-from nviz.view import view_ometiff_with_napari
-
-cwd = pathlib.Path.cwd()
-
-if (cwd / ".git").is_dir():
-    root_dir = cwd
-else:
-    root_dir = None
-    for parent in cwd.parents:
-        if (parent / ".git").is_dir():
-            root_dir = parent
-            break
-sys.path.append(str(root_dir / "utils"))
-from arg_parsing_utils import check_for_missing_args, parse_args
-from notebook_init_utils import bandicoot_check, init_notebook
 
 root_dir, in_notebook = init_notebook()
 
@@ -42,28 +39,36 @@ image_base_dir = bandicoot_check(
 )
 
 sys.path.append(f"{root_dir}/utils")
-from segmentation_decoupling import euclidian_2D_distance
+from image_analysis_3D.segmentation_utils.segmentation_decoupling import (
+    euclidian_2D_distance,
+)
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
     args = parse_args()
     well_fov = args["well_fov"]
     patient = args["patient"]
+    input_subparent_name = args["input_subparent_name"]
+    mask_subparent_name = args["mask_subparent_name"]
     check_for_missing_args(
         well_fov=well_fov,
         patient=patient,
+        input_subparent_name=input_subparent_name,
+        mask_subparent_name=mask_subparent_name,
     )
 else:
     print("Running in a notebook")
-    patient = "NF0037_T1_CQ1"
-    well_fov = "F11-1"
+    patient = "NF0014_T1"
+    well_fov = "E7-2"
+    input_subparent_name = "zstack_images"
+    mask_subparent_name = "segmentation_masks"
 image_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/zstack_images/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}/"
 ).resolve(strict=True)
 label_dir = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/"
+    f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 ).resolve(strict=True)
 
 
@@ -85,103 +90,70 @@ scaling_values = [1, 0.1, 0.1]
 # In[4]:
 
 
-frame_zstacks = image_set_to_arrays(
-    image_dir,
-    label_dir,
-    channel_map=channel_map,
+image_return_dict = read_in_channels(
+    find_files_available(image_dir),
+    channel_dict={
+        "DNA": "405",
+        "Endoplasmic Reticulum": "488",
+        "AGP": "555",
+        "Mitochondria": "640",
+    },
+    channels_to_read=[
+        "DNA",
+        "Endoplasmic Reticulum",
+        "AGP",
+        "Mitochondria",
+    ],
 )
 
-
-# In[7]:
-
-
-print(frame_zstacks["images"].keys())
-print(frame_zstacks["labels"].keys())
-
-
-# In[8]:
-
-
-images_data = []
-labels_data = []
-channel_names = []
-label_names = []
-
-
-for channel, stack in frame_zstacks["images"].items():
-    dim = len(stack.shape)
-    images_data.append(stack)
-    channel_names.append(channel)
-
-# Collect label data
-if label_dir:
-    for compartment_name, stack in frame_zstacks["labels"].items():
-        if len(stack.shape) != dim:
-            if len(stack.shape) == 3:
-                stack = np.expand_dims(stack, axis=0)
-        labels_data.append(stack)
-        label_names.append(f"{compartment_name} (labels)")
-
-
-# Stack the images and labels along a new axis for channels
-images_data = np.stack(images_data, axis=0)
-if labels_data:
-    labels_data = np.stack(labels_data, axis=0)
-    combined_data = np.concatenate((images_data, labels_data), axis=0)
-    combined_channel_names = channel_names + label_names
-else:
-    combined_data = images_data
-    combined_channel_names = channel_names
-# Generate OME-XML metadata
-ome_metadata = {
-    "SizeC": combined_data.shape[0],
-    "SizeZ": combined_data.shape[1],
-    "SizeY": combined_data.shape[2],
-    "SizeX": combined_data.shape[3],
-    "PhysicalSizeX": scaling_values[2],
-    "PhysicalSizeY": scaling_values[1],
-    "PhysicalSizeZ": scaling_values[0],
-    # note: we use 7-bit ascii compatible characters below
-    # due to tifffile limitations
-    "PhysicalSizeXUnit": "um",
-    "PhysicalSizeYUnit": "um",
-    "PhysicalSizeZUnit": "um",
-    "Channel": [{"Name": name} for name in combined_channel_names],
-}
-ome_xml = generate_ome_xml(ome_metadata)
-import tifffile as tiff
-
-# Write the combined data to a single OME-TIFF
-with tiff.TiffWriter(output_path, bigtiff=True) as tif:
-    tif.write(combined_data, description=ome_xml, photometric="minisblack")
+mask_return_dict = read_in_channels(
+    find_files_available(label_dir),
+    channel_dict={
+        "Nuclei mask": "nuclei",
+        "Cell mask": "cell",
+        "Cytoplasm mask": "cytoplasm",
+        "Organoid mask": "organoid",
+    },
+    channels_to_read=[
+        "Nuclei mask",
+        "Cell mask",
+        "Cytoplasm mask",
+        "Organoid mask",
+    ],
+)
 
 
 # In[5]:
 
 
-# import shutil
-# shutil.rmtree(output_path, ignore_errors=True)
-# nviz.image.tiff_to_ometiff(
-#     image_dir=image_dir,
-#     label_dir=label_dir,
-#     output_path=output_path,
-#     channel_map=channel_map,
-#     scaling_values=scaling_values,
-#     ignore=[],
-# )
+headless = False
+viewer = napari.Viewer(ndisplay=3, show=bool(not headless))
 
 
 # In[6]:
 
 
-viewer = view_ometiff_with_napari(
-    ometiff_path=output_path,
-    scaling_values=scaling_values,
-    headless=False,
-)
+image_metadata = f"{patient}_{well_fov}"
 
 
 # In[7]:
+
+
+for image_name, image_array in image_return_dict.items():
+    viewer.add_image(
+        image_array,
+        name=f"{image_metadata}_{image_name}",
+        scale=scaling_values,
+    )
+for mask_name, mask_array in mask_return_dict.items():
+    viewer.add_labels(
+        mask_array,
+        name=f"{image_metadata}_{mask_name}",
+        scale=scaling_values,
+    )
+
+
+# In[8]:
 
 
 # toggle view for all labels except organoid
@@ -190,7 +162,7 @@ for layer in viewer.layers:
         layer.visible = False
 
 
-# In[8]:
+# In[9]:
 
 
 # screenshot the napari viewer
