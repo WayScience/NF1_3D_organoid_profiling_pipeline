@@ -12,9 +12,9 @@ from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
 )
+from tqdm.auto import tqdm
 
 root_dir, in_notebook = init_notebook()
-
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
@@ -24,71 +24,106 @@ profile_base_dir = bandicoot_check(
 # In[2]:
 
 
-patients_file_path = pathlib.Path("../../data/patient_IDs.txt").resolve(strict=True)
-patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
-patients = patients[:1]
+patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
+    strict=True
+)
+patients = pd.read_csv(
+    patients_file_path,
+    header=None,
+    names=["patient_id"],
+).patient_id.tolist()
+
+load_file_path = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/load_data/load_file.txt"
+).resolve()
+load_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+
+# In[3]:
+
+
+rows = []
+
+for patient in tqdm(patients, desc="Patients"):
+    extracted_features_dir = profile_base_dir / "data" / patient / "extracted_features"
+    if not extracted_features_dir.exists():
+        print(f"No extracted_features directory for patient {patient}; skipping.")
+        continue
+
+    well_fovs = sorted(
+        d.name
+        for d in extracted_features_dir.iterdir()
+        if d.is_dir() and "run_stats" not in d.name
+    )
+    for well_fov in well_fovs:
+        rows.append({"patient": patient, "well_fov": well_fov})
+
+df = pd.DataFrame(rows)
+print(f"Total patient/well_fov combinations: {df.shape[0]}")
 
 
 # In[4]:
 
 
-features_to_check_for = {
-    "patient": [],
-    "well_fov": [],
-    "file_name": [],
-    "exists": [],
-    "file_count": [],
-    "file_path": [],
-}
-for patient in patients:
-    extracted_features_dir = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/extracted_features/"
-    ).resolve(strict=True)
-    # get all of the well_fov directories
-    well_fov_dirs = [d for d in extracted_features_dir.iterdir() if d.is_dir()]
-    well_fovs = [d.name for d in well_fov_dirs if "run_stats" not in d.name]
-    print(f"Patient {patient} has {len(well_fovs)} well_fovs to check.")
-    for well_fov in well_fovs:
-        converted_profile_dir = pathlib.Path(
-            f"{profile_base_dir}/data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/{well_fov}.duckdb"
-        ).resolve()
-        features_to_check_for["patient"].append(patient)
-        features_to_check_for["well_fov"].append(well_fov)
-        features_to_check_for["file_path"].append(str(converted_profile_dir))
-        features_to_check_for["file_name"].append(converted_profile_dir.name)
-        features_to_check_for["exists"].append(converted_profile_dir.exists())
-        features_to_check_for["file_count"].append(1)
+# Build expected .duckdb paths with vectorized string ops
+df["file_path"] = (
+    profile_base_dir.as_posix()
+    + "/data/"
+    + df["patient"]
+    + "/image_based_profiles/0.converted_profiles/"
+    + df["well_fov"]
+    + "/"
+    + df["well_fov"]
+    + ".duckdb"
+)
 
+# Scan each converted_profiles directory once — faster than per-row .exists()
+existing_duckdbs: set[str] = set()
+candidate_dir_df = df[["patient", "well_fov"]].drop_duplicates()
 
-features_to_check_for_df = pd.DataFrame(features_to_check_for)
-# print the number of total, present, and missing files
-total_files = len(features_to_check_for_df)
-present_files = features_to_check_for_df["exists"].sum()
-missing_files = total_files - present_files
-print(f"Total files to check: {total_files}")
-print(f"Present files: {present_files}")
-print(f"Missing files: {missing_files}")
-features_to_check_for_df.head()
+for patient, well_fov in tqdm(
+    candidate_dir_df.itertuples(index=False, name=None),
+    total=len(candidate_dir_df),
+    desc="Scanning converted_profiles directories",
+):
+    profile_dir = (
+        profile_base_dir
+        / "data"
+        / patient
+        / "image_based_profiles"
+        / "0.converted_profiles"
+        / well_fov
+    )
+    if profile_dir.exists():
+        existing_duckdbs.update(
+            p.as_posix() for p in profile_dir.glob("*.duckdb") if p.is_file()
+        )
+
+df["exists"] = df["file_path"].isin(existing_duckdbs)
+
+total = len(df)
+present = df["exists"].sum()
+print(f"Total files to check : {total}")
+print(f"Present              : {present}")
+print(f"Missing              : {total - present}")
 
 
 # In[5]:
 
 
-load_file_path = pathlib.Path("../load_data/load_file.txt").resolve()
-load_file_path.parent.mkdir(parents=True, exist_ok=True)
-with open(load_file_path, "w") as f:
-    for idx, row in features_to_check_for_df.iterrows():
-        if not row["exists"]:
-            f.write(f"{row['patient']}\t{row['well_fov']}\n")
+# Write missing combinations to load_file.txt
+df_missing = df.loc[~df["exists"], ["patient", "well_fov"]].reset_index(drop=True)
+df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
+print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
 # In[6]:
 
 
-grouped_df = (
-    features_to_check_for_df.groupby(["patient"])[["exists", "file_count"]]
-    .sum()
-    .reset_index()
+# Summary by patient
+summary_df = (
+    df.groupby("patient")[["exists"]]
+    .agg(total=("exists", "count"), present=("exists", "sum"))
+    .assign(missing=lambda x: x["total"] - x["present"])
 )
-grouped_df["total_missing"] = grouped_df["file_count"] - grouped_df["exists"]
-grouped_df
+summary_df.reset_index()
