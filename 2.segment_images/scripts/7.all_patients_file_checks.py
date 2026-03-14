@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -13,8 +13,11 @@ import sys
 import numpy as np
 import pandas as pd
 import tqdm
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.file_reading import read_zstack_image
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -12,9 +12,15 @@ import sys
 
 import numpy as np
 import tqdm
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import read_zstack_image
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -23,7 +29,7 @@ image_base_dir = bandicoot_check(
     root_dir,
 )
 
-from file_checking import check_number_of_files
+from image_analysis_3D.file_utils.file_checking import check_number_of_files
 
 # In[2]:
 

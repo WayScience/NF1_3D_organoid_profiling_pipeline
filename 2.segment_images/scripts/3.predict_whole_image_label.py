@@ -24,10 +24,15 @@ import pandas as pd
 import psutil
 import scipy
 import tifffile
-from arg_parsing_utils import check_for_missing_args, parse_args
-from file_reading import *
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
+from image_analysis_3D.file_utils.arg_parsing_utils import (
+    check_for_missing_args,
+    parse_args,
+)
+from image_analysis_3D.file_utils.file_reading import *
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 from skimage.filters import sobel
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -162,3 +167,28 @@ df = pd.DataFrame(output_dict)
 df.to_parquet(labels_save_file, index=False)
 print(df.shape)
 df.head()
+
+
+# In[9]:
+
+
+# get the stats for how many predicted vs gt labels we have and for each patient and class
+annotation_stats = (
+    df.groupby(["predicted_or_gt"]).size().to_frame(name="count").reset_index()
+)
+
+
+# In[10]:
+
+
+gt_count = annotation_stats[annotation_stats["predicted_or_gt"] == "gt"][
+    "count"
+].values[0]
+predicted_count = annotation_stats[annotation_stats["predicted_or_gt"] == "predicted"][
+    "count"
+].values[0]
+total_count = gt_count + predicted_count
+print(f"GT count: {gt_count}")
+print(f"Predicted count: {predicted_count}")
+print(f"Total count: {total_count}")
+print(f"Proportion of GT labels: {np.round(gt_count / total_count, 3) * 100}%")
