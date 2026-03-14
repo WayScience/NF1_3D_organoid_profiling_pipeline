@@ -27,8 +27,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from .loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 class SAMMed3DFeatureExtractor:

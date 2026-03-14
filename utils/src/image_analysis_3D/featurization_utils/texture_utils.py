@@ -3,8 +3,7 @@ import gc
 import mahotas
 import numpy
 import tqdm
-
-from .loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 def scale_image(image: numpy.ndarray, num_gray_levels=256) -> numpy.ndarray:
@@ -55,8 +54,6 @@ def measure_3D_texture(
     -------
     dict
         A dictionary containing the object ID, texture name, and texture value with keys:
-<<<<<<<< HEAD:utils/src/image_analysis_3D/featurization_utils/texture_utils.py
-
         - object_id
         - texture_name
         - texture_value
@@ -64,24 +61,10 @@ def measure_3D_texture(
         Texture names include: Angular Second Moment, Contrast, Correlation,
         Variance, Inverse Difference Moment, Sum Average, Sum Variance,
         Sum Entropy, Entropy, and related texture measures.
-========
-
-        - object_id
-        - texture_name
-        - texture_value
-
-        Texture names include: Angular Second Moment, Contrast, Correlation,
-        Variance, Inverse Difference Moment, Sum Average, Sum Variance,
-        Sum Entropy, Entropy, and related texture measures.
-<<<<<<< HEAD
-
             - Difference.Variance
             - Difference.Entropy
             - Information.Measure.of.Correlation.1
             - Information.Measure.of.Correlation.2
->>>>>>>> 31532d8 (Docs, tests, and utils refactor (#116)):utils/src/3D_image_analysis/featurization_utils/texture_utils.py
-=======
->>>>>>> 8af3f0c (Refactor featurization (#121))
     """
     label_object = object_loader.label_image
     labels = object_loader.object_ids

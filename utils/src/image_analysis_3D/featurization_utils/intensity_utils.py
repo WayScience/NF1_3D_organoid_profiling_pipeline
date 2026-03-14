@@ -1,8 +1,7 @@
 import numpy
 import scipy.ndimage
 import skimage.segmentation
-
-from .loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 def get_outline(mask: numpy.ndarray) -> numpy.ndarray:

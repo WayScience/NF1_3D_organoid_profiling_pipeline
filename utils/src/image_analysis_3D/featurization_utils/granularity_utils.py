@@ -4,8 +4,7 @@ import numpy
 import scipy.ndimage
 import skimage.morphology
 import tqdm
-
-from .loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 def _fix_scipy_ndimage_result(result) -> numpy.ndarray:

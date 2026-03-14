@@ -2,8 +2,10 @@
 
 import numpy
 import skimage.measure
-
-from .loading_classes import ImageSetLoader, ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import (
+    ImageSetLoader,
+    ObjectLoader,
+)
 
 
 def calculate_surface_area(

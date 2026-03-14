@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import numpy
 import pandas
 import skimage.measure
-
-from .loading_classes import ObjectLoader
+from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 def neighbors_expand_box(

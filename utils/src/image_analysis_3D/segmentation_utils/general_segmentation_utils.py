@@ -6,15 +6,14 @@ import numpy as np
 import pandas as pd
 import skimage
 import tqdm
-from skimage.filters import sobel
-
-from .segmentation_decoupling import (
+from image_analysis_3D.segmentation_utils.segmentation_decoupling import (
     euclidian_2D_distance,
     extract_unique_masks,
     get_combinations_of_indices,
     merge_sets_df,
     reassemble_each_mask,
 )
+from skimage.filters import sobel
 
 
 # ----------------------------------------------------------------------
