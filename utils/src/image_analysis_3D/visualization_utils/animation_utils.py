@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 from napari_animation import Animation
 from napari_animation.easing import Easing
 

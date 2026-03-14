@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from visualization_utils import animation_utils  # noqa: F401
+from image_analysis_3D.visualization_utils import animation_utils  # noqa: F401
 
 
 def test_animation_utils_imports() -> None:

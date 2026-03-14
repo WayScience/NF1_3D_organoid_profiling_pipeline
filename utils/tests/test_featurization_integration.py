@@ -69,7 +69,7 @@ class TestFeaturizationPipeline:
             object_loader=loader,
             radius=5,
             granular_spectrum_length=16,
-            subsample_image_value=0.5,
+            subsample_size=0.5,
         )
 
         # Intensity
@@ -219,7 +219,7 @@ class TestPerformance:
         start_time = time.time()
         result = measure_3D_granularity(
             object_loader=loader,
-            subsample_image_value=0.25,  # Aggressive subsampling
+            subsample_size=0.25,  # Aggressive subsampling
         )
         elapsed = time.time() - start_time
 
@@ -250,10 +250,10 @@ class TestParameterValidation:
 
     def test_granularity_invalid_subsample(self, simple_loader):
         """Test granularity with invalid subsample value."""
-        with pytest.raises(ValueError, match="subsample_image_value"):
+        with pytest.raises(ValueError, match="subsample_size"):
             measure_3D_granularity(
                 object_loader=simple_loader,
-                subsample_image_value=2.0,  # Invalid: > 1.0
+                subsample_size=2.0,  # Invalid: > 1.0
             )
 
     def test_granularity_invalid_radius(self, simple_loader):
@@ -836,7 +836,7 @@ class TestEdgeCasesAdvanced:
         result = measure_3D_granularity(
             object_loader=loader,
             radius=3,
-            subsample_image_value=0.5,
+            subsample_size=0.5,
         )
 
         assert isinstance(result, dict)
