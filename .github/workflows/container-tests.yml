@@ -17,6 +17,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            fontconfig \
+            libfreetype6
+          rm -rf /var/lib/apt/lists/*
+
       - name: Install uv
         run: pip install --no-cache-dir uv
 
