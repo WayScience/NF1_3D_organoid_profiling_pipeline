@@ -207,10 +207,6 @@ class ImageSetLoader:
         ]
         return self.image_names
 
-        self.image_names = [
-            x for x in self.image_set_dict.keys() if x not in self.compartments
-        ]
-
     def get_compartments(self) -> list[str]:
         """Populate compartment names from available keys.
 

@@ -4,19 +4,15 @@
 # In[1]:
 
 
-import argparse
 import os
 import pathlib
-import sys
-import uuid
 
 import duckdb
-import pandas as pd
-from arg_parsing_utils import parse_args
-from cytotable import convert, presets
-from notebook_init_utils import bandicoot_check, init_notebook
-from parsl.config import Config
-from parsl.executors import HighThroughputExecutor
+from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
 
 root_dir, in_notebook = init_notebook()
 
@@ -36,8 +32,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T2"
-    well_fov = "C4-2"
+    patient = "NF0014_T1"
+    well_fov = "C2-2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -52,6 +48,9 @@ destination_sc_parquet_file = pathlib.Path(
 ).resolve()
 destination_organoid_parquet_file = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
+).resolve()
+destination_nucleocentric_parquet_file = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/nucleocentric_profiles_{well_fov}.parquet"
 ).resolve()
 destination_sc_parquet_file.parent.mkdir(parents=True, exist_ok=True)
 dest_datatype = "parquet"
@@ -68,6 +67,7 @@ with duckdb.connect(input_sqlite_file) as con:
     cells_table = con.sql("SELECT * FROM Cell").df()
     cytoplasm_table = con.sql("SELECT * FROM Cytoplasm").df()
     organoid_table = con.sql("SELECT * FROM Organoid").df()
+    nucleocentric_table = con.sql("SELECT * FROM Nucleocentric").df()
 
 
 # In[5]:
@@ -101,20 +101,26 @@ with duckdb.connect() as con:
     """).df()
 
 
+# ## Reorder object IDs
+
 # In[7]:
 
 
-# save the organoid data as parquet
-print(f"Final organoid data shape: {merged_df.shape}")
-organoid_table.to_parquet(destination_organoid_parquet_file, index=False)
-organoid_table.head()
+# replace the object_id with a new unique ID
+organoid_table["object_id"] = [i for i in range(1, organoid_table.shape[0] + 1)]
+merged_df["object_id"] = [i for i in range(1, merged_df.shape[0] + 1)]
+nucleocentric_table["object_id"] = [
+    i for i in range(1, nucleocentric_table.shape[0] + 1)
+]
 
 
 # In[8]:
 
 
-# drop columns that end with _x or _y lowercase
-merged_df = merged_df.loc[:, ~merged_df.columns.str.endswith(("_x", "_y"))]
+# save the organoid data as parquet
+print(f"Final organoid data shape: {organoid_table.shape}")
+organoid_table.to_parquet(destination_organoid_parquet_file, index=False)
+organoid_table.head()
 
 
 # In[9]:
@@ -124,3 +130,12 @@ print(f"Final merged single cell dataframe shape: {merged_df.shape}")
 # save the sc data as parquet
 merged_df.to_parquet(destination_sc_parquet_file, index=False)
 merged_df.head()
+
+
+# In[10]:
+
+
+print(f"Final nucleocentric dataframe shape: {nucleocentric_table.shape}")
+# save the nucleocentric data as parquet
+nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
+nucleocentric_table.head()
