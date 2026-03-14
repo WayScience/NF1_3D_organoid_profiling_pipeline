@@ -43,7 +43,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ---
 
-## 2. Feature Name Format Specification
+## 2a. Feature Name Format Specification
 
 ### 2.1 General Structure
 
@@ -143,6 +143,46 @@ Cell_Mito_Granularity_Spectrum-10
 Nuclei_DNA_SAMMed3D_CLSFeature-512
 ```
 ---
+
+## 2b. Metadata Naming Convention
+
+
+### 2.1 General Structure
+
+Metadata are non morphology feature values that provide contextual information about the sample, experiment, or imaging conditions, or objects in the dataset.
+Metadata are used to capture information that may be relevant for analysis, interpretation, or downstream processing but do not represent morphological measurements of the objects themselves.
+
+Metadata names MUST conform to the following structure:
+
+```
+Metadata_<FeatureCategory>_<FeatureName>
+```
+
+Where each component is separated by a single underscore character (`_`).
+The `Metadata_` prefix is used to clearly distinguish metadata features from morphological features in the dataset.
+Each category metadata name MUST be in PascalCase and MUST NOT contain whitespace or special characters. The `<FeatureName>` component MUST be descriptive and unambiguous, following the same character restrictions as morphological feature names.
+
+### 2.2 Metadata Category Definitions
+The `<FeatureCategory>` component MUST identify the type (Category) of metadata and MUST be one of the following enumerated values:
+- `Storage` - Metadata related to data storage and file management.
+- `Biology` - Metadata related to biological characteristics of the sample.
+- `Experiment` - Metadata related to experimental conditions and treatments.
+- `Imaging` - Metadata related to imaging parameters and conditions.
+- `Microscopy` - Metadata related to microscopy settings and configurations.
+- `Location` - Metadata related to spatial information and coordinates.
+- `Other` - This is a place holder for any metadata that might be used in the future that does not fit into the above categories. New categories can be added as needed, but the `Other` category provides a catch-all for any metadata that does not fit into the predefined categories.
+
+### 2.3 Complete Metadata Name Examples
+Valid metadata names conforming to this specification:
+
+```
+Metadata_Storage_FilePath
+Metadata_Biology_PatientID
+Metadata_Experiment_Treatment
+Metadata_Imaging_ExposureTime
+Metadata_Microscopy_Magnification
+Metadata_Location_Cell_CentroidX
+```
 
 ## 3. References
 

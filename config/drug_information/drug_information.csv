@@ -1,4 +1,4 @@
-treatment,target,class,therapeutic_categories
+Treatment,Target,Class,TherapeuticCategories
 ARV-825,BRD4 inhibitor,PROTAC,PROTAC
 Binimetinib,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
 Cabozantinib,receptor tyrosine kinase inhibitor,Small Molecule,Kinase Inhibitor
