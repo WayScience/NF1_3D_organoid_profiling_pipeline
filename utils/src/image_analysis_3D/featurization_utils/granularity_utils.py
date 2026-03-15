@@ -123,7 +123,7 @@ def measure_3D_granularity(
     1. Subsample the image uniformly (same factor for Z, Y, X).
     2. Further subsample for background tophat removal.
     3. Iteratively erode with ball(1) and reconstruct, measuring
-       signal lost at each scale as image-level and per-object values.
+    signal lost at each scale as image-level and per-object values.
 
     Parameters
     ----------

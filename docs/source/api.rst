@@ -111,6 +111,7 @@ Granularity
 
 .. automodule:: image_analysis_3D.featurization_utils.granularity_utils
    :members:
+   :private-members:
 
 Intensity
 ---------
