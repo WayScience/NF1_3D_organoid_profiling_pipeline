@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "pytest-xdist", "black", "ruff", "pre-commit"]
+dev = ["pytest", "pytest-cov", "pytest-xdist", "black", "ruff", "pre-commit", "rich"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

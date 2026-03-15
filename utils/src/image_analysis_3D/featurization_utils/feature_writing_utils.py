@@ -46,7 +46,7 @@ def format_morphology_feature_name(
     """
     Format a morphology feature name in a consistent way across all morphology features.
     This format follows specification for the following:
-    https://https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/docs/RFC-2119-Feature-Naming-Convention.md
+    https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/docs/RFC-2119-Feature-Naming-Convention.md
 
     Parameters
     ----------
