@@ -1,7 +1,5 @@
 #!/bin/bash
 
-conda activate GFF_segmentation
-
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
@@ -35,10 +33,12 @@ while IFS= read -r line; do
     echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
 
     echo "Beginning segmentation for $patient - $well_fov"
+
     # shellcheck disable=SC1091
     source child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
-done < "$txt_file"
+# done < "$txt_file"
+done < <(tac "$txt_file")
 
 
 

@@ -37,12 +37,11 @@ dependencies = [
 ]
 
 [tool.uv]
-required-environments = [
+environments = [
   "sys_platform == 'linux' and platform_machine == 'x86_64'"
 ]
 index-url = "https://download.pytorch.org/whl/cu118"
 extra-index-url = ["https://pypi.org/simple"]
-
 [tool.pycln]
 all = true
 
