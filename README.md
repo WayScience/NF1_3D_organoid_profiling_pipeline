@@ -14,12 +14,12 @@ This repository contains the code and documentation for a comprehensive analysis
 ## Raw channels
 | 405 | 488 | 555 | 640 |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_405_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_488_animation.gif"  alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_555_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_C4-2_640_animation.gif" alt="GIF 4"> |
+| <img src="./2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif"  alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif" alt="GIF 4"> |
 
 ## Organoid, Nuclei, Cell, and Cytoplasm Segmentations
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/media_for_readme/C4-2_organoid_masks (labels)_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_nuclei_masks (labels)_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cell_masks (labels)_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_cytoplasm_masks (labels)_animation.gif" alt="GIF 4">
+| <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid mask_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei mask_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell mask_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm mask_animation.gif" alt="GIF 4">
 ---
 
 We present a full workflow to profile 3-dimensional images of organoids.
