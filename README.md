@@ -19,7 +19,7 @@ This repository contains the code and documentation for a comprehensive analysis
 ## Organoid, Nuclei, Cell, and Cytoplasm Segmentations
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
-| ![Organoid segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid%20mask_animation.gif) | ![Nuclei segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei%20mask_animation.gif) | ![Cell segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell%20mask_animation.gif) | ![Cytoplasm segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm%20mask_animation.gif) |
+| ![Organoid segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid\ mask_animation.gif) | ![Nuclei segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei\ mask_animation.gif) | ![Cell segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell\ mask_animation.gif) | ![Cytoplasm segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm\ mask_animation.gif) |
 ---
 
 We present a full workflow to profile 3-dimensional images of organoids.
