@@ -14,12 +14,13 @@ This repository contains the code and documentation for a comprehensive analysis
 ## Raw channels
 | 405 | 488 | 555 | 640 |
 |:-:|:-:|:-:|:-:|
-| ![DNA channel animation](./2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif) | ![ER channel animation](./2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif) | ![AGP channel animation](./2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif) | ![Mitochondria channel animation](./2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif) |
+| <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif?raw=1" alt="DNA channel animation" width="220" height="170"> | <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif?raw=1" alt="ER channel animation" width="220" height="170"> | <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif?raw=1" alt="AGP channel animation" width="220" height="170"> | <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif?raw=1" alt="Mitochondria channel animation" width="220" height="170"> |
 
 ## Organoid, Nuclei, Cell, and Cytoplasm Segmentations
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
-| ![Organoid segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid\ mask_animation.gif) | ![Nuclei segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei\ mask_animation.gif) | ![Cell segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell\ mask_animation.gif) | ![Cytoplasm segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm\ mask_animation.gif) |
+| <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif?raw=1" alt="Organoid segmentation animation" width="220" height="170"> | <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif?raw=1" alt="Nuclei segmentation animation" width="220" height="170"> | <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif?raw=1" alt="Cell segmentation animation" width="220" height="170"> | <img src="https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/update_documentation/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif?raw=1" alt="Cytoplasm segmentation animation" width="220" height="170"> |
+
 ---
 
 We present a full workflow to profile 3-dimensional images of organoids.
@@ -73,11 +74,11 @@ flowchart TD
 
    N --> O[Stage 4: Image-based profiling]
 
-   style B fill:#90EE90,stroke:#000,stroke-width:2px
-   style E fill:#90EE90,stroke:#000,stroke-width:2px
-   style H fill:#90EE90,stroke:#000,stroke-width:2px
-   style L fill:#90EE90,stroke:#000,stroke-width:2px
-   style O fill:#90EE90,stroke:#000,stroke-width:2px
+   style B fill:#40BA40,stroke:#000,stroke-width:2px
+   style E fill:#40BA40,stroke:#000,stroke-width:2px
+   style H fill:#40BA40,stroke:#000,stroke-width:2px
+   style L fill:#40BA40,stroke:#000,stroke-width:2px
+   style O fill:#40BA40,stroke:#000,stroke-width:2px
 ```
 
 # Pipeline architecture
