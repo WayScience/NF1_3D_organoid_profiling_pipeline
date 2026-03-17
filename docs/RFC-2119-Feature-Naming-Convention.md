@@ -169,7 +169,10 @@ The `<FeatureCategory>` component MUST identify the type (Category) of metadata 
 - `Experiment` - Metadata related to experimental conditions and treatments.
 - `Imaging` - Metadata related to imaging parameters and conditions.
 - `Microscopy` - Metadata related to microscopy settings and configurations.
+- `Object` - Metadata related to specific objects or regions of interest in the dataset.
+- `Neighbors` - Metadata related to spatial relationships and neighbor counts of objects in the dataset.
 - `Location` - Metadata related to spatial information and coordinates.
+
 - `Other` - This is a place holder for any metadata that might be used in the future that does not fit into the above categories. New categories can be added as needed, but the `Other` category provides a catch-all for any metadata that does not fit into the predefined categories.
 
 ### 2.3 Complete Metadata Name Examples
@@ -181,6 +184,8 @@ Metadata_Biology_PatientID
 Metadata_Experiment_Treatment
 Metadata_Imaging_ExposureTime
 Metadata_Microscopy_Magnification
+Metadata_Object_ObjectID
+Metadata_Neighbors_AdjacentCount
 Metadata_Location_Cell_CentroidX
 ```
 

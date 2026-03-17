@@ -14,12 +14,12 @@ This repository contains the code and documentation for a comprehensive analysis
 ## Raw channels
 | 405 | 488 | 555 | 640 |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif"  alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif" alt="GIF 4"> |
+| ![DNA channel animation](./2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif) | ![ER channel animation](./2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif) | ![AGP channel animation](./2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif) | ![Mitochondria channel animation](./2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif) |
 
 ## Organoid, Nuclei, Cell, and Cytoplasm Segmentations
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
-| <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid mask_animation.gif" alt="GIF 1"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei mask_animation.gif" alt="GIF 2"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell mask_animation.gif" alt="GIF 3"> | <img src="./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm mask_animation.gif" alt="GIF 4">
+| ![Organoid segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid%20mask_animation.gif) | ![Nuclei segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei%20mask_animation.gif) | ![Cell segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell%20mask_animation.gif) | ![Cytoplasm segmentation animation](./2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm%20mask_animation.gif) |
 ---
 
 We present a full workflow to profile 3-dimensional images of organoids.
