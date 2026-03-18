@@ -194,7 +194,7 @@ jupyter nbconvert --to notebook --execute notebooks/*.ipynb
 
 **Directory:** `2.segment_images/`
 
-**Purpose:** Generate 3D masks for nuclei, cells, organoids, and cytoplasm compartments.
+**Purpose:** Generate 3D masks for nuclei, cells, cytoplasm, and whole organoids. We refer to each mask category as a "compartment".
 
 ### Image segmentation Steps
 
