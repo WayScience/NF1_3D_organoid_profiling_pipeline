@@ -362,7 +362,7 @@ graph TD
 6. **Consensus Profiles**
    - Merge sc and organoid aggregations
    - Create hierarchical profile structure
-   - Export final consensus matrices
+   - Export final consensus profiles
 7. **QC filtering**
    - Apply image QC flags from Stage 1
    - Remove outlier objects (z-score > 3)
