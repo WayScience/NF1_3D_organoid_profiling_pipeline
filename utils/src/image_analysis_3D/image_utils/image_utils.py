@@ -320,7 +320,7 @@ def square_off_xy_crop_bbox(
     """
     Adjust the bbox to be square in the XY plane.
 
-    The new bbox is computed from the current X/Y dimensions.
+    The function computs the new bbox from the current X/Y dimensions.
 
     Parameters
     ----------
