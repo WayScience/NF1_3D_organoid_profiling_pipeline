@@ -367,7 +367,7 @@ graph TD
    - Apply image QC flags from Stage 1
    - Remove outlier objects (z-score > 3)
    - Filter low-quality wells
-8. **Patient Combination**
+8. **Create all analysis ready output files**
    - Merge profiles across all patients
    - Apply global feature selection
    - Generate all-patient consensus profiles
