@@ -479,7 +479,7 @@ The pipeline processes five fluorescent imaging channels:
 - Bit depth: 16-bit
 - Dynamic range: 0-65535
 
-# Computational requirements
+# Computational specifications
 
 ## Hardware
 
