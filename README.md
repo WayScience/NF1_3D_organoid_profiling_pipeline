@@ -179,7 +179,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 
 **Quality Metrics:**
 - **Blur:** Laplacian variance, focus score
-- **Saturation:** Percentage of clipped pixels
+- **Saturation:** Percentage of pixels clipped at the maximum value
 - **Signal-to-noise:** Mean signal / background standard deviation
 - **Illumination:** Uniformity across FOV
 
