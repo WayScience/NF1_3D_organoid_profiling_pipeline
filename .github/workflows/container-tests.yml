@@ -16,7 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+        # Required for container tests (missing from base image).
+        # install each dependency
       - name: Install system dependencies
         run: |
           apt-get update
@@ -32,5 +33,6 @@ jobs:
         run: pip install --no-cache-dir uv
 
       - name: Run call_test.sh
+      # call the testing script from the utils directory since it relies on relative paths to the test data and other scripts in that directory
         working-directory: utils
         run: bash call_test.sh

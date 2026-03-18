@@ -16,7 +16,7 @@ The model uses a **Bag-of-Channels (BoC)** strategy:
 * Each fluorescence channel is treated as an independent grayscale image
 * The single channel is replicated into 3 copies to satisfy the ViT's RGB input requirement
 * The ViT encoder processes each channel independently
-* The **CLS token** output (384-dimensional) is extracted as the feature vector
+* The **CLS token** output (384-dimensional) is extracted as the feature vector per channel per object
 
 ```{mermaid}
 graph TD
@@ -34,9 +34,8 @@ As CHAMMI recommends, before passing images to the model, we apply three transfo
    channel are replaced with uniform random noise sampled from `[200, 255]`.
    This prevents the model from learning artefacts caused by pixel saturation.
 
-2. **PerImageNormalize** – Each image is normalised independently using
-   `InstanceNorm2d`. This accounts for differences in staining intensity across
-   wells and batches.
+2. **PerImageNormalize** – Each image shape and format is normalized independently using
+   `InstanceNorm2d`.
 
 3. **Resize** – The image is resized to 224 × 224 pixels to match the ViT
    input resolution.
@@ -45,7 +44,7 @@ As CHAMMI recommends, before passing images to the model, we apply three transfo
 
 | Feature | Description |
 |---------|-------------|
-| CHAMMI.1 – CHAMMI.384 | CLS-token embedding dimensions from the MorphEm ViT encoder |
+| CHAMMI1 – CHAMMI384 | CLS-token embedding dimensions from the MorphEm ViT encoder |
 
 Currently **384 features** are extracted per channel per object.
 
@@ -59,5 +58,5 @@ CHAMMI-75 features are useful for:
 
 ## References
 
-- https://arxiv.org/abs/2512.20833
-- Hugging Face model card: <https://huggingface.co/CaicedoLab/MorphEm>
+* <https://arxiv.org/abs/2512.20833>
+* Hugging Face model card: <https://huggingface.co/CaicedoLab/MorphEm>

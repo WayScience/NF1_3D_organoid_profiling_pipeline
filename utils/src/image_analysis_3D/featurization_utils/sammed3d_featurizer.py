@@ -44,9 +44,9 @@ class SAMMed3DFeatureExtractor:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        use_medim: bool = True,
-        image_size: int = 128,
+        device: Optional[str] = "cuda" if torch.cuda.is_available() else "cpu",
+        use_medim: Optional[bool] = True,
+        image_size: Optional[int] = 128,
     ):
         """
         Initialize the SAM-Med3D feature extractor.

@@ -73,7 +73,7 @@ class SaturationNoiseInjector(nn.Module):
         -------
         torch.Tensor
             Tensor with the same shape as ``x`` where saturated pixels in
-            channel 0 have been replaced by uniform random noise.
+            first channel have been replaced by uniform random noise.
         """
         channel = x[0].clone()
         noise = torch.empty_like(channel).uniform_(self.low, self.high)
@@ -136,7 +136,7 @@ def featurize_2D_image_w_chammi75(
 
     Each channel of the input image is processed independently (Bag-of-Channels
     strategy). The image tensor is resized to 224×224, noise-injected at
-    saturation, and per-image normalised before being passed through the
+    saturation, and per-image normalized before being passed through the
     Vision Transformer encoder. The ``x_norm_clstoken`` output is collected
     per channel.
 

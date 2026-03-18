@@ -1,0 +1,86 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it and the referenced methods/software below."
+type: software
+title: "NF1 3D organoid profiling pipeline"
+version: "0.1.0"
+license: "MIT"
+repository-code: "https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline"
+url: "https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline"
+abstract: "An end-to-end pipeline for NF1 3D organoid image preprocessing, segmentation, feature extraction, and profile generation."
+authors:
+	- name: "Way Science Lab"
+
+references:
+	- type: software
+		title: "NF1 3D organoid profiling pipeline"
+		repository-code: "https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline"
+		url: "https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline"
+
+	- type: software
+		title: "NF1 2D organoid profiling pipeline"
+		repository-code: "https://github.com/WayScience/NF1_2D_organoid_profiling_pipeline"
+		url: "https://github.com/WayScience/NF1_2D_organoid_profiling_pipeline"
+
+	- type: software
+		title: "NF1 organoid profile analysis"
+		repository-code: "https://github.com/WayScience/NF1_organoid_profile_analysis"
+		url: "https://github.com/WayScience/NF1_organoid_profile_analysis"
+
+	- type: software
+		title: "nViz"
+		repository-code: "https://github.com/WayScience/nViz"
+		url: "https://github.com/WayScience/nViz"
+
+	- type: software
+		title: "MorphEm"
+		url: "https://huggingface.co/CaicedoLab/MorphEm"
+
+	- type: article
+		title: "CHAMMI benchmark preprint"
+		url: "https://arxiv.org/abs/2512.20833"
+
+	- type: article
+		title: "SAM-Med3D"
+		doi: "10.1109/tnnls.2025.3586694"
+		url: "https://doi.org/10.1109/tnnls.2025.3586694"
+
+	- type: software
+		title: "scikit-image"
+		url: "https://scikit-image.org/"
+
+	- type: software
+		title: "SciPy"
+		url: "https://scipy.org/"
+
+	- type: software
+		title: "mahotas"
+		url: "https://mahotas.readthedocs.io/en/latest"
+
+	- type: software
+		title: "NumPy"
+		url: "https://numpy.org/"
+
+	- type: software
+		title: "CuPy"
+		url: "https://docs.cupy.dev/en/stable"
+
+	- type: software
+		title: "cuCIM"
+		url: "https://docs.rapids.ai/api/cucim/stable/"
+
+	- type: webpage
+		title: "Read the Docs project page"
+		url: "https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest"
+
+	- type: standard
+		title: "RFC 2119: Key words for use in RFCs to Indicate Requirement Levels"
+		url: "https://www.ietf.org/rfc/rfc2119.txt"
+
+	- type: standard
+		title: "Apache Parquet Format Specification"
+		url: "https://parquet.apache.org/docs/file-format/"
+
+	- type: webpage
+		title: "Nyquist sampling reference"
+		url: "https://svi.nl/NyquistRate"
+

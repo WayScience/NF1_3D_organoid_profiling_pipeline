@@ -5,6 +5,7 @@ Annotation persistence: read/write parquet files.
 import pyarrow as pa
 import pyarrow.parquet as pq
 import state
+
 from config import LABELS
 
 
@@ -19,7 +20,7 @@ def load_existing_annotations() -> None:
         table = pq.read_table(state.PARQUET_FILE)
         df = table.to_pandas()
         for _, row in df.iterrows():
-            # Labels may be stored as int in older parquet files; normalise to str.
+            # Labels may be stored as int in older parquet files; normalize to str.
             label = str(row["label"])
             # Skip invalid labels: 0 = unlabeled, only load valid labels (1-7)
             if label not in LABELS.values():
@@ -67,7 +68,7 @@ def save_annotation(filename: str, label: str) -> None:
         }
     )
 
-    # Normalise to str so the cache is always string-keyed by label.
+    # normalize to str so the cache is always string-keyed by label.
     label = str(label)
 
     # Always update the in-memory cache so counts are correct even if the

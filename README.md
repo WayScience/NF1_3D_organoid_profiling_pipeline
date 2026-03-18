@@ -1,8 +1,7 @@
----
-title: Workflow: 3D organoid image-based profiling
----
 [![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
-# Overview
+
+# Neurofibromatosis Type 1 (NF1) 3D organoid image-based profiling pipeline
+
 Patients living with Neurofibromatosis Type 1 (NF1) often develop neurofibromas (NFs), which are complex benign tumors.
 However, there are only two FDA-approved therapies for NF1-associated inoperable plexiform neurofibromas (PNFs): Mirdametinib and Selumetinib.
 Thus, we **urgently need more therapeutic options** for neurofibromas.
@@ -11,12 +10,15 @@ To address this, we have developed a 3D patient-derived tumor organoid model of 
 We developed a modified 3D Cell Painting protocol to generate high-content imaging data from these organoids.
 This repository contains the code and documentation for a comprehensive analysis pipeline to process and analyze these 3D organoid models of NF1 NFs.
 
-## Fluorescence channels
+This pipeline was developed specifically for the NF1 3D organoid dataset, but the modular design allows for adaptation to other 3D microscopy datasets.
+
+## Raw channels
 | 405 | 488 | 555 | 640 |
 |:-:|:-:|:-:|:-:|
 | <img src="2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif" alt="DNA channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif" alt="ER channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif" alt="Golgi channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif" alt="Mito channel animation" width="150"/> |
 
 ## Organoid, Nuclei, Cell, and Cytoplasm Segmentations
+
 | Organoid | Nuclei | Cell | Cytoplasm |
 |:-:|:-:|:-:|:-:|
 | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif" alt="Organoid segmentation animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif" alt="Nuclei segmentation animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif" alt="Cell segmentation animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif" alt="Cytoplasm segmentation animation" width="150"/> |
@@ -26,7 +28,7 @@ This repository contains the code and documentation for a comprehensive analysis
 We present a full workflow to profile 3-dimensional images of organoids.
 Our end-to-end system processes raw 3D microscopy microscopy data through illumination correction, segmentation, feature extraction, quality control, and image-based profiling.
 
-```{mermaid}
+```mermaid
 flowchart TD
    A[Raw Microscopy Images] --> B[Stage 0: Data preprocessing]
 
@@ -100,10 +102,12 @@ The pipeline follows a hierarchical processing structure:
 **Purpose:** Transform raw microscopy data into standardized 3D z-stack images ready for analysis.
 
 **Inputs:**
+
 - Raw 2D TIFF images from microscope (5 channels × N z-slices × M wells)
 - Metadata files (experiment design, plate layouts)
 
 **Outputs:**
+
 - 3D z-stack TIFF files organized by patient/well/FOV (optionally deconvolved)
 - File structure: `data/{patient}/zstack_images/{well_fov}/{channel}.tif`
 
@@ -129,6 +133,7 @@ The pipeline follows a hierarchical processing structure:
    - We import deconvolved images, verify output quality, and update file paths and metadata for downstream processing
 
 **Key Parameters:**
+
 - Objective: 60x/1.35 NA oil immersion
 - Oil RI: 1.518
 - Voxel size: ~0.1 μm (XY) × 1 μm (Z)
@@ -152,6 +157,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 - Z-stack images from Stage 0 (deconvolution optional)
 
 **Outputs:**
+
 - QC flags file: `data/{patient}/qc_flags.csv`
 - QC reports: HTML/PDF summaries with plots
 - Flagged well list for exclusion from downstream analysis
@@ -178,6 +184,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
    - Produce pass/fail flags for each well FOV.
 
 **Quality Metrics:**
+
 - **Blur:** Laplacian variance, focus score
 - **Saturation:** Percentage of pixels clipped at the maximum value
 - **Signal-to-noise:** Mean signal / background standard deviation
@@ -250,10 +257,12 @@ For more details on feature types and extraction methods, refer to `extraction_m
 **Purpose:** Merge, normalize, and aggregate features across wells and patients ready for downstream analyses.
 
 **Inputs:**
+
 - Feature CSV files from Stage 3
 - Metadata: plate maps, treatment info, QC flags, etc.
 
 **Outputs:**
+
 - `data/{patient}/image_based_profiles/sc.parquet` - Single-cell profiles
 - `data/{patient}/image_based_profiles/organoid.parquet` - Organoid profiles
 - `data/all_patient_profiles/sc_consensus.parquet` - Cross-patient SC
@@ -262,6 +271,7 @@ For more details on feature types and extraction methods, refer to `extraction_m
 - `data/all_patient_profiles/patient_aggregated.parquet` - Patient-level
 
 **Output Levels:**
+
 - **Single-cell:** One row per nucleus/cell
 - **Organoid:** One row per organoid (aggregated from cells)
 - **Well:** One row per well FOV (aggregated from organoids)
@@ -270,6 +280,7 @@ For more details on feature types and extraction methods, refer to `extraction_m
 ### Image-based profiling workflow
 
 ## File and information flow diagram
+
 ```mermaid
 graph TD
     A1[CellPainting Images and Segmentations]
@@ -362,6 +373,7 @@ graph TD
    - Generate all-patient consensus profiles
 
 **Feature Selection Parameters:**
+
 - Correlation threshold: 0.9
 - Variance threshold: 0.01
 - NA cutoff: 5%
@@ -440,20 +452,24 @@ NF1_3D_organoid_profiling_pipeline/
 ## File naming conventions
 
 **Z-stack images:**
+
 - Format: `{channel}.tif` where channel ∈ {405, 488, 555, 568, 640}
 - Dimensions: (Z, Y, X)
 - Data type: uint16
 
 **Segmentation masks:**
+
 - Format: `{compartment}_mask.tif`
 - Compartments: {organoid, nuclei, cell, cytoplasm}
 - Label encoding: Integer object IDs (0=background, 1-N=objects)
 
 **Feature files:**
+
 - Format: `{feature}_{compartment}_{channel}_{processor}_features.parquet`
 - Example: `Intensity_Nuclei_405_GPU_features.parquet`
 
 **Profile files:**
+
 - Format: Parquet (compressed columnar storage)
 - Naming: `{level}_{aggregation}.parquet`
 - Example: `sc_consensus.parquet`
@@ -471,6 +487,7 @@ The pipeline processes five fluorescent imaging channels:
 | 640  | MitoTracker Deep Red | 644    | 665    | 640      | Mitochondria   | Mitochondria      |
 
 **Imaging parameters:**
+
 - Objective: 60x/1.35 NA oil immersion
 - Oil RI: 1.518
 - Voxel size: 0.108 μm (XY) × 1 μm (Z)
@@ -482,55 +499,67 @@ The pipeline processes five fluorescent imaging channels:
 ## Hardware
 
 **Local**
+
 - CPU: 24 cores @ 2.5 GHz
 - RAM: 128 GB
 - Storage: 20 TB free space
 - GPU: NVIDIA GeForce 3090Ti with 24 GB VRAM for acceleration
 
 **HPC (SLURM):**
+
 - Nodes: 100s of CPU compute nodes
 - Partition: amilan (CPU), aa100 (GPU)
 - QOS: normal (24h), long (7 days)
 - Max concurrent jobs: 990 per user
 
 ## Software environment
+
 ### Environment Setup
+
 We recommend using `uv`, `mamba` or `conda` to create the required environments.
 We have written a `makefile` to help with conda environment creation and management.
+
 ```bash
 cd environments || exit
 make --always-make
 cd .. || exit
 ```
+
 For `uv` users, you can also create the environments with:
+
 ```bash
 source uv_setup.sh
 ```
 
 ### Python utilities (monorepo layout)
+
 The utilities under `utils/src/` are now structured as installable packages. For local development, install them in editable mode:
+
 ```bash
 cd utils
 pip install -e .
 ```
+
 Note that the utilites should be imported into compute environments.
 See the `environments` module for installing the utils.
 There is a Makefile int the `environments` module that installs the environemnts with utils.
 
 ### System Requirements
+
 - Linux-based OS
 - HPC/SLURM environment recommended for large-scale runs
 - At least multiple TBs of storage for raw and processed images
 - Sufficient RAM and CPU/GPU resources depending on dataset size
-    - We recommend at least 128GB RAM and multiple CPU cores for image processing steps
-    - Though we have been able to get RAM usage under 8GB per well_fov by distubuting the compute.
-        - Please note that this RAM usage is highly dependent on the number of z-slices, image dimensions, and number of channels.
-        - Here we generally have 30-50 z-slices, ~1500x1500 pixel images, and 4 channels. We rarly exceed 100 z-slices. Additionally scaling in z-slices will require more compute time and RAM.
+  - We recommend at least 128GB RAM and multiple CPU cores for image processing steps
+  - Though we have been able to get RAM usage under 8GB per well_fov by distubuting the compute.
+    - Please note that this RAM usage is highly dependent on the number of z-slices, image dimensions, and number of channels.
+    - Here we generally have 30-50 z-slices, ~1500x1500 pixel images, and 4 channels. We rarly exceed 100 z-slices. Additionally scaling in z-slices will require more compute time and RAM.
 - Optional: GPU resources for segmentation and deep learning based feature extraction
-    - We have found that a NVIDIA 3090 TI (24GB VRAM) is more than enough for our segmentation tasks.
-    - It is important to note that part of the advantage of using 2.5D segmentation is that it greatly reduces the GPU VRAM requirements compared to full 3D segmentation - especially as z-slice count scales up.
+  - We have found that a NVIDIA 3090 TI (24GB VRAM) is more than enough for our segmentation tasks.
+  - It is important to note that part of the advantage of using 2.5D segmentation is that it greatly reduces the GPU VRAM requirements compared to full 3D segmentation - especially as z-slice count scales up.
 
 **Storage requirements:**
+
 - Raw images: 250-500 MB/well FOV
 - Z-stacks: 250-500 MB/well FOV
 - Masks: 250-500 MB/well FOV
@@ -551,13 +580,15 @@ Per patient well FOVs can range from 420 to 1500 depending on the experiment des
 | 1500      | ~1.5-3.0     |
 
 ### Data Availability
+
 The raw and processed imaging data are not quite publicly available at this time.
 We will have data available at some point on the NF Data Portal via synapse.
 
 ## Associated repositories
+
 - [NF1 3D organoid profiling pipeline](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline) - This repository (code and documentation for the pipeline)
 - [NF1 2D organoid profiling pipeline](https://github.com/WayScience/NF1_2D_organoid_profiling_pipeline) - Pipeline for 2D organoid profiling
 - [NF1 organoid profile analysis](https://github.com/WayScience/NF1_organoid_profile_analysis) - Downstream analysis of the generated profiles
 
 This landing page is shared with the 3D profiling pipeline repo and documentation.
-In case you are reading this on the repo landing page, you can find the documentation for the 3D profiling pipeline at: https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest
+In case you are reading this on the repo landing page, you can find the documentation for the 3D profiling pipeline at: <https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest>

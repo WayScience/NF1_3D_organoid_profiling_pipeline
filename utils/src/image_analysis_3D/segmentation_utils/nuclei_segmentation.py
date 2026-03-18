@@ -390,38 +390,40 @@ def stack_3d_segmentation(relabeled_masks: list[np.ndarray]) -> np.ndarray:
     return np.stack(relabeled_masks, axis=0)
 
 
-def remove_single_slice_objects(segmentation_3d: np.ndarray) -> np.ndarray:
+def remove_single_slice_objects(segmentation_mask: np.ndarray) -> np.ndarray:
     """
     Remove objects that only appear in a single z-slice.
 
     Parameters
     ----------
-    segmentation_3d : numpy.ndarray
-        3D segmentation array.
+    segmentation_mask : numpy.ndarray
+        3D segmentation mask array.
 
     Returns
     -------
     numpy.ndarray
         Cleaned 3D segmentation with single-slice objects removed.
     """
-    cleaned = segmentation_3d.copy()
+    cleaned = segmentation_mask.copy()
 
     # Find all unique labels
-    unique_labels = np.unique(segmentation_3d)
+    unique_labels = np.unique(segmentation_mask)
     unique_labels = unique_labels[unique_labels > 0]
 
     # For each label, count how many slices it appears in
     for label in unique_labels:
-        slices_with_label = np.where(np.any(segmentation_3d == label, axis=(1, 2)))[0]
+        slices_with_label = np.where(np.any(segmentation_mask == label, axis=(1, 2)))[0]
 
         # If label only appears in 1 slice, remove it
         if len(slices_with_label) == 1:
-            cleaned[segmentation_3d == label] = 0
+            cleaned[segmentation_mask == label] = 0
 
     return cleaned
 
 
-def fill_object_gaps(segmentation_3d: np.ndarray, max_gap_size: int = 2) -> np.ndarray:
+def fill_object_gaps(
+    segmentation_mask: np.ndarray, max_gap_size: int = 2
+) -> np.ndarray:
     """
     Fill gaps in object trajectories (missing slices between appearances).
 
@@ -430,8 +432,8 @@ def fill_object_gaps(segmentation_3d: np.ndarray, max_gap_size: int = 2) -> np.n
 
     Parameters
     ----------
-    segmentation_3d : numpy.ndarray
-        3D segmentation array.
+    segmentation_mask : numpy.ndarray
+        3D segmentation mask array.
     max_gap_size : int, optional
         Maximum number of consecutive missing slices to fill
         (default: 2, meaning fill gaps of 1-2 slices).
@@ -441,15 +443,15 @@ def fill_object_gaps(segmentation_3d: np.ndarray, max_gap_size: int = 2) -> np.n
     numpy.ndarray
         Filled 3D segmentation.
     """
-    filled = segmentation_3d.copy()
+    filled = segmentation_mask.copy()
 
     # Find all unique labels
-    unique_labels = np.unique(segmentation_3d)
+    unique_labels = np.unique(segmentation_mask)
     unique_labels = unique_labels[unique_labels > 0]
 
     for label in unique_labels:
         # Find all slices where this label appears
-        slices_with_label = np.where(np.any(segmentation_3d == label, axis=(1, 2)))[0]
+        slices_with_label = np.where(np.any(segmentation_mask == label, axis=(1, 2)))[0]
 
         if len(slices_with_label) < 2:
             continue
@@ -463,8 +465,8 @@ def fill_object_gaps(segmentation_3d: np.ndarray, max_gap_size: int = 2) -> np.n
             # If gap is small enough, fill it by interpolating from neighbors
             if 0 < gap_size <= max_gap_size:
                 # Get the mask from current and next slice
-                curr_mask = segmentation_3d[curr_slice] == label
-                next_mask = segmentation_3d[next_slice] == label
+                curr_mask = segmentation_mask[curr_slice] == label
+                next_mask = segmentation_mask[next_slice] == label
 
                 # Interpolate: use union of both masks for gap slices
                 combined_mask = curr_mask | next_mask
