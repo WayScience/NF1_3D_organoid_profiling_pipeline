@@ -39,7 +39,9 @@ def get_chammi75_model(device: str | None) -> torch.nn.Module:
 # Noise Injector transformation
 class SaturationNoiseInjector(nn.Module):
     """Inject uniform random noise into saturated pixels of an image tensor.
-
+    There are three channels to the image where image 2 and 3 are duplicates
+    of the first channel.
+    We have three channels to fit the ViT architecture which expects three-channel input.
     This transformation replaces saturated pixels (value == 255) in the first
     channel of an image with uniform random noise sampled from
     ``[low, high]``. It is applied as a pre-processing step before

@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import state
-from config import BATCH_SIZE, THUMBNAIL_SIZE
 from PIL import Image
+
+from config import BATCH_SIZE, THUMBNAIL_SIZE
 
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
 

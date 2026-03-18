@@ -1,16 +1,16 @@
-# Feature Naming Convention and Schema Specification
+# Feature naming convention and schema specification
 
-**Status:** Experimental
+**Status:** experimental
 **Version:** 0.0.1
-**Date:** February 13, 2026
-**Authors:** NF1 3D Organoid Profiling Pipeline Development Team
+**Date:** february 13, 2026
+**Authors:** NF1 3D organoid profiling pipeline development team
 **Keywords:** feature naming, schema, morphology, image analysis, 3D organoids
 
 ---
 
 ## Abstract
 
-This document specifies the naming convention and schema for morphological features extracted from 3D organoid imaging data in the NF1 3D Organoid Profiling Pipeline. The specification defines requirements for feature identifiers, data structures, and formatting rules to ensure consistency, interoperability, and maintainability across the analysis pipeline.
+This document specifies the naming convention and schema for morphological features extracted from 3D organoid imaging data in the NF1 3D organoid profiling pipeline. the specification defines requirements for feature identifiers, data structures, and formatting rules to ensure consistency, interoperability, and maintainability across the analysis pipeline.
 
 ---
 
@@ -18,7 +18,7 @@ This document specifies the naming convention and schema for morphological featu
 
 ### 1.1 Purpose
 
-This specification establishes a standardized feature naming convention and data schema for 3D organoid image analysis. Standardization enables:
+This specification establishes a standardized feature naming convention and data schema for 3D organoid image analysis. standardization enables:
 
 - Consistent feature identification across analysis stages
 - Automated feature parsing and metadata extraction
@@ -29,107 +29,108 @@ This specification establishes a standardized feature naming convention and data
 
 This specification applies to all feature extraction modules within the pipeline, including but not limited to:
 
-- Area, Size, and Shape measurements
+- Area, size, and shape measurements
 - Colocalization analysis
 - Granularity features
 - Intensity measurements
 - Neighbor relationships
-- Deep learning features (SAMMed3D)
+- Deep learning features (sammed3d)
 - Texture features
 
-### 1.3 Key Words
+### 1.3 Key words
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.ietf.org/rfc/rfc2119.txt).
 
 ---
 
-## 2a. Feature Name Format Specification
+## 2A. feature name format specification
 
-### 2.1 General Structure
+### 2.1 General structure
 
 Feature names MUST conform to the following structure:
 
 ```
-<Compartment>_<Channel>_<FeatureType>_<Measurement>
+<Compartment>_<channel>_<featuretype>_<measurement>
 ```
 
 Where each component is separated by a single underscore character (`_`).
 
-### 2.2 Component Definitions
+### 2.2 Component definitions
 
-#### 2.2.1 Compartment Component
+#### 2.2.1 Compartment component
 
-The `<Compartment>` component:
+The `<compartment>` component:
 
 - MUST identify the cellular or spatial compartment from which the feature is extracted
 - MUST be one of the following enumerated values:
-  - `Nuclei` - Nuclear compartment
-  - `Cell` - Whole cell compartment
-  - `Cytoplasm` - Cytoplasmic compartment (cell excluding nucleus)
-  - `Organoid` - Organoid-level compartment
+  - `Nuclei` - nuclear compartment
+  - `Cell` - whole cell compartment
+  - `Cytoplasm` - cytoplasmic compartment (cell excluding nucleus)
+  - `Organoid` - organoid-level compartment
 - MUST NOT contain whitespace or special characters
-- MUST use PascalCase capitalization
+- MUST use pascalcase capitalization
 
-**Example:** `Nuclei`, `Cytoplasm`, `Organoid`
+**Example:** `nuclei`, `cytoplasm`, `organoid`
 
-#### 2.2.2 Channel Component
+#### 2.2.2 Channel component
 
-The `<Channel>` component:
+The `<channel>` component:
 
 - MUST identify the imaging channel or fluorophore used for the measurement
 - MUST be one of the following values:
-  - `DNA` - DAPI/Hoechst nuclear stain (405nm excitation)
+  - `DNA` - DAPI/hoechst nuclear stain (405nm excitation)
   - `AGP` - AGP marker (488nm excitation)
-  - `ER` - Endoplasmic reticulum marker (555nm excitation)
-  - `Mito` - Mitochondrial marker (640nm excitation)
-  - `BF` - Brightfield/transmitted light
+  - `ER` - endoplasmic reticulum marker (555nm excitation)
+  - `Mito` - mitochondrial marker (640nm excitation)
+  - `BF` - brightfield/transmitted light
 - MUST NOT contain whitespace
-- MAY use PascalCase capitalization
-- MAY use hyphen-separated channel combinations for colocalization features (e.g., `DNA-Mito`)
-- MUST list channels in alphabetical order when combined (e.g., `DNA-Mito` not `Mito-DNA`)
-- MUST be set to `NoChannel` for channel-independent features (e.g., AreaSizeShape)
+- MAY use pascalcase capitalization
+- MAY use hyphen-separated channel combinations for colocalization features (e.g., `DNA-mito`)
+- MUST list channels in alphabetical order when combined (e.g., `DNA-mito` not `mito-DNA`)
+- MUST be set to `nochannel` for channel-independent features (e.g., areasizeshape)
 
-**Example:** `DNA`, `Mito`, `DNA-Mito`
+**Example:** `DNA`, `mito`, `DNA-mito`
 
-#### 2.2.3 FeatureType Component
+#### 2.2.3 Featuretype component
 
-The `<FeatureType>` component:
+The `<featuretype>` component:
 
 - MUST identify the category or method of feature extraction
 - MUST be one of the following enumerated values:
-  - `AreaSizeShape` - Morphological measurements (area, volume, shape descriptors)
-  - `Colocalization` - Channel colocalization metrics
-  - `Granularity` - Granular spectrum and texture-at-scale features
-  - `Intensity` - Pixel intensity statistics
-  - `Neighbors` - Spatial relationship and neighbor counting
-  - `SAMMed3D` - Deep learning features from SAM-Med3D model
-  - `Texture` - Haralick texture features
+  - `Areasizeshape` - morphological measurements (area, volume, shape descriptors)
+  - `Colocalization` - channel colocalization metrics
+  - `Granularity` - granular spectrum and texture-at-scale features
+  - `Intensity` - pixel intensity statistics
+  - `Neighbors` - spatial relationship and neighbor counting
+  - `Sammed3d` - deep learning features from SAM-med3d model
+  - `Texture` - haralick texture features
 - MUST NOT contain whitespace
-- MUST use PascalCase capitalization
+- MUST use pascalcase capitalization
 - MUST NOT include version numbers or implementation details
 
-**Example:** `Intensity`, `Texture`, `Colocalization`
+**Example:** `intensity`, `texture`, `colocalization`
 
-#### 2.2.4 Measurement Component
+#### 2.2.4 Measurement component
 
-The `<Measurement>` component:
+The `<measurement>` component:
 
 - MUST identify the specific measurement or metric
 - MUST NOT contain underscores, periods, spaces, or forward slashes
 - MUST replace prohibited characters with hyphens (`-`)
-- SHOULD use PascalCase for measurement names to maintain consistency
-- MAY include parameter values appended with hyphens (e.g., `Entropy-256-3`)
+- SHOULD use pascalcase for measurement names to maintain consistency
+- MAY include parameter values appended with hyphens (e.g., `entropy-256-3`)
 - MUST be descriptive and unambiguous
 
-**Character Replacement Rules:**
-- Underscore (`_`) → Hyphen (`-`)
-- Period (`.`) → Hyphen (`-`)
-- Space (` `) → Hyphen (`-`)
-- Forward slash (`/`) → Hyphen (`-`)
+**Character replacement rules:**
 
-**Example:** `MeanIntensity`, `Entropy-256-3`, `AngularSecondMoment`
+- Underscore (`_`) → hyphen (`-`)
+- Period (`.`) → hyphen (`-`)
+- Space (` `) → hyphen (`-`)
+- Forward slash (`/`) → hyphen (`-`)
 
-### 2.3 Complete Feature Name Examples
+**Example:** `meanintensity`, `entropy-256-3`, `angularsecondmoment`
+
+### 2.3 Complete feature name examples
 
 Valid feature names conforming to this specification:
 
@@ -142,12 +143,12 @@ Nuclei_NoChannel_Neighbors_AdjacentCount
 Cell_Mito_Granularity_Spectrum-10
 Nuclei_DNA_SAMMed3D_CLSFeature-512
 ```
+
 ---
 
-## 2b. Metadata Naming Convention
+## 2B. metadata naming convention
 
-
-### 2.1 General Structure
+### 2.1 General structure
 
 Metadata are non morphology feature values that provide contextual information about the sample, experiment, or imaging conditions, or objects in the dataset.
 Metadata are used to capture information that may be relevant for analysis, interpretation, or downstream processing but do not represent morphological measurements of the objects themselves.
@@ -155,26 +156,29 @@ Metadata are used to capture information that may be relevant for analysis, inte
 Metadata names MUST conform to the following structure:
 
 ```
-Metadata_<FeatureCategory>_<FeatureName>
+Metadata_<featurecategory>_<featurename>
 ```
 
 Where each component is separated by a single underscore character (`_`).
 The `Metadata_` prefix is used to clearly distinguish metadata features from morphological features in the dataset.
-Each category metadata name MUST be in PascalCase and MUST NOT contain whitespace or special characters. The `<FeatureName>` component MUST be descriptive and unambiguous, following the same character restrictions as morphological feature names.
+Each category metadata name MUST be in pascalcase and MUST NOT contain whitespace or special characters. the `<featurename>` component MUST be descriptive and unambiguous, following the same character restrictions as morphological feature names.
 
-### 2.2 Metadata Category Definitions
-The `<FeatureCategory>` component MUST identify the type (Category) of metadata and MUST be one of the following enumerated values:
-- `Storage` - Metadata related to data storage and file management.
-- `Biology` - Metadata related to biological characteristics of the sample.
-- `Experiment` - Metadata related to experimental conditions and treatments.
-- `Imaging` - Metadata related to imaging parameters and conditions.
-- `Microscopy` - Metadata related to microscopy settings and configurations.
-- `Object` - Metadata related to specific objects (e.g., nuclei) or regions of interest in the dataset.
-- `Neighbors` - Metadata related to spatial relationships and neighbor counts of objects in the dataset.
-- `Location` - Metadata related to spatial information and coordinates.
-- `Other` - This is a place holder for any metadata that might be used in the future that does not fit into the above categories. New categories can be added as needed, but the `Other` category provides a catch-all for any metadata that does not fit into the predefined categories.
+### 2.2 Metadata category definitions
 
-### 2.3 Complete Metadata Name Examples
+The `<featurecategory>` component MUST identify the type (category) of metadata and MUST be one of the following enumerated values:
+
+- `Storage` - metadata related to data storage and file management.
+- `Biology` - metadata related to biological characteristics of the sample.
+- `Experiment` - metadata related to experimental conditions and treatments.
+- `Imaging` - metadata related to imaging parameters and conditions.
+- `Microscopy` - metadata related to microscopy settings and configurations.
+- `Object` - metadata related to specific objects (e.g., nuclei) or regions of interest in the dataset.
+- `Neighbors` - metadata related to spatial relationships and neighbor counts of objects in the dataset.
+- `Location` - metadata related to spatial information and coordinates.
+- `Other` - this is a place holder for any metadata that might be used in the future that does not fit into the above categories. new categories can be added as needed, but the `other` category provides a catch-all for any metadata that does not fit into the predefined categories.
+
+### 2.3 Complete metadata name examples
+
 Valid metadata names conforming to this specification:
 
 ```
@@ -190,29 +194,29 @@ Metadata_Location_Cell_CentroidX
 
 ## 3. References
 
-### 3.1 Normative References
+### 3.1 Normative references
 
-- **RFC 2119**: Key words for use in RFCs to Indicate Requirement Levels
-  https://www.ietf.org/rfc/rfc2119.txt
+- **RFC 2119**: key words for use in rfcs to indicate requirement levels
+  Https://www.ietf.org/rfc/rfc2119.txt
 
-- **Apache Parquet Format Specification**
-  https://parquet.apache.org/docs/file-format/
+- **Apache parquet format specification**
+  Https://parquet.apache.org/docs/file-format/
 
-### 3.2 Informative References
+### 3.2 Informative references
 
-- **CellProfiler Feature Naming Convention**
+- **Cellprofiler feature naming convention**
   Influenced naming structure for biological image analysis
 
-- **OME Data Model**
-  Open Microscopy Environment standards for microscopy data
+- **OME data model**
+  Open microscopy environment standards for microscopy data
 
 ---
 
-## Copyright Notice
+## Copyright notice
 
-Copyright (c) 2026 Way Science Lab. All rights reserved.
+Copyright (c) 2026 way science lab. all rights reserved.
 
-This document may be freely distributed and used for implementation purposes within the NF1 3D Organoid Profiling Pipeline project and related research activities. The license for this document is the covered under the license of the NF1 3D Organoid Profiling Pipeline project, which is available at [LICENSE](../LICENSE).
+This document may be freely distributed and used for implementation purposes within the NF1 3D organoid profiling pipeline project and related research activities. the license for this document is the covered under the license of the NF1 3D organoid profiling pipeline project, which is available at [LICENSE](../LICENSE).
 
 ---
 
