@@ -269,7 +269,7 @@ For more details on feature types and extraction methods, refer to `extraction_m
 - **Well:** One row per well FOV (aggregated from organoids)
 - **Patient:** One row per patient/treatment (aggregated from wells)
 
-### Image-based profiling Steps
+### Image-based profiling workflow
 
 ## File and information flow diagram
 ```mermaid
