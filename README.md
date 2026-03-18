@@ -291,7 +291,7 @@ Additionally, we take a `nucleocentric` feature extraction approach where we
 extract features from a cropped volumes centered around each nucleus.
 We use SAMMed3D to extract features from these nucleocentric volumes, and we
 z-maximally project the nucleocentric volumes to extract 2D features using
-CHAMMI-75 features.
+CHAMMI-75.
 CHAMMI-75 features are extracted as 384-dimensional embeddings per channel
 per object using the CLS token output from a separate ViT encoder.
 
