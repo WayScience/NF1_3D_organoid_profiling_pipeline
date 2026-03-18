@@ -253,7 +253,7 @@ For more details on feature types and extraction methods, refer to `extraction_m
 
 **Inputs:**
 - Feature CSV files from Stage 3
-- Metadata: plate maps, treatment info, QC flags
+- Metadata: plate maps, treatment info, QC flags, etc.
 
 **Outputs:**
 - `data/{patient}/image_based_profiles/sc.parquet` - Single-cell profiles
