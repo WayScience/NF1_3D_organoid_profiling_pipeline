@@ -254,7 +254,7 @@ For more details on feature types and extraction methods, refer to `extraction_m
 
 **Directory:** `4.processing_image_based_profiles/`
 
-**Purpose:** Merge, normalize, and aggregate features across wells and patients ready for downstream analyses.
+**Purpose:** Merge, normalize, and aggregate features across wells and patients, preparing data for downstream analyses.
 
 **Inputs:**
 
