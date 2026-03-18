@@ -237,7 +237,7 @@ sbatch grand_parent_segmentation.sh
 
 ### Feature extraction steps
 
-The featurization follows a three-level hierarchical job submission structure
+To maximize parallelization and processing speed, our featurization strategy follows a three-level hierarchical job submission structure.
 
 1. **Level 1: All FOVs for a patient, per well (Grandparent process)** (`run_featurization_grandparent.sh`)
   - Submits parent jobs for each FOV (level 2).
