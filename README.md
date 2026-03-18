@@ -363,7 +363,7 @@ graph TD
    - Merge sc and organoid aggregations
    - Create hierarchical profile structure
    - Export final consensus matrices
-7. **QC Filtering**
+7. **QC filtering**
    - Apply image QC flags from Stage 1
    - Remove outlier objects (z-score > 3)
    - Filter low-quality wells
