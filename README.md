@@ -481,7 +481,7 @@ The pipeline processes five fluorescent imaging channels:
 
 # Computational requirements
 
-## Hardware specifications
+## Hardware
 
 **Local**
 - CPU: 24 cores @ 2.5 GHz
