@@ -161,7 +161,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 ### Image QC steps
 
 1. **CellProfiler QC pipeline**
-   - Extract whole-image metrics using CellProfiler.
+   - Extract whole-image QC metrics using CellProfiler.
    - Compute per-slice statistics.
    - Export metrics to CSV.
 2. **Blur evaluation**
