@@ -66,7 +66,7 @@ flowchart TD
    F1 --> G[QC flags & reports]
    F2 --> G
 
-   G --> H[Stage 2: Image Segmentation]
+   G --> H[Stage 2: Image segmentation]
 
    H --> I1[Nuclei segmentation]
    H --> I2[Cell segmentation]
