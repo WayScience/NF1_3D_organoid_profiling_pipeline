@@ -169,7 +169,7 @@ The `<FeatureCategory>` component MUST identify the type (Category) of metadata 
 - `Experiment` - Metadata related to experimental conditions and treatments.
 - `Imaging` - Metadata related to imaging parameters and conditions.
 - `Microscopy` - Metadata related to microscopy settings and configurations.
-- `Object` - Metadata related to specific objects or regions of interest in the dataset.
+- `Object` - Metadata related to specific objects (e.g., nuclei) or regions of interest in the dataset.
 - `Neighbors` - Metadata related to spatial relationships and neighbor counts of objects in the dataset.
 - `Location` - Metadata related to spatial information and coordinates.
 
