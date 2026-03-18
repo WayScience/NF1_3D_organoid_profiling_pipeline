@@ -24,7 +24,7 @@ This repository contains the code and documentation for a comprehensive analysis
 ---
 
 We present a full workflow to profile 3-dimensional images of organoids.
-Our end-to-end system processes raw 3D microscopy microscopy data through illumination correction, segmentation, feature extraction, and quality control.
+Our end-to-end system processes raw 3D microscopy microscopy data through illumination correction, segmentation, feature extraction, quality control, and image-based profiling.
 
 ```{mermaid}
 flowchart TD
