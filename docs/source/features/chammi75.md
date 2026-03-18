@@ -28,7 +28,7 @@ graph TD
 
 ## Pre-processing Pipeline
 
-Before passing images to the model, three transforms are applied in sequence:
+As CHAMMI recommends, before passing images to the model, we apply three transforms in sequence:
 
 1. **SaturationNoiseInjector** – Saturated pixels (value = 255) in the input
    channel are replaced with uniform random noise sampled from `[200, 255]`.
