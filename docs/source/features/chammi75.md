@@ -53,9 +53,9 @@ Currently **384 features** are extracted per channel per object.
 
 CHAMMI-75 features are useful for:
 
-* Capturing morphological phenotypes that are not described by hand-crafted features
-* Identifying subtle treatment effects in fluorescence images
-* Transfer learning and downstream classification tasks
+* Capturing phenotypes that are missed by hand-crafted features.
+* Identifying subtle treatment effects in fluorescence images.
+* Downstream classification tasks.
 
 ## References
 
