@@ -584,7 +584,7 @@ Name | Fluorophore | Ex(nm) | Em(nm) | Dichroic | Target | Organelle
 
 ## Computational specifications
 
-## Hardware
+### Hardware
 
 ### Local
 
