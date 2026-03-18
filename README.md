@@ -3,7 +3,7 @@
 [![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
 
 Patients living with Neurofibromatosis Type 1 (NF1) often develop neurofibromas
-(NFs), which are complex benign tumors.
+(NFs), which are complex and benign tumors that can transform into malignant disease.
 However, there are only two FDA-approved therapies for NF1-associated
 inoperable plexiform neurofibromas (PNFs): Mirdametinib and Selumetinib.
 Thus, we **urgently need more therapeutic options** for neurofibromas.
