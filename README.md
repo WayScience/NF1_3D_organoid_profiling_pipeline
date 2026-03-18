@@ -226,7 +226,7 @@ sbatch grand_parent_segmentation.sh
 
 **Directory:** `3.cellprofiling/`
 
-**Purpose:** Extract morphological, intensity, and texture features from segmented objects.
+**Purpose:** Extract all morphology features(e.g., shape, intensity, texture, etc.) from segmented objects.
 
 ### Feature extraction steps
 
