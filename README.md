@@ -232,15 +232,13 @@ sbatch grand_parent_segmentation.sh
 
 The featurization follows a three-level hierarchical job submission structure
 
-1. **Level 1: Grandparent process** (`run_featurization_grandparent.sh`)
-   - Loops through all well FOVs for a patient.
-   - Submits parent jobs per well FOV.
-2. **Level 2: Parent process** (`run_featurization_parent.sh`)
-   - Loops through feature types × compartments × channels.
-   - Submits child jobs for each combination.
-3. **Level 3: Child process** (Individual feature extraction scripts)
-   - Calculates specific features.
-   - Saves output as parquet.
+1. **Level 1: All FOVs for a patient, per well (Grandparent process)** (`run_featurization_grandparent.sh`)
+  - Submits parent jobs for each FOV (level 2).
+3. **Level 2: All feature categories for each FOV (Parent process)** (`run_featurization_parent.sh`)   - Loops through all combinations of feature types × compartments × channels.
+   - Submits child jobs for each feature combination (level 3).
+3. **Level 3: Compute specific feature categories (Child process)** (Individual feature extraction scripts)
+   - Calculates specific features based on the hierarchical combination specified in levels 1 and 2.
+   - Saves individual feature calculation outputs as a parquet file within a folder to be combined later.
 
 **Feature types:**
 For more details on feature types and extraction methods, refer to `extraction_math` or the `features/` documentation.
