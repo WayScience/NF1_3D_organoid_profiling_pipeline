@@ -359,7 +359,7 @@ graph TD
    - Calculate well-level statistics (mean, median, std)
    - Generate organoid-parent aggregations
    - Compute patient-level summaries
-6. **Consensus Profiles**
+6. **Form consensus profiles**
    - Merge sc and organoid aggregations
    - Create hierarchical profile structure
    - Export final consensus profiles
