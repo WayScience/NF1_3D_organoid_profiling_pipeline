@@ -47,7 +47,7 @@ class SaturationNoiseInjector(nn.Module):
     """
 
     def __init__(self, low: int = 200, high: int = 255) -> None:
-        """Initialise the noise injector.
+        """Initialize the noise injector.
 
         Parameters
         ----------
