@@ -1,32 +1,52 @@
-[![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
-
 # Neurofibromatosis Type 1 (NF1) 3D organoid image-based profiling pipeline
 
-Patients living with Neurofibromatosis Type 1 (NF1) often develop neurofibromas (NFs), which are complex benign tumors.
-However, there are only two FDA-approved therapies for NF1-associated inoperable plexiform neurofibromas (PNFs): Mirdametinib and Selumetinib.
+[![Documentation Status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
+
+Patients living with Neurofibromatosis Type 1 (NF1) often develop neurofibromas
+(NFs), which are complex benign tumors.
+However, there are only two FDA-approved therapies for NF1-associated
+inoperable plexiform neurofibromas (PNFs): Mirdametinib and Selumetinib.
 Thus, we **urgently need more therapeutic options** for neurofibromas.
 
-To address this, we have developed a 3D patient-derived tumor organoid model of NF1.
-We developed a modified 3D Cell Painting protocol to generate high-content imaging data from these organoids.
-This repository contains the code and documentation for a comprehensive analysis pipeline to process and analyze these 3D organoid models of NF1 NFs.
+To address this, we have developed a 3D patient-derived tumor organoid
+model of NF1.
+We developed a modified 3D Cell Painting protocol to generate
+high-content imaging data from these organoids.
+This repository contains the code and documentation for a comprehensive
+analysis pipeline to process and analyze these 3D organoid models of NF1.
 
-This pipeline was developed specifically for the NF1 3D organoid dataset, but the modular design allows for adaptation to other 3D microscopy datasets.
+This pipeline was developed specifically for the NF1 3D organoid dataset,
+but the modular design allows for adaptation to other 3D microscopy datasets.
 
-## Raw channels
-| 405 | 488 | 555 | 640 |
-|:-:|:-:|:-:|:-:|
-| <img src="2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif" alt="DNA channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif" alt="ER channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif" alt="Golgi channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif" alt="Mito channel animation" width="150"/> |
+## Example data
 
-## Organoid, Nuclei, Cell, and Cytoplasm Segmentations
+### Raw channels
 
-| Organoid | Nuclei | Cell | Cytoplasm |
-|:-:|:-:|:-:|:-:|
-| <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif" alt="Organoid segmentation animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif" alt="Nuclei segmentation animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif" alt="Cell segmentation animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif" alt="Cytoplasm segmentation animation" width="150"/> |
+**405 channel** | **488 channel** | **555 channel** | **640 channel**
+--- | --- | --- | ---
+![DNA channel animation](2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif) | ![ER channel animation](2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif) | ![Golgi channel animation](2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif) | ![Mito channel animation](2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif)
+
+### Organoid, Nuclei, Cell, and Cytoplasm Segmentations
+
+**Organoid** | **Nuclei** | **Cell** | **Cytoplasm**
+--- | --- | --- | ---
+![Organoid segmentation animation](2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif) | ![Nuclei segmentation animation](2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif) | ![Cell segmentation animation](2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif) | ![Cytoplasm segmentation animation](2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif)
 
 ---
 
+## Pipeline architecture
+
+The pipeline follows a hierarchical processing structure:
+
+**Execution strategy:**
+
+- SLURM-based HPC scheduling for parallel processing
+- Conditional execution based on file existence
+- Automatic job submission throttling (max 990 concurrent jobs)
 We present a full workflow to profile 3-dimensional images of organoids.
-Our end-to-end system processes raw 3D microscopy microscopy data through illumination correction, segmentation, feature extraction, quality control, and image-based profiling.
+Our end-to-end system processes raw 3D microscopy data through illumination
+correction, segmentation, feature extraction, quality control, and
+image-based profiling.
 
 ```mermaid
 flowchart TD
@@ -83,23 +103,12 @@ flowchart TD
    style O fill:#40BA40,stroke:#000,stroke-width:2px
 ```
 
-# Pipeline architecture
-
-The pipeline follows a hierarchical processing structure:
-
-**Execution strategy:**
-
-- SLURM-based HPC scheduling for parallel processing
-- Conditional execution based on file existence
-- Automatic job submission throttling (max 990 concurrent jobs)
-
-# Detailed workflow stages
-
 ## Stage 0: Data preprocessing
 
 **Directory:** `0.preprocessing_data/`
 
-**Purpose:** Transform raw microscopy data into standardized 3D z-stack images ready for analysis.
+**Purpose:** Transform raw microscopy data into standardized 3D z-stack
+images ready for analysis.
 
 **Inputs:**
 
@@ -114,29 +123,32 @@ The pipeline follows a hierarchical processing structure:
 ### Data preprocessing steps
 
 1. **Patient-specific preprocessing**
-   - We optimize formatting of raw images we recieve fresh from our collaborator's microscope.
-   - We organize raw image files by patient ID and create patient-specific directory structures.
+   - We optimize formatting of raw images we receive fresh from our
+     collaborator's microscope.
+   - We organize raw image files by patient ID and create
+     patient-specific directory structures.
    - We validate file naming conventions.
 2. **Updating file structure**
    - We standardize the directory hierarchy across patients.
-   - We rename files to a consistent naming scheme (to account for cross-batch inconsistencies).
+   - We rename files to a consistent naming scheme (to account for
+     cross-batch inconsistencies).
 3. **Creating z-stacks**
-   - We combine 2D image slices into 3D z-stacks, built to accommodate different microscope formats (e.g., CQ1, Echo)
+   - We combine 2D image slices into 3D z-stacks, built to accommodate
+     different microscope formats (e.g., CQ1, Echo)
    - This process maintain metadata and propagates channel information.
-   - We track z-spacing between images (typically 1μm) as well as z-stack depth (between 50-100 slices [~50-100μm total])
+   - We track z-spacing between images (typically 1μm) as well as z-stack
+     depth (between 50-100 slices [~50-100μm total])
 4. **Detecting image corruption**
-   - We validate TIFF file integrity removing corrupted images, incomplete stacks, and other errors introduced during image acquisition.
-   - We flag problematic datasets.
+   - We validate TIFF file integrity removing corrupted images, incomplete
+     stacks, and other errors introduced during image acquisition.
+   - We flag problematic datasets by added QC flags to be used in downstream
+     filtering (if necessary).
 5. **Preprocessing for deconvolution (Optional)**
-   - We prepare images for Huygens deconvolution (generating parameter files and organizing batch processing structure)
+   - We prepare images for Huygens deconvolution (generating parameter files
+     and organizing batch processing structure)
 6. **Post-processing for deconvolution (Optional)**
-   - We import deconvolved images, verify output quality, and update file paths and metadata for downstream processing
-
-**Key Parameters:**
-
-- Objective: 60x/1.35 NA oil immersion
-- Oil RI: 1.518
-- Voxel size: ~0.1 μm (XY) × 1 μm (Z)
+   - We import deconvolved images, verify output quality, and update file
+     paths and metadata for downstream processing
 
 **Execution:**
 
@@ -154,6 +166,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 **Directory:** `1.image_quality_control/`
 
 **Inputs:**
+
 - Z-stack images from Stage 0 (deconvolution optional)
 
 **Outputs:**
@@ -162,14 +175,15 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 - QC reports: HTML/PDF summaries with plots
 - Flagged well list for exclusion from downstream analysis
 
-**Purpose:** Assess image quality and flag problematic well FOVs before segmentation.
+**Purpose:** Assess image quality and flag problematic well FOVs before
+segmentation.
 
 ### Image QC steps
 
 1. **CellProfiler QC pipeline**
    - Extract whole-image QC metrics using CellProfiler.
-   - Compute per-slice statistics.
    - Export QC metrics to CSV.
+        - These will be used in all downstream QC filtering steps.
 2. **Blur evaluation**
    - Calculate Laplacian variance for focus detection.
    - Identify out-of-focus z-slices.
@@ -201,7 +215,8 @@ jupyter nbconvert --to notebook --execute notebooks/*.ipynb
 
 **Directory:** `2.segment_images/`
 
-**Purpose:** Generate 3D masks for nuclei, cells, cytoplasm, and whole organoids. We refer to each mask category as a "compartment".
+**Purpose:** Generate 3D masks for nuclei, cells, cytoplasm, and whole
+organoids. We refer to each mask category as a "compartment".
 
 ### Image segmentation Steps
 
@@ -233,28 +248,72 @@ sbatch grand_parent_segmentation.sh
 
 **Directory:** `3.cellprofiling/`
 
-**Purpose:** Extract all morphology features(e.g., shape, intensity, texture, etc.) from segmented objects.
+**Purpose:** Extract all morphology (hand-drawn) features (e.g., shape,
+intensity, texture, etc.) from segmented objects.
 
 ### Feature extraction steps
 
-To maximize parallelization and processing speed, our featurization strategy follows a three-level hierarchical job submission structure.
+To maximize parallelization and processing speed, our featurization strategy
+follows a three-level hierarchical job submission structure.
 
-1. **Level 1: All FOVs for a patient, per well (Grandparent process)** (`run_featurization_grandparent.sh`)
-  - Submits parent jobs for each FOV (level 2).
-3. **Level 2: All feature categories for each FOV (Parent process)** (`run_featurization_parent.sh`)   - Loops through all combinations of feature types × compartments × channels.
+1. **Level 1: All FOVs for a patient, per well (Grandparent process)**
+   (`run_featurization_grandparent.sh`)
+
+- Submits parent jobs for each FOV (level 2).
+
+1. **Level 2: All feature categories for each FOV (Parent process)**
+   (`run_featurization_parent.sh`)
+   - Loops through all combinations of feature types × compartments ×
+     channels.
    - Submits child jobs for each feature combination (level 3).
-3. **Level 3: Compute specific feature categories (Child process)** (Individual feature extraction scripts)
-   - Calculates specific features based on the hierarchical combination specified in levels 1 and 2.
-   - Saves individual feature calculation outputs as a parquet file within a folder to be combined later.
+2. **Level 3: Compute specific feature categories (Child process)**
+   (Individual feature extraction scripts)
+   - Calculates specific features based on the hierarchical combination
+     specified in levels 1 and 2.
+   - Saves individual feature calculation outputs as a parquet file within a
+     folder to be combined later.
 
 **Feature types:**
-For more details on feature types and extraction methods, refer to `extraction_math` or the `features/` documentation.
+For more details on feature types and extraction methods, refer to the
+`features/` documentation.
+
+### Feature extraction strategy
+
+We extract hand-drawn features across multiple categories (e.g., shape,
+intensity, texture) for each compartment and channel combination.
+In addition, we extract deep learning-based features using the SAMMMed3D
+model to capture complex morphological phenotypes that may not be described by
+hand-crafted features.
+SAMMed3D features are extracted as 384-dimensional embeddings per channel
+per object using the CLS token output from the ViT encoder on the whole
+volume.
+Additionally, we take a `nucleocentric` feature extraction approach where we
+extract features from a cropped volumes centered around each nucleus.
+We use SAMMed3D to extract features from these nucleocentric volumes, and we
+z-maximally project the nucleocentric volumes to extract 2D features using
+CHAMMI-75 features.
+CHAMMI-75 features are extracted as 384-dimensional embeddings per channel
+per object using the CLS token output from a separate ViT encoder.
+
+### Feature extraction categories
+
+Feature Type | Description
+--- | ---
+Area + Size | Object size, area, perimeter, etc.
+Colocalization | Overlap of signals between channels (e.g., Pearson correlation)
+Intensity | Mean, median, max, min, etc. intensity values per object
+Granularity | "Granularity of pixel intensities"
+Neighbors | Number of neighboring objects, distance to neighbors
+Texture | Haralick features, Gabor filters, etc.
+Deep learning features | SAMMMed3D ViT-based embeddings
+CHAMMI-75 features | ViT-based embeddings from nucleocentric 2D projections
 
 ## Stage 4: Image-based profiling
 
 **Directory:** `4.processing_image_based_profiles/`
 
-**Purpose:** Merge, normalize, and aggregate features across wells and patients, preparing data for downstream analyses.
+**Purpose:** Merge, normalize, and aggregate features across wells and
+patients, preparing data for downstream analyses.
 
 **Inputs:**
 
@@ -263,23 +322,64 @@ For more details on feature types and extraction methods, refer to `extraction_m
 
 **Outputs:**
 
-- `data/{patient}/image_based_profiles/sc.parquet` - Single-cell profiles
-- `data/{patient}/image_based_profiles/organoid.parquet` - Organoid profiles
-- `data/all_patient_profiles/sc_consensus.parquet` - Cross-patient SC
-- `data/all_patient_profiles/organoid_consensus.parquet` - Cross-patient organoid
-- `data/all_patient_profiles/well_aggregated.parquet` - Well-level
-- `data/all_patient_profiles/patient_aggregated.parquet` - Patient-level
+Profiles are generated at multiple levels with profiles being generated for
+each profile type:
 
-**Output Levels:**
+- **Single-cell hand-drawn features** One row per nucleus/cell/cytoplasm
+- **Single-cell SAMMed3D features** One row per nucleus/cell/cytoplasm
+- **Organoid hand-drawn features** One row per organoid
+- **Organoid SAMMed3D features** One row per organoid
+- **Nucleocentric SAMMed3D features** One row per nucleus-centered volume
+- **Nucleocentric CHAMMI-75 features** One row per nucleus-centered volume
 
-- **Single-cell:** One row per nucleus/cell
-- **Organoid:** One row per organoid (aggregated from cells)
-- **Well:** One row per well FOV (aggregated from organoids)
-- **Patient:** One row per patient/treatment (aggregated from wells)
+Profile types:
+
+- **Object-level** standard scalar normalized profiles (one row per object
+   with all features)
+- **Object-level** feature-selected profiles (one row per object with
+   selected features)
+- **Well-level** aggregated profiles (one row per well with aggregated
+   features)
+- **Consensus profiles** aggregated profiles with selected features (one row
+   per treatment with selected features)
+
+With the combination of 6 profile types and 4 profile levels, we generate a
+total of 24 different profile outputs.
+Each profile output is saved as a parquet file in the `data/{patient}/image_based_profiles/`.
 
 ### Image-based profiling workflow
 
 ## File and information flow diagram
+
+1. **Feature Merging**
+   - Combine all feature CSVs per well FOV
+   - Use cytotable for SQLite → Parquet conversion
+   - Create single-cell (sc) and organoid-level profiles
+2. **Annotation**
+   - Add treatment metadata from plate maps
+   - Link drug names, targets, concentrations
+   - Add patient genotype information
+3. **QC filtering**
+   - Apply image QC flags from Stage 1
+   - Remove outlier objects (z-score > 3)
+   - Filter low-quality wells
+4. **Normalization**
+   - Z-score normalization per plate
+   - Applied to the entire plate based on the control wells (DMSO treated wells)
+   - Standardize features: `(x - μ) / σ`
+   - Handle batch effects
+5. **Feature Selection**
+   - Remove low-variance features
+   - Remove correlated features (correlation > 0.9)
+   - Remove blocklisted features
+   - Remove features based on frequency cutoff categorical features
+6. **Aggregation**
+   - Calculate well-level statistics (mean, median, std)
+   - Generate organoid-parent aggregations
+   - Compute patient-level summaries
+7. **Form consensus profiles**
+   - Merge sc and organoid aggregations
+   - export final consensus profiles
 
 ```mermaid
 graph TD
@@ -300,9 +400,9 @@ graph TD
 
     E --> |Annotation| H[Organoid features ]
     F --> |Annotation| I[Nucleocentric features ]
-    G1 --> J[Single-cell handcrafted features ]
+    G1 --> J[Single-cell hand-drawn features ]
     G1 --> K[Single-cell deep learning features ]
-    H --> L[Organoid handcrafted features]
+    H --> L[Organoid hand-drawn features]
     H --> M[Organoid deep learning features]
     I --> N[Nucleocentric volumetric features]
     I --> O[Nucleocentric flat features]
@@ -338,40 +438,23 @@ graph TD
     T6 --> V6[Consensus profiles]
 ```
 
-1. **Feature Merging**
-   - Combine all feature CSVs per well FOV
-   - Use cytotable for SQLite → Parquet conversion
-   - Create single-cell (sc) and organoid-level profiles
-2. **Annotation**
-   - Add treatment metadata from plate maps
-   - Link drug names, targets, concentrations
-   - Add patient genotype information
-3. **Normalization**
-   - Z-score normalization per plate
-   - Standardize features: `(x - μ) / σ`
-   - Handle batch effects
-4. **Feature Selection**
-   - Remove low-variance features
-   - Filter correlated features (correlation > 0.9)
-   - Drop blocklisted features
-   - Apply frequency cutoff for categorical features
-5. **Aggregation**
-   - Calculate well-level statistics (mean, median, std)
-   - Generate organoid-parent aggregations
-   - Compute patient-level summaries
-6. **Form consensus profiles**
-   - Merge sc and organoid aggregations
-   - Create hierarchical profile structure
-   - Export final consensus profiles
-7. **QC filtering**
-   - Apply image QC flags from Stage 1
-   - Remove outlier objects (z-score > 3)
-   - Filter low-quality wells
-8. **Create all analysis ready output files**
-   - Merge profiles across all patients
-   - Apply global feature selection
-   - Generate all-patient consensus profiles
+---
 
+Seperately from the above workflow, we also generate cross-patient consensus
+profiles by merging profiles across patients and applying global feature
+selection to identify a common set of features that are robust across
+patients.
+**Create all analysis ready output files**
+
+```mermaid
+graph LR
+    A[All patient normalized profiles] --> B[Combined profiles]
+    B --> C[Global feature selection]
+    C --> D[Cross-patient aggregated profiles]
+    D --> E[Cross-patient consensus profiles]
+```
+
+---
 **Feature Selection Parameters:**
 
 - Correlation threshold: 0.9
@@ -387,9 +470,9 @@ cd 4.processing_image_based_profiles
 sbatch merge_features_grand_parent.sh
 ```
 
-# Data organization
+## Data organization
 
-## Directory structure
+### Directory structure
 
 The pipeline expects data organized in this hierarchy:
 
@@ -474,17 +557,22 @@ NF1_3D_organoid_profiling_pipeline/
 - Naming: `{level}_{aggregation}.parquet`
 - Example: `sc_consensus.parquet`
 
-# Channel information
+## Channel information
 
-The pipeline processes five fluorescent imaging channels:
+The pipeline processes four fluorescent imaging channels:
+Note that while these are the channels we have used for our NF1 3D organoid
+dataset, the pipeline is designed to be flexible and adaptable to other
+channel configurations as needed. The channel information is stored in the
+metadata and used throughout the pipeline to ensure correct processing and
+feature extraction for each channel.
 
-| Name | Fluorophore | Ex(nm) | Em(nm) | Dichroic | Target | Organelle |
-|------|-------------|--------|--------|----------|--------|-----------|
-| 405  | Hoechst 33342        | 361    | 486    | 405      | DNA            | Nucleus           |
-| 488  | ConA Alexa Fluor 488 | 495    | 519    | 488      | ER             | ER                |
-| 555  | WGA Alexa Fluor 555  | 555    | 580    | 555      | Membranes      | Golgi/Plasma Memb |
-| 568  | Phalloidin AF 568    | 578    | 600    | 555      | F-actin        | Cytoskeleton      |
-| 640  | MitoTracker Deep Red | 644    | 665    | 640      | Mitochondria   | Mitochondria      |
+Name | Fluorophore | Ex(nm) | Em(nm) | Dichroic | Target | Organelle
+--- | --- | --- | --- | --- | --- | ---
+405 | Hoechst 33342 | 361 | 486 | 405 | DNA | Nucleus
+488 | ConA Alexa Fluor 488 | 495 | 519 | 488 | ER | ER
+555 | WGA Alexa Fluor 555 | 555 | 580 | 555 | Membranes | Golgi/Plasma Memb
+568 | Phalloidin AF 568 | 578 | 600 | 555 | F-actin | Cytoskeleton
+640 | MitoTracker Deep Red | 644 | 665 | 640 | Mitochondria | Mitochondria
 
 **Imaging parameters:**
 
@@ -494,18 +582,18 @@ The pipeline processes five fluorescent imaging channels:
 - Bit depth: 16-bit
 - Dynamic range: 0-65535
 
-# Computational specifications
+## Computational specifications
 
 ## Hardware
 
-**Local**
+### Local
 
 - CPU: 24 cores @ 2.5 GHz
 - RAM: 128 GB
 - Storage: 20 TB free space
 - GPU: NVIDIA GeForce 3090Ti with 24 GB VRAM for acceleration
 
-**HPC (SLURM):**
+### HPC (SLURM)
 
 - Nodes: 100s of CPU compute nodes
 - Partition: amilan (CPU), aa100 (GPU)
@@ -516,8 +604,9 @@ The pipeline processes five fluorescent imaging channels:
 
 ### Environment Setup
 
-We recommend using `uv`, `mamba` or `conda` to create the required environments.
-We have written a `makefile` to help with conda environment creation and management.
+We recommend using `uv`, `mamba` or `conda` to create the required
+environments. We have written a `makefile` to help with conda environment
+creation and management.
 
 ```bash
 cd environments || exit
@@ -533,16 +622,17 @@ source uv_setup.sh
 
 ### Python utilities (monorepo layout)
 
-The utilities under `utils/src/` are now structured as installable packages. For local development, install them in editable mode:
+The utilities under `utils/src/` are now structured as installable packages.
+For local development, install them in editable mode:
 
 ```bash
 cd utils
 pip install -e .
 ```
 
-Note that the utilites should be imported into compute environments.
-See the `environments` module for installing the utils.
-There is a Makefile int the `environments` module that installs the environemnts with utils.
+Note that the utilites should be imported into compute environments. See the
+`environments` module for installing the utils. There is a Makefile in the
+`environments` module that installs the environments with utils.
 
 ### System Requirements
 
@@ -550,13 +640,22 @@ There is a Makefile int the `environments` module that installs the environemnts
 - HPC/SLURM environment recommended for large-scale runs
 - At least multiple TBs of storage for raw and processed images
 - Sufficient RAM and CPU/GPU resources depending on dataset size
-  - We recommend at least 128GB RAM and multiple CPU cores for image processing steps
-  - Though we have been able to get RAM usage under 8GB per well_fov by distubuting the compute.
-    - Please note that this RAM usage is highly dependent on the number of z-slices, image dimensions, and number of channels.
-    - Here we generally have 30-50 z-slices, ~1500x1500 pixel images, and 4 channels. We rarly exceed 100 z-slices. Additionally scaling in z-slices will require more compute time and RAM.
-- Optional: GPU resources for segmentation and deep learning based feature extraction
-  - We have found that a NVIDIA 3090 TI (24GB VRAM) is more than enough for our segmentation tasks.
-  - It is important to note that part of the advantage of using 2.5D segmentation is that it greatly reduces the GPU VRAM requirements compared to full 3D segmentation - especially as z-slice count scales up.
+  - We recommend at least 128GB RAM and multiple CPU cores for image
+    processing steps
+  - Though we have been able to get RAM usage under 8GB per well_fov by
+    distributing the compute.
+    - Please note that this RAM usage is highly dependent on the number of
+      z-slices, image dimensions, and number of channels.
+    - Here we generally have 30-50 z-slices, ~1500x1500 pixel images, and 4
+      channels. We rarely exceed 100 z-slices. Additionally, scaling in
+      z-slices will require more compute time and RAM.
+- Optional: GPU resources for segmentation and deep learning based feature
+  extraction
+  - We have found that a NVIDIA 3090 TI (24GB VRAM) is more than enough for
+    our segmentation tasks.
+  - It is important to note that part of the advantage of using 2.5D
+    segmentation is that it greatly reduces the GPU VRAM requirements
+    compared to full 3D segmentation - especially as z-slice count scales up.
 
 **Storage requirements:**
 
@@ -567,28 +666,60 @@ There is a Makefile int the `environments` module that installs the environemnts
 - Profiles: 1-5 MB/well FOV
 - **Total: ~1-2 GB/well FOV**
 
-Number of FOVs per well varies between 7-25 with typically 60 wells per patient.
-Per patient well FOVs can range from 420 to 1500 depending on the experiment design.
+Number of FOVs per well varies between 7-25 with typically 60 wells per
+patient.
+Per patient well FOVs can range from 420 to 1500 depending on the experiment
+design.
 
 **Storage estimates (per patient):**
 
-| Well FOVs | Storage (TB) |
-|-----------|--------------|
-| 400       | ~0.4-0.8     |
-| 500       | ~0.5-1.0     |
-| 1000      | ~1.0-2.0     |
-| 1500      | ~1.5-3.0     |
+Well FOVs | Storage (TB)
+--- | ---
+400 | ~0.4-0.8
+500 | ~0.5-1.0
+1000 | ~1.0-2.0
+1500 | ~1.5-3.0
 
 ### Data Availability
 
-The raw and processed imaging data are not quite publicly available at this time.
-We will have data available at some point on the NF Data Portal via synapse.
+The raw and processed imaging data are not quite publicly available at this
+time. We will have data available at some point on the NF Data Portal via
+synapse.
 
 ## Associated repositories
 
-- [NF1 3D organoid profiling pipeline](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline) - This repository (code and documentation for the pipeline)
-- [NF1 2D organoid profiling pipeline](https://github.com/WayScience/NF1_2D_organoid_profiling_pipeline) - Pipeline for 2D organoid profiling
-- [NF1 organoid profile analysis](https://github.com/WayScience/NF1_organoid_profile_analysis) - Downstream analysis of the generated profiles
+For more information on the NF1 organoid profiling project, please see the
+following associated repositories:
 
-This landing page is shared with the 3D profiling pipeline repo and documentation.
-In case you are reading this on the repo landing page, you can find the documentation for the 3D profiling pipeline at: <https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest>
+- [NF1 3D organoid profiling
+  pipeline](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline)
+  - This repository (code and documentation for the pipeline)
+- [NF1 2D organoid profiling
+  pipeline](https://github.com/WayScience/NF1_2D_organoid_profiling_pipeline)
+  - Pipeline for 2D organoid profiling
+- [NF1 organoid profile
+  analysis](https://github.com/WayScience/NF1_organoid_profile_analysis)
+  - Downstream analysis of the generated profiles
+
+## Citation
+
+If you use this pipeline in your research, please cite it using the metadata below.
+
+### BibTeX
+
+```bibtex
+@software{NF1_3D_organoid_profiling_pipeline,
+   title = {NF1 3D organoid profiling pipeline},
+   author = {Michael J. Lippincott and Jenna Tomkinson and Dave Bunten and
+      Camerson Mattson and Gregory P. Way},
+   url = {https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline},
+   version = {0.1.0},
+   license = {BSD 3-Clause License},
+}
+```
+
+### APA
+
+Way Science Lab. (2026). NF1 3D organoid profiling pipeline (0.1.0). <https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline>
+
+For structured citation metadata, see [CITATION.cff](CITATION.cff).

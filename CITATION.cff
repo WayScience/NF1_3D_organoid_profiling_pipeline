@@ -8,7 +8,19 @@ repository-code: "https://github.com/WayScience/NF1_3D_organoid_profiling_pipeli
 url: "https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline"
 abstract: "An end-to-end pipeline for NF1 3D organoid image preprocessing, segmentation, feature extraction, and profile generation."
 authors:
-	- name: "Way Science Lab"
+  - family-names: "Lippincott"
+    given-names: "Michael"
+    middle-names: "J"
+  - family-names: "Tomkinson"
+    given-names: "Jenna"
+  - family-names: "Bunten"
+    given-names: "Dave"
+  - family-names: "Mattson"
+    given-names: "Cameron"
+  - family-names: "Way"
+    given-names: "Gregory"
+    middle-names: "P"
+  - name: "Way Science Lab"
 
 references:
 	- type: software
