@@ -304,7 +304,7 @@ graph TD
     G1 --> K[Single-cell deep learning features ]
     H --> L[Organoid handcrafted features]
     H --> M[Organoid deep learning features]
-    I --> N[Nucleocentric Volumetric features]
+    I --> N[Nucleocentric volumetric features]
     I --> O[Nucleocentric flat features]
     J --> |QC| P1[QC profiles]
     K --> |QC| P2[QC profiles]
