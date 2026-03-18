@@ -455,7 +455,7 @@ graph LR
 ```
 
 ---
-**Feature Selection Parameters:**
+**Pycytominer Feature Selection Parameters:**
 
 - Correlation threshold: 0.9
 - Variance threshold: 0.01
