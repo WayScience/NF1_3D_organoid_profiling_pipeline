@@ -149,7 +149,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 **Directory:** `1.image_quality_control/`
 
 **Inputs:**
-- Deconvolved z-stack images from Stage 0
+- Z-stack images from Stage 0 (deconvolution optional)
 
 **Outputs:**
 - QC flags file: `data/{patient}/qc_flags.csv`
