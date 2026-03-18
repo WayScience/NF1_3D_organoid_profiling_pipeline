@@ -11,7 +11,7 @@ To address this, we have developed a 3D patient-derived tumor organoid model of 
 We developed a modified 3D Cell Painting protocol to generate high-content imaging data from these organoids.
 This repository contains the code and documentation for a comprehensive analysis pipeline to process and analyze these 3D organoid models of NF1 NFs.
 
-## Raw channels
+## Fluorescence channels
 | 405 | 488 | 555 | 640 |
 |:-:|:-:|:-:|:-:|
 | <img src="2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif" alt="DNA channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif" alt="ER channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif" alt="Golgi channel animation" width="150"/> | <img src="2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif" alt="Mito channel animation" width="150"/> |
