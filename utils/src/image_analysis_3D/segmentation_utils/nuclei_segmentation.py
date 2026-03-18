@@ -478,7 +478,7 @@ def fill_object_gaps(
 
 
 def postprocess_segmentation(
-    segmentation_3d: np.ndarray,
+    segmentation_mask: np.ndarray,
     remove_singletons: bool = True,
     fill_gaps: bool = True,
     max_gap_size: int = 2,
@@ -488,7 +488,7 @@ def postprocess_segmentation(
 
     Parameters
     ----------
-    segmentation_3d : numpy.ndarray
+    segmentation_mask : numpy.ndarray
         3D segmentation array.
     remove_singletons : bool, optional
         If True, remove objects that only appear in 1 slice.
@@ -502,7 +502,7 @@ def postprocess_segmentation(
     numpy.ndarray
         Cleaned 3D segmentation.
     """
-    result = segmentation_3d.copy()
+    result = segmentation_mask.copy()
 
     if remove_singletons:
         result = remove_single_slice_objects(result)
@@ -537,7 +537,7 @@ def object_stitching_and_relation(
 
     Returns
     -------
-    segmentation_3d : numpy.ndarray
+    segmentation_mask : numpy.ndarray
         3D array with unified instance labels across slices.
     diagnostics : dict
         Dict with stats about the matching.
@@ -594,11 +594,11 @@ def object_stitching_and_relation(
     if verbose:
         print("Stacking into 3D volume...")
 
-    segmentation_3d = stack_3d_segmentation(relabeled_masks)
+    segmentation_mask = stack_3d_segmentation(relabeled_masks)
 
     # Post-process: remove single-slice objects and fill small gaps
-    segmentation_3d = postprocess_segmentation(
-        segmentation_3d, remove_singletons=True, fill_gaps=True, max_gap_size=2
+    segmentation_mask = postprocess_segmentation(
+        segmentation_mask, remove_singletons=True, fill_gaps=True, max_gap_size=2
     )
 
-    return segmentation_3d, diagnostics
+    return segmentation_mask, diagnostics
