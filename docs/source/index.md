@@ -2,12 +2,14 @@
 title: 3D organoid image-based profiling
 ---
 
-Welcome to the 3D organoid image-based profiling documentation page.
-This pipeline provides a comprehensive workflow for processing and analyzing 3D organoid imaging data.
+```{include} ../../README.md
+:relative-images:
+:relative-docs: ..
+```
 
 ```{toctree}
 :maxdepth: 2
-:caption: getting started
+:caption: Getting started
 
 readme
 libraries
@@ -15,7 +17,7 @@ libraries
 
 ```{toctree}
 :maxdepth: 2
-:caption: features
+:caption: Features
 
 features/areasizeshape
 features/colocalization
