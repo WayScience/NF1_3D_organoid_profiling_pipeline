@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This notebook/scripts runs the nuclei segmentation pipeline for 3D images.
+# This runs all segmentation operations in one place.
+# The idea is that this should be faster and easier to envoke as we only have to load the image data once instead of N times (~10).
+# Running each individual task as its own script is modular but requires overhead to load the data each time.
+#
 
 # In[1]:
 
 
 import argparse
+import json
 import os
 import pathlib
 import sys
@@ -16,9 +20,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import psutil
-import skimage
+import scipy
 import tifffile
-import tomli
 import torch
 from cellpose import models
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
@@ -39,6 +42,10 @@ from image_analysis_3D.file_utils.notebook_init_utils import (
     init_notebook,
 )
 from image_analysis_3D.file_utils.read_in_channel_mapping import *
+from image_analysis_3D.file_utils.read_in_channel_mapping import (
+    retrieve_channel_mapping,
+)
+from image_analysis_3D.segmentation_utils.cell_segmentation import *
 from image_analysis_3D.segmentation_utils.general_segmentation_utils import *
 from image_analysis_3D.segmentation_utils.nuclei_segmentation import *
 from image_analysis_3D.segmentation_utils.segmentation_decoupling import *
@@ -82,12 +89,12 @@ else:
     print("Running in a notebook")
     patient = "NF0021_T1"
     well_fov = "G7-2"
-    window_size = 3
-    clip_limit = 0.01
+    clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 
 
+window_size = 2
 input_dir = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{input_subparent_name}/{well_fov}"
 ).resolve(strict=True)
@@ -104,117 +111,95 @@ channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml
 return_dict = read_in_channels(
     find_files_available(input_dir),
     channel_dict=channel_dict,
-    channels_to_read=["DNA"],
+    channels_to_read=["AGP"],
 )
-
-
-nuclei_raw = return_dict["DNA"]
+cyto2_raw = return_dict["AGP"]
+del return_dict
 # run clip_limit here
-nuclei = skimage.exposure.equalize_adapthist(
-    nuclei_raw, clip_limit=clip_limit, kernel_size=None
+cyto2 = skimage.exposure.equalize_adapthist(
+    cyto2_raw, clip_limit=clip_limit, kernel_size=None
 )
-del nuclei_raw
+del cyto2_raw
 
-
-# ## Nuclei Segmentation
 
 # In[6]:
 
 
-nuclei_image_shape = nuclei.shape
-nuclei_masks = np.array(  # convert to array
+# apply gaussian blur to smooth out the image after thresholding
+threshold_cyto2 = skimage.filters.threshold_otsu(cyto2)
+thresholded_cyto2 = cyto2 > threshold_cyto2
+thresholded_cyto2 = skimage.filters.gaussian(thresholded_cyto2, sigma=10)
+
+
+# ## Segment the organoids
+
+# In[7]:
+
+
+organoid_image_shape = cyto2.shape
+organoid_mask = np.array(  # convert to array
     list(  # send to list
         decouple_masks(  # 4. decouple masks
             reverse_sliding_window_max_projection(  # 3. reverse sliding window
                 segmentaion_on_two_D(  # 2. segment on 2D
                     sliding_window_two_point_five_D(  # 1. run sliding window
-                        image_stack=nuclei, window_size=3
-                    )
+                        image_stack=thresholded_cyto2, window_size=3
+                    ),
+                    diameter=200,
                 ),
                 window_size=3,
-                original_z_slice_count=nuclei_image_shape[0],
+                original_z_slice_count=organoid_image_shape[0],
             ),
-            original_img_shape=nuclei_image_shape,
+            original_img_shape=organoid_image_shape,
             distance_threshold=10,
         ).values()
     )
 )
 
 
-# ## remove small masks in each slice
-
-# In[7]:
-
-
-# Remove small objects while preserving label IDs
-# we avoid using the built-in skimage remove small objects function to preserve label IDs
-for zslice in range(nuclei_masks.shape[0]):
-    props = skimage.measure.regionprops(nuclei_masks[zslice])
-
-    # Remove objects smaller than threshold
-    for prop in props:
-        if prop.area < 250:  # ~15x15 pixel region for nuclei
-            # removed prior to the stitching.
-            # which is a reasonable size threshold for nuclei
-            nuclei_masks[zslice] = np.where(
-                nuclei_masks[zslice] == prop.label, 0, nuclei_masks[zslice]
-            )
-
-
 # In[8]:
 
 
-nuclei_mask, diag = object_stitching_and_relation(
-    input_masks=nuclei_masks,
+organoid_mask, diag = object_stitching_and_relation(
+    input_masks=organoid_mask,
     max_match_distance=100,
-    max_trajectory_length=15,  # 15 slice length (15 = 15 um)
     verbose=False,
 )
 
 
-# ## Remove edge objects
+# ## Remove border objects
 
 # In[9]:
 
 
-nuclei_mask = clean_border_objects(nuclei_mask, border_width=5)
+# nuclei should already have objects removed at the border from the previous notebook,
+# but we can run this again just to be safe
+organoid_mask = clean_border_objects(organoid_mask, border_width=5)
 
-
-# ## relabel the nuclei
 
 # In[10]:
 
 
-nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
-
-
-# In[11]:
-
-
 if in_notebook:
-    z = nuclei_masks.shape[0] // 4
-    plt.figure(figsize=(10, 4))
-    plt.subplot(121)
-    plt.imshow(nuclei_mask[z], cmap="nipy_spectral")
-    plt.title("Nuclei Masks After 3D Graph-Based Segmentation")
+    z = organoid_mask.shape[0] // 2
+    plt.figure(figsize=(10, 10))
+    plt.title("Organoid Mask")
+    plt.imshow(organoid_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
-    plt.subplot(122)
-    plt.imshow(nuclei[z], cmap="magma")
-    plt.axis("off")
-    plt.title("Nuclei signal")
     plt.show()
 
 
 # ## Save the segmented masks
 
+# In[11]:
+
+
+organoid_mask_output = pathlib.Path(f"{mask_path}/organoid_mask.tiff")
+
+tifffile.imwrite(organoid_mask_output, organoid_mask)
+
+
 # In[12]:
-
-
-nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
-tifffile.imwrite(nuclei_mask_output, nuclei_mask)
-
-
-# In[13]:
 
 
 stop_profiling(
@@ -224,13 +209,13 @@ stop_profiling(
     well_fov=well_fov,
     patient_id=patient,
     channel="NoChannel",
-    compartment="nuclei",
+    compartment="organoid",
     CPU_GPU="GPU",
     output_file_dir=pathlib.Path(
-        f"{image_base_dir}/data/{patient}/segmentation_masks/run_stats/{well_fov}_nuclei_segmentation.parquet"
+        f"{image_base_dir}/data/{patient}/segmentation_masks/run_stats/{well_fov}_organoid_segmentation.parquet"
     ),
 )
 
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
-# This runs in under 1 minute on a GPU + CPU and uses less than 3GB of RAM.
+# This runs in under 1 minute on a CPU and uses less than 1GB of RAM.

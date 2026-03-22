@@ -3,6 +3,7 @@
 """
 
 from collections import defaultdict
+from typing import Union
 
 import cellpose.models as models  # CPSAM
 import networkx as nx
@@ -16,13 +17,18 @@ from scipy.spatial.distance import cdist
 # ----------------------------------------------------------------------
 # cellpose segementation
 # ----------------------------------------------------------------------
-def segmentaion_on_two_D(imgs):
+def segmentaion_on_two_D(
+    imgs: np.ndarray,
+    diameter: Union[int, None] = None,
+) -> dict:
     """Run 2D Cellpose segmentation slice-by-slice.
 
     Parameters
     ----------
     imgs : np.ndarray
         3D image stack (Z, Y, X) to segment.
+    diameter : int, optional
+        Approximate diameter of objects to segment (in pixels). If None, Cellpose will estimate it automatically.
 
     Returns
     -------
@@ -43,9 +49,15 @@ def segmentaion_on_two_D(imgs):
     for slice in tqdm.tqdm(range(imgs.shape[0])):
         # Perform segmentation
         output_dict["slice"].append(slice)
-        labels, details, _ = model.eval(
-            imgs[slice, :, :],
-        )
+        if diameter is None:
+            labels, details, _ = model.eval(
+                imgs[slice, :, :],
+            )
+        else:
+            labels, details, _ = model.eval(
+                imgs[slice, :, :],
+                diameter=diameter,
+            )
         output_dict["labels"].append(labels)
         output_dict["details"].append(details)
     return output_dict

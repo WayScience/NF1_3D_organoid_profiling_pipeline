@@ -3,7 +3,7 @@
 
 # ## Imports
 
-# In[ ]:
+# In[1]:
 
 
 import argparse
@@ -41,7 +41,7 @@ image_base_dir = bandicoot_check(
 sys.path.append(f"{root_dir}/utils")
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -58,8 +58,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T1"
-    well_fov = "C4-2"
+    patient = "NF0021_T1"
+    well_fov = "G7-2"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 image_dir = pathlib.Path(
@@ -70,7 +70,7 @@ label_dir = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[ ]:
+# In[3]:
 
 
 label_dir
@@ -85,7 +85,7 @@ channel_map = {
 scaling_values = [1, 0.1, 0.1]
 
 
-# In[ ]:
+# In[4]:
 
 
 image_return_dict = read_in_channels(
@@ -121,20 +121,20 @@ mask_return_dict = read_in_channels(
 )
 
 
-# In[ ]:
+# In[5]:
 
 
 headless = False
 viewer = napari.Viewer(ndisplay=3, show=bool(not headless))
 
 
-# In[ ]:
+# In[6]:
 
 
 image_metadata = f"{patient}_{well_fov}"
 
 
-# In[ ]:
+# In[7]:
 
 
 for image_name, image_array in image_return_dict.items():
@@ -151,7 +151,7 @@ for mask_name, mask_array in mask_return_dict.items():
     )
 
 
-# In[ ]:
+# In[8]:
 
 
 # toggle view for all labels except organoid
@@ -160,7 +160,7 @@ for layer in viewer.layers:
         layer.visible = False
 
 
-# In[ ]:
+# In[9]:
 
 
 # screenshot the napari viewer

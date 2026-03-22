@@ -59,6 +59,7 @@ patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
     strict=True
 )
 patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
+patients = ["NF0014_T1", "NF0014_T1", "SARCO361_T1"]
 
 
 # In[3]:

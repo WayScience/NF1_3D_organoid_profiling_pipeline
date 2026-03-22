@@ -14,9 +14,18 @@ if [ ! -f "$txt_file" ]; then
     exit 1
 fi
 
+# get the total number of lines in the TXT file
+total_lines=$(wc -l < "$txt_file")
+
+
 jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ "$git_root"/2.segment_images/notebooks/*.ipynb
 
+
+line_counter=0
 while IFS= read -r line; do
+    # increment the line counter
+    line_counter=$((line_counter + 1))
+
     # skip the header line
     if [[ "$line" == "patient"* ]]; then
         continue
@@ -30,15 +39,13 @@ while IFS= read -r line; do
     input_subparent_name="${parts[2]}"
     mask_subparent_name="${parts[3]}"
 
-    echo "Patient: $patient, WellFOV: $well_fov,  Input Subparent Name: $input_subparent_name, Mask Subparent Name: $mask_subparent_name"
-
-    echo "Beginning segmentation for $patient - $well_fov"
+    echo "Processing $patient-$well_fov | $line_counter/$total_lines"
 
     # shellcheck disable=SC1091
     source child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
-# done < "$txt_file"
-done < <(tac "$txt_file")
+done < "$txt_file"
+# done < <(tac "$txt_file")
 
 
 
