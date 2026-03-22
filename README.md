@@ -225,6 +225,8 @@ cd 2.segment_images
 sbatch grand_parent_segmentation.sh
 ```
 
+### Cell segmentation workflow diagram
+
 ```mermaid
 flowchart TD
 A[raw image] --> B[thresholding]
@@ -271,6 +273,16 @@ X1 --> W3[connectivity=0; compactness=0]
 W1 --> H1
 W2 --> H1
 W3 --> H1
+
+```
+
+### Organoid segmentation workflow diagram
+
+```mermaid
+flowchart LR
+A[raw image] --> B[thresholding]
+B --> C[Gaussian smoothing with sigma=10.0]
+C --> D[CellPose SAM 2.5D segmentation]
 ```
 
 ---

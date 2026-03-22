@@ -123,3 +123,12 @@ W2 --> H1
 W3 --> H1
 
 ```
+
+## Organoid segmentation workflow diagram
+
+```mermaid
+flowchart LR
+A[raw image] --> B[thresholding]
+B --> C[Gaussian smoothing with sigma=10.0]
+C --> D[CellPose SAM 2.5D segmentation]
+```
