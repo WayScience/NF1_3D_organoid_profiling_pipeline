@@ -203,6 +203,7 @@ We refer to each mask category as a "compartment".
 
 1. **Nuclei segmentation**
    - Apply cellpose 4.0 on the DNA channel (405 nm).
+   - Uses a custom function for 2.5D segmentation to handle z-stacks with varying slice counts.
 2. **Organoid segmentation**
    - Use cellpose 3.x using a custom size invariant search algorithm.
 3. **Cell segmentation**
@@ -224,6 +225,10 @@ We refer to each mask category as a "compartment".
 cd 2.segment_images
 sbatch grand_parent_segmentation.sh
 ```
+
+### Nuclei segmentation workflow diagram
+
+![Segmentation workflow diagram](2.segment_images/media/2.5D_segmentation.png)
 
 ### Cell segmentation workflow diagram
 
