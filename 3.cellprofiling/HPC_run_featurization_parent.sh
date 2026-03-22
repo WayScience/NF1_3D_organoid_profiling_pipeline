@@ -16,6 +16,19 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
+alpine_scratch_dir="/scratch/alpine"
+anvil_scratch_dir="/anvil/scratch"
+
+if [[ -e "$alpine_scratch_dir" ]]; then
+    partition="amilan"
+    qos="--qos=normal"
+elif [[ -e "$anvil_scratch_dir" ]]; then
+    partition="standard"
+    qos="--mail-type=all"
+else
+    echo "Error: No known scratch directory found."
+fi
+
 
 echo "Patient: $patient, WellFOV: $well_fov, Feature: $feature, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 echo "InputSubparent: $input_subparent_name, MaskSubparent: $mask_subparent_name, OutputFeaturesSubparent: $output_features_subparent_name"
@@ -23,10 +36,9 @@ echo "InputSubparent: $input_subparent_name, MaskSubparent: $mask_subparent_name
 if [ "$feature" == "Neighbors" ]; then
     sbatch \
     --nodes=1 \
-    --ntasks=1 \
-    --partition=amilan \
-    --qos=normal \
-    --account=amc-general \
+    --mem=2G \
+    --partition="$partition" \
+    "$qos" \
     --time=1:00 \
     --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
     --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_neighbors_child-%j.out" \
@@ -43,10 +55,9 @@ fi
 if [ "$feature" == "Granularity" ] ; then
     sbatch \
         --nodes=1 \
-        --ntasks=2 \
-        --partition=amilan \
-        --qos=normal \
-        --account=amc-general \
+        --mem=4G \
+        --partition="$partition" \
+        "$qos" \
         --time=5:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_granularity_child-%j.out" \
@@ -64,11 +75,10 @@ fi
 if [ "$feature" == "Texture" ] ; then
     sbatch \
         --nodes=1 \
-        --ntasks=1 \
-        --partition=amilan \
-        --qos=normal \
-        --account=amc-general \
-        --time=5:00 \
+        --mem=6G \
+        --partition="$partition" \
+        "$qos" \
+        --time=1:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_texture_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_texture_child.sh \
@@ -86,10 +96,9 @@ fi
 if [ "$feature" == "AreaSizeShape" ] ; then
     sbatch \
         --nodes=1 \
-        --ntasks=1 \
-        --partition=amilan \
-        --qos=normal \
-        --account=amc-general \
+        ---mem=2G \
+        --partition="$partition" \
+        "$qos" \
         --time=00:00:30 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_area_shape_child-%j.out" \
@@ -106,10 +115,9 @@ fi
 if [ "$feature" == "Colocalization" ] ; then
     sbatch \
         --nodes=1 \
-        --ntasks=1 \
-        --partition=amilan \
-        --qos=normal \
-        --account=amc-general \
+        --mem=4G \
+        --partition="$partition" \
+        "$qos" \
         --time=2:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_colocalization_child-%j.out" \
@@ -127,10 +135,9 @@ fi
 if [ "$feature" == "Intensity" ] ; then
     sbatch \
         --nodes=1 \
-        --ntasks=1 \
-        --partition=amilan \
-        --qos=normal \
-        --account=amc-general \
+        --mem=2G \
+        --partition="$partition" \
+        "$qos" \
         --time=2:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_intensity_child-%j.out" \

@@ -12,14 +12,20 @@ output_features_subparent_name=$8
 echo "AreaSizeShape feature extraction for patient: $patient, WellFOV: $well_fov, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 
 git_root=$(git rev-parse --show-toplevel)
-if [ -z "$git_root" ]; then
-    echo "Error: Could not find the git root directory."
-    exit 1
+
+if [ -d "/scratch/alpine" ]; then
+    ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
+elif [ -d "/anvil" ]; then
+    ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
+else
+    ENV_PATH="$git_root/.venv"
 fi
 
+# shellcheck disable=SC1091
+source "$ENV_PATH"/bin/activate
 
 echo "Running CPU version"
-uv run "$git_root"/3.cellprofiling/scripts/area_shape.py \
+uv run python "$git_root"/3.cellprofiling/scripts/area_shape.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
     --compartment "$compartment" \

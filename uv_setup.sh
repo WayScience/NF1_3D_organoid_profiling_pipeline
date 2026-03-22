@@ -13,6 +13,12 @@ else
     ENV_PATH="$git_root/.venv"
 fi
 
+if [[ -e "$ENV_PATH" ]]; then
+    echo "Using existing virtual environment at $ENV_PATH"
+else
+    mkdir -p "$ENV_PATH"
+    echo "Created virtual environment directory at $ENV_PATH"
+fi
 
 # run twice to ensure we are in a clean environment
 # and not accidentally using an existing one
