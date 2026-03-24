@@ -143,7 +143,7 @@ df.head()
 # A job is considered complete when its mask directory contains at least 4 `.tiff` files.
 # Scan each unique mask directory once to build counts, then filter.
 
-# In[ ]:
+# In[5]:
 
 
 # Scan each unique mask directory once — count existing .tiff files
