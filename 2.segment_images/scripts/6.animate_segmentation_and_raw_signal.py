@@ -57,7 +57,7 @@ if not in_notebook:
 
 else:
     print("Running in a notebook")
-    well_fov = "C4-2"
+    well_fov = "F4-1"
     patient = "NF0014_T1"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -203,13 +203,13 @@ image_return_dict = read_in_channels(
     find_files_available(image_dir),
     channel_dict={
         "DNA": "405",
-        "Endoplasmic_Reticulum": "488",
+        "Endoplasmic Reticulum": "488",
         "AGP": "555",
         "Mitochondria": "640",
     },
     channels_to_read=[
         "DNA",
-        "Endoplasmic_Reticulum",
+        "Endoplasmic Reticulum",
         "AGP",
         "Mitochondria",
     ],
@@ -218,16 +218,16 @@ image_return_dict = read_in_channels(
 mask_return_dict = read_in_channels(
     find_files_available(label_dir),
     channel_dict={
-        "Nuclei_mask": "nuclei",
-        "Cell_mask": "cell",
-        "Cytoplasm_mask": "cytoplasm",
-        "Organoid_mask": "organoid",
+        "Nuclei mask": "nuclei",
+        "Cell mask": "cell",
+        "Cytoplasm mask": "cytoplasm",
+        "Organoid mask": "organoid",
     },
     channels_to_read=[
-        "Nuclei_mask",
-        "Cell_mask",
-        "Cytoplasm_mask",
-        "Organoid_mask",
+        "Nuclei mask",
+        "Cell mask",
+        "Cytoplasm mask",
+        "Organoid mask",
     ],
 )
 
@@ -283,7 +283,6 @@ for layer_name in layer_names:
 
 for layer_name in layer_names:
     viewer.layers[layer_name].visible = True
-    # change the brightness and contrast for the raw signal layers
     if ".tif" in layer_name:
         save_name = layer_name.split(".tif")[0]
     else:
@@ -302,7 +301,7 @@ for layer_name in layer_names:
         save_name = layer_name
 
     save_path = pathlib.Path(f"{mp4_file_dir}/{well_fov}_{save_name}_animation.mp4")
-    if "Mito" in layer_name:
+    if "640" in layer_name:
         # increase contrast for the mitochondria
         viewer.layers[layer_name].contrast_limits = (0, 20000)
     animate_view(viewer, save_path, steps=30, easing="linear")

@@ -53,10 +53,8 @@ else:
     mask_subparent_name = "segmentation_masks"
 
 
-raw_figures_path = pathlib.Path(f"../figures/platemaps/raw").resolve()
-mask_figures_path = pathlib.Path(f"../figures/platemaps/masks").resolve()
-raw_figures_path.mkdir(parents=True, exist_ok=True)
-mask_figures_path.mkdir(parents=True, exist_ok=True)
+figures_path = pathlib.Path(f"../figures/platemaps/").resolve()
+figures_path.mkdir(parents=True, exist_ok=True)
 patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
     strict=True
 )
@@ -311,7 +309,7 @@ red_lut[0] = [0, 0, 0]
 #             clip_limit=0.03,  # Adjust this value (0-1)
 #         )
 #         # Save using matplotlib
-#         output_path = raw_figures_path / f"{patient}_platemap_{channel}.png"
+#         output_path = figures_path / f"{patient}_platemap_{channel}.png"
 #         fig.savefig(
 #             output_path,
 #             dpi=600,
@@ -335,11 +333,7 @@ for patient in tqdm.tqdm(
     well_fovs = mask_path.glob("*")
 
     # plot and save the plate view
-    masks_to_show = [
-        "organoid",
-        # "nuclei",
-        # "cell"
-    ]
+    masks_to_show = ["organoid", "nuclei", "cell"]
     mask_available_wells = {}
     for well_fov_path in well_fovs:
         if not well_fov_path.is_dir():
@@ -365,10 +359,9 @@ for patient in tqdm.tqdm(
             layout="96",
             skip_outer_wells=True,
             image_color_map="nipy_spectral",
-            contrast_enhance=False,
         )
         # Save using matplotlib
-        output_path = mask_figures_path / f"{patient}_platemap_{mask}.png"
+        output_path = figures_path / f"{patient}_platemap_{mask}.png"
         fig.savefig(
             output_path,
             dpi=600,

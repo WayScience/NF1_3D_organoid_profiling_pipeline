@@ -39,9 +39,11 @@ image_base_dir = bandicoot_check(
 )
 
 sys.path.append(f"{root_dir}/utils")
+from image_analysis_3D.segmentation_utils.segmentation_decoupling import (
+    euclidian_2D_distance,
+)
 
-
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -58,8 +60,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T2"
-    well_fov = "D7-7"
+    patient = "NF0014_T1"
+    well_fov = "E7-2"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 image_dir = pathlib.Path(
@@ -107,16 +109,16 @@ image_return_dict = read_in_channels(
 mask_return_dict = read_in_channels(
     find_files_available(label_dir),
     channel_dict={
-        "Nuclei_mask": "nuclei",
-        "Cell_mask": "cell",
-        "Cytoplasm_mask": "cytoplasm",
-        "Organoid_mask": "organoid",
+        "Nuclei mask": "nuclei",
+        "Cell mask": "cell",
+        "Cytoplasm mask": "cytoplasm",
+        "Organoid mask": "organoid",
     },
     channels_to_read=[
-        "Nuclei_mask",
-        "Cell_mask",
-        "Cytoplasm_mask",
-        "Organoid_mask",
+        "Nuclei mask",
+        "Cell mask",
+        "Cytoplasm mask",
+        "Organoid mask",
     ],
 )
 
@@ -144,12 +146,11 @@ for image_name, image_array in image_return_dict.items():
         scale=scaling_values,
     )
 for mask_name, mask_array in mask_return_dict.items():
-    if mask_array is not None:
-        viewer.add_labels(
-            mask_array,
-            name=f"{image_metadata}_{mask_name}",
-            scale=scaling_values,
-        )
+    viewer.add_labels(
+        mask_array,
+        name=f"{image_metadata}_{mask_name}",
+        scale=scaling_values,
+    )
 
 
 # In[8]:

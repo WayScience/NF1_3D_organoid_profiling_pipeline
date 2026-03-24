@@ -24,10 +24,6 @@ import scipy
 import tifffile
 import torch
 from cellpose import models
-from image_analysis_3D.featurization_utils.resource_profiling_util import (
-    start_profiling,
-    stop_profiling,
-)
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -52,7 +48,9 @@ from skimage.filters import sobel
 # In[2]:
 
 
-start_time, start_mem = start_profiling()
+start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
 # In[3]:
@@ -84,8 +82,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T1"
+    well_fov = "C4-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -162,7 +160,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[9]:
+# In[8]:
 
 
 if in_notebook:
@@ -185,7 +183,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[10]:
+# In[9]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -196,7 +194,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[11]:
+# In[10]:
 
 
 nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
@@ -208,7 +206,7 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 )
 
 
-# In[12]:
+# In[11]:
 
 
 # refine the cell masks
@@ -222,13 +220,31 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[13]:
+# In[12]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
     nuclei_masks=nuclei_mask,
     cell_masks=cell_mask,
 )
+
+
+# ## Organoid segmentation (derived from cell segmentation)
+
+# In[13]:
+
+
+# convert the cell masks to binary masks
+# the masks here are an array of every mask in the image.
+cell_binary_mask = cell_mask.copy()
+cell_binary_mask[cell_binary_mask > 0] = 1
+# Fill holes in cell masks before generating organoid mask
+for z in range(cell_binary_mask.shape[0]):
+    cell_binary_mask[z] = scipy.ndimage.binary_fill_holes(
+        cell_binary_mask[z].astype(bool)
+    )
+# make sure each instance has a unique integer label
+organoid_mask = skimage.measure.label(cell_binary_mask)
 
 
 # ## Remove border objects
@@ -238,9 +254,10 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # nuclei should already have objects removed at the border from the previous notebook,
 # but we can run this again just to be safe
-nuclei_mask = clean_border_objects(nuclei_mask, border_width=5)
-cell_mask = clean_border_objects(cell_mask, border_width=5)
-cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
+nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
+cell_mask = clean_border_objects(cell_mask, border_width=25)
+cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=25)
+organoid_mask = clean_border_objects(organoid_mask, border_width=25)
 
 
 # In[15]:
@@ -265,17 +282,21 @@ for label_id in unmatched_labels_to_remove:
 if in_notebook:
     z = cell_mask.shape[0] // 2
     plt.figure(figsize=(10, 10))
-    plt.subplot(131)
+    plt.subplot(141)
     plt.title("Nuclei Mask")
     plt.imshow(nuclei_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
-    plt.subplot(132)
+    plt.subplot(142)
     plt.title("Cell Mask")
     plt.imshow(cell_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
-    plt.subplot(133)
+    plt.subplot(143)
     plt.title("Cytoplasm Mask")
     plt.imshow(cytoplasm_mask[z, :, :], cmap="nipy_spectral")
+    plt.axis("off")
+    plt.subplot(144)
+    plt.title("Organoid Mask")
+    plt.imshow(organoid_mask[z, :, :], cmap="nipy_spectral")
     plt.axis("off")
     plt.show()
 
@@ -288,27 +309,26 @@ if in_notebook:
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 cell_mask_output = pathlib.Path(f"{mask_path}/cell_mask.tiff")
 cytoplasm_mask_output = pathlib.Path(f"{mask_path}/cytoplasm_mask.tiff")
+organoid_mask_output = pathlib.Path(f"{mask_path}/organoid_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
+tifffile.imwrite(organoid_mask_output, organoid_mask)
 
 
 # In[18]:
 
 
-stop_profiling(
-    start_time=start_time,
-    start_mem=start_mem,
-    feature_type="Segmentation",
-    well_fov=well_fov,
-    patient_id=patient,
-    channel="NoChannel",
-    compartment="cell",
-    CPU_GPU="GPU",
-    output_file_dir=pathlib.Path(
-        f"{image_base_dir}/data/{patient}/segmentation_masks/run_stats/{well_fov}_cell_segmentation.parquet"
-    ),
-)
+end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+end_time = time.time()
+print(f"""
+    Memory and time profiling for the run:\n
+    Memory usage: {end_mem - start_mem:.2f} MB\n
+    Time:\n
+    --- %s seconds --- % {(end_time - start_time)}\n
+    --- %s minutes --- % {((end_time - start_time) / 60)}\n
+    --- %s hours --- % {((end_time - start_time) / 3600)}
+""")
 
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).

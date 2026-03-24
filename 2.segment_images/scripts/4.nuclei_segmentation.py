@@ -21,10 +21,6 @@ import tifffile
 import tomli
 import torch
 from cellpose import models
-from image_analysis_3D.featurization_utils.resource_profiling_util import (
-    start_profiling,
-    stop_profiling,
-)
 from image_analysis_3D.file_utils.arg_parsing_utils import (
     check_for_missing_args,
     parse_args,
@@ -48,7 +44,9 @@ from skimage.segmentation import relabel_sequential
 # In[2]:
 
 
-start_time, start_mem = start_profiling()
+start_time = time.time()
+# get starting memory (cpu)
+start_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
 
 
 # In[3]:
@@ -80,8 +78,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T1"
+    well_fov = "C4-2"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -118,7 +116,7 @@ del nuclei_raw
 
 # ## Nuclei Segmentation
 
-# In[6]:
+# In[ ]:
 
 
 nuclei_image_shape = nuclei.shape
@@ -143,7 +141,7 @@ nuclei_masks = np.array(  # convert to array
 
 # ## remove small masks in each slice
 
-# In[7]:
+# In[ ]:
 
 
 # Remove small objects while preserving label IDs
@@ -177,7 +175,7 @@ nuclei_mask, diag = object_stitching_and_relation(
 # In[9]:
 
 
-nuclei_mask = clean_border_objects(nuclei_mask, border_width=5)
+nuclei_mask = clean_border_objects(nuclei_mask, border_width=25)
 
 
 # ## relabel the nuclei
@@ -211,25 +209,22 @@ if in_notebook:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
-tifffile.imwrite(nuclei_mask_output, nuclei_mask)
+tifffile.imwrite(nuclei_mask_output, nuclei_mask, dtype=np.uint8)
 
 
 # In[13]:
 
 
-stop_profiling(
-    start_time=start_time,
-    start_mem=start_mem,
-    feature_type="Segmentation",
-    well_fov=well_fov,
-    patient_id=patient,
-    channel="NoChannel",
-    compartment="nuclei",
-    CPU_GPU="GPU",
-    output_file_dir=pathlib.Path(
-        f"{image_base_dir}/data/{patient}/segmentation_masks/run_stats/{well_fov}_nuclei_segmentation.parquet"
-    ),
-)
+end_mem = psutil.Process(os.getpid()).memory_info().rss / 1024**2
+end_time = time.time()
+print(f"""
+    Memory and time profiling for the run:\n
+    Memory usage: {end_mem - start_mem:.2f} MB\n
+    Time:\n
+    --- %s seconds --- % {(end_time - start_time)}\n
+    --- %s minutes --- % {((end_time - start_time) / 60)}\n
+    --- %s hours --- % {((end_time - start_time) / 3600)}
+""")
 
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
