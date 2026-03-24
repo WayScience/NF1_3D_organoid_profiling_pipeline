@@ -1,0 +1,8 @@
+table img {
+  width: 220px;
+  height: 170px;
+  max-width: none;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}

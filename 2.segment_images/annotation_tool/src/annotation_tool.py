@@ -11,11 +11,12 @@ import webbrowser
 from pathlib import Path
 
 import state
-from config import BATCH_SIZE, GRID_COLS, GRID_ROWS, LABELS
 from flask import Flask
 from image_utils import get_image_files
 from routes import bp
 from storage import load_existing_annotations
+
+from config import BATCH_SIZE, GRID_COLS, GRID_ROWS, LABELS
 
 # ---------------------------------------------------------------------------
 # Flask application

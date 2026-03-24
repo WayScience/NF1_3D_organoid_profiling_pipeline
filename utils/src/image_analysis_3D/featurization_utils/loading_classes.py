@@ -1,5 +1,7 @@
 """Data-loading classes for featurization workflows."""
 
+from __future__ import annotations
+
 import logging
 import pathlib
 
@@ -238,6 +240,7 @@ class ObjectLoader:
     A class to load objects from a labeled image and extract their properties.
     Where an object is defined as a segmented region in the image.
     This could be a cell, a nucleus, or any other compartment segmented.
+
     Parameters
     ----------
     image : numpy.ndarray
@@ -248,6 +251,7 @@ class ObjectLoader:
         The name of the channel from which the objects are extracted.
     compartment_name : str
         The name of the compartment from which the objects are extracted.
+
     Attributes
     ----------
     image : numpy.ndarray
@@ -262,11 +266,11 @@ class ObjectLoader:
         The labeled image containing the segmented objects.
     object_ids : numpy.ndarray
         The unique object IDs for the segmented objects.
+
     Methods
     -------
     __init__(image, label_image, channel_name, compartment_name)
         Initializes the ObjectLoader with the image, label image, channel name, and compartment name.
-
     """
 
     def __init__(
@@ -303,6 +307,7 @@ class TwoObjectLoader:
     """
     A class to load two images and a label image for a specific compartment.
     This class is primarily used for loading images for two-channel analysis like co-localization.
+
     Parameters
     ----------
     image_set_loader : ImageSetLoader
@@ -313,6 +318,7 @@ class TwoObjectLoader:
         The name of the first channel to be loaded.
     channel2 : str
         The name of the second channel to be loaded.
+
     Attributes
     ----------
     image_set_loader : ImageSetLoader
@@ -327,6 +333,7 @@ class TwoObjectLoader:
         The image corresponding to the second channel.
     object_ids : numpy.ndarray
         The unique object IDs for the segmented objects in the specified compartment.
+
     Methods
     -------
     __init__(image_set_loader, compartment, channel1, channel2)
@@ -339,7 +346,7 @@ class TwoObjectLoader:
         compartment: str,
         channel1: str,
         channel2: str,
-    ):
+    ) -> None:
         """Initialize a two-channel loader for a compartment.
 
         Parameters

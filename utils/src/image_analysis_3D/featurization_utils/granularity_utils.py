@@ -1,3 +1,9 @@
+"""
+Calculate the granularity spectrum of a 3D image.
+"""
+
+from __future__ import annotations
+
 from typing import Dict, Optional
 
 import numpy
@@ -7,7 +13,7 @@ import tqdm
 from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
-def _fix_scipy_ndimage_result(result) -> numpy.ndarray:
+def _fix_scipy_ndimage_result(result: float | list | numpy.ndarray) -> numpy.ndarray:
     """Convert scipy.ndimage aggregation results to a consistent array.
 
     Equivalent to centrosome.cpmorphology.fixup_scipy_ndimage_result.
@@ -117,7 +123,7 @@ def measure_3D_granularity(
     1. Subsample the image uniformly (same factor for Z, Y, X).
     2. Further subsample for background tophat removal.
     3. Iteratively erode with ball(1) and reconstruct, measuring
-       signal lost at each scale as image-level and per-object values.
+    signal lost at each scale as image-level and per-object values.
 
     Parameters
     ----------

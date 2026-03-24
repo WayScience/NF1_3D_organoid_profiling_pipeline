@@ -186,22 +186,26 @@ def measure_3D_number_of_neighbors(
     return neighbors_out_dict
 
 
-def get_coordinates(nuclei_mask: numpy.ndarray, object_ids=[]) -> pandas.DataFrame:
+def get_coordinates(
+    nuclei_mask: numpy.ndarray, object_ids: list | None = None
+) -> pandas.DataFrame:
     """
     Extract coordinates from a labeled mask.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     nuclei_mask : ndarray
         3D labeled mask where each object has a unique ID
     object_ids : list
         List of object IDs to extract
 
-    Returns:
-    --------
+    Returns
+    -------
     coords : pandas.DataFrame
         DataFrame with columns: object_id, x, y, z
     """
+    if object_ids is None:
+        object_ids = []
     coords = {"object_id": [], "x": [], "y": [], "z": []}
 
     for obj_id in object_ids:
@@ -242,8 +246,8 @@ def mahalanobis_distance_from_centroid(
 
     For small sample sizes (<50 cells), uses regularization or falls back to Euclidean.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     coords : ndarray
         Cell coordinates (n_cells, 3)
     centroid : ndarray
@@ -251,8 +255,8 @@ def mahalanobis_distance_from_centroid(
     min_cells_threshold : int
         Minimum cells needed for reliable Mahalanobis (default: 50)
 
-    Returns:
-    --------
+    Returns
+    -------
     distances : ndarray
         Mahalanobis distances for each cell
     """
@@ -314,9 +318,9 @@ def classify_cells_into_shells(
 
     Automatically adjusts n_shells for small organoids to ensure meaningful statistics.
 
-    Parameters:
-    -----------
-    coords : pandas.DataFrame or diccolumnst
+    Parameters
+    ----------
+    coords : pandas.DataFrame or dict
         Cell coordinates with /keys: object_id, x, y, z
     n_shells : int
         Number of concentric shells to create (will be adjusted if needed)
@@ -327,8 +331,8 @@ def classify_cells_into_shells(
     centroid : numpy.ndarray, optional
         Pre-calculated centroid (if None, will be calculated from coords)
 
-    Returns:
-    --------
+    Returns
+    -------
     results : dict
         Dictionary containing:
         - 'ShellAssignments': Shell number for each cell (0 = innermost)
@@ -410,13 +414,13 @@ def create_results_dataframe(results: dict) -> pandas.DataFrame:
     """
     Create a pandas DataFrame with all cell information.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     results : dict
         Results from classify_cells_into_shells
 
-    Returns:
-    --------
+    Returns
+    -------
     df : pandas.DataFrame
         DataFrame with cell information
     """
@@ -440,8 +444,8 @@ def visualize_organoid_shells(
     """
     Create 3D visualization of organoid with shell coloring.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     coords : pandas.DataFrame or dict
         Cell coordinates with columns/keys: object_id, x, y, z
     classification_results : dict
@@ -550,8 +554,8 @@ def plot_distance_distributions(
     """
     Plot distance distributions for each shell.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     classification_results : dict
         Results from classify_cells_into_shells
     n_shells : int, optional

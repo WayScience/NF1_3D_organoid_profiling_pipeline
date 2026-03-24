@@ -256,8 +256,6 @@ display(Markdown(table1_md))
 # In[14]:
 
 
-import matplotlib as mpl
-
 # save as table as svg
 from matplotlib import pyplot as plt
 from pandas.plotting import table
