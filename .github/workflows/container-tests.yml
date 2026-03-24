@@ -1,0 +1,38 @@
+name: Container Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  run-call-test:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # Required for container tests (missing from base image).
+        # install each dependency
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            fontconfig \
+            libfreetype6 \
+            libegl1 \
+            libgles2 \
+            libgl1
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Install uv
+        run: pip install --no-cache-dir uv
+
+      - name: Run call_test.sh
+      # call the testing script from the utils directory since it relies on relative paths to the test data and other scripts in that directory
+        working-directory: utils
+        run: bash call_test.sh

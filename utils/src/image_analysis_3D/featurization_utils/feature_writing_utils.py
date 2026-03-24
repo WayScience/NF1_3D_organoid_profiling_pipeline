@@ -46,7 +46,8 @@ def format_morphology_feature_name(
     """
     Format a morphology feature name in a consistent way across all morphology features.
     This format follows specification for the following:
-    https://https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/docs/RFC-2119-Feature-Naming-Convention.md
+    https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/docs/RFC-2119-Feature-Naming-Convention.md
+
     Parameters
     ----------
     compartment : str
@@ -81,6 +82,7 @@ def save_features_as_parquet(
     cpu_or_gpu: str,
 ) -> pathlib.Path:
     """Save features as parquet files in a consistent way across all morphology features.
+
     Parameters
     ----------
     parent_path : pathlib.Path
@@ -95,6 +97,7 @@ def save_features_as_parquet(
         The feature type.
     cpu_or_gpu : str
         Whether the features were generated using CPU or GPU processing.
+
     Returns
     -------
     pathlib.Path

@@ -5,10 +5,11 @@ Flask route definitions (registered as a Blueprint).
 from io import BytesIO
 
 import state
-from config import BATCH_SIZE, GRID_COLS, GRID_ROWS, LABELS, THUMBNAIL_SIZE
 from flask import Blueprint, jsonify, render_template, request, send_file
 from image_utils import generate_thumbnail, get_image_files, get_sorted_images
 from storage import save_annotation
+
+from config import BATCH_SIZE, GRID_COLS, GRID_ROWS, LABELS, THUMBNAIL_SIZE
 
 bp = Blueprint("main", __name__)
 

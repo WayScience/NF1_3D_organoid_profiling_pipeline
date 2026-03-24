@@ -7,8 +7,6 @@ from typing import Tuple
 
 def init_notebook() -> Tuple[pathlib.Path, bool]:
     """
-    Description
-    -----------
     Initializes the notebook environment by determining the root directory of the Git repository
     and checking if the code is running in a Jupyter notebook.
 
