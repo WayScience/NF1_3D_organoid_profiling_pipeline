@@ -143,7 +143,7 @@ df.head()
 # A job is considered complete when its mask directory contains at least 4 `.tiff` files.
 # Scan each unique mask directory once to build counts, then filter.
 
-# In[5]:
+# In[ ]:
 
 
 # Scan each unique mask directory once — count existing .tiff files
@@ -182,7 +182,7 @@ df["num_of_masks"] = df.apply(
     lambda row: mask_tiff_counts.get(_mask_dir_key(row), 0), axis=1
 )
 
-df_rerun = df.loc[df["num_of_masks"] < 1].copy()
+df_rerun = df.loc[df["num_of_masks"] < 4].copy()
 df_rerun = df_rerun.drop(columns=["num_of_masks"]).reset_index(drop=True)
 
 print(f"{df.shape[0]} total segmentation jobs")

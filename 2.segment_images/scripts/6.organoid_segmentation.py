@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This runs all segmentation operations in one place.
-# The idea is that this should be faster and easier to envoke as we only have to load the image data once instead of N times (~10).
-# Running each individual task as its own script is modular but requires overhead to load the data each time.
+# This runs organoid segmentation operations in one place.
 #
 
 # In[1]:
@@ -169,11 +167,9 @@ organoid_mask, diag = object_stitching_and_relation(
 
 # ## Remove border objects
 
-# In[9]:
+# In[ ]:
 
 
-# nuclei should already have objects removed at the border from the previous notebook,
-# but we can run this again just to be safe
 organoid_mask = clean_border_objects(organoid_mask, border_width=5)
 
 
@@ -219,7 +215,3 @@ stop_profiling(
         f"{image_base_dir}/data/{patient}/segmentation_masks/run_stats/{well_fov}_organoid_segmentation.parquet"
     ),
 )
-
-
-# Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
-# This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
