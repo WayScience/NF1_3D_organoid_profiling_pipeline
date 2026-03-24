@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Union
 
 import cellpose.models as models  # CPSAM
 import networkx as nx
@@ -18,13 +19,18 @@ from scipy.spatial.distance import cdist
 # ----------------------------------------------------------------------
 # cellpose segementation
 # ----------------------------------------------------------------------
-def segmentaion_on_two_D(imgs: np.ndarray) -> dict:
+def segmentaion_on_two_D(
+    imgs: np.ndarray,
+    diameter: Union[int, None] = None,
+) -> dict:
     """Run 2D Cellpose segmentation slice-by-slice.
 
     Parameters
     ----------
     imgs : np.ndarray
         3D image stack (Z, Y, X) to segment.
+    diameter : int, optional
+        Approximate diameter of objects to segment (in pixels). If None, Cellpose will estimate it automatically.
 
     Returns
     -------
@@ -45,9 +51,15 @@ def segmentaion_on_two_D(imgs: np.ndarray) -> dict:
     for slice in tqdm.tqdm(range(imgs.shape[0])):
         # Perform segmentation
         output_dict["slice"].append(slice)
-        labels, details, _ = model.eval(
-            imgs[slice, :, :],
-        )
+        if diameter is None:
+            labels, details, _ = model.eval(
+                imgs[slice, :, :],
+            )
+        else:
+            labels, details, _ = model.eval(
+                imgs[slice, :, :],
+                diameter=diameter,
+            )
         output_dict["labels"].append(labels)
         output_dict["details"].append(details)
     return output_dict
@@ -364,7 +376,7 @@ def collapse_labels_from_paths(
     node_to_label = {}
     for label_id, path in enumerate(paths):
         for node_id in path:
-            node_to_label[node_id] = label_id
+            node_to_label[node_id] = label_id + 1  # Start labels from 1
 
     # Relabel each 2D mask
     relabeled_masks = []

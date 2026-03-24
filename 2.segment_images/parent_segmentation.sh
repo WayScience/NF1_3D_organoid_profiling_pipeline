@@ -55,10 +55,11 @@ while IFS= read -r line; do
         --gres=gpu:1 \
         --qos=normal \
         --account=amc-general \
-        --time=7:00 \
+        --time=15:00 \
         --output=logs/child/segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
 done < "$txt_file"
 
 echo "All segmentation child jobs submitted"
+
