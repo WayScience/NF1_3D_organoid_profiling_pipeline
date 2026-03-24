@@ -110,6 +110,7 @@ profile_prep_for_sage/data_for_sage/*
 # ============================================================================
 # Module 2: Segmentation
 # ============================================================================
+2.segment_images/animations/media_for_readme/*
 2.segment_images/animations/NF*
 2.segment_images/animations/gif/*
 2.segment_images/animations/test/mp4/*
