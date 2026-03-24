@@ -2,12 +2,90 @@
 # Cell segmentation in 3D
 """
 
+from typing import Union
+
+import cupy
+import cupyx
+import cupyx.scipy.ndimage
 import numpy as np
+import scipy
 import skimage.filters
 import skimage.measure
 import skimage.morphology
 import skimage.segmentation
 from skimage.filters import sobel
+
+
+def fill_holes_in_mask(
+    mask: np.ndarray,
+    compartment: Union[str, None] = None,
+) -> np.ndarray:
+    """
+    This function fills holes in instance segmented mask images
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        3D instance segmented mask image where each cell has a unique integer label and background is 0
+    compartment : str, optional
+        Compartment type of the mask (e.g. "cell" or "organoid"), by default None. This is used to determine the hole filling strategy.
+
+    Errors
+    ------
+    ValueError
+        If compartment is not specified, a ValueError is raised since the hole filling strategy depends on the compartment type.
+
+    Returns
+    -------
+    np.ndarray
+        3D instance segmented mask image with holes filled
+    """
+    if compartment is None:
+        raise ValueError("Compartment must be specified for hole filling.")
+    # fill enclosed holes in segmented cells for each label
+    # use hybrid filling: 3D fill + per-slice 2D fill (handles z-tunnels common in microscopy)
+    mask_cp = cupy.asarray(mask)
+    new_mask_cp = cupy.zeros_like(mask_cp)
+    structure_3d = cupyx.scipy.ndimage.generate_binary_structure(rank=3, connectivity=1)
+
+    if compartment.lower() == "cell":
+        for label in cupy.unique(mask_cp):
+            label = int(label)
+            if label == 0:
+                continue  # skip background
+            tmp_mask = mask_cp == label
+
+            # 3D enclosed-hole fill
+            tmp_mask = cupyx.scipy.ndimage.binary_fill_holes(
+                tmp_mask,
+                structure=structure_3d,
+            )
+
+            # 2D per-z enclosed-hole fill (captures holes open across z in 3D)
+            for z in range(tmp_mask.shape[0]):
+                tmp_mask[z] = cupyx.scipy.ndimage.binary_fill_holes(tmp_mask[z])
+            new_mask_cp[tmp_mask] = label
+        # convert back to numpy array
+        mask = cupy.asnumpy(new_mask_cp).astype(mask.dtype)
+
+    elif compartment.lower() == "organoid":
+        # for organoid masks
+        # 3D enclosed-hole fill
+        new_mask_cp = cupyx.scipy.ndimage.binary_fill_holes(
+            mask_cp,
+            structure=structure_3d,
+        )
+
+        # 2D per-z enclosed-hole fill (captures holes open across z in 3D)
+        for z in range(new_mask_cp.shape[0]):
+            new_mask_cp[z] = cupyx.scipy.ndimage.binary_fill_holes(new_mask_cp[z])
+
+        # convert back to numpy array
+        mask = cupy.asnumpy(new_mask_cp).astype(mask.dtype)
+        # define labels now
+        mask, _ = scipy.ndimage.label(mask)
+
+    return mask
 
 
 def segment_cells_with_3D_watershed(
@@ -166,6 +244,9 @@ def perform_morphology_dependent_segmentation(
         compactness=compactness,
         thresholded_signal=elevation_map_threshold_signal,
     )
+
+    cell_mask = fill_holes_in_mask(cell_mask, compartment="cell")
+
     # Remove small objects while preserving label IDs
     # we avoid using the built-in skimage function to preserve label IDs
     props = skimage.measure.regionprops(cell_mask)

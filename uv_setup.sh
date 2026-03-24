@@ -1,5 +1,24 @@
 #!/bin/bash
 
+git_root=$(git rev-parse --show-toplevel)
+
+if [ -d "/scratch/alpine" ]; then
+    system="alpine"
+    ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env"
+elif [ -d "/anvil" ]; then
+    system="anvil"
+    ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env"
+else
+    system="local"
+    ENV_PATH="$git_root/.venv"
+fi
+
+if [[ -e "$ENV_PATH" ]]; then
+    echo "Using existing virtual environment at $ENV_PATH"
+else
+    mkdir -p "$ENV_PATH"
+    echo "Created virtual environment directory at $ENV_PATH"
+fi
 
 # run twice to ensure we are in a clean environment
 # and not accidentally using an existing one
@@ -27,5 +46,9 @@ source .venv/bin/activate
 uv pip install -e ./utils
 uv pip install cosmicqc
 
-
-echo "✓ Done! Activate with: source .venv/bin/activate"
+if [ "$system" = "alpine" ] || [ "$system" = "anvil" ]; then
+    mv .venv "$ENV_PATH"
+else
+    # do nothing, we are already using the local .venv
+    echo "Using local .venv for $system system"
+fi
