@@ -281,16 +281,9 @@ W3 --> H1
 
 ```
 
-### Organoid segmentation workflow diagram
+### Organoid segmentation
 
-```mermaid
-flowchart LR
-A[raw image] --> B[thresholding]
-B --> C[Gaussian smoothing with sigma=10.0]
-C --> D[CellPose SAM 2.5D segmentation]
-```
-
----
+## Organoid segmentation was performed by using CellPose SAM on guassian smoothed (singma=10.0) AGP channel images with a size constraing of 200 pixel diameter.
 
 ## Stage 3: feature extraction
 
