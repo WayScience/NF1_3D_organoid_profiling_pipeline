@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
@@ -19,7 +21,9 @@ from skimage.filters import sobel
 # ----------------------------------------------------------------------
 # convert to 2.5 D image stack
 # ----------------------------------------------------------------------
-def sliding_window_two_point_five_D(image_stack, window_size):
+def sliding_window_two_point_five_D(
+    image_stack: np.ndarray, window_size: int
+) -> np.ndarray:
     """Create 2.5D max-projection stack using a sliding window.
 
     Parameters
@@ -53,8 +57,10 @@ def sliding_window_two_point_five_D(image_stack, window_size):
 
 
 def reverse_sliding_window_max_projection(
-    output_dict, window_size, original_z_slice_count
-):
+    output_dict: dict,
+    window_size: int,
+    original_z_slice_count: int,
+) -> dict:
     """Reconstruct per-slice masks from sliding-window projections.
 
     Parameters
@@ -97,9 +103,9 @@ def reverse_sliding_window_max_projection(
 # Butterworth filtering function
 # ----------------------------------------------------------------------
 def butterworth_grid_optimization(
-    img,
+    img: np.ndarray,
     return_plot: bool = False,
-):
+) -> None:
     """Sweep Butterworth parameters and optionally plot results.
 
     Parameters
@@ -161,7 +167,7 @@ def apply_butterworth_filter(
     order: int = 1,
     high_pass: bool = False,
     squared_butterworth: bool = True,
-):
+) -> np.ndarray:
     """Apply a Butterworth filter and Gaussian smoothing.
 
     Parameters
@@ -205,7 +211,7 @@ def decouple_masks(
     original_img_shape: np.ndarray,
     distance_threshold: int,
     verbose: bool = False,
-):
+) -> dict:
     """Decouple projected masks into per-slice masks.
 
     Parameters
@@ -459,7 +465,7 @@ def calculate_mask_iou(mask1: np.ndarray, mask2: np.ndarray) -> bool:
     return iou
 
 
-def graph_creation(df):
+def graph_creation(df: pd.DataFrame) -> nx.Graph:
     """Build a graph connecting centroid pairs.
 
     Parameters
@@ -497,7 +503,7 @@ def graph_creation(df):
     return G
 
 
-def solve_graph(G):
+def solve_graph(G: nx.Graph) -> list[list]:
     """Solve for longest shortest paths in a graph.
 
     Parameters
@@ -544,7 +550,7 @@ def merge_sets(list_of_sets: list) -> list:
     return list_of_sets
 
 
-def collapse_labels(df, longest_paths):
+def collapse_labels(df: pd.DataFrame, longest_paths: list) -> pd.DataFrame:
     """Collapse labels using graph paths.
 
     Parameters
@@ -1246,8 +1252,8 @@ def run_post_hoc_mask_reassignment(
     cell_mask: np.ndarray,
     nuclei_df: pd.DataFrame,
     cell_df: pd.DataFrame,
-    return_dataframe=False,
-):
+    return_dataframe: bool = False,
+) -> tuple[np.ndarray, pd.DataFrame | None]:
     """Reassign nuclei labels based on cell containment.
 
     Parameters
@@ -1352,7 +1358,9 @@ def create_cytoplasm_masks(
     return cytoplasm_masks
 
 
-def clean_border_objects(segmentation, border_width=20):
+def clean_border_objects(
+    segmentation: np.ndarray, border_width: int = 20
+) -> np.ndarray:
     """Remove objects touching the segmentation border.
 
     Parameters

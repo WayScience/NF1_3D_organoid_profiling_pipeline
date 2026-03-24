@@ -13,8 +13,8 @@ def calculate_surface_area(
     props: dict[str, numpy.ndarray],
     spacing: tuple[float, float, float],
 ) -> float:
-    """
-    This function calculates the surface area of each object in a 3D image using the marching cubes algorithm.
+    """Calculate the surface area of a 3D object using the marching cubes algorithm.
+
     Parameters
     ----------
     label_object : numpy.array

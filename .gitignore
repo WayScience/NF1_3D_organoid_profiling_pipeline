@@ -179,11 +179,9 @@ profile_prep_for_sage/data_for_sage/*
 
 # module 0
 0.preprocessing_data/animations
-# module 2
-2.segment_images/animations/*
+2.segment_images/animations/SARCO*
 2.segment_images/animations/NF*
 2.segment_images/animations/gif/*
-2.segment_images/animations/test/mp4/*
 2.segment_images/data/compressed_images/*
 2.segment_images/examples/raw_z_input/*
 2.segment_images/figures/platemaps/*
@@ -228,7 +226,7 @@ docs/html/*
 2.segment_images/logs/*
 2.segment_images/results/*
 5.technical_analysis/processed_data/*
-5.technical_analysis/results/*
+5.technical_analy2_nuclei_masks (labels)_animation.gifsis/results/*
 7.technical_analysis/processed_data/*
 7.technical_analysis/results/*
 3.cellprofiling/logs/*
@@ -243,3 +241,5 @@ docs/html/*
 5.technical_analysis/results/*
 figures/table2/results/*
 4.processing_image_based_profiles/data/DB_structures/*.duckdb
+
+2.segment_images/animations/media_for_readme/

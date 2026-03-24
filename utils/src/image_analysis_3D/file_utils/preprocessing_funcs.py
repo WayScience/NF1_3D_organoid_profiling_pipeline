@@ -1,5 +1,7 @@
 """Preprocessing utilities for organizing image data."""
 
+from __future__ import annotations
+
 import pathlib
 import re
 

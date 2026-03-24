@@ -6,12 +6,11 @@ import tqdm
 from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
-def scale_image(image: numpy.ndarray, num_gray_levels=256) -> numpy.ndarray:
+def scale_image(image: numpy.ndarray, num_gray_levels: int = 256) -> numpy.ndarray:
     """
     Scale the image to a specified number of gray levels.
     Example: 1024 gray levels will be scaled to 256 gray levels if num_gray_levels=256.
     An image with a pixel value of 0 will be scaled to 0 and a pixel value of 1023 will be scaled to 255.
-
 
     Parameters
     ----------
@@ -61,10 +60,21 @@ def measure_3D_texture(
         Texture names include: Angular Second Moment, Contrast, Correlation,
         Variance, Inverse Difference Moment, Sum Average, Sum Variance,
         Sum Entropy, Entropy, and related texture measures.
-            - Difference.Variance
-            - Difference.Entropy
-            - Information.Measure.of.Correlation.1
-            - Information.Measure.of.Correlation.2
+
+        - AngularSecondMoment
+        - Contrast
+        - Correlation
+        - Variance
+        - InverseDifferenceMoment
+        - SumAverage
+        - SumVariance
+        - SumEntropy
+        - Entropy
+        - DifferenceVariance
+        - DifferenceEntropy
+        - InformationMeasureOfCorrelation1
+        - InformationMeasureOfCorrelation2
+
     """
     label_object = object_loader.label_image
     labels = object_loader.object_ids
