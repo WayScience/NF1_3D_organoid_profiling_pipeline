@@ -87,8 +87,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T1"
+    well_fov = "F3-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -162,7 +162,7 @@ organoid_mask = np.array(  # convert to array
 
 organoid_mask, diag = object_stitching_and_relation(
     input_masks=organoid_mask,
-    max_match_distance=100,
+    max_match_distance=1000,
     verbose=False,
 )
 
@@ -177,26 +177,30 @@ organoid_mask, diag = object_stitching_and_relation(
 organoid_mask = clean_border_objects(organoid_mask, border_width=5)
 
 
-# In[10]:
-
-
-if in_notebook:
-    z = organoid_mask.shape[0] // 2
-    plt.figure(figsize=(10, 10))
-    plt.title("Organoid Mask")
-    plt.imshow(organoid_mask[z, :, :], cmap="nipy_spectral")
-    plt.axis("off")
-    plt.show()
-
-
 # ## Save the segmented masks
 
-# In[11]:
+# In[10]:
 
 
 organoid_mask_output = pathlib.Path(f"{mask_path}/organoid_mask.tiff")
 
 tifffile.imwrite(organoid_mask_output, organoid_mask)
+
+
+# In[11]:
+
+
+if in_notebook:
+    plt.figure(figsize=(10, 10))
+    plt.subplot(121)
+    plt.imshow(cyto2[cyto2.shape[0] // 2], cmap="viridis")
+    plt.title("AGP Channel")
+    plt.axis("off")
+    plt.subplot(122)
+    plt.imshow(organoid_mask[organoid_mask.shape[0] // 2], cmap="nipy_spectral")
+    plt.title("Mid Z-slice of Organoid Mask")
+    plt.axis("off")
+    plt.show()
 
 
 # In[12]:

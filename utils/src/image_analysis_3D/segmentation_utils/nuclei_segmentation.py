@@ -341,7 +341,7 @@ def collapse_labels_from_paths(input_masks, paths):
     node_to_label = {}
     for label_id, path in enumerate(paths):
         for node_id in path:
-            node_to_label[node_id] = label_id
+            node_to_label[node_id] = label_id + 1  # Start labels from 1
 
     # Relabel each 2D mask
     relabeled_masks = []

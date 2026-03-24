@@ -58,8 +58,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T2"
+    well_fov = "D7-7"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 image_dir = pathlib.Path(
@@ -107,16 +107,16 @@ image_return_dict = read_in_channels(
 mask_return_dict = read_in_channels(
     find_files_available(label_dir),
     channel_dict={
-        "Nuclei mask": "nuclei",
-        "Cell mask": "cell",
-        "Cytoplasm mask": "cytoplasm",
-        "Organoid mask": "organoid",
+        "Nuclei_mask": "nuclei",
+        "Cell_mask": "cell",
+        "Cytoplasm_mask": "cytoplasm",
+        "Organoid_mask": "organoid",
     },
     channels_to_read=[
-        "Nuclei mask",
-        "Cell mask",
-        "Cytoplasm mask",
-        "Organoid mask",
+        "Nuclei_mask",
+        "Cell_mask",
+        "Cytoplasm_mask",
+        "Organoid_mask",
     ],
 )
 
@@ -144,11 +144,12 @@ for image_name, image_array in image_return_dict.items():
         scale=scaling_values,
     )
 for mask_name, mask_array in mask_return_dict.items():
-    viewer.add_labels(
-        mask_array,
-        name=f"{image_metadata}_{mask_name}",
-        scale=scaling_values,
-    )
+    if mask_array is not None:
+        viewer.add_labels(
+            mask_array,
+            name=f"{image_metadata}_{mask_name}",
+            scale=scaling_values,
+        )
 
 
 # In[8]:

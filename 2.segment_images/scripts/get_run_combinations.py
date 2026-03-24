@@ -28,14 +28,13 @@ image_base_path = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(strict=True)
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-patients += ["NF0037_T1-Z-1", "NF0037_T1-Z-0.5", "NF0037_T1-Z-0.2", "NF0037_T1-Z-0.1"]
 
 rerun_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
@@ -48,7 +47,10 @@ z_stack_testing_patients = [
     "NF0037_T1-Z-0.5",
     "NF0037_T1-Z-0.2",
     "NF0037_T1-Z-0.1",
+    "NF0055_T1-Z-0.1",
 ]
+patients += z_stack_testing_patients
+
 
 # Convolution iteration values used for NF0014_T1 / C4-2
 convolution_iters = list(range(1, 26)) + [50, 75, 100]
@@ -89,7 +91,7 @@ def add_row(
     )
 
 
-# In[4]:
+# In[ ]:
 
 
 for patient in tqdm(patients, desc="Patients"):
@@ -180,7 +182,7 @@ df["num_of_masks"] = df.apply(
     lambda row: mask_tiff_counts.get(_mask_dir_key(row), 0), axis=1
 )
 
-df_rerun = df.loc[df["num_of_masks"] < 4].copy()
+df_rerun = df.loc[df["num_of_masks"] < 1].copy()
 df_rerun = df_rerun.drop(columns=["num_of_masks"]).reset_index(drop=True)
 
 print(f"{df.shape[0]} total segmentation jobs")
