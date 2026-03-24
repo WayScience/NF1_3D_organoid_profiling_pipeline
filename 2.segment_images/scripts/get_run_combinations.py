@@ -28,38 +28,7 @@ image_base_path = bandicoot_check(
 )
 
 
-# In[ ]:
-
-
-patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(strict=True)
-patients = pd.read_csv(
-    patient_id_file, header=None, names=["patient_id"]
-).patient_id.tolist()
-
-rerun_combinations_path = pathlib.Path(
-    f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
-)
-rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
-
-# Patients that have extra z-spacing variants
-z_stack_testing_patients = [
-    "NF0037_T1-Z-1",
-    "NF0037_T1-Z-0.5",
-    "NF0037_T1-Z-0.2",
-    "NF0037_T1-Z-0.1",
-    "NF0055_T1-Z-0.1",
-]
-patients += z_stack_testing_patients
-
-
-# Convolution iteration values used for NF0014_T1 / C4-2
-convolution_iters = list(range(1, 26)) + [50, 75, 100]
-
-
-# In[3]:
-
-
-rows = []
+# In[2]:
 
 
 def add_row(
@@ -91,9 +60,38 @@ def add_row(
     )
 
 
-# In[ ]:
+# In[3]:
 
 
+patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(strict=True)
+patients = pd.read_csv(
+    patient_id_file, header=None, names=["patient_id"]
+).patient_id.tolist()
+
+rerun_combinations_path = pathlib.Path(
+    f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
+)
+rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
+
+# Patients that have extra z-spacing variants
+z_stack_testing_patients = [
+    "NF0037_T1-Z-1",
+    "NF0037_T1-Z-0.5",
+    "NF0037_T1-Z-0.2",
+    "NF0037_T1-Z-0.1",
+    "NF0055_T1-Z-0.1",
+]
+patients += z_stack_testing_patients
+
+
+# Convolution iteration values used for NF0014_T1 / C4-2
+convolution_iters = list(range(1, 26)) + [50, 75, 100]
+
+
+# In[4]:
+
+
+rows = []
 for patient in tqdm(patients, desc="Patients"):
     patient_image_dir = image_base_path / "data" / patient / "zstack_images"
     if not patient_image_dir.exists():
@@ -182,7 +180,7 @@ df["num_of_masks"] = df.apply(
     lambda row: mask_tiff_counts.get(_mask_dir_key(row), 0), axis=1
 )
 
-df_rerun = df.loc[df["num_of_masks"] < 1].copy()
+df_rerun = df.loc[df["num_of_masks"] < 4].copy()
 df_rerun = df_rerun.drop(columns=["num_of_masks"]).reset_index(drop=True)
 
 print(f"{df.shape[0]} total segmentation jobs")

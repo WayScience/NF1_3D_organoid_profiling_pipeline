@@ -28,19 +28,19 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
 
 {
     echo "Processing well_fov $well_fov for patient $patient"
-    # uv run python scripts/4.nuclei_segmentation.py \
-    #     --patient "$patient" \
-    #     --well_fov "$well_fov" \
-    #     --input_subparent_name "$input_subparent_name" \
-    #     --mask_subparent_name "$mask_subparent_name" \
-    #     --clip_limit 0.02
+    uv run python scripts/4.nuclei_segmentation.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name" \
+        --clip_limit 0.02
 
-    # uv run python scripts/5.cell_segmentation.py \
-    #     --patient "$patient" \
-    #     --well_fov "$well_fov" \
-    #     --clip_limit 0.03 \
-    #     --input_subparent_name "$input_subparent_name" \
-    #     --mask_subparent_name "$mask_subparent_name"
+    uv run python scripts/5.cell_segmentation.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --clip_limit 0.03 \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name"
 
     uv run python scripts/6.organoid_segmentation.py \
         --patient "$patient" \

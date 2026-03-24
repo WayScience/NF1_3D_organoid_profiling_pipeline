@@ -45,7 +45,6 @@ while IFS= read -r line; do
     source child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
 done < "$txt_file"
-# done < <(tac "$txt_file")
 
 
 

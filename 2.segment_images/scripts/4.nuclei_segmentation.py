@@ -61,7 +61,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[4]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -80,6 +80,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
+    # prototyping or running in a notebook - these are not used in
+    # a script call of this converted notebook
     patient = "NF0021_T1"
     well_fov = "G7-2"
     window_size = 3
