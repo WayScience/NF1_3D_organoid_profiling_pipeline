@@ -1,245 +1,154 @@
-# Byte-compiled / optimized / DLL files
+# ============================================================================
+# Python / Compiled Files
+# ============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
-*.DS_Store
-
-# C extensions
 *.so
-
-# Distribution / packaging
-.Python
+*.egg
+*.egg-info/
+*.installed.cfg
+MANIFEST
+dist/
 build/
 develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
 sdist/
 var/
 wheels/
 share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
-.pdm.toml
-.pdm-python
-.pdm-build/
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
+# ============================================================================
+# Python Environments & Package Management
+# ============================================================================
 .env
 .venv
 env/
 venv/
 ENV/
-env.bak/
-venv.bak/
+.pdm.toml
+.pdm-python
+.pdm-build/
+__pypackages__/
 
-# Spyder project settings
+# ============================================================================
+# IDE & Editor Settings
+# ============================================================================
+.vscode/
+.idea/
 .spyderproject
 .spyproject
-
-# Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
+# ============================================================================
+# Testing & Coverage
+# ============================================================================
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+.hypothesis/
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+cover/
 
-# mypy
+# ============================================================================
+# Jupyter & IPython
+# ============================================================================
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ============================================================================
+# Type Checking & Analysis
+# ============================================================================
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
 .pytype/
-
-# Cython debug symbols
 cython_debug/
 
-# Ignore VSCode settings
-.vscode/
+# ============================================================================
+# Logging & Database
+# ============================================================================
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+db.sqlite3
+db.sqlite3-journal
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+# ============================================================================
+# OS & System Files
+# ============================================================================
+*.DS_Store
 
-# Ignore data due to size
-# base dir hides
+# ============================================================================
+# Sphinx Documentation
+# ============================================================================
+docs/_build/
+docs/doctrees/
+docs/html/
+
+# ============================================================================
+# Project-Specific: Data & Large Files
+# ============================================================================
 data/*
-docs/doctrees/*
-docs/html/*
 models/*
 profile_prep_for_sage/data_for_sage/*
 
-# Ignore experiment files from QC results
-*Experiment*.csv
-*Rplots.pdf
+# ============================================================================
+# Module 0: Preprocessing
+# ============================================================================
+0.preprocessing_data/animations/
 
-# module 0
-0.preprocessing_data/animations
-# module 2
-2.segment_images/animations/*
+# ============================================================================
+# Module 2: Segmentation
+# ============================================================================
 2.segment_images/animations/NF*
 2.segment_images/animations/gif/*
 2.segment_images/animations/test/mp4/*
 2.segment_images/data/compressed_images/*
 2.segment_images/examples/raw_z_input/*
 2.segment_images/figures/platemaps/*
+2.segment_images/logs/*
 2.segment_images/models/*
 2.segment_images/notebooks/output.zarr
 2.segment_images/processed_data/*
+2.segment_images/results/*
 2.segment_images/rerun_jobs.txt
 2.segment_images/scripts/output.zarr
-# module 3
+
+# ============================================================================
+# Module 3: Cell Profiling
+# ============================================================================
 3.cellprofiling/analysis_output/*
 3.cellprofiling/logs/*
 3.cellprofiling/models/*
 3.cellprofiling/results/*
-# module 4
-4.processing_image_based_profiles/notebooks/runinfo/*
-4.processing_image_based_profiles/results/*
-4.processing_image_based_profiles/scripts/runinfo/*
-# module 5
-5.technical_analysis/processed_data/*
-5.technical_analysis/results/*
-7.technical_analysis/results/*
-3.cellprofiling/models/*
-7.technical_analysis/processed_data/*
-7.technical_analysis/results/*
-models/*
-2.segment_images/figures/platemaps/*
-3.cellprofiling/logs/*
-docs/doctrees/*
-docs/html/*
-2.segment_images/data/compressed_images/*
-2.segment_images/examples/raw_z_input/*
-2.segment_images/figures/platemaps/*
-2.segment_images/models/*
-3.cellprofiling/logs/*
-5.technical_analysis/results/*
-5.technical_analysis/processed_data/*
-7.technical_analysis/results/*
-7.technical_analysis/processed_data/*
-2.segment_images/results/*
-2.segment_images/data/compressed_images/*
-2.segment_images/models/*
-2.segment_images/logs/*
-2.segment_images/results/*
-5.technical_analysis/processed_data/*
-5.technical_analysis/results/*
-7.technical_analysis/processed_data/*
-7.technical_analysis/results/*
-3.cellprofiling/logs/*
-3.cellprofiling/models/*
-3.cellprofiling/results/*
-# module 4
-4.processing_image_based_profiles/notebooks/runinfo/*
-4.processing_image_based_profiles/results/*
-4.processing_image_based_profiles/scripts/runinfo/*
-# module 5
-5.technical_analysis/processed_data/*
-5.technical_analysis/results/*
-figures/table2/results/*
+
+# ============================================================================
+# Module 4: Image-Based Profile Processing
+# ============================================================================
 4.processing_image_based_profiles/data/DB_structures/*.duckdb
+4.processing_image_based_profiles/notebooks/runinfo/*
+4.processing_image_based_profiles/results/*
+4.processing_image_based_profiles/scripts/runinfo/*
+
+# ============================================================================
+# Module 5 & 7: Technical Analysis
+# ============================================================================
+5.technical_analysis/processed_data/*
+5.technical_analysis/results/*
+
+# ============================================================================
+# Experiment Results
+# ============================================================================
+figures/table2/results/*
+*Experiment*.csv
+*Rplots.pdf
