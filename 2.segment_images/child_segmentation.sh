@@ -5,6 +5,7 @@ git_root=$(git rev-parse --show-toplevel)
 if [ -d "/scratch/alpine" ]; then
     echo "Using Alpine environment"
     ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
+    module load cuda/11.3
 elif [ -d "/anvil" ]; then
     ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
 else
@@ -55,7 +56,7 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
 
 } &> "$log_file"
 
-"$PYTHON_BIN"  scripts/4.nuclei_segmentation.py \
+"$PYTHON_BIN"  scripts/6.organoid_segmentation.py \
         --patient "NF0014_T1" \
         --well_fov "C4-2" \
         --input_subparent_name "zstack_images" \

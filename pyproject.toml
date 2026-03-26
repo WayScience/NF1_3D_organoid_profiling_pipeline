@@ -6,6 +6,8 @@ build-backend = "setuptools.build_meta"
 environments = [
   "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
+index-url = "https://download.pytorch.org/whl/cu118"
+extra-index-url = ["https://pypi.org/simple"]
 
 [project]
 name = "nf1-3d-organoid-profiling-pipeline"
@@ -40,8 +42,7 @@ dependencies = [
     "transformers<5.0",
 ]
 
-index-url = "https://download.pytorch.org/whl/cu118"
-extra-index-url = ["https://pypi.org/simple"]
+
 [tool.pycln]
 all = true
 
