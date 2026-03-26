@@ -1,10 +1,12 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
 [tool.uv]
 environments = [
   "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
+
 [project]
 name = "nf1-3d-organoid-profiling-pipeline"
 version = "0.1.0"
@@ -37,7 +39,6 @@ dependencies = [
     "tomli>=2.4.0",
     "transformers<5.0",
 ]
-
 
 index-url = "https://download.pytorch.org/whl/cu118"
 extra-index-url = ["https://pypi.org/simple"]
