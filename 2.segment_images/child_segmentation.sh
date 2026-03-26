@@ -3,9 +3,9 @@
 git_root=$(git rev-parse --show-toplevel)
 
 if [ -d "/scratch/alpine" ]; then
-    ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
+    ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/"
 elif [ -d "/anvil" ]; then
-    ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
+    ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/"
 else
     ENV_PATH="$git_root/.venv"
 fi
@@ -28,19 +28,19 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
 
 {
     echo "Processing well_fov $well_fov for patient $patient"
-    # uv run python scripts/4.nuclei_segmentation.py \
-    #     --patient "$patient" \
-    #     --well_fov "$well_fov" \
-    #     --input_subparent_name "$input_subparent_name" \
-    #     --mask_subparent_name "$mask_subparent_name" \
-    #     --clip_limit 0.02
+    uv run python scripts/4.nuclei_segmentation.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name" \
+        --clip_limit 0.02
 
-    # uv run python scripts/5.cell_segmentation.py \
-    #     --patient "$patient" \
-    #     --well_fov "$well_fov" \
-    #     --clip_limit 0.03 \
-    #     --input_subparent_name "$input_subparent_name" \
-    #     --mask_subparent_name "$mask_subparent_name"
+    uv run python scripts/5.cell_segmentation.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --clip_limit 0.03 \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name"
 
     uv run python scripts/6.organoid_segmentation.py \
         --patient "$patient" \
@@ -53,3 +53,9 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
 
 } &> "$log_file"
 
+uv run python scripts/4.nuclei_segmentation.py \
+        --patient "NF0014_T1" \
+        --well_fov "C4-2" \
+        --input_subparent_name "zstack_images" \
+        --mask_subparent_name "segmentation_masks" \
+        --clip_limit 0.02
