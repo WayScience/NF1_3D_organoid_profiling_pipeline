@@ -1,8 +1,25 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
-index-url = "https://download.pytorch.org/whl/cu118"
-extra-index-url = ["https://pypi.org/simple"]
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[tool.uv]
+environments = [
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }
 
 [project]
 name = "image-analysis-3d"
@@ -20,7 +37,9 @@ dependencies = [
     "cellpose",
     "napari",
     "networkx",
-    "torch>=2.0.0",
+    "torch>=2.0.0,<2.4.0",
+    "torchvision",
+    "torchaudio",
     "cupy-cuda11x>=12.0.0",
     "cucim",
     "medim",
