@@ -176,29 +176,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.42.76"
+version = "1.42.77"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jmespath", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "s3transfer", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/f6/b280afd91b2284744c0bb26afa1272bd60270726b4d3999fc27b68200854/boto3-1.42.77.tar.gz", hash = "sha256:c6d9b05e5b86767d4c6ef762f155c891366e5951162f71d030e109fe531f4fd9", size = 112773 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/dc/21b3dfb135125eb7e3a46b9aab0aede847726f239fc8f39474742a87ebb0/boto3-1.42.76-py3-none-any.whl", hash = "sha256:63c6779c814847016b89ae1b72ed968f8a63d80e589ba337511aa6fc1b59585e", size = 140557 },
+    { url = "https://files.pythonhosted.org/packages/ac/e6/e27fb0956bd52e6ac222d47eaa04d267887ca1d52a6b3c25d2006c8dc9e6/boto3-1.42.77-py3-none-any.whl", hash = "sha256:95eb3ef693068586f70ca3f29c43701c34a9a73d0df413ea7eaff138efa4a6b9", size = 140555 },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.42.76"
+version = "1.42.77"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "python-dateutil", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "urllib3", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/62/a982acb81c5e0312f90f841b790abad65622c08aad356eed7008ea3d475b/botocore-1.42.76.tar.gz", hash = "sha256:c553fa0ae29e36a5c407f74da78b78404b81b74b15fb62bf640a3cd9385f0874", size = 15021811 }
+sdist = { url = "https://files.pythonhosted.org/packages/42/97/1800633988e890b4eea0706b2671342eddfeb33c1eb1d2fe28a8117f7907/botocore-1.42.77.tar.gz", hash = "sha256:cbb0ac410fab4aa0839a521329f970b271ec298d67465ed7fa7d095c0dad9f48", size = 15023911 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/63/7429d68876b7718ab5c4b8a44414de7907f5ba6bb27ccfad384df14fb277/botocore-1.42.76-py3-none-any.whl", hash = "sha256:151e714ae3c32f68ea0b4dc60751401e03f84a87c6cf864ea0ee64aa10eb4607", size = 14697736 },
+    { url = "https://files.pythonhosted.org/packages/44/7c/6280e6b61f8c232eebd72cae950ed52ce2f38fecf2d178713de3cb1f6298/botocore-1.42.77-py3-none-any.whl", hash = "sha256:807bc2c3825bec6f025506ceeba5f7f111a00de8d58f35c679ee16c8ff6e7b10", size = 14699672 },
 ]
 
 [[package]]
@@ -432,7 +433,7 @@ wheels = [
 
 [[package]]
 name = "cytotable"
-version = "1.1.4"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -445,9 +446,9 @@ dependencies = [
     { name = "scipy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "zarr", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/94/9744681fc2e079813325cee5a393278484251c58cff7a76ab02d868aa9be/cytotable-1.1.4.tar.gz", hash = "sha256:ea42c4664593e05e7334f9ed43bd2c88d45c1379362335ea091a7644f6d4efe5", size = 34900 }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/50/273a1877ed4ad840ab6f44e6f5b8a24ed1d650bb5a6b250dfc8435707f57/cytotable-1.2.0.tar.gz", hash = "sha256:fb9a76261f4b172357a8a151d1efa2a84e745b7d0e847a3d3f3c4fccc0d96ef9", size = 51328 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/fc/54dfaa77ec7d658ed643e7d49909478da77e1dd5ef5f5535899219a76b2a/cytotable-1.1.4-py3-none-any.whl", hash = "sha256:357288b28bbd0d9f4127741e104de6f7521b83f158b0185cd975df1bbbbd3f87", size = 37614 },
+    { url = "https://files.pythonhosted.org/packages/84/2d/c1042bcc87b5936d248fa75713a005e4eab49a445b3656018c943bdc526f/cytotable-1.2.0-py3-none-any.whl", hash = "sha256:820dff6b0ddad0a6d26866691b685dfa8d135473a7ce5f9654e44db5f6cbbb75", size = 56304 },
 ]
 
 [[package]]
@@ -1305,9 +1306,6 @@ wheels = [
 pyside6 = [
     { name = "pyside6", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-qt = [
-    { name = "pyqt6", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-]
 
 [[package]]
 name = "napari-animation"
@@ -1407,7 +1405,7 @@ dependencies = [
     { name = "ipykernel", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "matplotlib", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "moviepy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "napari", extra = ["pyside6", "qt"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "napari", extra = ["pyside6"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "napari-animation", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "numpy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pandas", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -1432,7 +1430,7 @@ requires-dist = [
     { name = "ipykernel", specifier = ">=6.31.0" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "moviepy", specifier = ">=2.2.1" },
-    { name = "napari", extras = ["pyside6", "qt"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=0.6.5" },
+    { name = "napari", extras = ["pyside6"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=0.6.5" },
     { name = "napari-animation", specifier = ">=0.0.9" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.1" },
@@ -1946,38 +1944,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e7/82/28175b2414effca1cdac8dc99f76d660e7a4fb0ceefa4b4ab8f5f6742925/pyproject_hooks-1.2.0.tar.gz", hash = "sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8", size = 19228 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl", hash = "sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913", size = 10216 },
-]
-
-[[package]]
-name = "pyqt6"
-version = "6.10.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyqt6-qt6", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "pyqt6-sip", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/96/03/e756f52e8b0d7bb5527baf8c46d59af0746391943bdb8655acba22ee4168/pyqt6-6.10.2.tar.gz", hash = "sha256:6c0db5d8cbb9a3e7e2b5b51d0ff3f283121fa27b864db6d2f35b663c9be5cc83", size = 1085573 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/3e/9a015651ec71cea2e2f960c37edeb21623ba96a74956c0827def837f7c6b/pyqt6-6.10.2-cp39-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:78e1b3d5763e4cbc84485aef600e0aba5e1932fd263b716f92cd1a40dfa5e924", size = 37899440 },
-]
-
-[[package]]
-name = "pyqt6-qt6"
-version = "6.10.2"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/fe/01fd9b9d2ca139ef61582f2e2da249fa169229144294c1bb27db59ad8420/pyqt6_qt6-6.10.2-py3-none-manylinux_2_34_x86_64.whl", hash = "sha256:19c10b5f0806e9f9bac2c9759bd5d7d19a78967f330fd60a2db409177fa76e49", size = 84028760 },
-]
-
-[[package]]
-name = "pyqt6-sip"
-version = "13.11.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/90/24/a753e1af94b9ae5b2da63d4598457308da3cdbf0838c959381db086ccc86/pyqt6_sip-13.11.1.tar.gz", hash = "sha256:869c5b48afe38e55b1ee0dd72182b0886e968cc509b98023ff50010b013ce1be", size = 92574 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/cb/116f9b328636765f3bce97d9e10ec041c54bbe92beb0617edb86c2b615c1/pyqt6_sip-13.11.1-cp312-cp312-manylinux1_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:0df15849946cea969d3ff2b24b76149262b6044aea2c5403e4f70c24c973a4c8", size = 299564 },
-    { url = "https://files.pythonhosted.org/packages/d4/e3/65b605759859d38231ce7544065d4c61f891eb7766c351318e2a0b08a473/pyqt6_sip-13.11.1-cp313-cp313-manylinux1_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:a72f4ebdab16a8a484019ff593de90d8013d3286b678c6ba1c0bdb117f4fcb13", size = 299932 },
-    { url = "https://files.pythonhosted.org/packages/03/72/5a3d9ffef0caa7e1bc7a35d6300f6099bfccd1d8a485b4320ba20013a2d9/pyqt6_sip-13.11.1-cp314-cp314-manylinux1_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:353d613129316e9f7eda6bbe821deb7b7ffa14483499189171fd8a246873f9ac", size = 299560 },
 ]
 
 [[package]]
