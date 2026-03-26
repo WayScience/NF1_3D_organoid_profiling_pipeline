@@ -8,6 +8,10 @@ environments = [
 ]
 index-url = "https://download.pytorch.org/whl/cu118"
 extra-index-url = ["https://pypi.org/simple"]
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }
 
 [project]
 name = "nf1-3d-organoid-profiling-pipeline"
