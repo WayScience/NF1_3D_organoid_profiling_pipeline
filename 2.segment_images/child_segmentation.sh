@@ -55,10 +55,3 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
     echo "Segmentation completed for well_fov $well_fov and patient $patient"
 
 } &> "$log_file"
-
-"$PYTHON_BIN"  scripts/6.organoid_segmentation.py \
-        --patient "NF0014_T1" \
-        --well_fov "C4-2" \
-        --input_subparent_name "zstack_images" \
-        --mask_subparent_name "segmentation_masks" \
-        --clip_limit 0.02
