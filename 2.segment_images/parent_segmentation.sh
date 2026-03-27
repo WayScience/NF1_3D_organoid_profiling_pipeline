@@ -13,7 +13,7 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-uv run "$git_root"/2.segment_images/scripts/get_run_combinations.py
+# uv run "$git_root"/2.segment_images/scripts/get_run_combinations.py
 
 txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
