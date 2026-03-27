@@ -5,7 +5,6 @@ git_root=$(git rev-parse --show-toplevel)
 if [ -d "/scratch/alpine" ]; then
     echo "Using Alpine environment"
     ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
-    module load cuda/11.3
 elif [ -d "/anvil" ]; then
     ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
 else
