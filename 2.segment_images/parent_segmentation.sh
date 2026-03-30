@@ -7,6 +7,11 @@
 #SBATCH --time=2-00:00
 #SBATCH --output=logs/parent/segmentation_parent-%j.out
 
+
+
+jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
+
+
 git_root=$(git rev-parse --show-toplevel)
 
 if [ -d "/scratch/alpine" ]; then
