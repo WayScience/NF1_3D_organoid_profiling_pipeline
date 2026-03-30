@@ -8,12 +8,20 @@
 #SBATCH --output=logs/parent/segmentation_parent-%j.out
 
 git_root=$(git rev-parse --show-toplevel)
-if [ -z "$git_root" ]; then
-    echo "Error: Could not find the git root directory."
-    exit 1
+
+if [ -d "/scratch/alpine" ]; then
+    echo "Using Alpine environment"
+    ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
+elif [ -d "/anvil" ]; then
+    ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
+else
+    ENV_PATH="$git_root/.venv"
 fi
 
-# uv run "$git_root"/2.segment_images/scripts/get_run_combinations.py
+
+PYTHON_BIN="$ENV_PATH/bin/python3"
+
+"$PYTHON_BIN" "$git_root"/2.segment_images/scripts/get_run_combinations.py
 
 txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
