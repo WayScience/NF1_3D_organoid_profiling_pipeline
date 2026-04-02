@@ -44,8 +44,8 @@ while IFS= read -r line; do
     # shellcheck disable=SC1091
     source child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
-done < "$txt_file"
-# done < <(tac "$txt_file")
+# done < "$txt_file"
+done < <(tac "$txt_file")
 
 
 
