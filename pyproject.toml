@@ -31,6 +31,8 @@ dependencies = [
     "napari[pyside6]>=0.6.5; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "matplotlib>=3.10.8",
     "numpy>=2.4.2",
+    "cupy-cuda11x<14; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "cucim; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "pandas>=3.0.1",
     "pip>=26.0.1",
     "pyarrow>=23.0.0",

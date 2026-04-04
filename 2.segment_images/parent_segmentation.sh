@@ -63,12 +63,12 @@ while IFS= read -r line; do
     # --gres=gpu:1 \
     sbatch \
         --nodes=1 \
-        --ntasks=2 \
+        --ntasks=4 \
         --partition=aa100 \
         --gres=gpu:1 \
         --qos=normal \
         --account=amc-general \
-        --time=40:00 \
+        --time=60:00 \
         --output=logs/child/segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 
