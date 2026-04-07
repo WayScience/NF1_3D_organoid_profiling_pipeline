@@ -64,7 +64,7 @@ while IFS= read -r line; do
     # --gres=gpu:1 \
     sbatch \
         --nodes=1 \
-        --ntasks=4 \
+        --ntasks=6 \
         --partition=aa100 \
         --gres=gpu:1 \
         --qos=normal \
