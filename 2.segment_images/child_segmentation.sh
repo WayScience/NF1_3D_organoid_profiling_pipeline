@@ -13,9 +13,6 @@ fi
 
 PYTHON_BIN="$ENV_PATH/bin/python3"
 
-# shellcheck disable=SC1091
-source "$ENV_PATH"/bin/activate
-
 patient=$1
 well_fov=$2
 input_subparent_name=$3

@@ -18,6 +18,7 @@ if [ -d "/scratch/alpine" ]; then
     echo "Using Alpine environment"
     ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
 elif [ -d "/anvil" ]; then
+    echo "Using Anvil environment"
     ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
 else
     ENV_PATH="$git_root/.venv"

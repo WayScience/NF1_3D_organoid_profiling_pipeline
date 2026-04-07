@@ -50,7 +50,9 @@ while IFS= read -r line; do
         sleep 1s
         number_of_jobs=$(squeue -u "$USER" | wc -l)
     done
-    bash "$git_root"/3.cellprofiling/HPC_run_featurization_parent.sh \
+
+    # shellcheck disable=SC1091
+    source "$git_root"/3.cellprofiling/HPC_run_featurization_parent.sh \
         "$patient" \
         "$well_fov" \
         "$compartment" \
