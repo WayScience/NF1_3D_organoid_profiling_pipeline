@@ -176,30 +176,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.42.83"
+version = "1.42.84"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jmespath", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "s3transfer", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9f/87/1ed88eaa1e814841a37e71fee74c2b74341d14b791c0c6038b7ba914bea1/boto3-1.42.83.tar.gz", hash = "sha256:cc5621e603982cb3145b7f6c9970e02e297a1a0eb94637cc7f7b69d3017640ee", size = 112719 }
+sdist = { url = "https://files.pythonhosted.org/packages/88/89/2d647bd717da55a8cc68602b197f53a5fa36fb95a2f9e76c4aff11a9cfd1/boto3-1.42.84.tar.gz", hash = "sha256:6a84b3293a5d8b3adf827a54588e7dcffcf0a85410d7dadca615544f97d27579", size = 112816 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/b1/8a066bc8f02937d49783c0b3948ab951d8284e6fde436cab9f359dbd4d93/boto3-1.42.83-py3-none-any.whl", hash = "sha256:544846fdb10585bb7837e409868e8e04c6b372fa04479ba1597ce82cf1242076", size = 140555 },
+    { url = "https://files.pythonhosted.org/packages/2d/31/cdf4326841613d1d181a77b3038a988800fb3373ca50de1639fba9fa87de/boto3-1.42.84-py3-none-any.whl", hash = "sha256:4d03ad3211832484037337292586f71f48707141288d9ac23049c04204f4ab03", size = 140555 },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.42.83"
+version = "1.42.84"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "python-dateutil", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "urllib3", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4e/01/b46a3f8b6e9362258f78f1890db1a96d4ed73214d6a36420dc158dcfd221/botocore-1.42.83.tar.gz", hash = "sha256:34bc8cb64b17ac17f8901f073fe4fc9572a5cac9393a37b2b3ea372a83b87f4a", size = 15140337 }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/b7/1c03423843fb0d1795b686511c00ee63fed1234c2400f469aeedfd42212f/botocore-1.42.84.tar.gz", hash = "sha256:234064604c80d9272a5e9f6b3566d260bcaa053a5e05246db90d7eca1c2cf44b", size = 15148615 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/97/0d6f50822dc8c1df7f3eadb0bc6822fc0f98f02287c4efc7c7c88fde129a/botocore-1.42.83-py3-none-any.whl", hash = "sha256:ec0c3ecb3772936ed22a3bdda09883b34858933f71004686d460d829bab39d8e", size = 14818388 },
+    { url = "https://files.pythonhosted.org/packages/e3/37/0c0c90361c8a1b9e6c75222ca24ae12996a298c0e18822a72ab229c37207/botocore-1.42.84-py3-none-any.whl", hash = "sha256:15f3fe07dfa6545e46a60c4b049fe2bdf63803c595ae4a4eec90e8f8172764f3", size = 14827061 },
 ]
 
 [[package]]
@@ -1489,7 +1489,7 @@ requires-dist = [
 
 [[package]]
 name = "npe2"
-version = "0.8.1"
+version = "0.8.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "build", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -1502,9 +1502,9 @@ dependencies = [
     { name = "tomli-w", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "typer", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/7d/b31f786fa50eb5a838d9dbd5285375426af76f7440329664312ac5bb8cee/npe2-0.8.1.tar.gz", hash = "sha256:51afd432e5b0b2833d5e7506205f1d54411d5e00c5c94bf75c368c10bb7dd3eb", size = 122747 }
+sdist = { url = "https://files.pythonhosted.org/packages/29/0a/1a6ed44b038484a064a0ac8e5f96aae6ddb8768789145cf7e65e699b324b/npe2-0.8.2.tar.gz", hash = "sha256:6e41cc1f2c873257d864980dd281b5bb649a84cef02feeb0cdda1a9d23fd8f8b", size = 122768 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/0d/614d66be5ba2ab7f81b7852baf76855c9e57f8feeb1ee74a4f2a10785d95/npe2-0.8.1-py3-none-any.whl", hash = "sha256:ad614564dc51534a0d85590244fcb6220f783ca338ab2c9247ad9e4d94b1f51d", size = 93916 },
+    { url = "https://files.pythonhosted.org/packages/52/a6/f318fbc7bbb62361d36cb694f399f765f57fb282fdadc3aa2fef4dafd62d/npe2-0.8.2-py3-none-any.whl", hash = "sha256:80eff5fef50352cf0f3407c4c1122a7ae186aede40a21fd595cf91988cd55a9d", size = 93921 },
 ]
 
 [[package]]
@@ -1582,7 +1582,7 @@ wheels = [
 
 [[package]]
 name = "parsl"
-version = "2026.3.30"
+version = "2026.4.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dill", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -1596,9 +1596,9 @@ dependencies = [
     { name = "typeguard", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "typing-extensions", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/69/d8/ab0130bdd9308b9cc0e60a1b0f46fc9843b3f8fbc576893dec788971bca5/parsl-2026.3.30.tar.gz", hash = "sha256:6a1a75a3da5d5aae39db310ca5c736d654b9f0d02b8ae59ce5b7f91b5f88c7f5", size = 377939 }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/eb/8505008805e98f87095fc6329abe0afcac300d7e150d3d35e2313ed0bac1/parsl-2026.4.6.tar.gz", hash = "sha256:80350dbee21c2d152611205b0c79a26858475360c2337c1fd1388cf36a36e013", size = 377882 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/32/fa7e1edc872825d139dac69cd52f13b863bd3c3d3bf6d1a7d008a8b04423/parsl-2026.3.30-py3-none-any.whl", hash = "sha256:48cc50c2c44f00a1ce8c593edaec9681cd5fd0950e1509cc06cfc484a0af0f2d", size = 560463 },
+    { url = "https://files.pythonhosted.org/packages/fc/37/7008a8cdc88a868b89b9b234027367b5c3608bdbe8a8160c29040fd7eb2d/parsl-2026.4.6-py3-none-any.whl", hash = "sha256:16bf036d5654810c8b5d382791ad4926324e2dfff60025e1f5da9be5e09b46db", size = 560443 },
 ]
 
 [[package]]
@@ -1927,15 +1927,15 @@ wheels = [
 
 [[package]]
 name = "pydantic-extra-types"
-version = "2.11.1"
+version = "2.11.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "typing-extensions", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/66/71/dba38ee2651f84f7842206adbd2233d8bbdb59fb85e9fa14232486a8c471/pydantic_extra_types-2.11.1.tar.gz", hash = "sha256:46792d2307383859e923d8fcefa82108b1a141f8a9c0198982b3832ab5ef1049", size = 172002 }
+sdist = { url = "https://files.pythonhosted.org/packages/41/d3/3be31542180c0300b6860129ff1e3a428f3ef580727616ce22462626129b/pydantic_extra_types-2.11.2.tar.gz", hash = "sha256:3a2b83b61fe920925688e7838b59caa90a45637d1dbba2b1364b8d1f7ff72a0a", size = 203929 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/c1/3226e6d7f5a4f736f38ac11a6fbb262d701889802595cdb0f53a885ac2e0/pydantic_extra_types-2.11.1-py3-none-any.whl", hash = "sha256:1722ea2bddae5628ace25f2aa685b69978ef533123e5638cfbddb999e0100ec1", size = 79526 },
+    { url = "https://files.pythonhosted.org/packages/92/a4/7b6ab05c18d6c6e682382a0f0235301684452c4131a869f45961d1d032c9/pydantic_extra_types-2.11.2-py3-none-any.whl", hash = "sha256:683b8943252543e49760f89733b1519bc62f31d1a287ebbdc5a7b7959fb4acfd", size = 82851 },
 ]
 
 [[package]]
