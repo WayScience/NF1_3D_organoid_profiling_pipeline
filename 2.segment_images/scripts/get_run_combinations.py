@@ -191,19 +191,25 @@ print(f"{df_rerun.shape[0]} jobs to rerun")
 df_rerun.head()
 
 
-# In[ ]:
+# In[6]:
 
 
 df_rerun.to_csv(rerun_combinations_path, sep="\t", index=False)
 
 
-# In[ ]:
+# In[7]:
 
 
 print(df.groupby("patient").size())
 
 
-# In[ ]:
+# In[8]:
 
 
 print(df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index())
+
+
+# In[9]:
+
+
+df_rerun

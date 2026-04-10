@@ -256,7 +256,7 @@ red_lut[:, 0] = np.linspace(0, 1, 256)  # Red
 red_lut[0] = [0, 0, 0]
 
 
-# In[ ]:
+# In[5]:
 
 
 for patient in tqdm.tqdm(
@@ -335,11 +335,7 @@ for patient in tqdm.tqdm(
     well_fovs = mask_path.glob("*")
 
     # plot and save the plate view
-    masks_to_show = [
-        "organoid",
-        # "nuclei",
-        # "cell"
-    ]
+    masks_to_show = ["organoid", "nuclei", "cell"]
     mask_available_wells = {}
     for well_fov_path in well_fovs:
         if not well_fov_path.is_dir():

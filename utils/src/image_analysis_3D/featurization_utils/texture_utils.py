@@ -24,8 +24,12 @@ def scale_image(image: numpy.ndarray, num_gray_levels: int = 256) -> numpy.ndarr
     numpy.ndarray
         The gray level scaled image of any shape.
     """
-    # scale the image to 256 gray levels
-    image = (image - image.min()) / (image.max() - image.min())
+    # scale the image to the requested gray levels
+    image_min = image.min()
+    image_max = image.max()
+    if image_max == image_min:
+        return numpy.zeros_like(image, dtype=numpy.uint8)
+    image = (image - image_min) / (image_max - image_min)
     image = (image * (num_gray_levels - 1)).astype(numpy.uint8)
     return image
 
@@ -102,23 +106,38 @@ def measure_3D_texture(
     for index, label in tqdm.tqdm(enumerate(labels)):
         selected_label_object = label_object.copy()
         selected_label_object[selected_label_object != label] = 0
-        image_object = object_loader.image.copy()
+        object_voxels = selected_label_object > 0
+        if not numpy.any(object_voxels):
+            continue
+
+        z_indices, y_indices, x_indices = numpy.where(object_voxels)
+        min_z, max_z = numpy.min(z_indices), numpy.max(z_indices)
+        min_y, max_y = numpy.min(y_indices), numpy.max(y_indices)
+        min_x, max_x = numpy.min(x_indices), numpy.max(x_indices)
+
+        image_object = object_loader.image[
+            min_z : max_z + 1, min_y : max_y + 1, min_x : max_x + 1
+        ].copy()
+        selected_label_object = selected_label_object[
+            min_z : max_z + 1, min_y : max_y + 1, min_x : max_x + 1
+        ]
         image_object[selected_label_object == 0] = 0
-        image_object = scale_image(image_object)
-        haralick_features = mahotas.features.haralick(
-            ignore_zeros=False,
-            f=image_object,
-            distance=distance,
-            compute_14th_feature=False,
-        )
-        haralick_mean = haralick_features.mean(axis=0)
+        image_object = scale_image(image_object, num_gray_levels=grayscale)
+        try:
+            haralick_features = mahotas.features.haralick(
+                ignore_zeros=True,
+                f=image_object,
+                distance=distance,
+                compute_14th_feature=False,
+            )
+            haralick_mean = haralick_features.mean(axis=0)
+        except ValueError:
+            haralick_mean = numpy.full(len(feature_names), numpy.nan, dtype=float)
         for i, feature_name in enumerate(feature_names):
             output_texture_dict["object_id"].append(label)
             output_texture_dict["texture_name"].append(
                 f"{feature_name}-{grayscale}-{distance}"
             )
             output_texture_dict["texture_value"].append(haralick_mean[i])
-        del haralick_mean
-        del haralick_features
         gc.collect()
     return output_texture_dict

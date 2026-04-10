@@ -84,8 +84,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T2"
+    well_fov = "F5-4"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -102,7 +102,7 @@ mask_path.mkdir(exist_ok=True, parents=True)
 channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
-# In[5]:
+# In[7]:
 
 
 # look up the morphology of the organoid from json file
@@ -124,6 +124,9 @@ elif morphology_class.empty:
     print(f"No morphology label found for {well_fov} in {patient}.")
 elif len(morphology_class) > 1:
     print(f"Multiple morphology labels found for {well_fov} in {patient}.")
+    # pick one at random
+    print(f"Picking one at random for {well_fov} in {patient}.")
+    morphology_class = morphology_class.sample(n=1).iloc[0]
 
 print(f"Organoid morphology for {well_fov}: {morphology_class}")
 
