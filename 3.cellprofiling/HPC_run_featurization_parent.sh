@@ -79,7 +79,7 @@ if [ "$feature" == "Texture" ] ; then
         --mem=6G \
         --partition="$partition" \
         "$qos" \
-        --time=1:00 \
+        --time=3:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_texture_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_texture_child.sh \
