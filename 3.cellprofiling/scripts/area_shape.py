@@ -109,12 +109,6 @@ start_time, start_mem = start_profiling()
 # In[5]:
 
 
-[channel_n_compartment_mapping[compartment]]
-
-
-# In[6]:
-
-
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     mask_set_path=mask_set_path,
@@ -125,7 +119,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[7]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -152,7 +146,7 @@ else:
     )
 
 
-# In[8]:
+# In[7]:
 
 
 final_df = pd.DataFrame(size_shape_dict)
@@ -187,7 +181,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[9]:
+# In[8]:
 
 
 stop_profiling(

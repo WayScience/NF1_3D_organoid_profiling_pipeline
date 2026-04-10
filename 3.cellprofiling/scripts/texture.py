@@ -8,6 +8,7 @@ import os
 import pathlib
 import sys
 import time
+import warnings
 
 import pandas as pd
 import psutil
@@ -42,6 +43,13 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
+warnings.filterwarnings(
+    "ignore",
+    message="invalid escape sequence",
+    category=SyntaxWarning,
+    module="mahotas",
+)
+
 
 # In[2]:
 
@@ -58,10 +66,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-1"
-    patient = "NF0014_T1"
+    well_fov = "C8-2"
+    patient = "NF0055_T1"
     channel = "Mito"
-    compartment = "Cytoplasm"
+    compartment = "Nuclei"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
