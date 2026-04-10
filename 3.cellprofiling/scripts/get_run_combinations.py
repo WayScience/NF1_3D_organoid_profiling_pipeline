@@ -130,7 +130,7 @@ def add_row(
 # In[4]:
 
 
-for patient in patients[:1]:
+for patient in patients:
     patient_well_fovs = sorted(
         [
             path.name

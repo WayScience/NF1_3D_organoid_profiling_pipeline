@@ -100,7 +100,7 @@ if [ "$feature" == "AreaSizeShape" ] ; then
         --mem=2G \
         --partition="$partition" \
         "$qos" \
-        --time=00:00:30 \
+        --time=00:01:30 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_area_shape_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_area_shape_child.sh \
@@ -119,7 +119,7 @@ if [ "$feature" == "Colocalization" ] ; then
         --mem=6G \
         --partition="$partition" \
         "$qos" \
-        --time=2:00 \
+        --time=5:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_colocalization_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_colocalization_child.sh \
@@ -139,7 +139,7 @@ if [ "$feature" == "Intensity" ] ; then
         --mem=6G \
         --partition="$partition" \
         "$qos" \
-        --time=2:00 \
+        --time=5:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_intensity_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_intensity_child.sh \
