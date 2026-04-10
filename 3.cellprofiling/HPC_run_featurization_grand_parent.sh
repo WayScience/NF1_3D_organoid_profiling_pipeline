@@ -1,10 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --partition=amilan
+#SBATCH --partition=shared
 #SBATCH --qos=long
-#SBATCH --account=amc-general
-#SBATCH --time=3-00:00:00 # D-HH:MM:SS
+#SBATCH --time=4-00:00:00 # D-HH:MM:SS
 #SBATCH --output="logs/grand_parent/grand_parent-%j.out"
 
 
@@ -12,6 +11,23 @@ git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
     echo "Error: Could not find the git root directory."
     exit 1
+fi
+
+alpine_scratch_dir="/scratch/alpine"
+anvil_scratch_dir="/anvil/scratch"
+
+if [[ -e "$alpine_scratch_dir" ]]; then
+    partition="amilan"
+    qos="--qos=normal"
+    max_jobs=990
+    cluster="alpine"
+elif [[ -e "$anvil_scratch_dir" ]]; then
+    partition="shared"
+    qos="--mail-type=all"
+    max_cores=1280
+    cluster="anvil"
+else
+    echo "Error: No known scratch directory found."
 fi
 
 txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
@@ -45,11 +61,20 @@ while IFS= read -r line; do
 
     # check that the number of jobs is less than 990
     # prior to submitting a job
-    number_of_jobs=$(squeue -u "$USER" | wc -l)
-    while [ "$number_of_jobs" -gt 990 ]; do
-        sleep 1s
+    if [ "$cluster" == "alpine" ]; then
         number_of_jobs=$(squeue -u "$USER" | wc -l)
-    done
+        while [ "$number_of_jobs" -gt "$max_jobs" ]; do
+            sleep 1s
+            number_of_jobs=$(squeue -u "$USER" | wc -l)
+        done
+    fi
+    if [ "$cluster" == "anvil" ]; then
+        number_of_cores=$(squeue -u "$USER" -h -o "%C" | awk '{sum += $1} END {print sum}')
+        while [ "$number_of_cores" -gt "$max_cores" ]; do
+            sleep 1s
+            number_of_cores=$(squeue -u "$USER" -h -o "%C" | awk '{sum += $1} END {print sum}')
+        done
+    fi
 
     # shellcheck disable=SC1091
     source "$git_root"/3.cellprofiling/HPC_run_featurization_parent.sh \

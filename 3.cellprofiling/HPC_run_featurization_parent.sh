@@ -23,11 +23,12 @@ if [[ -e "$alpine_scratch_dir" ]]; then
     partition="amilan"
     qos="--qos=normal"
 elif [[ -e "$anvil_scratch_dir" ]]; then
-    partition="standard"
+    partition="shared"
     qos="--mail-type=all"
 else
     echo "Error: No known scratch directory found."
 fi
+
 
 
 echo "Patient: $patient, WellFOV: $well_fov, Feature: $feature, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
@@ -55,7 +56,7 @@ fi
 if [ "$feature" == "Granularity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=4G \
+        --mem=8G \
         --partition="$partition" \
         "$qos" \
         --time=5:00 \
