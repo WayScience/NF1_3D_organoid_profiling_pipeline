@@ -273,7 +273,14 @@ original_number_of_feature_files = df.shape[0]
 df = df[~df["feature_file_path_exists"]]
 df.drop(columns=["feature_file_path", "feature_file_path_exists"], inplace=True)
 df.sort_values(
-    by=["feature", "patient", "well_fov", "compartment", "channel", "processor_type"],
+    by=[
+        "feature",
+        "patient",
+        "well_fov",
+        "compartment",
+        "channel",
+        "processor_type",
+    ],
     inplace=True,
 )
 df.reset_index(drop=True, inplace=True)

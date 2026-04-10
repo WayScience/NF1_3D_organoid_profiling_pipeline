@@ -116,7 +116,7 @@ fi
 if [ "$feature" == "Colocalization" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=4G \
+        --mem=6G \
         --partition="$partition" \
         "$qos" \
         --time=2:00 \
@@ -136,7 +136,7 @@ fi
 if [ "$feature" == "Intensity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=2G \
+        --mem=6G \
         --partition="$partition" \
         "$qos" \
         --time=2:00 \

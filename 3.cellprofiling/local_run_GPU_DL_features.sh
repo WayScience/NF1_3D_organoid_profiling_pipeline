@@ -24,15 +24,19 @@ total_sammed3d_entries=0
 while IFS= read -r line; do
     # split the line into an array
     IFS=$'\t' read -r -a parts <<< "$line"
-    feature="${parts[4]}"
+    feature="${parts[2]}"
     # check if the feature is SAMMed3D
     if [ "$feature" == "SAMMed3D" ]; then
         total_sammed3d_entries=$((total_sammed3d_entries + 1))
-    else [ "$feature" == "CHAMMI75" ]
-        total_sammed3d_entries=$((total_sammed3d_entries + 1))
-
     fi
 done < "$txt_file"
+
+log_file="${git_root}/3.cellprofiling/logs/featurization_log.txt"
+# if log file doesn't exist, create it and the parent directory if it doesn't exist
+if [ ! -f "$log_file" ]; then
+    mkdir -p "$(dirname "$log_file")"
+fi
+touch "$log_file"
 
 processed_entries=0
 # parse the txt_file where each line contains
@@ -44,9 +48,10 @@ while IFS= read -r line; do
     # assign the parts to variables
     patient="${parts[0]}"
     well_fov="${parts[1]}"
-    compartment="${parts[2]}"
-    channel="${parts[3]}"
-    feature="${parts[4]}"
+    feature="${parts[2]}"
+    compartment="${parts[3]}"
+    channel="${parts[4]}"
+    # shellcheck disable=SC2034
     processor_type="${parts[5]}"
     input_subparent_name="${parts[6]}"
     mask_subparent_name="${parts[7]}"
@@ -56,8 +61,8 @@ while IFS= read -r line; do
     if [ "$feature" != "SAMMed3D" ]; then
         continue
     fi
-    echo "Patient: $patient, WellFOV: $well_fov, Feature: $feature, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
 
+    {
     if [ "$feature" == "SAMMed3D" ] ; then
         if [ "$compartment" == "Nucleocentric" ] ; then
             # shellcheck disable=SC1091
@@ -70,7 +75,7 @@ while IFS= read -r line; do
                 "$mask_subparent_name" \
                 "$output_features_subparent_name"
         else
-            echo "Running SAMMed3D feature extraction"
+            echo "Running SAMMed3D feature extraction" >> "$log_file"
             # shellcheck disable=SC1091
             source "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
                 "$patient" \
@@ -82,6 +87,7 @@ while IFS= read -r line; do
                 "$output_features_subparent_name"
         fi
     fi
+    } >> "$log_file" 2>&1
     processed_entries=$((processed_entries + 1))
     echo "Processed $processed_entries/$total_sammed3d_entries"
 
