@@ -2,9 +2,9 @@
 
 patient=$1
 well_fov=$2
-compartment=$3
-channel=$4
-feature=$5
+feature=$3
+compartment=$4
+channel=$5
 processor_type=$6
 input_subparent_name=$7
 mask_subparent_name=$8

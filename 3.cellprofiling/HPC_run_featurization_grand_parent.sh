@@ -48,9 +48,9 @@ while IFS= read -r line; do
     # assign the parts to variables
     patient="${parts[0]}"
     well_fov="${parts[1]}"
-    compartment="${parts[2]}"
-    channel="${parts[3]}"
-    feature="${parts[4]}"
+    feature="${parts[2]}"
+    compartment="${parts[3]}"
+    channel="${parts[4]}"
     processor_type="${parts[5]}"
     input_subparent_name="${parts[6]}"
     mask_subparent_name="${parts[7]}"
@@ -80,9 +80,9 @@ while IFS= read -r line; do
     source "$git_root"/3.cellprofiling/HPC_run_featurization_parent.sh \
         "$patient" \
         "$well_fov" \
+        "$feature" \
         "$compartment" \
         "$channel" \
-        "$feature" \
         "$processor_type" \
         "$input_subparent_name" \
         "$mask_subparent_name" \
