@@ -97,7 +97,7 @@ fi
 if [ "$feature" == "AreaSizeShape" ] ; then
     sbatch \
         --nodes=1 \
-        ---mem=2G \
+        --mem=2G \
         --partition="$partition" \
         "$qos" \
         --time=00:00:30 \

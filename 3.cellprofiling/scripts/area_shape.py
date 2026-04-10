@@ -181,7 +181,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[8]:
+# In[ ]:
 
 
 stop_profiling(
@@ -194,6 +194,6 @@ stop_profiling(
     compartment=compartment,
     CPU_GPU=processor_type,
     output_file_dir=pathlib.Path(
-        f"{image_base_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_AreaSizeShape_DNA_{compartment}_{processor_type}.parquet"
+        f"{image_base_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_AreaSizeShape_NoChannel_{compartment}_{processor_type}.parquet"
     ),
 )
