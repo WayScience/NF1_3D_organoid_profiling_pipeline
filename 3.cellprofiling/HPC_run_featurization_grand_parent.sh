@@ -2,7 +2,6 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=shared
-#SBATCH --qos=long
 #SBATCH --time=4-00:00:00 # D-HH:MM:SS
 #SBATCH --output="logs/grand_parent/grand_parent-%j.out"
 
