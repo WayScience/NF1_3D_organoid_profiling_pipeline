@@ -249,22 +249,23 @@ df["feature_file_path_exists"] = df["feature_file_path"].isin(existing_feature_f
 
 
 # If Nucleocentric has both CHAMMI75 and SAMMed3D, keep only CHAMMI75 entry
-nucleocentric_df = df[df["compartment"] == "Nucleocentric"]
-nucleocentric_df = nucleocentric_df[
-    nucleocentric_df["feature"].isin(["SAMMed3D", "CHAMMI75"])
-]
-nucleocentric_df = nucleocentric_df.sort_values(
-    by=["patient", "well_fov", "channel", "feature"]
-)
-
 nucleocentric_df = (
     df[df["compartment"] == "Nucleocentric"]
     .loc[lambda d: d["feature"].isin(["SAMMed3D", "CHAMMI75"])]
     .sort_values(by=["patient", "well_fov", "channel", "feature"])
-    .groupby(["patient", "well_fov", "channel"], group_keys=False)
-    .apply(lambda g: g[g["feature"] == "CHAMMI75"])  # or != if you want SAMMed3D
-    .reset_index(drop=True)
 )
+
+# Identify groups where both features are present
+has_both_features = (
+    nucleocentric_df.groupby(["patient", "well_fov", "channel"])["feature"]
+    .transform("nunique")
+    .eq(2)
+)
+
+# Keep only CHAMMI75 rows from groups containing both features
+nucleocentric_df = nucleocentric_df[
+    has_both_features & nucleocentric_df["feature"].eq("CHAMMI75")
+]
 
 df = df[df["compartment"] != "Nucleocentric"]
 df = pd.concat([df, nucleocentric_df], ignore_index=True)
@@ -274,7 +275,7 @@ df = df[~df["feature_file_path_exists"]]
 df.drop(columns=["feature_file_path", "feature_file_path_exists"], inplace=True)
 df.sort_values(
     by=[
-        "feature",
+        # "feature",
         "patient",
         "well_fov",
         "compartment",

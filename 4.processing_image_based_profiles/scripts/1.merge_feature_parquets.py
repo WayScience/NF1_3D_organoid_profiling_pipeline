@@ -59,9 +59,11 @@ DB_structure_path = pathlib.Path(
 parquet_files = list(result_path.rglob("*.parquet"))
 parquet_files.sort()
 print(len(parquet_files), "parquet files found")
+if len(parquet_files) != 112:
+    raise ValueError(f"Expected 112 parquet files, but found {len(parquet_files)}")
 
 
-# In[3]:
+# In[ ]:
 
 
 # create the nested dictionary to hold the feature types and compartments
@@ -78,7 +80,7 @@ feature_types = [
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 
 
-# In[4]:
+# In[ ]:
 
 
 output_dict = {
@@ -95,7 +97,7 @@ output_dict = {
 output_dict
 
 
-# In[5]:
+# In[ ]:
 
 
 files = list(result_path.rglob("*.parquet"))
@@ -111,7 +113,7 @@ files_df.insert(4, "file_path", file_path)
 files_df.head()
 
 
-# In[6]:
+# In[ ]:
 
 
 for i, row in files_df.iterrows():
@@ -142,7 +144,7 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[7]:
+# In[ ]:
 
 
 # merge the dfs such that each compartment has a single df with all feature types as columns
@@ -164,7 +166,7 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[8]:
+# In[ ]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -183,7 +185,7 @@ dict_of_DB_structues = {
 }
 
 
-# In[9]:
+# In[ ]:
 
 
 # get the table from the DB_structue

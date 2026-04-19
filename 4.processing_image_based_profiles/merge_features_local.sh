@@ -24,8 +24,9 @@ if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ];
 fi
 mkdir -p "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" # create the patients directory if it doesn't exist
 
+"$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/00.derive_db_structure_from_example.py --patient "NF0014_T1" --well_fov "C4-1" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
 
-
+"$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/generate_load_data.py
 
 while IFS= read -r line; do
 

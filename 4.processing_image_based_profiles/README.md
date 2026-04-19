@@ -78,3 +78,18 @@ flowchart TD
     T5 --> V5[consensus profiles]
     T6 --> V6[consensus profiles]
 ```
+
+## Number of feature files
+
+| Feature type     | # of compartments | # of channels | Total number of feature files |
+| ---------------- | ----------------- | ------------- | ----------------------------- |
+| AreaSizeShape    | 4                 | 1             | 4                             |
+| Colocalization   | 4                 | 6             | 24                            |
+| Intensity        | 4                 | 4             | 16                            |
+| Granularity      | 4                 | 4             | 16                            |
+| Neighbors        | 1                 | 1             | 1                             |
+| Texture          | 4                 | 4             | 16                            |
+| Deep learning    | 4                 | 4             | 16                            |
+| Nucleocentric 3D | 1                 | 4             | 4                             |
+| Nucleocentric 2D | 1                 | 4             | 4                             |
+| Total            |                   |               | 101                           |

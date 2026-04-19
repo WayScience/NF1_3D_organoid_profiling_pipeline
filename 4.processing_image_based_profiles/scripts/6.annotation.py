@@ -194,7 +194,23 @@ columns_to_drop = [
 sc_merged.drop(columns=columns_to_drop, inplace=True)
 
 
+# ### Get single cell counts per well and organoid counts per well
+
 # In[7]:
+
+
+sc_merged["Metadata_WellSingleCellCount"] = sc_merged.groupby("Well")[
+    "image_set"
+].transform("count")
+organoid_merged["Metadata_WellOrganoidCount"] = organoid_merged.groupby("Well")[
+    "image_set"
+].transform("count")
+nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.groupby(
+    "Well"
+)["image_set"].transform("count")
+
+
+# In[8]:
 
 
 column_rename_mapping = {
@@ -208,7 +224,7 @@ organoid_merged.rename(columns=column_rename_mapping, inplace=True)
 nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
 
-# In[8]:
+# In[9]:
 
 
 organoid_location_features = [
@@ -269,11 +285,24 @@ _ = [
 ]
 
 
-# In[9]:
+# In[10]:
+
+
+sc_neighbors_features = [col for col in sc_merged.columns if "neighbors" in col.lower()]
+# replace "Object_Channel with Metadata_"
+_ = [
+    sc_merged.rename(
+        columns={feature: f"Metadata_Neighbors_{feature.split('_')[-1]}"},
+        inplace=True,
+    )
+    for feature in sc_neighbors_features
+]
+
+
+# In[11]:
 
 
 metadata_features_list = [
-    "PatientTumor",
     "PatientTumor",
     "Tumor",
     "ObjectID",
@@ -334,7 +363,7 @@ nucleocentric_merged = nucleocentric_merged.rename(
 ) = (1.0, 1.0, 1.0)
 
 
-# In[10]:
+# In[12]:
 
 
 # Categorize the metadata features
@@ -356,6 +385,8 @@ object_features = [
     "Metadata_ObjectID",
     "Metadata_ParentOrganoid",
     "Metadata_SingleCellCount",
+    "Metadata_WellSingleCellCount",
+    "Metadata_OrganoidSingleCellCount",
 ]
 microscopy_features = [
     "Metadata_MicroscopeType",
@@ -415,7 +446,7 @@ nucleocentric_merged = nucleocentric_merged.sort_values(
 ).reset_index(drop=True)
 
 
-# In[11]:
+# In[13]:
 
 
 # split the sc_merged_data into hand crafted and sammed features
@@ -460,7 +491,7 @@ nucleocentric_chammi_annotated = nucleocentric_merged[
 ]
 
 
-# In[12]:
+# In[14]:
 
 
 # save annotated profiles
@@ -478,13 +509,13 @@ nucleocentric_chammi_annotated.to_parquet(
 )
 
 
-# In[13]:
+# In[15]:
 
 
 sc_annotated.head()
 
 
-# In[14]:
+# In[16]:
 
 
 organoid_annotated.head()

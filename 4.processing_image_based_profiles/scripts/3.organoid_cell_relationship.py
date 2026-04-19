@@ -213,13 +213,13 @@ print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
 
 # ### Add single-cell counts for each organoid
 
-# In[11]:
+# In[13]:
 
 
 organoid_sc_counts = (
     sc_profile_df["ParentOrganoid"]
     .value_counts()
-    .to_frame(name="SingleCellCount")
+    .to_frame(name="OrganoidSingleCellCount")
     .reset_index()
 )
 # merge the organoid profile with the single-cell counts
@@ -230,25 +230,25 @@ organoid_profile_df = pd.merge(
     right_on="ParentOrganoid",
     how="left",
 ).drop(columns=["ParentOrganoid"])
-sc_count = organoid_profile_df.pop("SingleCellCount")
-organoid_profile_df.insert(2, "SingleCellCount", sc_count)
+sc_count = organoid_profile_df.pop("OrganoidSingleCellCount")
+organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 
 
 # Even if the file is empty we still want to add it to the final dataframe dictionary so that we can merge on the same columns later.
 # This will help with file-based checking and merging.
 #
 
-# In[12]:
+# In[14]:
 
 
 # replace NaN with 0 for organoids that have no assigned cells
-organoid_profile_df["SingleCellCount"] = (
-    organoid_profile_df["SingleCellCount"].fillna(0).astype(int)
+organoid_profile_df["OrganoidSingleCellCount"] = (
+    organoid_profile_df["OrganoidSingleCellCount"].fillna(0).astype(int)
 )
 organoid_profile_df.head()
 
 
-# In[13]:
+# In[15]:
 
 
 if organoid_profile_df.empty:
@@ -259,13 +259,13 @@ if organoid_profile_df.empty:
     organoid_profile_df["image_set"] = well_fov
 
 
-# In[14]:
+# In[16]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
 
-# In[15]:
+# In[17]:
 
 
 if sc_profile_df.empty:
@@ -274,7 +274,7 @@ if sc_profile_df.empty:
     sc_profile_df["image_set"] = well_fov
 
 
-# In[16]:
+# In[18]:
 
 
 # add the parent organoid to nucleocentric features
@@ -288,7 +288,7 @@ nucleocentric_df = pd.merge(
 
 # ## Get single cell and organoid relationships and spatial distributions
 
-# In[17]:
+# In[19]:
 
 
 x_y_z_organoid_centroid_colnames = [
@@ -303,7 +303,7 @@ x_y_z_organoid_bbox_colnames = [
 ]
 
 
-# In[18]:
+# In[20]:
 
 
 results = []
@@ -375,7 +375,7 @@ for organoid_id in organoid_ids:
     results.append(shell_classification_df)
 
 
-# In[23]:
+# In[21]:
 
 
 if results:
@@ -401,7 +401,7 @@ df.rename(
 )
 
 
-# In[24]:
+# In[22]:
 
 
 # concat the shell classification with the single cell profile df to get the full single cell profile with the shell classification and the parent organoid id
@@ -416,21 +416,21 @@ sc_profile_with_shells_df = pd.merge(
 
 # ### Save the profiles
 
-# In[25]:
+# In[23]:
 
 
 organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
 organoid_profile_df.head()
 
 
-# In[26]:
+# In[24]:
 
 
 sc_profile_with_shells_df.to_parquet(sc_profile_output_path, index=False)
 sc_profile_with_shells_df.head()
 
 
-# In[27]:
+# In[25]:
 
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
