@@ -81,7 +81,7 @@ fi
 if [ "$feature" == "Texture" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=6G \
+        --mem=3G \
         --partition="$partition" \
         "$qos" \
         --time=3:00 \
