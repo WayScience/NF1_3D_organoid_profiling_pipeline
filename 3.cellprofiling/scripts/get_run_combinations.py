@@ -262,13 +262,14 @@ has_both_features = (
     .eq(2)
 )
 
-# Keep only CHAMMI75 rows from groups containing both features
-nucleocentric_df = nucleocentric_df[
-    has_both_features & nucleocentric_df["feature"].eq("CHAMMI75")
-]
+# # Keep only CHAMMI75 rows from groups containing both features
+# nucleocentric_df = nucleocentric_df[
+#     has_both_features & nucleocentric_df["feature"].eq("CHAMMI75")
+# ]
 
 df = df[df["compartment"] != "Nucleocentric"]
 df = pd.concat([df, nucleocentric_df], ignore_index=True)
+all_df = df.copy()
 
 original_number_of_feature_files = df.shape[0]
 df = df[~df["feature_file_path_exists"]]
@@ -301,10 +302,33 @@ df.head()
 # In[8]:
 
 
-df.groupby(["patient"]).size().to_frame(name="count").reset_index()
+df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index()
 
 
 # In[9]:
 
 
-df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index()
+# find the number of patient well-fovs that have the complete set of feature files (101)
+complete_feature_count = all_df.copy()
+
+complete_feature_count = (
+    complete_feature_count.groupby(["patient", "well_fov"])
+    .sum("feature_file_path_exists")
+    .reset_index()
+)
+complete_feature_count.rename(
+    columns={"feature_file_path_exists": "feature_file_path_exists_count"}, inplace=True
+)
+complete_feature_count["completion_status"] = (
+    complete_feature_count["feature_file_path_exists_count"]
+    .eq(101)
+    .map({True: "Complete", False: "Incomplete"})
+)
+complete_feature_count = complete_feature_count.reset_index()
+complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame(
+    name="count"
+).reset_index()
+complete_feature_count
+
+
+# In[ ]:

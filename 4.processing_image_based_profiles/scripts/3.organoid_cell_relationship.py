@@ -41,7 +41,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C4-2"
+    well_fov = "C4-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -213,7 +213,7 @@ print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
 
 # ### Add single-cell counts for each organoid
 
-# In[13]:
+# In[11]:
 
 
 organoid_sc_counts = (
@@ -238,7 +238,7 @@ organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 # This will help with file-based checking and merging.
 #
 
-# In[14]:
+# In[12]:
 
 
 # replace NaN with 0 for organoids that have no assigned cells
@@ -248,7 +248,7 @@ organoid_profile_df["OrganoidSingleCellCount"] = (
 organoid_profile_df.head()
 
 
-# In[15]:
+# In[13]:
 
 
 if organoid_profile_df.empty:
@@ -259,13 +259,13 @@ if organoid_profile_df.empty:
     organoid_profile_df["image_set"] = well_fov
 
 
-# In[16]:
+# In[14]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
 
-# In[17]:
+# In[15]:
 
 
 if sc_profile_df.empty:
@@ -274,7 +274,7 @@ if sc_profile_df.empty:
     sc_profile_df["image_set"] = well_fov
 
 
-# In[18]:
+# In[16]:
 
 
 # add the parent organoid to nucleocentric features
@@ -288,7 +288,7 @@ nucleocentric_df = pd.merge(
 
 # ## Get single cell and organoid relationships and spatial distributions
 
-# In[19]:
+# In[17]:
 
 
 x_y_z_organoid_centroid_colnames = [
@@ -303,7 +303,7 @@ x_y_z_organoid_bbox_colnames = [
 ]
 
 
-# In[20]:
+# In[18]:
 
 
 results = []
@@ -375,7 +375,7 @@ for organoid_id in organoid_ids:
     results.append(shell_classification_df)
 
 
-# In[21]:
+# In[19]:
 
 
 if results:
@@ -401,7 +401,7 @@ df.rename(
 )
 
 
-# In[22]:
+# In[20]:
 
 
 # concat the shell classification with the single cell profile df to get the full single cell profile with the shell classification and the parent organoid id
@@ -416,21 +416,21 @@ sc_profile_with_shells_df = pd.merge(
 
 # ### Save the profiles
 
-# In[23]:
+# In[21]:
 
 
 organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
 organoid_profile_df.head()
 
 
-# In[24]:
+# In[22]:
 
 
 sc_profile_with_shells_df.to_parquet(sc_profile_output_path, index=False)
 sc_profile_with_shells_df.head()
 
 
-# In[25]:
+# In[23]:
 
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)

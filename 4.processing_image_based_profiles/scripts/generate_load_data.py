@@ -24,6 +24,21 @@ profile_base_dir = bandicoot_check(
 # In[2]:
 
 
+def count_parquets(row):
+    extracted_features_dir = (
+        profile_base_dir
+        / "data"
+        / row["patient"]
+        / "extracted_features"
+        / row["well_fov"]
+    )
+    if extracted_features_dir.exists():
+        return sum(1 for p in extracted_features_dir.glob("*.parquet"))
+
+
+# In[3]:
+
+
 patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
     strict=True
 )
@@ -39,7 +54,7 @@ load_file_path = pathlib.Path(
 load_file_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[3]:
+# In[4]:
 
 
 rows = []
@@ -62,7 +77,7 @@ df = pd.DataFrame(rows)
 print(f"Total patient/well_fov combinations: {df.shape[0]}")
 
 
-# In[4]:
+# In[5]:
 
 
 # Build expected .duckdb paths with vectorized string ops
@@ -99,31 +114,46 @@ for patient, well_fov in tqdm(
             p.as_posix() for p in profile_dir.glob("*.duckdb") if p.is_file()
         )
 
-df["exists"] = df["file_path"].isin(existing_duckdbs)
-
-total = len(df)
-present = df["exists"].sum()
-print(f"Total files to check : {total}")
-print(f"Present              : {present}")
-print(f"Missing              : {total - present}")
-
-
-# In[5]:
-
-
-# Write missing combinations to load_file.txt
-df_missing = df.loc[~df["exists"], ["patient", "well_fov"]].reset_index(drop=True)
-df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
-print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
+df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 
 
 # In[6]:
 
 
+# check each well fov to search for the number of extracted feature parquet files
+
+df["num_parquets"] = df.apply(count_parquets, axis=1)
+
+
+# In[7]:
+
+
+total = len(df)
+# present = df["exists"].sum()
+present = df.loc[df["duckdb_exists"] & (df["num_parquets"] == 101)].shape[0]
+print(f"Total files to check : {total}")
+print(f"Present              : {present}")
+print(f"Missing              : {total - present}")
+
+
+# In[8]:
+
+
+# Write missing combinations to load_file.txt
+df_missing = df.loc[
+    ~df["duckdb_exists"] & (df["num_parquets"] == 101), ["patient", "well_fov"]
+].reset_index(drop=True)
+df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
+print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
+
+
+# In[9]:
+
+
 # Summary by patient
 summary_df = (
-    df.groupby("patient")[["exists"]]
-    .agg(total=("exists", "count"), present=("exists", "sum"))
+    df.groupby("patient")[["duckdb_exists"]]
+    .agg(total=("duckdb_exists", "count"), present=("duckdb_exists", "sum"))
     .assign(missing=lambda x: x["total"] - x["present"])
 )
 summary_df.reset_index()

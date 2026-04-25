@@ -310,7 +310,7 @@ metadata_features_list = [
     "Treatment",
     "WellFOV",
     "ParentOrganoid",
-    "SingleCellCount",
+    "OrganoidSingleCellCount",
     "Target",
     "Class",
     "TherapeuticCategories",
@@ -386,7 +386,9 @@ object_features = [
     "Metadata_ParentOrganoid",
     "Metadata_SingleCellCount",
     "Metadata_WellSingleCellCount",
+    "Metadata_WellOrganoidCount",
     "Metadata_OrganoidSingleCellCount",
+    "Metadata_WellNucleocentricCount",
 ]
 microscopy_features = [
     "Metadata_MicroscopeType",

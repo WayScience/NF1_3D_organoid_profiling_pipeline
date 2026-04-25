@@ -70,7 +70,7 @@ else:
     import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 # Download SAM3D checkpoint
@@ -89,7 +89,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 chammi75_model = get_chammi75_model(device)
 
 
-# In[ ]:
+# In[3]:
 
 
 if not in_notebook:
@@ -104,9 +104,9 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "D5-2"
-    patient = "NF0014_T1"
-    channel = "DNA"
+    well_fov = "G9-6"
+    patient = "SARCO361_T1"
+    channel = "Mito"
     compartment = "Nuclei"
     processor_type = "GPU"
     input_subparent_name = "zstack_images"
@@ -133,7 +133,7 @@ channel_mapping_file_path = pathlib.Path(
 compartment = "Nuclei"
 
 
-# In[ ]:
+# In[4]:
 
 
 # read in channel mapping
@@ -142,13 +142,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[ ]:
+# In[5]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[ ]:
+# In[6]:
 
 
 image_set_loader = ImageSetLoader(
@@ -162,7 +162,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[ ]:
+# In[7]:
 
 
 object_loader = ObjectLoader(
@@ -173,14 +173,14 @@ object_loader = ObjectLoader(
 )
 
 
-# In[ ]:
+# In[8]:
 
 
 label_ids = np.unique(object_loader.label_image)
 label_ids = label_ids[label_ids != 0]
 
 
-# In[ ]:
+# In[9]:
 
 
 list_of_feature_dicts = []
@@ -217,7 +217,9 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
         extractor=extractor,
     )
     chammi75_features = call_chammi75_featurization_pipeline(
-        cropped_image=z_max_proj_image, model=chammi75_model
+        cropped_image=z_max_proj_image,
+        model=chammi75_model,
+        device=device,
     )
     # make a new dictionary to hold all features
     combined_feature_dict = {
@@ -266,7 +268,7 @@ final_df["object_id"] = final_df["object_id"].astype(int)
 final_df.head()
 
 
-# In[ ]:
+# In[10]:
 
 
 # split between SAMMed3D and CHAMMI75 features in the column names
@@ -293,7 +295,7 @@ save_path = save_features_as_parquet(
 )
 
 
-# In[ ]:
+# In[11]:
 
 
 stop_profiling(
@@ -311,7 +313,7 @@ stop_profiling(
 )
 
 
-# In[ ]:
+# In[12]:
 
 
 if in_notebook:
@@ -320,7 +322,7 @@ if in_notebook:
     label_image = select_objects_from_label(object_loader.label_image, [label])
 
 
-# In[ ]:
+# In[13]:
 
 
 if in_notebook:
@@ -362,7 +364,7 @@ if in_notebook:
     plt.show()
 
 
-# In[ ]:
+# In[14]:
 
 
 if in_notebook:

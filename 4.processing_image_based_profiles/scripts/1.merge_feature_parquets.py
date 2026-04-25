@@ -59,11 +59,11 @@ DB_structure_path = pathlib.Path(
 parquet_files = list(result_path.rglob("*.parquet"))
 parquet_files.sort()
 print(len(parquet_files), "parquet files found")
-if len(parquet_files) != 112:
-    raise ValueError(f"Expected 112 parquet files, but found {len(parquet_files)}")
+if len(parquet_files) != 101:
+    raise ValueError(f"Expected 101 parquet files, but found {len(parquet_files)}")
 
 
-# In[ ]:
+# In[3]:
 
 
 # create the nested dictionary to hold the feature types and compartments
@@ -80,7 +80,7 @@ feature_types = [
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 
 
-# In[ ]:
+# In[4]:
 
 
 output_dict = {
@@ -97,7 +97,7 @@ output_dict = {
 output_dict
 
 
-# In[ ]:
+# In[5]:
 
 
 files = list(result_path.rglob("*.parquet"))
@@ -113,7 +113,7 @@ files_df.insert(4, "file_path", file_path)
 files_df.head()
 
 
-# In[ ]:
+# In[6]:
 
 
 for i, row in files_df.iterrows():
@@ -144,7 +144,7 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[ ]:
+# In[7]:
 
 
 # merge the dfs such that each compartment has a single df with all feature types as columns
@@ -166,7 +166,25 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[ ]:
+# In[8]:
+
+
+# assert that the number of Nuclei, Cell, Cytoplasm, Nucleocentric are all the same
+print(
+    len(compartment_dfs["Nuclei"]),
+    len(compartment_dfs["Cell"]),
+    len(compartment_dfs["Cytoplasm"]),
+    len(compartment_dfs["Nucleocentric"]),
+)
+assert (
+    len(compartment_dfs["Nuclei"])
+    == len(compartment_dfs["Cell"])
+    == len(compartment_dfs["Cytoplasm"])
+    == len(compartment_dfs["Nucleocentric"])
+)
+
+
+# In[9]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -185,7 +203,7 @@ dict_of_DB_structues = {
 }
 
 
-# In[ ]:
+# In[10]:
 
 
 # get the table from the DB_structue

@@ -67,9 +67,9 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C2-1"
     patient = "NF0014_T1"
-    compartment = "Nuclei"
+    compartment = "Cytoplasm"
     channel = "NoChannel"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
@@ -169,7 +169,7 @@ final_df.rename(
 
 final_df.insert(1, "image_set", image_set_loader.image_set_name)
 
-save_path = save_features_as_parquet(
+output_parent_path = save_features_as_parquet(
     parent_path=output_parent_path,
     df=final_df,
     feature_type="AreaSizeShape",
@@ -181,7 +181,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[ ]:
+# In[8]:
 
 
 stop_profiling(
