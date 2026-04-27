@@ -1,14 +1,25 @@
 #!/bin/bash
 
-patient=$1
-well_fov=$2
-feature=$3
-compartment=$4
-channel=$5
-processor_type=$6
-input_subparent_name=$7
-mask_subparent_name=$8
-output_features_subparent_name=$9
+# patient=$1
+# well_fov=$2
+# feature=$3
+# compartment=$4
+# channel=$5
+# processor_type=$6
+# input_subparent_name=$7
+# mask_subparent_name=$8
+# output_features_subparent_name=$9
+
+patient="NF0040_T1"
+well_fov="B11-4"
+feature="Texture"
+compartment="Cell"
+channel="DNA"
+processor_type="CPU"
+input_subparent_name="input_subparent"
+mask_subparent_name="mask_subparent"
+output_features_subparent_name="output_features"
+
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
