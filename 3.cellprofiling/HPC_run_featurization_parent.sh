@@ -1,25 +1,14 @@
 #!/bin/bash
 
-# patient=$1
-# well_fov=$2
-# feature=$3
-# compartment=$4
-# channel=$5
-# processor_type=$6
-# input_subparent_name=$7
-# mask_subparent_name=$8
-# output_features_subparent_name=$9
-
-patient="NF0040_T1"
-well_fov="B11-4"
-feature="Texture"
-compartment="Cell"
-channel="DNA"
-processor_type="CPU"
-input_subparent_name="input_subparent"
-mask_subparent_name="mask_subparent"
-output_features_subparent_name="output_features"
-
+patient=$1
+well_fov=$2
+feature=$3
+compartment=$4
+channel=$5
+processor_type=$6
+input_subparent_name=$7
+mask_subparent_name=$8
+output_features_subparent_name=$9
 
 git_root=$(git rev-parse --show-toplevel)
 if [ -z "$git_root" ]; then
@@ -178,7 +167,6 @@ fi
 #             "$gres" \
 #             "$qos" \
 #             --time=10:00 \
-#             --gres=gpu:1 \
 #             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
 #             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
 #             "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
@@ -197,7 +185,6 @@ fi
 #             "$gres" \
 #             "$qos" \
 #             --time=10:00 \
-#             --gres=gpu:1 \
 #             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
 #             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
 #             "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
