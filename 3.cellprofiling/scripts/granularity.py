@@ -61,8 +61,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
-    patient = "NF0014_T1"
+    well_fov = "D3-1"
+    patient = "NF0037_T1"
     channel = "AGP"
     compartment = "Nuclei"
     processor_type = "CPU"
@@ -115,6 +115,18 @@ image_set_loader = ImageSetLoader(
 
 
 # In[6]:
+
+
+image_set_loader.image_set_dict[channel].shape
+
+
+# In[7]:
+
+
+image_set_loader.image_set_dict[compartment].shape
+
+
+# In[8]:
 
 
 object_loader = ObjectLoader(
@@ -176,7 +188,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[7]:
+# In[9]:
 
 
 stop_profiling(

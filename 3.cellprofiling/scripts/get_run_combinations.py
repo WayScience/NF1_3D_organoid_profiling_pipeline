@@ -305,7 +305,7 @@ df.head()
 df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
-# In[11]:
+# In[9]:
 
 
 df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
