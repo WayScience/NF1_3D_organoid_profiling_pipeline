@@ -158,45 +158,43 @@ if [ "$feature" == "Intensity" ] ; then
         "$output_features_subparent_name"
 fi
 
-# if [ "$feature" == "SAMMed3D" ] ; then
-#     if [ "$compartment" == "Nucleocentric" ] ; then
-#         sbatch \
-#             --nodes=1 \
-#             --mem=6G \
-#             --partition="$gpu_partition" \
-#             "$gres" \
-#             "$qos" \
-#             --time=10:00 \
-#             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
-#             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
-#             "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
-#                 "$patient" \
-#                 "$well_fov" \
-#                 "$compartment" \
-#                 "$channel"  \
-#                 "$input_subparent_name" \
-#                 "$mask_subparent_name" \
-#                 "$output_features_subparent_name"
-#     else
-#         sbatch \
-#             --nodes=1 \
-#             --mem=6G \
-#             --partition="$gpu_partition" \
-#             "$gres" \
-#             "$qos" \
-#             --time=10:00 \
-#             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
-#             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
-#             "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
-#                 "$patient" \
-#                 "$well_fov" \
-#                 "$compartment" \
-#                 "$channel"  \
-#                 "$input_subparent_name" \
-#                 "$mask_subparent_name" \
-#                 "$output_features_subparent_name"
-#     fi
-# fi
+if [ "$feature" == "SAMMed3D" ] ; then
+    if [ "$compartment" == "Nucleocentric" ] ; then
+        sbatch \
+            --nodes=1 \
+            --mem=6G \
+            --partition="$gpu_partition" \
+            "$gres" \
+            "$qos" \
+            --time=10:00 \
+            --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
+            --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
+            "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
+                "$patient" \
+                "$well_fov" \
+                "$compartment" \
+                "$channel"  \
+                "$input_subparent_name" \
+                "$mask_subparent_name" \
+                "$output_features_subparent_name"
+    else
+        sbatch \
+            --nodes=1 \
+            --account=bio260064-gpu \
+            --mem=6G \
+            --partition=gpu \
+            --gpus-per-node=1 \
+            --time=10:00 \
+            "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
+                "$patient" \
+                "$well_fov" \
+                "$compartment" \
+                "$channel"  \
+                "$input_subparent_name" \
+                "$mask_subparent_name" \
+                "$output_features_subparent_name"
+    fi
+fi
 
 echo "All Parent Jobs submitted"
 

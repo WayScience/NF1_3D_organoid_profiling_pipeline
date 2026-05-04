@@ -302,10 +302,16 @@ df.head()
 # In[8]:
 
 
-df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index()
+df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
-# In[9]:
+# In[11]:
+
+
+df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
+
+
+# In[10]:
 
 
 # find the number of patient well-fovs that have the complete set of feature files (101)
@@ -329,6 +335,3 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
     name="count"
 ).reset_index()
 complete_feature_count
-
-
-# In[ ]:
