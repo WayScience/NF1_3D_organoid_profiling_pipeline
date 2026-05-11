@@ -381,8 +381,6 @@ def classify_cells_into_shells(
     max_distance = numpy.percentile(
         distances, 95
     )  # Use 95 percentile to avoid outliers
-    # max_distance = numpy.max(distances)
-    max_distance = numpy.max(distances)
     if max_distance == 0:
         # All cells are at the same location; assign all to shell 0
         normalized_distances = numpy.zeros_like(distances)
