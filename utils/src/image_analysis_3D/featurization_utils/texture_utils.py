@@ -1,4 +1,3 @@
-
 import mahotas
 import numpy
 import skimage
