@@ -104,9 +104,9 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "G9-6"
+    well_fov = "F10-6"
     patient = "SARCO361_T1"
-    channel = "Mito"
+    channel = "AGP"
     compartment = "Nuclei"
     processor_type = "GPU"
     input_subparent_name = "zstack_images"
@@ -202,11 +202,15 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
         image=label_image, bbox=bbox_image, expand_pixels=25, anisotropy_factor=10
     )
     # make the bbox square in xy
-    new_bbox = square_off_xy_crop_bbox(bbox=new_bbox)
-    if not check_for_xy_squareness(bbox=new_bbox):
+    new_bbox1 = square_off_xy_crop_bbox(
+        bbox=new_bbox,
+        image_max_xy=object_loader.image.shape[1:],
+    )
+
+    if not check_for_xy_squareness(bbox=new_bbox1):
         print(f"Warning: bbox is not square in xy after expansion of 25 pixels")
     # crop the image
-    cropped_image = crop_3D_image(object_loader.image, new_bbox)
+    cropped_image = crop_3D_image(object_loader.image, new_bbox1)
     # z max project the image
     z_max_proj_image = cropped_image.max(axis=0)
 
@@ -364,7 +368,7 @@ if in_notebook:
     plt.show()
 
 
-# In[14]:
+# In[ ]:
 
 
 if in_notebook:

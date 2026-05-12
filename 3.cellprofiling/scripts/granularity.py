@@ -114,18 +114,6 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[6]:
-
-
-image_set_loader.image_set_dict[channel].shape
-
-
-# In[7]:
-
-
-image_set_loader.image_set_dict[compartment].shape
-
-
 # In[8]:
 
 
