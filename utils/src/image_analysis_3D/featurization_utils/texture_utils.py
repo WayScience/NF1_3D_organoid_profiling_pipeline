@@ -115,50 +115,58 @@ def measure_3D_texture(
         "texture_name": [],
         "texture_value": [],
     }
-    # Precompute bounding boxes for labeled regions to avoid per-object full-array copies
-    props = skimage.measure.regionprops_table(
-        label_object, properties=["label", "bbox"]
-    )
-    # Map label id to bbox (z0, y0, x0, z1, y1, x1)
-    label_to_bbox = {}
-    labels_prop = props.get("label", [])
-    for i, lbl in enumerate(labels_prop):
-        label_to_bbox[int(lbl)] = (
-            int(props["bbox-0"][i]),
-            int(props["bbox-1"][i]),
-            int(props["bbox-2"][i]),
-            int(props["bbox-3"][i]),
-            int(props["bbox-4"][i]),
-            int(props["bbox-5"][i]),
+
+    if len(labels) != 0:
+        # Precompute bounding boxes for labeled regions to avoid per-object full-array copies
+        props = skimage.measure.regionprops_table(
+            label_object, properties=["label", "bbox"]
         )
-
-    for _, label in enumerate(labels):
-        bbox = label_to_bbox.get(int(label))
-        if bbox is None:
-            continue
-
-        min_z, min_y, min_x, max_z, max_y, max_x = bbox
-
-        # Crop to the object's bounding box (skimage bboxes are half-open)
-        image_object = object_loader.image[min_z:max_z, min_y:max_y, min_x:max_x].copy()
-        selected_label_object = label_object[min_z:max_z, min_y:max_y, min_x:max_x]
-        object_mask = selected_label_object == label
-        if not numpy.any(object_mask):
-            continue
-        image_object[~object_mask] = 0
-        n_features = len(feature_names)
-        features = numpy.empty((n_directions, 13, max(labels)))
-        image_object = scale_image(image_object, num_gray_levels=grayscale)
-
-        try:
-            features[:, :, label - 1] = mahotas.features.haralick(
-                ignore_zeros=True,
-                f=image_object,
-                distance=distance,
-                compute_14th_feature=False,
+        # Map label id to bbox (z0, y0, x0, z1, y1, x1)
+        label_to_bbox = {}
+        labels_prop = props.get("label", [])
+        for i, lbl in enumerate(labels_prop):
+            label_to_bbox[int(lbl)] = (
+                int(props["bbox-0"][i]),
+                int(props["bbox-1"][i]),
+                int(props["bbox-2"][i]),
+                int(props["bbox-3"][i]),
+                int(props["bbox-4"][i]),
+                int(props["bbox-5"][i]),
             )
-        except ValueError:
-            features = numpy.full(len(feature_names), numpy.nan, dtype=float)
+
+        for _, label in enumerate(labels):
+            bbox = label_to_bbox.get(int(label))
+            if bbox is None:
+                continue
+
+            min_z, min_y, min_x, max_z, max_y, max_x = bbox
+
+            # Crop to the object's bounding box (skimage bboxes are half-open)
+            image_object = object_loader.image[
+                min_z:max_z, min_y:max_y, min_x:max_x
+            ].copy()
+            selected_label_object = label_object[min_z:max_z, min_y:max_y, min_x:max_x]
+            object_mask = selected_label_object == label
+            if not numpy.any(object_mask):
+                continue
+            image_object[~object_mask] = 0
+            n_features = len(feature_names)
+            features = numpy.empty((n_directions, 13, max(labels)))
+            image_object = scale_image(image_object, num_gray_levels=grayscale)
+
+            try:
+                features[:, :, label - 1] = mahotas.features.haralick(
+                    ignore_zeros=True,
+                    f=image_object,
+                    distance=distance,
+                    compute_14th_feature=False,
+                )
+            except ValueError:
+                features[:, :, label - 1] = numpy.full(
+                    (n_directions, n_features), numpy.nan
+                )
+    else:
+        features = numpy.zeros((n_directions, 13, 0))
 
     for direction, direction_features in enumerate(features):
         direction_str = f"{direction:02d}"
@@ -169,4 +177,5 @@ def measure_3D_texture(
                     f"{feature_name}-{distance}-{direction_str}-{grayscale}"
                 )
                 output_texture_dict["texture_value"].append(feature_value)
+
     return output_texture_dict

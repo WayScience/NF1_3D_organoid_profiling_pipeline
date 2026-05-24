@@ -295,23 +295,36 @@ print(
 # In[7]:
 
 
-df.to_csv(load_combinations_path, sep="\t", index=False)
-df.head()
+wells = ["C4-1", "G9-1", "C2-1", "E7-1"]
+# sample only records from two well_fovs per patient for testing
+sampled_rows = []
+for patient in df["patient"].unique():
+    patient_rows = df.loc[(df["patient"] == patient) & (df["well_fov"].isin(wells))]
+    sampled_rows.append(patient_rows)
+df = pd.concat(sampled_rows, ignore_index=True)
+df
 
 
 # In[8]:
 
 
-df.groupby(["feature"]).size().to_frame(name="count").reset_index()
+df.to_csv(load_combinations_path, sep="\t", index=False)
+df.head()
 
 
 # In[9]:
 
 
-df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
+df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
 # In[10]:
+
+
+df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
+
+
+# In[11]:
 
 
 # find the number of patient well-fovs that have the complete set of feature files (101)

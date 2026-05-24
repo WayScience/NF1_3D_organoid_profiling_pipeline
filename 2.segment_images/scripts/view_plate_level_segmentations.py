@@ -256,7 +256,7 @@ red_lut[:, 0] = np.linspace(0, 1, 256)  # Red
 red_lut[0] = [0, 0, 0]
 
 
-# In[5]:
+# In[ ]:
 
 
 for patient in tqdm.tqdm(
@@ -322,7 +322,7 @@ for patient in tqdm.tqdm(
         plt.close(fig)
 
 
-# In[ ]:
+# In[5]:
 
 
 for patient in tqdm.tqdm(

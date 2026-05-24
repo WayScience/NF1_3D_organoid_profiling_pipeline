@@ -84,8 +84,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T2"
-    well_fov = "F5-4"
+    patient = "NF0037_T1"
+    well_fov = "B10-5"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -102,7 +102,7 @@ mask_path.mkdir(exist_ok=True, parents=True)
 channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
-# In[7]:
+# In[5]:
 
 
 # look up the morphology of the organoid from json file
@@ -165,7 +165,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[9]:
+# In[8]:
 
 
 if in_notebook:
@@ -188,7 +188,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[10]:
+# In[9]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -199,7 +199,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[11]:
+# In[10]:
 
 
 nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
@@ -211,7 +211,7 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 )
 
 
-# In[12]:
+# In[11]:
 
 
 # refine the cell masks
@@ -225,7 +225,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[13]:
+# In[12]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -236,7 +236,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Remove border objects
 
-# In[14]:
+# In[13]:
 
 
 # nuclei should already have objects removed at the border from the previous notebook,
@@ -246,7 +246,7 @@ cell_mask = clean_border_objects(cell_mask, border_width=5)
 cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
 
 
-# In[15]:
+# In[14]:
 
 
 # since the nuclei - cell masks should be 1:1
@@ -262,7 +262,7 @@ for label_id in unmatched_labels_to_remove:
     cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
 
 
-# In[16]:
+# In[15]:
 
 
 if in_notebook:
@@ -285,7 +285,7 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[17]:
+# In[16]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -296,7 +296,7 @@ tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 
 
-# In[18]:
+# In[17]:
 
 
 stop_profiling(
