@@ -304,8 +304,6 @@ def measure_3D_granularity(
     nobjects = len(label_range)
 
     if nobjects > 0:
-        label_range = numpy.arange(1, nobjects + 1)
-
         # CellProfiler: self.labels[~im.mask] = 0
         masked_labels = original_labels.copy()
         masked_labels[~original_mask] = 0
