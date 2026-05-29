@@ -83,10 +83,10 @@ fi
 if [ "$feature" == "Texture" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=3G \
+        --mem=9G \
         --partition="$partition" \
         "$qos" \
-        --time=3:00 \
+        --time=7:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_texture_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_texture_child.sh \
