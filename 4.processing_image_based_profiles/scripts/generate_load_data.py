@@ -139,6 +139,12 @@ print(f"Missing              : {total - present}")
 # In[8]:
 
 
+df
+
+
+# In[9]:
+
+
 # Write missing combinations to load_file.txt
 df_missing = df.loc[
     ~df["duckdb_exists"] & (df["num_parquets"] == 101), ["patient", "well_fov"]
@@ -147,7 +153,7 @@ df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
 print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
-# In[9]:
+# In[10]:
 
 
 # Summary by patient

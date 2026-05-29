@@ -104,9 +104,9 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "F10-6"
-    patient = "SARCO361_T1"
-    channel = "AGP"
+    well_fov = "G3-5"
+    patient = "NF0055_T1"
+    channel = "Mito"
     compartment = "Nuclei"
     processor_type = "GPU"
     input_subparent_name = "zstack_images"
@@ -260,30 +260,42 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
     df = pd.DataFrame(combined_feature_dict)
     list_of_feature_dicts.append(df)
 
+if len(list_of_feature_dicts) > 0:
+    final_df = pd.concat(list_of_feature_dicts, ignore_index=True)
+    # pivot the df such that the feature names are the columns and the feature values are the values, with object label as an id variable
+    final_df = final_df.pivot(
+        index=["object_id", "image_set"], columns="feature_name", values="feature_value"
+    ).reset_index()
+    # remove the labeld name of the index
+    final_df.columns.name = None
+    final_df["object_id"] = final_df["object_id"].astype(int)
+else:
+    chammi75_df = pd.read_parquet(
+        pathlib.Path(
+            f"{image_base_dir}/data/NF0014_T1/extracted_features/C4-1/Nucleocentric_{channel}_CHAMMI75_GPU_features.parquet"
+        ).resolve()
+    )[:0]
+    sammed_3d_df = pd.read_parquet(
+        pathlib.Path(
+            f"{image_base_dir}/data/NF0014_T1/extracted_features/C4-1/Nucleocentric_{channel}_SAMMed3D_GPU_features.parquet"
+        ).resolve()
+    )[:0]
+    final_df = None
 
-final_df = pd.concat(list_of_feature_dicts, ignore_index=True)
-# pivot the df such that the feature names are the columns and the feature values are the values, with object label as an id variable
-final_df = final_df.pivot(
-    index=["object_id", "image_set"], columns="feature_name", values="feature_value"
-).reset_index()
-# remove the labeld name of the index
-final_df.columns.name = None
-final_df["object_id"] = final_df["object_id"].astype(int)
-final_df.head()
+
+# In[ ]:
 
 
-# In[10]:
-
-
-# split between SAMMed3D and CHAMMI75 features in the column names
-sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
-chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
-sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
-chammi75_df = final_df[["object_id", "image_set"] + chammi75_feature_cols]
+if final_df is not None:
+    # split between SAMMed3D and CHAMMI75 features in the column names
+    sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
+    chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
+    sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
+    chammi75_df = final_df[["object_id", "image_set"] + chammi75_feature_cols]
 # save the features as parquet files
 save_path = save_features_as_parquet(
     parent_path=output_parent_path,
-    df=final_df,
+    df=sammed_3d_df,
     feature_type="SAMMed3D",
     channel=channel,
     compartment="Nucleocentric",
@@ -326,7 +338,7 @@ if in_notebook:
     label_image = select_objects_from_label(object_loader.label_image, [label])
 
 
-# In[13]:
+# In[ ]:
 
 
 if in_notebook:

@@ -89,7 +89,7 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
     organoid_profiles_df[
         [
             "Metadata_Object_ObjectID",
-            "Metadata_Object_SingleCellCount",
+            "Metadata_Object_OrganoidSingleCellCount",
             "Organoid_NoChannel_AreaSizeShape_Volume",
         ]
     ]

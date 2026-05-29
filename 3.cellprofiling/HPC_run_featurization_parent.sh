@@ -63,10 +63,10 @@ fi
 if [ "$feature" == "Granularity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=7G \
+        --mem=12G \
         --partition="$partition" \
         "$qos" \
-        --time=4:00 \
+        --time=12:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_granularity_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_granularity_child.sh \
@@ -143,10 +143,10 @@ fi
 if [ "$feature" == "Intensity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=6G \
+        --mem=9G \
         --partition="$partition" \
         "$qos" \
-        --time=5:00 \
+        --time=7:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_intensity_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_intensity_child.sh \

@@ -91,8 +91,8 @@ while IFS= read -r line; do
     processed_entries=$((processed_entries + 1))
     echo "Processed $processed_entries/$total_sammed3d_entries"
 
-done < <(tac "$txt_file")
-# done < "$txt_file"
+# done < <(tac "$txt_file")
+done < "$txt_file"
 
 echo "Featurization done"
 
