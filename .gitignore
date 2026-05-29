@@ -151,3 +151,4 @@ profile_prep_for_sage/data_for_sage/*
 figures/table2/results/*
 *Experiment*.csv
 *Rplots.pdf
+figures/montage/montages/*
