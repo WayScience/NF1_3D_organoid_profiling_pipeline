@@ -24,25 +24,25 @@ if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ];
 fi
 mkdir -p "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" # create the patients directory if it doesn't exist
 
-# "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/00.derive_db_structure_from_example.py --patient "NF0014_T1" --well_fov "C4-1" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
+"$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/00.derive_db_structure_from_example.py --patient "NF0014_T1" --well_fov "C4-1" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
 
-# "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/generate_load_data.py
+"$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/generate_load_data.py
 
-# while IFS= read -r line; do
+while IFS= read -r line; do
 
-#     IFS=$'\t' read -r -a parts <<< "$line"
-#     patient="${parts[0]}"
-#     well_fov="${parts[1]}"
+    IFS=$'\t' read -r -a parts <<< "$line"
+    patient="${parts[0]}"
+    well_fov="${parts[1]}"
 
-#     echo "$patient - $well_fov"
-#     log_file="$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/${patient}_${well_fov}.log"
-#     touch "$log_file"  # create the log file if it doesn't exist
-#     {
-#         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/1.merge_feature_parquets.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
-#         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2.merge_sc.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
-#         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
-#     } >> "$log_file" 2>&1
-# done < "$load_data_file_path"
+    echo "$patient - $well_fov"
+    log_file="$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/${patient}_${well_fov}.log"
+    touch "$log_file"  # create the log file if it doesn't exist
+    {
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/1.merge_feature_parquets.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2.merge_sc.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
+    } >> "$log_file" 2>&1
+done < "$load_data_file_path"
 
 for patient in "${patient_array[@]}"; do
     echo "Processing patient: $patient"
