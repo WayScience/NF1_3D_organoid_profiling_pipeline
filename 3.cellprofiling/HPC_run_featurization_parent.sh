@@ -44,7 +44,7 @@ echo "InputSubparent: $input_subparent_name, MaskSubparent: $mask_subparent_name
 if [ "$feature" == "Neighbors" ]; then
     sbatch \
     --nodes=1 \
-    --mem=2G \
+    --mem=6G \
     --partition="$partition" \
     "$qos" \
     --time=1:00 \
@@ -63,10 +63,10 @@ fi
 if [ "$feature" == "Granularity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=18G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
-        --time=25:00 \
+        --time=20:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_granularity_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_granularity_child.sh \
@@ -83,7 +83,7 @@ fi
 if [ "$feature" == "Texture" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=12G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
         --time=10:00 \
@@ -104,7 +104,7 @@ fi
 if [ "$feature" == "AreaSizeShape" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=2G \
+        --mem=6G \
         --partition="$partition" \
         "$qos" \
         --time=00:04:30 \
@@ -123,7 +123,7 @@ fi
 if [ "$feature" == "Colocalization" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=9G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
         --time=10:00 \
@@ -143,7 +143,7 @@ fi
 if [ "$feature" == "Intensity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=9G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
         --time=10:00 \
@@ -165,11 +165,11 @@ if [ "$feature" == "SAMMed3D" ] ; then
         sbatch \
             --nodes=1 \
             --account="$account" \
-            --mem=6G \
+            --mem=24G \
             --partition="$gpu_partition" \
             "$gres" \
             "$qos" \
-            --time=10:00 \
+            --time=30:00 \
             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
             "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
@@ -184,11 +184,11 @@ if [ "$feature" == "SAMMed3D" ] ; then
         sbatch \
             --nodes=1 \
             --account="$account" \
-            --mem=6G \
+            --mem=24G \
             --partition="$gpu_partition" \
             "$gres" \
             "$qos" \
-            --time=10:00 \
+            --time=30:00 \
             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
             "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \

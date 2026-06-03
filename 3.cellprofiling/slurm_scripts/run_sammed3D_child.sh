@@ -22,6 +22,10 @@ fi
 
 PYTHON_BIN="$ENV_PATH/bin/python3"
 
+# shellcheck disable=SC2155
+export SSL_CERT_FILE=$("$PYTHON_BIN" -c "import certifi; print(certifi.where())")
+export REQUESTS_CA_BUNDLE=$SSL_CERT_FILE
+
 "$PYTHON_BIN" "$git_root"/3.cellprofiling/scripts/dl_features.py \
     --patient "$patient" \
     --well_fov "$well_fov" \

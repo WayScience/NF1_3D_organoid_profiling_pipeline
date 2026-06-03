@@ -43,6 +43,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "tomli>=2.4.0",
     "transformers<5.0",
+    "certifi>=2026.5.20",
 ]
 
 

@@ -1451,6 +1451,7 @@ source = { editable = "." }
 dependencies = [
     { name = "arrow", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "basicpy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "certifi", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cucim", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cupy-cuda11x", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cytotable", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -1478,6 +1479,7 @@ dependencies = [
 requires-dist = [
     { name = "arrow", specifier = ">=1.4.0" },
     { name = "basicpy", specifier = ">=1.1.0" },
+    { name = "certifi", specifier = ">=2026.5.20" },
     { name = "cucim", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cupy-cuda11x", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "<14" },
     { name = "cytotable", specifier = ">=1.1.4" },
