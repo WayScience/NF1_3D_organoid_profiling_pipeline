@@ -67,9 +67,9 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C2-1"
-    patient = "NF0014_T1"
-    compartment = "Cytoplasm"
+    well_fov = "F8-1"
+    patient = "NF0037_T1"
+    compartment = "Organoid"
     channel = "NoChannel"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"

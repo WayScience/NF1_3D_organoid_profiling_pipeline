@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Get run combinations (refactor)
+# # Get run combinations
 #
 # This notebook keeps the original behavior while reducing repetitive row-building code via a small helper function.
 
@@ -327,24 +327,32 @@ df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().h
 # In[11]:
 
 
-# find the number of patient well-fovs that have the complete set of feature files (101)
-complete_feature_count = all_df.copy()
+# Find patient well_fovs with complete feature-file coverage
+complete_feature_count = all_df.groupby(["patient", "well_fov"], as_index=False).agg(
+    feature_file_path_exists_count=("feature_file_path_exists", "sum"),
+    expected_feature_count=("feature_file_path_exists", "size"),
+)
 
-complete_feature_count = (
-    complete_feature_count.groupby(["patient", "well_fov"])
-    .sum("feature_file_path_exists")
-    .reset_index()
-)
-complete_feature_count.rename(
-    columns={"feature_file_path_exists": "feature_file_path_exists_count"}, inplace=True
-)
 complete_feature_count["completion_status"] = (
     complete_feature_count["feature_file_path_exists_count"]
-    .eq(101)
+    .eq(complete_feature_count["expected_feature_count"])
     .map({True: "Complete", False: "Incomplete"})
 )
-complete_feature_count = complete_feature_count.reset_index()
+
 complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame(
     name="count"
 ).reset_index()
+
 complete_feature_count
+
+
+# In[12]:
+
+
+complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
+
+
+# In[13]:
+
+
+complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]
