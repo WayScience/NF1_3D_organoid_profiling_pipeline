@@ -43,7 +43,7 @@ load_combinations_path = pathlib.Path(
     f"{root_dir}/3.cellprofiling/load_data/load_combinations.txt"
 )
 load_combinations_path.parent.mkdir(parents=True, exist_ok=True)
-
+blocked_toml_path = pathlib.Path(f"{root_dir}/config/blocked_fovs/blocked_fovs.toml")
 channel_mapping_file_path = pathlib.Path(
     f"{root_dir}/config/channel_mapping.toml"
 ).resolve(strict=True)
@@ -51,6 +51,9 @@ with open(channel_mapping_file_path, "rb") as f:
     channel_mapping_dict = tomli.load(f)
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
+with open(blocked_toml_path, "rb") as f:
+    blocked_fovs_dict = tomli.load(f)
+patient_well_fov_block_df = pd.DataFrame(blocked_fovs_dict["blocked_patient_well_fovs"])
 features = [
     "AreaSizeShape",
     "Colocalization",
@@ -145,6 +148,15 @@ for patient in patients:
         continue
 
     for well_fov in patient_well_fovs:
+        # check if the patient and well_fov combination is in the block list, and skip if so
+        if (
+            (patient_well_fov_block_df["patient"] == patient)
+            & (patient_well_fov_block_df["well_fov"] == well_fov)
+        ).any():
+            print(
+                f"Skipping blocked combination: patient {patient}, well_fov {well_fov}"
+            )
+            continue
         for feature in features:
             if feature == "Neighbors":
                 add_row(
