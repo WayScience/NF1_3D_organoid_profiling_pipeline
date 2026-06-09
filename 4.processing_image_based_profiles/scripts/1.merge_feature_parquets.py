@@ -37,7 +37,7 @@ if not in_notebook:
 
 else:
     well_fov = "C4-1"
-    patient = "NF0014_T1"
+    patient = "NF0014_T2"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
 

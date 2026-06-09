@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[1]:
 
 
 import os
@@ -21,7 +21,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[7]:
+# In[2]:
 
 
 patients_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
@@ -39,7 +39,7 @@ load_file_path = pathlib.Path(
 load_file_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[8]:
+# In[3]:
 
 
 all_parquets_info = []
@@ -53,7 +53,7 @@ for patient in tqdm(patients, desc="Patients"):
         all_parquets_info.extend(parquet_paths)
 
 
-# In[28]:
+# In[4]:
 
 
 df = pd.DataFrame({"parquet_path": all_parquets_info})
@@ -67,13 +67,13 @@ df = df.loc[
 df.groupby(["patient", "well_fov"]).size().reset_index(name="num_parquets")
 
 
-# In[29]:
+# In[5]:
 
 
 list_of_compartments = ["Nuclei", "Cytoplasm", "Cell", "Organoid", "Nucleocentric"]
 
 
-# In[31]:
+# In[6]:
 
 
 df["flag_to_delete"] = df["parquet_path"].apply(
@@ -90,8 +90,14 @@ df["flag_to_delete"] = df["parquet_path"].apply(
     )
 )
 files_to_remove = df.loc[df["flag_to_delete"] == True, "parquet_path"].tolist()
-for file_path in tqdm(files_to_remove, desc="Removing old parquet files"):
-    try:
-        file_path.unlink()
-    except Exception as e:
-        print(f"Error removing file {file_path}: {e}")
+print(f"Number of files to remove: {len(files_to_remove)}")
+
+
+# In[7]:
+
+
+# for file_path in tqdm(files_to_remove, desc="Removing old parquet files"):
+#     try:
+#         file_path.unlink()
+#     except Exception as e:
+#         print(f"Error removing file {file_path}: {e}")

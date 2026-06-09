@@ -54,7 +54,7 @@ image_base_dir = bandicoot_check(
 logging.basicConfig(level=logging.INFO)
 
 
-# In[11]:
+# In[3]:
 
 
 if not in_notebook:
@@ -68,10 +68,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C3-1"
     patient = "NF0014_T1"
     compartment = "Nuclei"
-    channel = "DNA"
+    channel = "AGP"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
     output_features_subparent_name = "extracted_features"
@@ -92,7 +92,7 @@ channel_mapping_file_path = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[12]:
+# In[4]:
 
 
 sam3dmed_checkpoint_url = (
@@ -104,7 +104,7 @@ if not sam3dmed_checkpoint_path.exists():
     urllib.request.urlretrieve(sam3dmed_checkpoint_url, str(sam3dmed_checkpoint_path))
 
 
-# In[13]:
+# In[5]:
 
 
 # read in channel mapping
@@ -113,13 +113,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[14]:
+# In[6]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[15]:
+# In[7]:
 
 
 image_set_loader = ImageSetLoader(
@@ -133,7 +133,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[16]:
+# In[8]:
 
 
 # if channel and compartment are "all", create all combinations
@@ -148,7 +148,7 @@ else:
     all_channel_compartment_combinations = [(channel, compartment)]
 
 
-# In[17]:
+# In[9]:
 
 
 for channel, compartment in all_channel_compartment_combinations:
