@@ -36,8 +36,8 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C4-1"
-    patient = "NF0014_T2"
+    well_fov = "C5-1"
+    patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
 
@@ -166,6 +166,18 @@ for compartment in final_df_dict.keys():
         )
 
 
+# In[10]:
+
+
+compartment_dfs["Nuclei"]["object_id"].unique()
+
+
+# In[11]:
+
+
+compartment_dfs["Cytoplasm"]["object_id"].unique()
+
+
 # In[8]:
 
 
@@ -183,8 +195,19 @@ assert (
     == len(compartment_dfs["Nucleocentric"])
 )
 
+# assert that all object ids line up across compartments
+assert (
+    compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Cell"]["object_id"])
+    and compartment_dfs["Nuclei"]["object_id"].equals(
+        compartment_dfs["Cytoplasm"]["object_id"]
+    )
+    and compartment_dfs["Nuclei"]["object_id"].equals(
+        compartment_dfs["Nucleocentric"]["object_id"]
+    )
+)
 
-# In[9]:
+
+# In[ ]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -203,7 +226,7 @@ dict_of_DB_structues = {
 }
 
 
-# In[10]:
+# In[ ]:
 
 
 # get the table from the DB_structue

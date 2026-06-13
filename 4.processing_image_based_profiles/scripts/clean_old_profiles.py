@@ -101,3 +101,14 @@ print(f"Number of files to remove: {len(files_to_remove)}")
 #         file_path.unlink()
 #     except Exception as e:
 #         print(f"Error removing file {file_path}: {e}")
+
+
+# In[8]:
+
+
+# load in the load_file
+load_file_path = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/load_data/load_file.txt"
+).resolve()
+patient_well_fov_df = pd.read_csv(load_file_path, sep="\t")
+patient_well_fov_df
