@@ -9,6 +9,7 @@ import multiprocessing
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
 import tifffile
 import tomli
@@ -22,6 +23,7 @@ if in_notebook:
     import tqdm.auto as tqdm
 else:
     import tqdm
+
 from tqdm import tqdm as tqdm_main
 
 bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
@@ -31,10 +33,32 @@ bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 # In[2]:
 
 
-OVERWRITE = True
+# def normalize_mask_labels1(x):
+#     if isinstance(x, np.ndarray):
+#         return x.astype(np.int32)
+#     elif x is None or (isinstance(x, float) and np.isnan(x)):
+#         return np.array([], dtype=np.int32)  # empty array instead of null
+#     else:
+#         # Handle unexpected scalar values
+#         return np.array([x], dtype=np.int32)
+def normalize_mask_labels(val):
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return []
+    if isinstance(val, np.ndarray):
+        return val.flatten().tolist()  # flatten handles 0-d arrays
+    if isinstance(val, list):
+        return val
+    # scalar int (or anything else) → wrap it
+    return [val]
 
 
 # In[3]:
+
+
+OVERWRITE = False
+
+
+# In[4]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -65,7 +89,7 @@ channels = ["DNA", "ER", "Mito", "AGP"]
 compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 
 
-# In[4]:
+# In[5]:
 
 
 if sanity_df_save_path.exists() and not OVERWRITE:
@@ -160,7 +184,7 @@ df["unique_shape_string"] = (
 df.head()
 
 
-# In[5]:
+# In[6]:
 
 
 df["unique_shape_string"] = (
@@ -173,7 +197,16 @@ df["unique_shape_string"] = (
 df
 
 
-# In[6]:
+# In[7]:
+
+
+# check that there area total of 8 unique shapes (5 channels and 4 masks)
+df.groupby(["patient", "well_fov"]).size().reset_index(name="count").loc[
+    lambda x: x["count"] != 9
+]
+
+
+# In[8]:
 
 
 mismatched_shapes = 0
@@ -191,4 +224,63 @@ print(
 mismatched_shapes_list
 
 
+# In[9]:
+
+
+OVERWRITE = True
+
+
 # In[ ]:
+
+
+if sanity_df_save_path.exists() and not OVERWRITE:
+    print(
+        f"Sanity check dataframe already exists at {sanity_df_save_path}. Set OVERWRITE = True to overwrite."
+    )
+    df = pd.read_parquet(sanity_df_save_path)
+else:
+    from tqdm.auto import tqdm
+
+    df["is_mask"] = df["image_path"].str.contains("mask")
+    # drop rows that are not masks
+    df = df[df["is_mask"]]
+    df["mask_labels"] = None
+    for patient in tqdm(df["patient"].unique(), desc="Patients", unit="patient"):
+        patient_save_path = pathlib.Path(f"../results/sanity_check_{patient}.parquet")
+        if patient_save_path.exists():
+            print(
+                f"Sanity check dataframe for patient {patient} already exists at {patient_save_path}. Skipping."
+            )
+            continue
+        patient_df = df[df["patient"] == patient]
+        mask_idx = patient_df["is_mask"]
+        for idx in tqdm(
+            patient_df.index[mask_idx], desc=f"Reading masks for patient {patient}"
+        ):
+            patient_df.at[idx, "mask_labels"] = np.unique(
+                tifffile.imread(patient_df.at[idx, "image_path"])
+            )
+        # patient_df["mask_labels"] = patient_df["mask_labels"].apply(
+        #     lambda x: x.astype(np.int32) if isinstance(x, np.ndarray) else x
+        # )
+        patient_df["mask_labels"] = patient_df["mask_labels"].apply(
+            normalize_mask_labels
+        )
+        # checkpoint and save after each patient to avoid losing progress in case of errors
+        patient_df.to_parquet(patient_save_path, index=False)
+
+    dfs = []
+    for patient in df["patient"].unique():
+        patient_df = pd.read_parquet(
+            pathlib.Path(f"../results/sanity_check_{patient}.parquet")
+        )
+        dfs.append(patient_df)
+    df = pd.concat(dfs, ignore_index=True)
+    df.to_parquet(patient_save_path, index=False)
+
+
+# In[ ]:
+
+
+# drop all rows that do not have none in the mask_labels column
+patient_df[patient_df["mask_labels"] == None]

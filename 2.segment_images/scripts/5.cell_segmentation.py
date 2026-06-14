@@ -84,8 +84,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0037_T1"
-    well_fov = "B10-5"
+    patient = "NF0014_T1"
+    well_fov = "C5-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -316,3 +316,10 @@ stop_profiling(
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
+
+# In[19]:
+
+
+print(np.unique(nuclei_mask))
+print(np.unique(cell_mask))
+print(np.unique(cytoplasm_mask))

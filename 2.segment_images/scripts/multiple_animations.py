@@ -61,7 +61,7 @@ if not in_notebook:
 
 else:
     print("Running in a notebook")
-    input_subparent_name = "zstack_images"
+    input_subparent_name = "deconvolved_images"
     mask_subparent_name = "segmentation_masks"
     amimation_subparent_name = "animations"
 
@@ -155,19 +155,19 @@ def animate_view(
 
     viewer.dims.ndisplay = dim
     # rotate around the y-axis
-    viewer.camera.angles = (0.0, 0.0, 90.0)  # (z, y, x) axis of rotation
+    viewer.camera.angles = (0.0, 0.0, 0.0)  # (z, y, x) axis of rotation
     animation.capture_keyframe(steps=steps, ease=ease_style)
 
-    viewer.camera.angles = (0.0, 180.0, 90.0)
+    viewer.camera.angles = (0.0, 180.0, 0.0)
     animation.capture_keyframe(steps=steps, ease=ease_style)
 
-    viewer.camera.angles = (0.0, 360.0, 90.0)
+    viewer.camera.angles = (0.0, 360.0, 0.0)
     animation.capture_keyframe(steps=steps, ease=ease_style)
 
-    viewer.camera.angles = (0.0, 0.0, 270.0)
+    viewer.camera.angles = (0.0, 360.0, 180.0)
     animation.capture_keyframe(steps=steps, ease=ease_style)
 
-    viewer.camera.angles = (0.0, 0.0, 90.0)
+    viewer.camera.angles = (0.0, 360.0, 360.0)
     animation.capture_keyframe(steps=steps, ease=ease_style)
 
     animation.animate(output_path_name, canvas_only=True)
@@ -190,17 +190,24 @@ scaling_values = [1, 0.1, 0.1]
 # In[6]:
 
 
-np.random.seed(0)
+patient_ids = [
+    "NF0014_T1",
+]
+well_fovs_to_animate = [
+    "C4-2",
+]
+
+# np.random.seed(0)
 for patient in tqdm.tqdm(patient_ids, desc="Processing patients"):
     # get a list of all well_fovs in the zstack_images dir
-    images_dir = pathlib.Path(
-        f"{image_base_dir}/data/{patient}/{input_subparent_name}"
-    ).resolve(strict=True)
-    list_of_well_fovs = images_dir.glob("*")
-    list_of_well_fovs = [x for x in list_of_well_fovs if x.is_dir()]
-    list_of_well_fovs = [x.name for x in list_of_well_fovs]
+    # images_dir = pathlib.Path(
+    #     f"{image_base_dir}/data/{patient}/{input_subparent_name}"
+    # ).resolve(strict=True)
+    # list_of_well_fovs = images_dir.glob("*")
+    # list_of_well_fovs = [x for x in list_of_well_fovs if x.is_dir()]
+    # list_of_well_fovs = [x.name for x in list_of_well_fovs]
     # select 5 random well_fovs to animate
-    well_fovs_to_animate = np.random.choice(list_of_well_fovs, size=5, replace=False)
+    # well_fovs_to_animate = np.random.choice(list_of_well_fovs, size=5, replace=False)
     for well_fov in tqdm.tqdm(well_fovs_to_animate, desc=f"Animating {patient}"):
         try:
             print(f"Animating {patient} {well_fov}")
@@ -289,7 +296,7 @@ for patient in tqdm.tqdm(patient_ids, desc="Processing patients"):
 
             # set the viewer to a set window size
             viewer.window._qt_window.resize(1000, 1000)
-            viewer.camera.zoom = 10.0
+            viewer.camera.zoom = 5.0
 
             # get the layer names in the viewer
             layer_names = [layer.name for layer in viewer.layers]
@@ -342,6 +349,3 @@ for patient in tqdm.tqdm(patient_ids, desc="Processing patients"):
         except Exception as e:
             print(f"Error processing {patient} {well_fov}: {e}")
             continue
-
-
-# In[ ]:
