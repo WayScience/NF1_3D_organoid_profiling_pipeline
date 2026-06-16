@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[30]:
 
 
 import os
@@ -24,7 +24,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[31]:
 
 
 if not in_notebook:
@@ -36,7 +36,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C5-1"
+    well_fov = "C2-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -63,7 +63,7 @@ if len(parquet_files) != 101:
     raise ValueError(f"Expected 101 parquet files, but found {len(parquet_files)}")
 
 
-# In[3]:
+# In[32]:
 
 
 # create the nested dictionary to hold the feature types and compartments
@@ -80,7 +80,7 @@ feature_types = [
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 
 
-# In[4]:
+# In[33]:
 
 
 output_dict = {
@@ -97,7 +97,7 @@ output_dict = {
 output_dict
 
 
-# In[5]:
+# In[34]:
 
 
 files = list(result_path.rglob("*.parquet"))
@@ -113,7 +113,7 @@ files_df.insert(4, "file_path", file_path)
 files_df.head()
 
 
-# In[6]:
+# In[35]:
 
 
 for i, row in files_df.iterrows():
@@ -144,7 +144,7 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[7]:
+# In[36]:
 
 
 # merge the dfs such that each compartment has a single df with all feature types as columns
@@ -166,19 +166,19 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[10]:
+# In[38]:
 
 
 compartment_dfs["Nuclei"]["object_id"].unique()
 
 
-# In[11]:
+# In[39]:
 
 
 compartment_dfs["Cytoplasm"]["object_id"].unique()
 
 
-# In[8]:
+# In[37]:
 
 
 # assert that the number of Nuclei, Cell, Cytoplasm, Nucleocentric are all the same
@@ -205,6 +205,18 @@ assert (
         compartment_dfs["Nucleocentric"]["object_id"]
     )
 )
+
+
+# In[29]:
+
+
+nuclei_ids = compartment_dfs["Nuclei"]["object_id"].unique()
+nuclei_ids = [x * 257 for x in nuclei_ids]
+cell_ids = compartment_dfs["Cell"]["object_id"].unique()
+
+print(nuclei_ids)
+print(cell_ids)
+set(nuclei_ids) - set(cell_ids)
 
 
 # In[ ]:

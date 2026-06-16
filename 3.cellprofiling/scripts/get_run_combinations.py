@@ -307,36 +307,23 @@ print(
 # In[7]:
 
 
-# wells = ["C4-1", "G9-1", "C2-1", "E7-1"]
-# # sample only records from two well_fovs per patient for testing
-# sampled_rows = []
-# for patient in df["patient"].unique():
-#     patient_rows = df.loc[(df["patient"] == patient) & (df["well_fov"].isin(wells))]
-#     sampled_rows.append(patient_rows)
-# df = pd.concat(sampled_rows, ignore_index=True)
-# df
+df.to_csv(load_combinations_path, sep="\t", index=False)
+df.head()
 
 
 # In[8]:
 
 
-df.to_csv(load_combinations_path, sep="\t", index=False)
-df.head()
+df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
 # In[9]:
 
 
-df.groupby(["feature"]).size().to_frame(name="count").reset_index()
-
-
-# In[10]:
-
-
 df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
 
 
-# In[11]:
+# In[10]:
 
 
 # Find patient well_fovs with complete feature-file coverage
@@ -358,13 +345,13 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
 complete_feature_count
 
 
-# In[12]:
+# In[11]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[13]:
+# In[12]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]

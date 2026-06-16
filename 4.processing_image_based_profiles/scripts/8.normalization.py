@@ -225,3 +225,12 @@ output_df_paths = [
 for output_path in output_df_paths:
     if not output_path.exists():
         print(f"Error: Normalized output file {output_path} was not created.")
+
+
+# In[9]:
+
+
+pd.read_parquet(sc_normalized_df).isna().sum()
+
+
+# In[ ]:

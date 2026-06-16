@@ -67,7 +67,7 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C3-1"
+    well_fov = "C5-1"
     patient = "NF0014_T1"
     compartment = "Cytoplasm"
     channel = "NoChannel"
