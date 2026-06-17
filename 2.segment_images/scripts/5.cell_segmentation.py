@@ -317,9 +317,12 @@ stop_profiling(
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
 
-# In[19]:
+# In[18]:
 
 
 print(np.unique(nuclei_mask))
 print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))
+
+
+# In[ ]:

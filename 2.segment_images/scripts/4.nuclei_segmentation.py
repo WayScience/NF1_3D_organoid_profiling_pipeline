@@ -80,8 +80,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0040_T1"
-    well_fov = "C5-1"
+    patient = "NF0014_T1"
+    well_fov = "C7-1"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -118,7 +118,7 @@ del nuclei_raw
 
 # ## Nuclei Segmentation
 
-# In[6]:
+# In[ ]:
 
 
 nuclei_image_shape = nuclei.shape
@@ -143,7 +143,7 @@ nuclei_masks = np.array(  # convert to array
 
 # ## remove small masks in each slice
 
-# In[7]:
+# In[ ]:
 
 
 # Remove small objects while preserving label IDs
@@ -161,7 +161,7 @@ for zslice in range(nuclei_masks.shape[0]):
             )
 
 
-# In[8]:
+# In[ ]:
 
 
 nuclei_mask, diag = object_stitching_and_relation(
@@ -174,7 +174,7 @@ nuclei_mask, diag = object_stitching_and_relation(
 
 # ## Remove edge objects
 
-# In[9]:
+# In[ ]:
 
 
 nuclei_mask = clean_border_objects(nuclei_mask, border_width=5)
@@ -182,13 +182,13 @@ nuclei_mask = clean_border_objects(nuclei_mask, border_width=5)
 
 # ## relabel the nuclei
 
-# In[10]:
+# In[ ]:
 
 
 nuclei_mask, _, _ = relabel_sequential(nuclei_mask)
 
 
-# In[11]:
+# In[ ]:
 
 
 if in_notebook:
@@ -207,14 +207,14 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[12]:
+# In[ ]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
 tifffile.imwrite(nuclei_mask_output, nuclei_mask)
 
 
-# In[13]:
+# In[ ]:
 
 
 stop_profiling(
@@ -234,3 +234,8 @@ stop_profiling(
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a GPU + CPU and uses less than 3GB of RAM.
+
+# In[ ]:
+
+
+np.unique(nuclei_mask)

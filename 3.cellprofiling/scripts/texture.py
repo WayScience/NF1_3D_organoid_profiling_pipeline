@@ -51,7 +51,7 @@ warnings.filterwarnings(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -86,7 +86,7 @@ mask_set_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 )
 output_parent_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
+    f"{root_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(

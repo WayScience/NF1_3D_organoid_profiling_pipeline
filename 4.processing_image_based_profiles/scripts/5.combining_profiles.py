@@ -119,4 +119,19 @@ organoid_profile.to_parquet(organoid_merged_output_path, index=False)
 nucleocentric_profile.to_parquet(nucleocentric_profile_output_path, index=False)
 
 
+# In[9]:
+
+
+sc_profile
+
+
+# In[23]:
+
+
+granularity_cols = [x for x in sc_profile.columns if "granularity" in x.lower()]
+na_counts = sc_profile[granularity_cols].isna().sum()
+cols_to_keep = na_counts[na_counts > 1].index
+sc_profile[cols_to_keep].columns.to_list()
+
+
 # In[ ]:

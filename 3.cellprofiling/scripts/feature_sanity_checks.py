@@ -1,0 +1,210 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import argparse
+import itertools
+import os
+import pathlib
+import sys
+from functools import reduce
+
+import duckdb
+import pandas as pd
+import tomli
+from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+
+root_dir, in_notebook = init_notebook()
+if in_notebook:
+    import tqdm.notebook as tqdm
+else:
+    import tqdm
+profile_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
+    root_dir,
+)
+profile_base_dir = root_dir  # default to root_dir instead of NAS
+
+
+# In[2]:
+
+
+patient_id_file = pathlib.Path(f"{profile_base_dir}/data/patient_IDs.txt").resolve(
+    strict=True
+)
+patients = pd.read_csv(
+    patient_id_file, header=None, names=["patient_id"]
+).patient_id.tolist()
+
+
+# In[3]:
+
+
+out_dict = {
+    "file_path": [],
+    "patient_id": [],
+    "well_fov": [],
+    "feature_type": [],
+    "compartment": [],
+    # "df_shape": [],
+}
+
+# get all well_fovs for a patient
+for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
+    patient_dir = profile_base_dir / "data" / patient / "extracted_features"
+    well_fovs = patient_dir.glob("*")  # get all well_fovs for a patient
+    # print(f"Found well_fovs: {well_fovs}")
+    for well_fov in tqdm.tqdm(well_fovs, desc="Processing well_fovs", leave=False):
+        if "stats" in well_fov.stem:
+            continue
+        features = pathlib.Path(well_fov).glob("*.parquet")
+        for feature in features:
+            feature_type = feature.stem.split("_")[2]
+            compartment = feature.stem.split("_")[0]
+            out_dict["file_path"].append(feature)
+            out_dict["patient_id"].append(patient)
+            out_dict["well_fov"].append(feature.parent.stem)
+            out_dict["feature_type"].append(feature_type)
+            out_dict["compartment"].append(compartment)
+            # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
+df = pd.DataFrame(out_dict)
+
+
+# In[4]:
+
+
+from tqdm import tqdm
+
+tqdm.pandas()
+
+
+def safe_read_shape(x):
+    try:
+        df = pd.read_parquet(x)
+        return df.shape, df.isna().sum().sum()
+    except Exception as e:
+        print(f"Error reading {x}: {e}")
+        return None, None
+
+
+if not pathlib.Path("../logs/feature_file_info.parquet").exists():
+    df[["df_shape", "missing_values"]] = df["file_path"].progress_apply(
+        lambda x: pd.Series(safe_read_shape(x))
+    )
+    df["file_path"] = df["file_path"].astype(str)
+    df.to_parquet("../logs/feature_file_info.parquet", index=False)
+else:
+    df = pd.read_parquet("../logs/feature_file_info.parquet")
+df
+
+
+# In[5]:
+
+
+df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
+df.sort_values(["patient_id", "well_fov"], inplace=True)
+df.reset_index(drop=True, inplace=True)
+df
+
+
+# In[6]:
+
+
+# merge the cells, cytoplasm, and whole cell features for a given well_fov and patient_id
+# check for missing values and shape of the dataframes
+out_dict = {
+    "patient_id": [],
+    "well_fov": [],
+    "path": [],
+    "type": [],
+}
+for row in tqdm(
+    df.itertuples(), total=df.shape[0], desc="Merging features", leave=True
+):
+    out_dict["patient_id"].append(row.patient_id)
+    out_dict["well_fov"].append(row.well_fov)
+    out_dict["path"].append(row.file_path)
+    out_dict["type"].append(f"{row.compartment}")
+out_df = pd.DataFrame(out_dict)
+# pivot such that each type has its own column
+out_df = out_df.pivot(
+    index=["patient_id", "well_fov"], columns="type", values="path"
+).reset_index()
+out_df
+
+
+# In[13]:
+
+
+labels_dict = {
+    "Cell_labels": [],
+    "Cytoplasm_labels": [],
+    "Nuclei_labels": [],
+    "patient_id": [],
+    "well_fov": [],
+}
+
+# merge the dataframes and check for missing values and shape
+for row in tqdm(
+    out_df.itertuples(),
+    total=out_df.shape[0],
+    desc="Checking merged features",
+    leave=True,
+):
+    try:
+        cell_df = pd.read_parquet(row.Cell)
+        cytoplasm_df = pd.read_parquet(row.Cytoplasm)
+        nuclei_df = pd.read_parquet(row.Nuclei)
+        labels_dict["Cell_labels"].append(cell_df["object_id"].tolist())
+        labels_dict["Cytoplasm_labels"].append(cytoplasm_df["object_id"].tolist())
+        labels_dict["Nuclei_labels"].append(nuclei_df["object_id"].tolist())
+        labels_dict["patient_id"].append(row.patient_id)
+        labels_dict["well_fov"].append(row.well_fov)
+    except Exception as e:
+        print(f"Error reading files for {row.patient_id} {row.well_fov}: {e}")
+labels_df = pd.DataFrame(labels_dict)
+labels_df
+
+
+# In[20]:
+
+
+labels_df["labels_match"] = labels_df.apply(
+    lambda row: (
+        (row["Cell_labels"] == row["Cytoplasm_labels"])
+        and (row["Cell_labels"] == row["Nuclei_labels"])
+    ),
+    axis=1,
+)
+labels_df["same_number_of_labels"] = labels_df.apply(
+    lambda row: (
+        (len(row["Cell_labels"]) == len(row["Cytoplasm_labels"]))
+        and (len(row["Cell_labels"]) == len(row["Nuclei_labels"]))
+    ),
+    axis=1,
+)
+labels_df["unique_labels"] = labels_df.apply(
+    lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
+)
+labels_df.loc[labels_df["labels_match"] == False]
+
+
+# In[8]:
+
+
+tmp_df = pd.merge(
+    left=pd.merge(
+        left=cell_df,
+        right=cytoplasm_df,
+        on=["object_id", "image_set"],
+    ),
+    right=nuclei_df,
+    on=["object_id", "image_set"],
+)
+tmp_df.head()

@@ -191,8 +191,6 @@ print(f"{df_rerun.shape[0]} jobs to rerun")
 df_rerun.head()
 
 
-#
-
 # In[6]:
 
 
@@ -215,6 +213,3 @@ print(df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index())
 
 
 df_rerun
-
-
-# In[ ]:

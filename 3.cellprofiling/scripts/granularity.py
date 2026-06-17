@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[8]:
 
 
 import os
@@ -46,7 +46,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -61,10 +61,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "G9-7"
-    patient = "NF0055_T1"
+    well_fov = "G8-1"
+    patient = "NF0014_T1"
     channel = "AGP"
-    compartment = "Cytoplasm"
+    compartment = "Cell"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -77,7 +77,7 @@ mask_set_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 )
 output_parent_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
+    f"{root_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(
@@ -85,7 +85,7 @@ channel_mapping_file_path = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[3]:
+# In[10]:
 
 
 # read in channel mapping
@@ -94,13 +94,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[4]:
+# In[11]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[5]:
+# In[12]:
 
 
 image_set_loader = ImageSetLoader(
@@ -114,7 +114,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[6]:
+# In[13]:
 
 
 object_loader = ObjectLoader(
@@ -176,7 +176,19 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[7]:
+# In[15]:
+
+
+pd.read_parquet(save_path).head()
+
+
+# In[16]:
+
+
+save_path
+
+
+# In[14]:
 
 
 stop_profiling(
