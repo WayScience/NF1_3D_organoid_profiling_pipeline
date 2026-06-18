@@ -363,117 +363,131 @@ Profile types:
 With the combination of 6 profile types and 4 profile levels, we generate a total of 24 different profile outputs.
 Each profile output is saved as a parquet file in the `data/{patient}/image_based_profiles/`.
 
-### Profile processing steps
+### Pipeline overview
 
-1. **Feature merging**
-   - Combine all feature csvs per well FOV
-   - Use DuckDB for sqlite → parquet conversion
-   - Create single-cell (sc) and organoid-level profiles
-2. **Annotation**
-   - Add treatment metadata from plate maps
-   - Link drug names, targets, concentrations
-   - Add patient genotype information
-3. **QC filtering**
-   - Apply image QC flags from stage 1
-   - Remove outlier objects (z-score > 3)
-   - Filter low-quality wells
-4. **Normalization**
-   - Z-score normalization per plate
-   - Applied to the entire plate based on the control wells (DMSO treated wells)
-   - Standardize features: `(x - μ) / σ`
-   - Handle batch effects
-5. **Feature selection**
-   - Remove low-variance features
-   - Remove correlated features (correlation > 0.9)
-   - Remove blocklisted features
-   - Remove features based on frequency cutoff categorical features
-6. **Aggregation**
-   - Calculate well-level statistics (mean, median, std)
-   - Generate organoid-parent aggregations
-   - Compute patient-level summaries
-7. **Form consensus profiles**
-   - Merge sc and organoid aggregations
-   - Export final consensus profiles
+Three processing tracks run in parallel — hand-crafted morphology features, SAMMed3D deep learning embeddings, and CHAMMI-75 deep learning embeddings — each following a distinct path determined by how the features were extracted and which compartments they cover.
 
 ```mermaid
 flowchart TD
-    A1[cellpainting images and segmentations]
-
-
-    A1 -->|featurization| B[nuclei features]
-    A1 -->|featurization| C[cell features]
-    A1 -->|featurization| D[cytoplasm features]
-    A1 -->|featurization| E[organoid features]
-    A1 -->|featurization| F[nucleocentric features]
-
-    B --> |merging| G[single-cell features]
-    C --> |merging| G[single-cell features]
-    D --> |merging| G[single-cell features]
-    G --> |annotation| G1[single-cell features]
-
-    E --> |annotation| H[organoid features]
-    F --> |annotation| I[nucleocentric features]
-    G1 --> J[single-cell hand-drawn features]
-    G1 --> K[single-cell deep learning features]
-    H --> L[organoid hand-drawn features]
-    H --> M[organoid deep learning features]
-    I --> N[nucleocentric volumetric features]
-    I --> O[nucleocentric flat features]
-    J --> |QC| P1[QC profiles]
-    K --> |QC| P2[QC profiles]
-    L --> |QC| P3[QC profiles]
-    M --> |QC| P4[QC profiles]
-    N --> |QC| P5[QC profiles]
-    O --> |QC| P6[QC profiles]
-    P1 --> |normalization| S1[normalized profiles]
-    P2 --> |normalization| S2[normalized profiles]
-    P3 --> |normalization| S3[normalized profiles]
-    P4 --> |normalization| S4[normalized profiles]
-    P5 --> |normalization| S5[normalized profiles]
-    P6 --> |normalization| S6[normalized profiles]
-    S1 --> |feature selection| T1[selected features]
-    S2 --> |feature selection| T2[selected features]
-    S3 --> |feature selection| T3[selected features]
-    S4 --> |feature selection| T4[selected features]
-    S5 --> |feature selection| T5[selected features]
-    S6 --> |feature selection| T6[selected features]
-    T1 --> U1[aggregated profiles]
-    T2 --> U2[aggregated profiles]
-    T3 --> U3[aggregated profiles]
-    T4 --> U4[aggregated profiles]
-    T5 --> U5[aggregated profiles]
-    T6 --> U6[aggregated profiles]
-    T1 --> V1[consensus profiles]
-    T2 --> V2[consensus profiles]
-    T3 --> V3[consensus profiles]
-    T4 --> V4[consensus profiles]
-    T5 --> V5[consensus profiles]
-    T6 --> V6[consensus profiles]
+    A["<b>Feature parquets</b><br/>from Stage 3 (per well-FOV)"] --> B{Feature type}
+    B -->|Hand-crafted morphology| C["<b>Hand-crafted pipeline</b><br/>merge compartments → QC → normalize → select → aggregate"]
+    B -->|"SAMMed3D 3D embeddings<br/>SC · organoid · nucleocentric"| D["<b>SAMMed3D pipeline</b><br/>combine → normalize → select → aggregate"]
+    B -->|"CHAMMI-75 2D embeddings<br/>nucleocentric only"| E["<b>CHAMMI-75 pipeline</b><br/>combine → normalize → select → aggregate"]
 ```
 
 ---
 
-Separately from the above workflow, we also generate cross-patient consensus profiles by merging profiles across patients and applying global feature selection to identify a common set of features that are robust across patients.
+### Hand-crafted feature pipeline
 
-**Cross-patient analysis-ready output files**
+Traditional morphology features (shape, intensity, texture, colocalization, neighbors, granularity) extracted per object across four segmented compartments: **Nuclei**, **Cell**, **Cytoplasm**, and **Organoid**. Single-cell profiles are formed by joining Nuclei + Cell + Cytoplasm features into one row per cell. A **nucleocentric** representation is also included — see the box below.
+
+Hand-crafted features require merging across compartments and a two-stage QC cascade (organoid first, then single-cell inheriting organoid flags) before normalization.
 
 ```mermaid
-flowchart LR
-    A[all patient normalized profiles] --> B[combined profiles]
-    B --> C[global feature selection]
-    C --> D[cross-patient aggregated profiles]
-    D --> E[cross-patient consensus profiles]
+flowchart TD
+    classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
+
+    subgraph merge["Merge"]
+        A["<b>Merge feature parquets</b><br/>one parquet per compartment × feature type<br/>DuckDB"]
+        A --> B["<b>Merge single cells</b><br/>join Nuclei + Cell + Cytoplasm + Nucleocentric<br/>into one row per cell"]
+        B --> C["<b>Organoid–cell relationships</b><br/>spatially assign cells to parent organoids<br/>Mahalanobis distance · shell classification"]
+        C -.-> oMerge[/"sc_related.parquet<br/>organoid_related.parquet"/]:::out
+    end
+
+    C --> D["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
+    D -.-> oCombine[/"sc.parquet · organoid.parquet"/]:::out
+
+    D --> E["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
+    E -.-> oAnnotate[/"sc_anno.parquet<br/>organoid_anno.parquet"/]:::out
+
+    subgraph qc["Quality control"]
+        E --> F["<b>Organoid QC</b><br/>flag NaN rows + size outliers via z-score<br/>cosmicqc.find_outliers"]
+        F -.-> oOrgQC[/"organoid_flagged_outliers.parquet"/]:::out
+        F --> G["<b>Single-cell QC</b><br/>flag NaN · inherit organoid flags · nucleus size outliers<br/>cosmicqc.find_outliers"]
+        G -.-> oSCQC[/"sc_flagged_outliers.parquet"/]:::out
+    end
+
+    G --> H["<b>Normalize</b><br/>MAD-robustize · ref: QC-passing DMSO rows<br/>pycytominer.normalize"]
+    H -.-> oNorm[/"sc_norm.parquet<br/>organoid_norm.parquet"/]:::out
+
+    H --> I["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
+    I -.-> oFS[/"sc_fs.parquet<br/>organoid_fs.parquet"/]:::out
+
+    I --> J["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
+    J -.-> oAgg[/"sc_agg_well_level.parquet<br/>sc_consensus.parquet"/]:::out
 ```
 
 ---
 
-**Pycytominer feature selection parameters:**
+### SAMMed3D pipeline
 
-- Correlation threshold: 0.9
-- Variance threshold: 0.01
-- NA cutoff: 5%
-- Frequency cut: 0.1
-- Unique cut: 0.1
+SAMMed3D is a 3D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder, applied to whole 3D object volumes per fluorescence channel. It covers three object types:
+
+- **Single cells** (Nuclei, Cell, Cytoplasm volumes)
+- **Organoids** (full organoid volumes)
+- **Nucleocentric volumes** — 3D crops centered on each segmented nucleus, extracted from the raw image across all channels. These crops capture the immediate cellular microenvironment around the nucleus without relying on cell or organoid segmentation boundaries.
+
+SAMMed3D features are pre-computed per object in Stage 3 and do not require compartment merging or QC.
+
+```mermaid
+flowchart TD
+    classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
+
+    subgraph inputs["SAMMed3D inputs (from Stage 3)"]
+        A1["<b>Single-cell embeddings</b><br/>Nuclei · Cell · Cytoplasm volumes<br/>384-dim per channel per object"]
+        A2["<b>Organoid embeddings</b><br/>full organoid volumes<br/>384-dim per channel per object"]
+        A3["<b>Nucleocentric embeddings</b><br/>3D crops centered on each nucleus<br/>384-dim per channel per crop"]
+    end
+
+    A1 --> B["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
+    A2 --> B
+    A3 --> B
+    B -.-> oCombine[/"sammed_sc.parquet · sammed_organoid.parquet<br/>sammed_nucleocentric.parquet"/]:::out
+
+    B --> C["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
+    C -.-> oAnnotate[/"sammed_sc_anno.parquet · sammed_organoid_anno.parquet<br/>nucleocentric_sammed_anno.parquet"/]:::out
+
+    C --> D["<b>Normalize</b><br/>MAD-robustize · ref: all DMSO rows<br/>pycytominer.normalize"]
+    D -.-> oNorm[/"sammed_sc_norm.parquet · sammed_organoid_norm.parquet<br/>sammed_nucleocentric_norm.parquet"/]:::out
+
+    D --> E["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
+    E -.-> oFS[/"sammed_sc_fs.parquet · sammed_organoid_fs.parquet<br/>sammed_nucleocentric_fs.parquet"/]:::out
+
+    E --> F["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
+    F -.-> oAgg[/"sammed_sc_agg_well_level.parquet · sammed_organoid_agg_well_level.parquet<br/>sammed_nucleocentric_agg_well_level.parquet<br/>sammed_sc_consensus.parquet · sammed_organoid_consensus.parquet<br/>sammed_nucleocentric_consensus.parquet"/]:::out
+```
+
+---
+
+### CHAMMI-75 pipeline
+
+CHAMMI-75 is a 2D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder. It is applied exclusively to **nucleocentric volumes** — but unlike SAMMed3D, it operates on **2D maximum-intensity projections** of those volumes rather than the full 3D crop. This collapses the z-axis and captures a 2D summary of the nuclear microenvironment per channel.
+
+CHAMMI-75 features are pre-computed per nucleus in Stage 3 and do not require compartment merging or QC.
+
+```mermaid
+flowchart TD
+    classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
+
+    A["<b>Nucleocentric embeddings</b><br/>2D max projections of nucleus-centered crops<br/>384-dim per channel per nucleus · CHAMMI-75"]
+
+    A --> B["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
+    B -.-> oCombine[/"nucleocentric_chammi.parquet"/]:::out
+
+    B --> C["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
+    C -.-> oAnnotate[/"nucleocentric_chammi_anno.parquet"/]:::out
+
+    C --> D["<b>Normalize</b><br/>MAD-robustize · ref: all DMSO rows<br/>pycytominer.normalize"]
+    D -.-> oNorm[/"chammi_nucleocentric_norm.parquet"/]:::out
+
+    D --> E["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
+    E -.-> oFS[/"chammi_nucleocentric_fs.parquet"/]:::out
+
+    E --> F["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
+    F -.-> oAgg[/"chammi_nucleocentric_agg_well_level.parquet<br/>chammi_nucleocentric_consensus.parquet"/]:::out
+```
+
+---
 
 **Execution:**
 
