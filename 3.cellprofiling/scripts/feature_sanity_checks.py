@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[12]:
 
 
 import argparse
@@ -32,7 +32,7 @@ profile_base_dir = bandicoot_check(
 profile_base_dir = root_dir  # default to root_dir instead of NAS
 
 
-# In[2]:
+# In[13]:
 
 
 patient_id_file = pathlib.Path(f"{profile_base_dir}/data/patient_IDs.txt").resolve(
@@ -43,7 +43,7 @@ patients = pd.read_csv(
 ).patient_id.tolist()
 
 
-# In[3]:
+# In[14]:
 
 
 out_dict = {
@@ -74,12 +74,12 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             out_dict["compartment"].append(compartment)
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
-# df = df.loc[df['patient_id'] == "NF0014_T1"]
+df = df.loc[df["patient_id"] == "NF0014_T1"]
 df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
 df.head()
 
 
-# In[4]:
+# In[15]:
 
 
 from tqdm import tqdm
@@ -106,7 +106,7 @@ df.to_parquet("../logs/feature_file_info.parquet", index=False)
 #     df = pd.read_parquet("../logs/feature_file_info.parquet")
 
 
-# In[5]:
+# In[16]:
 
 
 df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
@@ -114,7 +114,7 @@ df.sort_values(["patient_id", "well_fov"], inplace=True)
 df.reset_index(drop=True, inplace=True)
 
 
-# In[6]:
+# In[17]:
 
 
 # merge the cells, cytoplasm, and whole cell features for a given well_fov and patient_id
@@ -139,7 +139,7 @@ out_df = out_df.pivot(
 ).reset_index()
 
 
-# In[7]:
+# In[18]:
 
 
 labels_dict = {
@@ -171,7 +171,7 @@ for row in tqdm(
 labels_df = pd.DataFrame(labels_dict)
 
 
-# In[8]:
+# In[19]:
 
 
 labels_df["labels_match"] = labels_df.apply(
@@ -188,18 +188,24 @@ labels_df["unique_labels_across_compartments"] = labels_df.apply(
 labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[9]:
+# In[20]:
 
 
-# show the well fov and the patient id
-# print the unique well fovs that have mismatched labels
-for row in labels_df.loc[labels_df["labels_match"] == False][
-    ["patient_id", "well_fov"]
-].itertuples():
-    print(f"cd ../../{row.patient_id}/segmentation_masks/ ; rm -r {row.well_fov}")
+labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
 
 
-# In[10]:
+# In[21]:
+
+
+# # show the well fov and the patient id
+# # print the unique well fovs that have mismatched labels
+# for row in labels_df.loc[labels_df["labels_match"] == False][
+#     ["patient_id", "well_fov"]
+# ].itertuples():
+#     print(f"cd ../../{row.patient_id}/extracted_features/ ; rm -r {row.well_fov}")
+
+
+# In[22]:
 
 
 tmp_df = pd.merge(
