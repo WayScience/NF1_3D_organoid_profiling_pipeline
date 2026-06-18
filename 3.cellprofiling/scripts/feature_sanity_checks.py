@@ -74,8 +74,9 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             out_dict["compartment"].append(compartment)
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
-df = df.loc[df["patient_id"] == "NF0014_T1"]
-df
+# df = df.loc[df['patient_id'] == "NF0014_T1"]
+df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
+df.head()
 
 
 # In[4]:
@@ -95,15 +96,14 @@ def safe_read_shape(x):
         return None, None
 
 
-if not pathlib.Path("../logs/feature_file_info.parquet").exists():
-    df[["df_shape", "missing_values"]] = df["file_path"].progress_apply(
-        lambda x: pd.Series(safe_read_shape(x))
-    )
-    df["file_path"] = df["file_path"].astype(str)
-    df.to_parquet("../logs/feature_file_info.parquet", index=False)
-else:
-    df = pd.read_parquet("../logs/feature_file_info.parquet")
-df
+# if not pathlib.Path("../logs/feature_file_info.parquet").exists():
+df[["df_shape", "missing_values"]] = df["file_path"].progress_apply(
+    lambda x: pd.Series(safe_read_shape(x))
+)
+df["file_path"] = df["file_path"].astype(str)
+df.to_parquet("../logs/feature_file_info.parquet", index=False)
+# else:
+#     df = pd.read_parquet("../logs/feature_file_info.parquet")
 
 
 # In[5]:
@@ -112,7 +112,6 @@ df
 df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
 df.sort_values(["patient_id", "well_fov"], inplace=True)
 df.reset_index(drop=True, inplace=True)
-df
 
 
 # In[6]:
@@ -170,7 +169,6 @@ for row in tqdm(
     except Exception as e:
         print(f"Error reading files for {row.patient_id} {row.well_fov}: {e}")
 labels_df = pd.DataFrame(labels_dict)
-labels_df
 
 
 # In[8]:
@@ -187,13 +185,21 @@ labels_df["same_number_of_labels"] = labels_df.apply(
 labels_df["unique_labels_across_compartments"] = labels_df.apply(
     lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
 )
-[
-    print(x)
-    for x in labels_df.loc[labels_df["labels_match"] == False]["well_fov"].unique()
-]
+labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[41]:
+# In[9]:
+
+
+# show the well fov and the patient id
+# print the unique well fovs that have mismatched labels
+for row in labels_df.loc[labels_df["labels_match"] == False][
+    ["patient_id", "well_fov"]
+].itertuples():
+    print(f"cd ../../{row.patient_id}/segmentation_masks/ ; rm -r {row.well_fov}")
+
+
+# In[10]:
 
 
 tmp_df = pd.merge(

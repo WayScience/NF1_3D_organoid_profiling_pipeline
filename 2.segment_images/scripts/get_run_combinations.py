@@ -35,7 +35,7 @@ patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(stric
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-
+patients = ["NF0014_T1"]  # --- IGNORE ---
 rerun_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
 )

@@ -199,16 +199,17 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[10]:
+# In[ ]:
 
 
-nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
-    nuclei_mask=nuclei_mask,
-    cell_mask=cell_mask,
-    nuclei_df=nuclei_df,
-    cell_df=cell_df,
-    return_dataframe=True,
-)
+# comment out as this should be down with the watershed already
+# nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
+#     nuclei_mask=nuclei_mask,
+#     cell_mask=cell_mask,
+#     nuclei_df=nuclei_df,
+#     cell_df=cell_df,
+#     return_dataframe=True,
+# )
 
 
 # In[11]:
@@ -320,12 +321,19 @@ stop_profiling(
 # In[18]:
 
 
+# if the number of nuclei labels and cell labels do not match
+# take care of of any unmatched labels by
+
+
+# In[19]:
+
+
 print(np.unique(nuclei_mask))
 print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))
 
 
-# In[19]:
+# In[20]:
 
 
 nuclei_mask = tifffile.imread(
