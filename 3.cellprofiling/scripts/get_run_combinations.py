@@ -133,6 +133,12 @@ def add_row(
 # In[4]:
 
 
+patients = ["NF0014_T1"]
+
+
+# In[5]:
+
+
 for patient in patients:
     patient_well_fovs = sorted(
         [
@@ -216,13 +222,7 @@ df = pd.DataFrame(rows)
 print(f"Total combinations: {df.shape[0]}")
 
 
-# In[5]:
-
-
-df
-
-
-# In[6]:
+# In[ ]:
 
 
 # Build paths with vectorized string ops
@@ -263,25 +263,7 @@ for patient, subdir_output, well_fov in tqdm.tqdm(
 df["feature_file_path_exists"] = df["feature_file_path"].isin(existing_feature_files)
 
 
-# In[7]:
-
-
-feature_dir
-
-
-# In[8]:
-
-
-df
-
-
-# In[9]:
-
-
-df["feature_file_path"][0]
-
-
-# In[10]:
+# In[ ]:
 
 
 # If Nucleocentric has both CHAMMI75 and SAMMed3D, keep only CHAMMI75 entry
@@ -328,35 +310,26 @@ print(
 )
 
 
-# In[11]:
-
-
-# remove all feature types except for areasizeshape for the sanity check
-# df = df[df["feature"] == "AreaSizeShape"]
-df = df[df["patient"] == "NF0014_T1"]
-df
-
-
-# In[12]:
+# In[ ]:
 
 
 df.to_csv(load_combinations_path, sep="\t", index=False)
 df.head()
 
 
-# In[13]:
+# In[ ]:
 
 
 df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
-# In[14]:
+# In[ ]:
 
 
 df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
 
 
-# In[15]:
+# In[ ]:
 
 
 # Find patient well_fovs with complete feature-file coverage
@@ -378,13 +351,13 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
 complete_feature_count
 
 
-# In[16]:
+# In[ ]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[17]:
+# In[ ]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]

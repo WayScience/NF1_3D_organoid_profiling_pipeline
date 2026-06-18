@@ -19,6 +19,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -47,7 +48,7 @@ patients = pd.read_csv(
     header=None,
     names=["patient_id"],
 ).patient_id.tolist()
-
+patients = ["NF0014_T1"]  # --- IGNORE ---
 load_file_path = pathlib.Path(
     f"{root_dir}/4.processing_image_based_profiles/load_data/load_file.txt"
 ).resolve()

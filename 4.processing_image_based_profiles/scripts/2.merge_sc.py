@@ -20,6 +20,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -33,7 +34,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C5-1"
+    well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 

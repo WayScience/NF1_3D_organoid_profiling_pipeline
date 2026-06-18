@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[30]:
+# In[1]:
 
 
 import os
@@ -22,9 +22,10 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
-# In[31]:
+# In[2]:
 
 
 if not in_notebook:
@@ -36,7 +37,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C2-1"
+    well_fov = "C10-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -63,7 +64,7 @@ if len(parquet_files) != 101:
     raise ValueError(f"Expected 101 parquet files, but found {len(parquet_files)}")
 
 
-# In[32]:
+# In[3]:
 
 
 # create the nested dictionary to hold the feature types and compartments
@@ -80,7 +81,7 @@ feature_types = [
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 
 
-# In[33]:
+# In[4]:
 
 
 output_dict = {
@@ -97,7 +98,7 @@ output_dict = {
 output_dict
 
 
-# In[34]:
+# In[5]:
 
 
 files = list(result_path.rglob("*.parquet"))
@@ -113,7 +114,7 @@ files_df.insert(4, "file_path", file_path)
 files_df.head()
 
 
-# In[35]:
+# In[6]:
 
 
 for i, row in files_df.iterrows():
@@ -122,6 +123,12 @@ for i, row in files_df.iterrows():
     channel = row["channel"]
     file_path = row["file_path"]
     output_dict[compartment][feature_type].append(file_path)
+output_dict
+
+
+# In[7]:
+
+
 final_df_dict = {compartment: {} for compartment in output_dict.keys()}
 for compartment in output_dict.keys():
     for feature_type in output_dict[compartment].keys():
@@ -144,7 +151,7 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[36]:
+# In[8]:
 
 
 # merge the dfs such that each compartment has a single df with all feature types as columns
@@ -166,19 +173,7 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[38]:
-
-
-compartment_dfs["Nuclei"]["object_id"].unique()
-
-
-# In[39]:
-
-
-compartment_dfs["Cytoplasm"]["object_id"].unique()
-
-
-# In[37]:
+# In[9]:
 
 
 # assert that the number of Nuclei, Cell, Cytoplasm, Nucleocentric are all the same
@@ -207,7 +202,7 @@ assert (
 )
 
 
-# In[29]:
+# In[10]:
 
 
 nuclei_ids = compartment_dfs["Nuclei"]["object_id"].unique()
@@ -219,7 +214,7 @@ print(cell_ids)
 set(nuclei_ids) - set(cell_ids)
 
 
-# In[ ]:
+# In[11]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -238,7 +233,7 @@ dict_of_DB_structues = {
 }
 
 
-# In[ ]:
+# In[12]:
 
 
 # get the table from the DB_structue

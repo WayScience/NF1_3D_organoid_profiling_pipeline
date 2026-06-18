@@ -28,6 +28,7 @@ root_dir, in_notebook = init_notebook()
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -41,7 +42,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C4-1"
+    well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -435,3 +436,9 @@ sc_profile_with_shells_df.head()
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
 nucleocentric_df.head()
+
+
+# In[24]:
+
+
+sc_profile_with_shells_df.isna().sum().sum()
