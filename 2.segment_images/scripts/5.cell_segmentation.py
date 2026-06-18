@@ -152,7 +152,7 @@ del cyto2_raw
 
 # ## Segment the cells
 
-# In[ ]:
+# In[7]:
 
 
 # call the morphology dependent segmentation function with the appropriate parameters based on morphology class
@@ -165,7 +165,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[ ]:
+# In[8]:
 
 
 if in_notebook:
@@ -188,7 +188,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[ ]:
+# In[9]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -199,7 +199,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[ ]:
+# In[10]:
 
 
 nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
@@ -211,7 +211,7 @@ nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
 )
 
 
-# In[ ]:
+# In[11]:
 
 
 # refine the cell masks
@@ -225,7 +225,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[ ]:
+# In[12]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -236,7 +236,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Remove border objects
 
-# In[ ]:
+# In[13]:
 
 
 # nuclei should already have objects removed at the border from the previous notebook,
@@ -246,7 +246,7 @@ cell_mask = clean_border_objects(cell_mask, border_width=5)
 cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
 
 
-# In[ ]:
+# In[14]:
 
 
 # since the nuclei - cell masks should be 1:1
@@ -262,7 +262,7 @@ for label_id in unmatched_labels_to_remove:
     cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
 
 
-# In[ ]:
+# In[15]:
 
 
 if in_notebook:
@@ -285,7 +285,7 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[ ]:
+# In[16]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -296,7 +296,7 @@ tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 
 
-# In[ ]:
+# In[17]:
 
 
 stop_profiling(
@@ -317,12 +317,9 @@ stop_profiling(
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
 
-# In[ ]:
+# In[18]:
 
 
 print(np.unique(nuclei_mask))
 print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))
-
-
-# In[ ]:
