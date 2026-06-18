@@ -1,11 +1,46 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # 1. Merge Feature Parquets
+# 
+# ## Purpose
+# This notebook merges all per-channel, per-feature-type parquet files for a single well-FOV into a single DuckDB database file, with one table per compartment.
+# 
+# This is **step 1 of Stage 4 (image-based profiling)**. It runs once per well-FOV and is typically submitted as a child job via the SLURM scheduler.
+# 
+# ## Inputs
+# - `data/{patient}/extracted_features/{well_fov}/*.parquet`
+#   - One parquet per compartment × channel × feature type combination (125–189 files per FOV)
+#   - Expected filename format: `{Compartment}_{Channel}_{FeatureType}_{Processor}_features.parquet`
+#     - Example: `Nuclei_ER_Granularity_CPU_features.parquet`
+#   - Each file contains columns: `object_id`, `image_set`, and feature columns
+# 
+# ## Outputs
+# - `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/{well_fov}.duckdb`
+#   - Five tables, one per compartment:
+# 
+# | Table | Compartment | Description | Feature types |
+# |---|---|---|---|
+# | `Organoid` | Whole organoid | One row per segmented organoid | Hand-crafted + SAMMed3D |
+# | `Nuclei` | Nucleus | One row per segmented nucleus | Hand-crafted + SAMMed3D |
+# | `Cell` | Whole cell | One row per segmented cell | Hand-crafted + SAMMed3D |
+# | `Cytoplasm` | Cell minus nucleus | One row per cytoplasm region | Hand-crafted + SAMMed3D |
+# | `Nucleocentric` | Nucleus-centered crop | One row per nucleus-centered volume | SAMMed3D and CHAMMI75 only |
+# 
+#   - Handcrafted features include AreaSizeShape, Colocalization, Intensity, Granularity, Neighbors, and Texture.
+#   - If a compartment has no extracted features for a given well-FOV (e.g. no organoids were detected), an empty scaffold table matching the expected schema is written so downstream scripts don't fail on a missing table.
+# 
+# ## Notes
+# - Merges within a compartment use left joins on `object_id` + `image_set`. Objects missing from some channels will have NaN-filled feature columns — this is expected when not all feature types apply to all channels (e.g. colocalization requires two channels).
+# - Nucleocentric compartment only supports SAMMed3D and CHAMMI-75 feature types; hand-crafted features are not extracted for nucleocentric volumes.
+
 # In[1]:
 
 
+import argparse
 import os
 import pathlib
+import sys
 from functools import reduce
 
 import duckdb
@@ -49,7 +84,7 @@ database_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}"
 ).resolve()
 database_path.mkdir(parents=True, exist_ok=True)
-# create the sqlite database
+# create the duckdb database
 sqlite_path = database_path / f"{well_fov}.duckdb"
 DB_structure_path = pathlib.Path(
     f"{root_dir}/4.processing_image_based_profiles/data/DB_structures/DB_structure_db.duckdb"
@@ -98,6 +133,12 @@ output_dict
 # In[5]:
 
 
+# Parse filename metadata for each parquet file.
+# Expected format: {Compartment}_{Channel}_{FeatureType}_{Processor}_features.parquet
+# Token positions (split on "_"):
+#   [0] = compartment  (e.g. "Nuclei", "Organoid")
+#   [1] = channel      (e.g. "ER", "DNA"; multi-channel names use hyphens: "ER-Mito")
+#   [2] = feature type (e.g. "Granularity", "SAMMed3D")
 files = list(result_path.rglob("*.parquet"))
 files_df = pd.DataFrame({"file_path": files})
 files_df["file_name"] = files_df["file_path"].apply(lambda x: x.name)
@@ -108,18 +149,33 @@ files_df["feature_type"] = files_df["file_name"].apply(
 )
 file_path = files_df.pop("file_path")
 files_df.insert(4, "file_path", file_path)
+
+# Validate parsed tokens against expected sets to catch filename convention violations early.
+unknown_compartments = set(files_df["compartment"]) - set(compartments)
+unknown_feature_types = set(files_df["feature_type"]) - set(feature_types)
+if unknown_compartments:
+    raise ValueError(f"Unexpected compartment(s) in filenames: {unknown_compartments}")
+if unknown_feature_types:
+    raise ValueError(f"Unexpected feature type(s) in filenames: {unknown_feature_types}")
+
 files_df.head()
 
 
-# In[6]:
+# In[ ]:
 
 
+# Phase 1: route each file path into output_dict by compartment x feature type.
 for i, row in files_df.iterrows():
     compartment = row["compartment"]
     feature_type = row["feature_type"]
     channel = row["channel"]
     file_path = row["file_path"]
     output_dict[compartment][feature_type].append(file_path)
+
+# Phase 2: for each compartment x feature type group, merge all per-channel parquets
+# into one dataframe using left joins on object_id + image_set. Objects missing from
+# some channels will have NaN-filled columns — expected when not all feature types
+# apply to all channels (e.g. colocalization requires two channels).
 final_df_dict = {compartment: {} for compartment in output_dict.keys()}
 for compartment in output_dict.keys():
     for feature_type in output_dict[compartment].keys():
@@ -142,10 +198,13 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[7]:
+# In[ ]:
 
 
-# merge the dfs such that each compartment has a single df with all feature types as columns
+# Merge all feature-type dataframes into one dataframe per compartment.
+# Standard compartments (Organoid, Nuclei, Cell, Cytoplasm) reduce all feature types
+# into a single dataframe via left joins on object_id + image_set.
+# Nucleocentric is handled separately. See known issue in the notebook header.
 compartment_dfs = {}
 for compartment in final_df_dict.keys():
     for df in final_df_dict[compartment].values():
@@ -167,6 +226,10 @@ for compartment in final_df_dict.keys():
 # In[8]:
 
 
+# Load the reference DB schema from a pre-built DuckDB file.
+# These empty scaffold tables provide the correct column structure for each compartment.
+# Used below as a fallback when a compartment has no extracted features for this
+# well-FOV (e.g. no organoids detected), so downstream scripts always find all five tables.
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
     organoid_table = cx.execute("SELECT * FROM Organoid").df()
     cell_table = cx.execute("SELECT * FROM Cell").df()
@@ -174,7 +237,7 @@ with duckdb.connect(DB_structure_path, read_only=True) as cx:
     cytoplasm_table = cx.execute("SELECT * FROM Cytoplasm").df()
     nucleocentric_table = cx.execute("SELECT * FROM Nucleocentric").df()
 
-dict_of_DB_structues = {
+dict_of_DB_structures = {
     "Organoid": organoid_table,
     "Cell": cell_table,
     "Nuclei": nuclei_table,
@@ -186,19 +249,14 @@ dict_of_DB_structues = {
 # In[9]:
 
 
-# get the table from the DB_structue
+# Write each compartment dataframe as a table in the output DuckDB.
+# If a compartment produced no features (empty df), write the scaffold table instead
+# so downstream scripts can always expect all five compartment tables to exist.
 with duckdb.connect(sqlite_path, read_only=False) as cx:
     for compartment, df in compartment_dfs.items():
         print(compartment, df.shape)
-        if df.empty:
-            cx.register("temp_df", dict_of_DB_structues[compartment])
-            cx.execute(
-                f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df"
-            )
-            cx.unregister("temp_df")
-        else:
-            cx.register("temp_df", df)
-            cx.execute(
-                f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df"
-            )
-            cx.unregister("temp_df")
+        write_df = df if not df.empty else dict_of_DB_structures[compartment]
+        cx.register("temp_df", write_df)
+        cx.execute(f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df")
+        cx.unregister("temp_df")
+

@@ -1,7 +1,46 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This notebook performs profile aggregation.
+# # 10. Aggregation
+# 
+# ## Purpose
+# Aggregate each feature-selected profile across single cells or organoids into
+# two levels of summary:
+# 1. **Well-level** — median across all objects in a well (`PatientTumor × Well`)
+# 2. **Consensus** — median across all objects sharing a treatment (`PatientTumor × Treatment`)
+# 
+# Both aggregations use pycytominer's `aggregate` with median as the operation.
+# 
+# This is **step 10 of Stage 4 (image-based profiling)**. It runs once per patient
+# and must follow `9.feature_selection.ipynb`.
+# 
+# ## Inputs
+# 
+# Six feature-selected parquets from `6.feature_selected_profiles/`:
+# 
+# | File | Profile type |
+# |---|---|
+# | `sc_fs.parquet` | Hand-crafted SC |
+# | `organoid_fs.parquet` | Hand-crafted organoid |
+# | `sammed_sc_fs.parquet` | Deep-learning SC (SAMMed3D) |
+# | `sammed_organoid_fs.parquet` | Deep-learning organoid (SAMMed3D) |
+# | `sammed_nucleocentric_fs.parquet` | Deep-learning nucleocentric (SAMMed3D) |
+# | `chammi_nucleocentric_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
+# 
+# ## Outputs
+# 
+# Twelve parquets across two stage directories:
+# 
+# | Directory | Files |
+# |---|---|
+# | `7.aggregated_profiles/` | `sc_agg_well_level.parquet`, `organoid_agg_well_level.parquet`, `sammed_sc_agg_well_level.parquet`, `sammed_organoid_agg_well_level.parquet`, `sammed_nucleocentric_agg_well_level.parquet`, `chammi_nucleocentric_agg_well_level.parquet` |
+# | `8.consensus_profiles/` | `sc_consensus.parquet`, `organoid_consensus.parquet`, `sammed_sc_consensus.parquet`, `sammed_organoid_consensus.parquet`, `sammed_nucleocentric_consensus.parquet`, `chammi_nucleocentric_consensus.parquet` |
+# 
+# ## Notes
+# - QC-flagged rows are not filtered before aggregation; downstream analysis decides
+#   whether to exclude them.
+# - Consensus profiles collapse treatment replicates to a single row per treatment,
+#   making them the primary input for treatment-level comparisons.
 
 # In[1]:
 
@@ -41,7 +80,7 @@ else:
 # In[3]:
 
 
-# pathing
+## Pathing
 sc_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sc_fs.parquet"
 ).resolve(strict=True)
@@ -120,6 +159,13 @@ organoid_sammed_fs = pd.read_parquet(organoid_sammed_fs_path)
 nucleocentric_sammed_sc_fs = pd.read_parquet(nucleocentric_sammed_sc_fs_path)
 nucleocentric_chammi_sc_fs = pd.read_parquet(nucleocentric_chammi_sc_fs_path)
 
+print(f"SC feature-selected loaded. Shape: {sc_fs.shape}")
+print(f"Organoid feature-selected loaded. Shape: {organoid_fs.shape}")
+print(f"SAMMed3D SC feature-selected loaded. Shape: {sc_sammed_fs.shape}")
+print(f"SAMMed3D organoid feature-selected loaded. Shape: {organoid_sammed_fs.shape}")
+print(f"SAMMed3D nucleocentric feature-selected loaded. Shape: {nucleocentric_sammed_sc_fs.shape}")
+print(f"CHAMMI-75 nucleocentric feature-selected loaded. Shape: {nucleocentric_chammi_sc_fs.shape}")
+
 
 # In[5]:
 
@@ -158,15 +204,21 @@ run_dict = {
 }
 
 
-# ### Aggregate the profiles
-# We will aggregated with a few different stratifications:
-# 1. Well
-# 2. Treatment - i.e. the consensus profile for each treatment
+# ## Aggregate the profiles
+# 
+# Each profile type is aggregated at two levels:
+# 1. **Well-level** (`aggregate_strata`): median across all objects in a well,
+#    grouped by `PatientTumor x Well`. Preserves within-patient well-to-well variation.
+# 2. **Consensus** (`consensus_strata`): median across all objects sharing a treatment,
+#    grouped by `PatientTumor x Treatment`. Collapses replicates for treatment-level
+#    comparisons.
 
 # In[6]:
 
 
+# Well-level strata: one row per (patient, well) combination
 aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
+# Consensus strata: one row per (patient, treatment) combination
 consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
 
 
@@ -179,7 +231,7 @@ for profile_name in run_dict.keys():
     agg_well_output_path = run_dict[profile_name]["agg_well_output_path"]
     consensus_output_path = run_dict[profile_name]["consensus_output_path"]
 
-    metadata_columns = [x for x in df.columns if "Metadata" in x]
+    metadata_columns = [x for x in df.columns if x.startswith("Metadata_")]
     features_columns = [col for col in df.columns if col not in metadata_columns]
 
     # aggregate by well
@@ -189,7 +241,8 @@ for profile_name in run_dict.keys():
         features=features_columns,
         operation="median",
     )
-    agg_well_df.to_parquet(agg_well_output_path)
+    agg_well_df.to_parquet(agg_well_output_path, index=False)
+    print(f"  Well-level aggregated. Shape: {agg_well_df.shape}")
 
     # aggregate by treatment
     consensus_df = aggregate(
@@ -198,4 +251,6 @@ for profile_name in run_dict.keys():
         features=features_columns,
         operation="median",
     )
-    consensus_df.to_parquet(consensus_output_path)
+    consensus_df.to_parquet(consensus_output_path, index=False)
+    print(f"  Consensus aggregated. Shape: {consensus_df.shape}")
+
