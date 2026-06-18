@@ -85,7 +85,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "D9-3"
+    well_fov = "D5-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -320,6 +320,23 @@ stop_profiling(
 # In[18]:
 
 
+print(np.unique(nuclei_mask))
+print(np.unique(cell_mask))
+print(np.unique(cytoplasm_mask))
+
+
+# In[19]:
+
+
+nuclei_mask = tifffile.imread(
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/nuclei_mask.tiff"
+)
+cell_mask = tifffile.imread(
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/cell_mask.tiff"
+)
+cytoplasm_mask = tifffile.imread(
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/cytoplasm_mask.tiff"
+)
 print(np.unique(nuclei_mask))
 print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))

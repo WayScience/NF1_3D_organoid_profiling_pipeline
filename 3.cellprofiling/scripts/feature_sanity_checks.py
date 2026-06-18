@@ -74,6 +74,8 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             out_dict["compartment"].append(compartment)
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
+df = df.loc[df["patient_id"] == "NF0014_T1"]
+df
 
 
 # In[4]:
@@ -136,10 +138,9 @@ out_df = pd.DataFrame(out_dict)
 out_df = out_df.pivot(
     index=["patient_id", "well_fov"], columns="type", values="path"
 ).reset_index()
-out_df
 
 
-# In[13]:
+# In[7]:
 
 
 labels_dict = {
@@ -172,30 +173,27 @@ labels_df = pd.DataFrame(labels_dict)
 labels_df
 
 
-# In[20]:
+# In[8]:
 
 
 labels_df["labels_match"] = labels_df.apply(
-    lambda row: (
-        (row["Cell_labels"] == row["Cytoplasm_labels"])
-        and (row["Cell_labels"] == row["Nuclei_labels"])
-    ),
+    lambda row: row["Cell_labels"] == row["Nuclei_labels"],
     axis=1,
 )
 labels_df["same_number_of_labels"] = labels_df.apply(
-    lambda row: (
-        (len(row["Cell_labels"]) == len(row["Cytoplasm_labels"]))
-        and (len(row["Cell_labels"]) == len(row["Nuclei_labels"]))
-    ),
+    lambda row: len(row["Cell_labels"]) == len(row["Nuclei_labels"]),
     axis=1,
 )
-labels_df["unique_labels"] = labels_df.apply(
+labels_df["unique_labels_across_compartments"] = labels_df.apply(
     lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
 )
-labels_df.loc[labels_df["labels_match"] == False]
+[
+    print(x)
+    for x in labels_df.loc[labels_df["labels_match"] == False]["well_fov"].unique()
+]
 
 
-# In[8]:
+# In[41]:
 
 
 tmp_df = pd.merge(
@@ -208,3 +206,6 @@ tmp_df = pd.merge(
     on=["object_id", "image_set"],
 )
 tmp_df.head()
+
+
+# In[ ]:

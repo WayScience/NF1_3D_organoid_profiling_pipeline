@@ -4,7 +4,7 @@
 # This notebook performs profile normalization.
 # All profiles are normalized to the DMSO control treated profiles.
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -157,7 +157,7 @@ nucleocentric_chammi_feature_cols = [
 ]
 
 
-# In[6]:
+# In[ ]:
 
 
 sc_normalized_df = normalize(
@@ -165,25 +165,38 @@ sc_normalized_df = normalize(
     features=sc_feature_cols,
     meta_features=sc_metadata_cols,
     method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
+    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
     output_file=sc_normalized_output_path,
     output_type="parquet",
 )
-organoid_normalized_df = normalize(
-    profiles=organoid_annotated_profiles,
-    features=organoid_feature_cols,
-    meta_features=organoid_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=organoid_normalized_output_path,
-    output_type="parquet",
-)
+# if there are NAs and not enough samples, we get an error, this is not an issue in the sc profiles
+try:
+    organoid_normalized_df = normalize(
+        profiles=organoid_annotated_profiles,
+        features=organoid_feature_cols,
+        meta_features=organoid_metadata_cols,
+        method="MAD_robustize",
+        samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
+        output_file=organoid_normalized_output_path,
+        output_type="parquet",
+    )
+except Exception as e:
+    organoid_annotated_profiles.dropna(subset=organoid_feature_cols, inplace=True)
+    organoid_normalized_df = normalize(
+        profiles=organoid_annotated_profiles,
+        features=organoid_feature_cols,
+        meta_features=organoid_metadata_cols,
+        method="MAD_robustize",
+        samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
+        output_file=organoid_normalized_output_path,
+        output_type="parquet",
+    )
 sc_sammed_normalized_df = normalize(
     profiles=sc_sammed_annotated_profiles,
     features=sc_sammed_feature_cols,
     meta_features=sc_sammed_metadata_cols,
     method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
+    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
     output_file=sc_sammed_normalized_output_path,
     output_type="parquet",
 )
@@ -192,7 +205,7 @@ organoid_sc_sammed_normalized_df = normalize(
     features=organoid_sc_sammed_feature_cols,
     meta_features=organoid_sc_sammed_metadata_cols,
     method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
+    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
     output_file=organoid_sc_sammed_normalized_output_path,
     output_type="parquet",
 )
@@ -201,7 +214,7 @@ nucleocentric_sammed_normalized_df = normalize(
     features=nucleocentric_sammed_feature_cols,
     meta_features=nucleocentric_sammed_metadata_cols,
     method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
+    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
     output_file=nucleocentric_sammed_normalized_output_path,
     output_type="parquet",
 )
@@ -210,7 +223,7 @@ nucleocentric_chammi_normalized_df = normalize(
     features=nucleocentric_chammi_feature_cols,
     meta_features=nucleocentric_chammi_metadata_cols,
     method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
+    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
     output_file=nucleocentric_chammi_normalized_output_path,
     output_type="parquet",
 )
@@ -226,12 +239,3 @@ output_df_paths = [
 for output_path in output_df_paths:
     if not output_path.exists():
         print(f"Error: Normalized output file {output_path} was not created.")
-
-
-# In[9]:
-
-
-pd.read_parquet(sc_normalized_df).isna().sum()
-
-
-# In[ ]:

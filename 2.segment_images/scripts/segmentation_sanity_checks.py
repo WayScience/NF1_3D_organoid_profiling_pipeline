@@ -206,7 +206,7 @@ df.groupby(["patient", "well_fov"]).size().reset_index(name="count").loc[
 ]
 
 
-# In[8]:
+# In[9]:
 
 
 mismatched_shapes = 0
@@ -224,13 +224,19 @@ print(
 mismatched_shapes_list
 
 
-# In[9]:
+# In[10]:
 
 
 OVERWRITE = True
 
 
-# In[10]:
+# In[13]:
+
+
+df = df.loc[df["patient"] == "NF0014_T1"]
+
+
+# In[14]:
 
 
 if sanity_df_save_path.exists() and not OVERWRITE:
@@ -279,8 +285,10 @@ else:
     df.to_parquet(patient_save_path, index=False)
 
 
+# In[16]:
+
+
+patient_df
+
+
 # In[ ]:
-
-
-# drop all rows that do not have none in the mask_labels column
-patient_df[patient_df["mask_labels"] == None]

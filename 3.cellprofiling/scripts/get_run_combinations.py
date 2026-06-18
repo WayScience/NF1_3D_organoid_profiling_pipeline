@@ -135,11 +135,11 @@ def add_row(
 
 patients = [
     "NF0014_T1",
-    "NF0014_T2",
-    "NF0016_T1",
-    "NF0018_T6",
-    "NF0021_T1",
-    "NF0030_T1",
+    # "NF0014_T2",
+    # "NF0016_T1",
+    # "NF0018_T6",
+    # "NF0021_T1",
+    # "NF0030_T1",
 ]
 
 
@@ -320,23 +320,29 @@ print(
 # In[8]:
 
 
-df.to_csv(load_combinations_path, sep="\t", index=False)
-df.head()
+df = df.loc[df["feature"] == "AreaSizeShape"]
 
 
 # In[9]:
 
 
-df.groupby(["feature"]).size().to_frame(name="count").reset_index()
+df.to_csv(load_combinations_path, sep="\t", index=False)
+df.head()
 
 
 # In[10]:
 
 
-df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
+df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
 # In[11]:
+
+
+df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
+
+
+# In[12]:
 
 
 # Find patient well_fovs with complete feature-file coverage
@@ -358,13 +364,13 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
 complete_feature_count
 
 
-# In[12]:
+# In[13]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[13]:
+# In[14]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]
