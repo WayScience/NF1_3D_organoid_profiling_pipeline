@@ -280,6 +280,7 @@ def _dmso_qc_samples_query(df):
 # since there are fewer organoid samples and thus
 # fewer DMSO samples to use for normalization.
 
+
 # type cast to all float64 so numpy and scipy can properly handle the data during normalization
 organoid_annotated_profiles[organoid_feature_cols] = organoid_annotated_profiles[
     organoid_feature_cols

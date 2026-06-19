@@ -25,6 +25,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -91,7 +92,7 @@ output_dict = {
         for feature_type in feature_types
         if not (
             compartment == "Nucleocentric"
-            and feature_type.lower() not in ["morphem", "sammed3d"]
+            and feature_type.lower() not in ["chammi75", "sammed3d"]
         )
     }
     for compartment in compartments

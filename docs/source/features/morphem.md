@@ -6,7 +6,8 @@ morphem features are deep learning-based embeddings extracted using
 [Morphem](https://huggingface.co/caicedolab/morphem), a self-supervised vision
 Transformer (vit) model pre-trained on the CHAMMI benchmark dataset of
 Fluorescence microscopy images.
-
+We named the features after the dataset used to train the model:
+CHAMMI-75 of which a pre-print is posted about:
 DOI: <https://doi.org/10.1038/s41592-024-02349-9>
 
 ## Architecture

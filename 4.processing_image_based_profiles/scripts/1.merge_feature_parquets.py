@@ -70,7 +70,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "F4-2"
+    well_fov = "C4-2"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -121,7 +121,7 @@ output_dict = {
         for feature_type in feature_types
         if not (
             compartment == "Nucleocentric"
-            and feature_type.lower() not in ["morphem", "sammed3d"]
+            and feature_type.lower() not in ["chammi75", "sammed3d"]
         )
     }
     for compartment in compartments
@@ -205,18 +205,23 @@ for compartment in final_df_dict.keys():
 # Merge all feature-type dataframes into one dataframe per compartment.
 # All compartments (including Nucleocentric) are merged via left joins on
 # object_id + image_set across feature types.
+
 compartment_dfs = {}
-for compartment in final_df_dict.keys():
-    for df in final_df_dict[compartment].values():
-        compartment_dfs[compartment] = reduce(
-            lambda left, right: pd.merge(
-                left,
-                right,
-                on=["object_id", "image_set"],
-                how="left",
-            ),
-            final_df_dict[compartment].values(),
-        )
+try:
+    for compartment in final_df_dict.keys():
+        for df in final_df_dict[compartment].values():
+            compartment_dfs[compartment] = reduce(
+                lambda left, right: pd.merge(
+                    left,
+                    right,
+                    on=["object_id", "image_set"],
+                    how="left",
+                ),
+                final_df_dict[compartment].values(),
+            )
+except Exception as e:
+    print(f"Error merging dataframes for compartment {compartment}: {e}")
+    raise
 
 
 # In[8]:
