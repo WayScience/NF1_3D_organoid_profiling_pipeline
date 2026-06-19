@@ -32,7 +32,7 @@
 #
 # ## Notes
 # - Merges within a compartment use left joins on `object_id` + `image_set`. Objects missing from some channels will have NaN-filled feature columns — this is expected when not all feature types apply to all channels (e.g. colocalization requires two channels).
-# - Nucleocentric compartment only supports SAMMed3D and CHAMMI-75 feature types; hand-crafted features are not extracted for nucleocentric volumes.
+# - Nucleocentric compartment only supports SAMMed3D and morphem feature types; hand-crafted features are not extracted for nucleocentric volumes.
 
 # In[1]:
 
@@ -121,7 +121,7 @@ output_dict = {
         for feature_type in feature_types
         if not (
             compartment == "Nucleocentric"
-            and feature_type.lower() not in ["chammi75", "sammed3d"]
+            and feature_type.lower() not in ["morphem", "sammed3d"]
         )
     }
     for compartment in compartments

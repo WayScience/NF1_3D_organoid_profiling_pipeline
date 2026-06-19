@@ -18,13 +18,6 @@ import skimage
 import tifffile
 import tomli
 import torch
-from image_analysis_3D.featurization_utils.chammi75_featurization import (
-    PerImageNormalize,
-    SaturationNoiseInjector,
-    call_chammi75_featurization_pipeline,
-    featurize_2D_image_w_chammi75,
-    get_chammi75_model,
-)
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
     save_features_as_parquet,
@@ -32,6 +25,13 @@ from image_analysis_3D.featurization_utils.feature_writing_utils import (
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
     ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.morphem_featurization import (
+    PerImageNormalize,
+    SaturationNoiseInjector,
+    call_morphem_featurization_pipeline,
+    featurize_2D_image_w_morphem,
+    get_morphem_model,
 )
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
     start_profiling,
@@ -93,15 +93,15 @@ for patient_dir in tqdm.tqdm(extracted_features, desc="patients"):
         feature_files = [
             x
             for x in feature_files
-            if "chammi75" in x.stem.lower() or "sammed3d" in x.stem.lower()
+            if "morphem" in x.stem.lower() or "sammed3d" in x.stem.lower()
         ]
         for feature_file in feature_files:
             if "chammi" in feature_files[0].stem.lower():
-                feature_type = "chammi75"
+                feature_type = "morphem"
                 opposite_feature_type = "sammed3d"
             elif "sammed3d" in feature_files[0].stem.lower():
                 feature_type = "sammed3d"
-                opposite_feature_type = "chammi75"
+                opposite_feature_type = "morphem"
             else:
                 raise ValueError(f"unknown feature type for {feature_files[0]}")
             df = pd.read_parquet(feature_files[0])

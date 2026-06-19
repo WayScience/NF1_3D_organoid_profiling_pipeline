@@ -96,12 +96,12 @@ nucleocentric_annotated_sammed_path = pathlib.Path(
     / f"{image_based_profiles_subparent_name}"
     / "3.annotated_profiles/nucleocentric_sammed_anno.parquet"
 ).resolve()
-nucleocentric_annotated_chammi_output_path = pathlib.Path(
+nucleocentric_annotated_morphem_output_path = pathlib.Path(
     profile_base_dir
     / "data"
     / f"{patient}"
     / f"{image_based_profiles_subparent_name}"
-    / "3.annotated_profiles/nucleocentric_chammi_anno.parquet"
+    / "3.annotated_profiles/nucleocentric_morphem_anno.parquet"
 ).resolve()
 sammed_annotated_sc_profiles_path = pathlib.Path(
     profile_base_dir
@@ -128,8 +128,8 @@ sammed_sc_qc_output_path = pathlib.Path(
 nucleocentric_sammed_qc_output_path = pathlib.Path(
     f"{output_dir}/nucleocentric_sammed_flagged_outliers.parquet"
 ).resolve()
-nucleocentric_chammi_qc_output_path = pathlib.Path(
-    f"{output_dir}/nucleocentric_chammi_flagged_outliers.parquet"
+nucleocentric_morphem_qc_output_path = pathlib.Path(
+    f"{output_dir}/nucleocentric_morphem_flagged_outliers.parquet"
 ).resolve()
 
 orig_sc_profiles_df = pd.read_parquet(sc_file)
@@ -323,8 +323,8 @@ sc_profiles_df.head()
 
 
 nucleocentric_annotated_sammed_df = pd.read_parquet(nucleocentric_annotated_sammed_path)
-nucleocentric_annotated_chammi_df = pd.read_parquet(
-    nucleocentric_annotated_chammi_output_path
+nucleocentric_annotated_morphem_df = pd.read_parquet(
+    nucleocentric_annotated_morphem_output_path
 )
 sammed_annotated_sc_profiles_df = pd.read_parquet(sammed_annotated_sc_profiles_path)
 df_dict = {
@@ -333,8 +333,8 @@ df_dict = {
         "qc_output_path": nucleocentric_sammed_qc_output_path,
     },
     "nucleocentric_chammi": {
-        "df": nucleocentric_annotated_chammi_df,
-        "qc_output_path": nucleocentric_chammi_qc_output_path,
+        "df": nucleocentric_annotated_morphem_df,
+        "qc_output_path": nucleocentric_morphem_qc_output_path,
     },
     "sammed_sc_profiles": {
         "df": sammed_annotated_sc_profiles_df,

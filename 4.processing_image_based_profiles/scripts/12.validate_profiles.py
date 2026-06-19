@@ -60,8 +60,8 @@ for patient in patient_ids:
     nucleocentric_sammed_normalized_path = pathlib.Path(
         f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
     ).resolve()
-    nucleocentric_chammi_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/nucleocentric_chammi_norm.parquet"
+    nucleocentric_morphem_normalized_path = pathlib.Path(
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/nucleocentric_morphem_norm.parquet"
     ).resolve()
 
     sc_annotated_df = pd.read_parquet(sc_normalized_path)
@@ -73,8 +73,8 @@ for patient in patient_ids:
     nucleocentric_sammed_annotated_df = pd.read_parquet(
         nucleocentric_sammed_normalized_path
     )
-    nucleocentric_chammi_annotated_df = pd.read_parquet(
-        nucleocentric_chammi_normalized_path
+    nucleocentric_morphem_annotated_df = pd.read_parquet(
+        nucleocentric_morphem_normalized_path
     )
 
     # check for duplicates, NAs, infs, and get counts for each annotated df
@@ -85,7 +85,7 @@ for patient in patient_ids:
             sc_sammed_annotated_df,
             organoid_sc_sammed_annotated_df,
             nucleocentric_sammed_annotated_df,
-            nucleocentric_chammi_annotated_df,
+            nucleocentric_morphem_annotated_df,
         ],
         [
             "sc_annotated_df",
@@ -93,7 +93,7 @@ for patient in patient_ids:
             "sc_sammed_annotated_df",
             "organoid_sc_sammed_annotated_df",
             "nucleocentric_sammed_annotated_df",
-            "nucleocentric_chammi_annotated_df",
+            "nucleocentric_morphem_annotated_df",
         ],
     ):
         print(f"{name} - shape: {df.shape}")

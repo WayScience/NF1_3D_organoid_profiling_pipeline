@@ -1,8 +1,8 @@
-# CHAMMI-75 features
+# morphem features
 
 ## Description
 
-CHAMMI-75 features are deep learning-based embeddings extracted using
+morphem features are deep learning-based embeddings extracted using
 [Morphem](https://huggingface.co/caicedolab/morphem), a self-supervised vision
 Transformer (vit) model pre-trained on the CHAMMI benchmark dataset of
 Fluorescence microscopy images.
@@ -50,7 +50,7 @@ Currently **384 features** are extracted per channel per object.
 
 ## Applications
 
-CHAMMI-75 features are useful for:
+morphem features are useful for:
 
 - Capturing phenotypes that are missed by hand-crafted features.
 - Identifying subtle treatment effects in fluorescence images.

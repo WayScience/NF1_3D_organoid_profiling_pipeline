@@ -28,7 +28,7 @@
 # | `sammed_sc_anno.parquet` | Single-cell | SAMMed3D |
 # | `sammed_organoid_anno.parquet` | Organoid | SAMMed3D |
 # | `nucleocentric_sammed_anno.parquet` | Nucleocentric | SAMMed3D |
-# | `nucleocentric_chammi_anno.parquet` | Nucleocentric | CHAMMI-75 |
+# | `nucleocentric_morphem_anno.parquet` | Nucleocentric | morphem |
 #
 # ## Notes
 # - Metadata columns are sub-categorized as `Metadata_Biology_*`, `Metadata_Experiment_*`,
@@ -169,8 +169,8 @@ organoid_annotated_output_path = pathlib.Path(
 nucleocentric_annotated_sammed_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/nucleocentric_sammed_anno.parquet"
 ).resolve()
-nucleocentric_annotated_chammi_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/nucleocentric_chammi_anno.parquet"
+nucleocentric_annotated_morphem_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/nucleocentric_morphem_anno.parquet"
 ).resolve()
 sammed_annotated_sc_profiles_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/sammed_sc_anno.parquet"
@@ -492,12 +492,12 @@ nucleocentric_merged = nucleocentric_merged.sort_values(
 
 
 # Split each profile into feature subsets by column name pattern:
-#   - Hand-crafted: columns with no 'sammed' or 'chammi75' in name (AreaSizeShape, Intensity, etc.)
+#   - Hand-crafted: columns with no 'sammed' or 'morphem' in name (AreaSizeShape, Intensity, etc.)
 #   - SAMMed3D: columns containing 'sammed' (3D volumetric deep learning embeddings)
-#   - CHAMMI-75: columns containing 'chammi75' (2D nucleocentric projection embeddings)
+#   - morphem: columns containing 'morphem' (2D nucleocentric projection embeddings)
 #
 # This produces 6 output dataframes (3 profile types × 2 feature sets for SC/organoid,
-# and SAMMed3D + CHAMMI-75 for nucleocentric) saved separately in cell 16.
+# and SAMMed3D + morphem for nucleocentric) saved separately in cell 16.
 sc_metadata_columns = [x for x in sc_merged.columns if "Metadata" in x]
 sc_handcrafted_columns = [
     x for x in sc_merged.columns if "Metadata" not in x and "sammed" not in x.lower()
@@ -518,8 +518,8 @@ nucleocentric_metadata_columns = [
 nucleocentric_sammed_columns = [
     x for x in nucleocentric_merged.columns if "sammed" in x.lower()
 ]
-nucleocentric_chammi75_columns = [
-    x for x in nucleocentric_merged.columns if "chammi75" in x.lower()
+nucleocentric_morphem_columns = [
+    x for x in nucleocentric_merged.columns if "morphem" in x.lower()
 ]
 
 # split the profiles
@@ -534,8 +534,8 @@ organoid_annotated_sammed = organoid_merged[
 nucleocentric_sammed_annotated = nucleocentric_merged[
     nucleocentric_metadata_columns + nucleocentric_sammed_columns
 ]
-nucleocentric_chammi_annotated = nucleocentric_merged[
-    nucleocentric_metadata_columns + nucleocentric_chammi75_columns
+nucleocentric_morphem_annotated = nucleocentric_merged[
+    nucleocentric_metadata_columns + nucleocentric_morphem_columns
 ]
 
 
@@ -552,8 +552,8 @@ organoid_annotated_sammed.to_parquet(
 nucleocentric_sammed_annotated.to_parquet(
     nucleocentric_annotated_sammed_output_path, index=False
 )
-nucleocentric_chammi_annotated.to_parquet(
-    nucleocentric_annotated_chammi_output_path, index=False
+nucleocentric_morphem_annotated.to_parquet(
+    nucleocentric_annotated_morphem_output_path, index=False
 )
 
 

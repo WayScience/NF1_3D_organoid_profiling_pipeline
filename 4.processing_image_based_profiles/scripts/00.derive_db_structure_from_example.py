@@ -91,7 +91,7 @@ output_dict = {
         for feature_type in feature_types
         if not (
             compartment == "Nucleocentric"
-            and feature_type.lower() not in ["chammi75", "sammed3d"]
+            and feature_type.lower() not in ["morphem", "sammed3d"]
         )
     }
     for compartment in compartments
