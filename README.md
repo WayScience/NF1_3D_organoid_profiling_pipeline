@@ -461,7 +461,7 @@ flowchart TD
 
 ### CHAMMI-75 pipeline
 
-CHAMMI-75 is a 2D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder. It is applied exclusively to **nucleocentric volumes** — but unlike SAMMed3D, it operates on **2D maximum-intensity projections** of those volumes rather than the full 3D crop. This collapses the z-axis and captures a 2D summary of the nuclear microenvironment per channel.
+CHAMMI-75 is a 2D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder. It is applied exclusively to **nucleocentric volumes** — but unlike SAMMed3D, it operates on **2D maximum-intensity projections** of those volume crops rather than the full 3D crop. This collapses the z-axis and captures a 2D summary of the nuclear microenvironment per channel.
 
 CHAMMI-75 features are pre-computed per nucleus in Stage 3 and do not require compartment merging or QC.
 
