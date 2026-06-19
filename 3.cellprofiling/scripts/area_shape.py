@@ -67,8 +67,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
-    patient = "NF0014_T1"
+    well_fov = "C2-3"
+    patient = "NF0021_T1"
     compartment = "Nuclei"
     channel = "NoChannel"
     processor_type = "CPU"
@@ -83,7 +83,7 @@ mask_set_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 )
 output_parent_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
+    f"{root_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(
@@ -109,12 +109,6 @@ start_time, start_mem = start_profiling()
 # In[5]:
 
 
-[channel_n_compartment_mapping[compartment]]
-
-
-# In[6]:
-
-
 image_set_loader = ImageSetLoader(
     image_set_path=image_set_path,
     mask_set_path=mask_set_path,
@@ -125,7 +119,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[7]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -152,7 +146,7 @@ else:
     )
 
 
-# In[8]:
+# In[7]:
 
 
 final_df = pd.DataFrame(size_shape_dict)
@@ -175,7 +169,7 @@ final_df.rename(
 
 final_df.insert(1, "image_set", image_set_loader.image_set_name)
 
-save_path = save_features_as_parquet(
+output_parent_path = save_features_as_parquet(
     parent_path=output_parent_path,
     df=final_df,
     feature_type="AreaSizeShape",
@@ -187,7 +181,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[9]:
+# In[8]:
 
 
 stop_profiling(
@@ -200,6 +194,6 @@ stop_profiling(
     compartment=compartment,
     CPU_GPU=processor_type,
     output_file_dir=pathlib.Path(
-        f"{image_base_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_AreaSizeShape_DNA_{compartment}_{processor_type}.parquet"
+        f"{image_base_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_AreaSizeShape_NoChannel_{compartment}_{processor_type}.parquet"
     ),
 )

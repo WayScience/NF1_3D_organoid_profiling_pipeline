@@ -28,32 +28,32 @@ image_base_path = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(strict=True)
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-
+patients = ["NF0014_T1"]  # --- IGNORE ---
 rerun_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
 )
 rerun_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 
-# Patients that have extra z-spacing variants
-z_stack_testing_patients = [
-    "NF0037_T1-Z-1",
-    "NF0037_T1-Z-0.5",
-    "NF0037_T1-Z-0.2",
-    "NF0037_T1-Z-0.1",
-    "NF0055_T1-Z-0.1",
-]
-patients += z_stack_testing_patients
+# # Patients that have extra z-spacing variants
+# z_stack_testing_patients = [
+#     "NF0037_T1-Z-1",
+#     "NF0037_T1-Z-0.5",
+#     "NF0037_T1-Z-0.2",
+#     "NF0037_T1-Z-0.1",
+#     "NF0055_T1-Z-0.1",
+# ]
+# patients += z_stack_testing_patients
 
 
-# Convolution iteration values used for NF0014_T1 / C4-2
-convolution_iters = list(range(1, 26)) + [50, 75, 100]
+# # Convolution iteration values used for NF0014_T1 / C4-2
+# convolution_iters = list(range(1, 26)) + [50, 75, 100]
 
 
 # In[3]:
@@ -91,7 +91,7 @@ def add_row(
     )
 
 
-# In[ ]:
+# In[4]:
 
 
 for patient in tqdm(patients, desc="Patients"):
@@ -110,13 +110,13 @@ for patient in tqdm(patients, desc="Patients"):
 
         # --- NF0014_T1 / C4-2: convolution iterations + deconvolved images ---
         if patient == "NF0014_T1" and well_fov == "C4-2":
-            for conv_iter in convolution_iters:
-                add_row(
-                    patient,
-                    well_fov,
-                    input_subparent_name=f"convolution_{conv_iter}",
-                    mask_subparent_name=f"convolution_{conv_iter}_segmentation_masks",
-                )
+            # for conv_iter in convolution_iters:
+            #     add_row(
+            #         patient,
+            #         well_fov,
+            #         input_subparent_name=f"convolution_{conv_iter}",
+            #         mask_subparent_name=f"convolution_{conv_iter}_segmentation_masks",
+            #     )
             add_row(
                 patient,
                 well_fov,
@@ -125,13 +125,13 @@ for patient in tqdm(patients, desc="Patients"):
             )
 
         # --- z-stack spacing test patients: extra mask variant ---
-        elif patient in z_stack_testing_patients:
-            add_row(
-                patient,
-                well_fov,
-                input_subparent_name="zstack_images",
-                mask_subparent_name="segmentation_masks_from_0_1um",
-            )
+        # elif patient in z_stack_testing_patients:
+        #     add_row(
+        #         patient,
+        #         well_fov,
+        #         input_subparent_name="zstack_images",
+        #         mask_subparent_name="segmentation_masks_from_0_1um",
+        #     )
 
 df = pd.DataFrame(rows)
 print(f"Total combinations: {df.shape[0]}")
@@ -200,4 +200,16 @@ df_rerun.to_csv(rerun_combinations_path, sep="\t", index=False)
 # In[7]:
 
 
-df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index()
+print(df.groupby("patient").size())
+
+
+# In[8]:
+
+
+print(df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index())
+
+
+# In[9]:
+
+
+df_rerun

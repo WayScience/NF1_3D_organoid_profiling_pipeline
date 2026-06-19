@@ -70,7 +70,7 @@ else:
     import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 # Download SAM3D checkpoint
@@ -104,9 +104,9 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "D5-2"
-    patient = "NF0014_T1"
-    channel = "DNA"
+    well_fov = "G3-5"
+    patient = "NF0055_T1"
+    channel = "Mito"
     compartment = "Nuclei"
     processor_type = "GPU"
     input_subparent_name = "zstack_images"
@@ -120,7 +120,7 @@ mask_set_path = pathlib.Path(
     f"{image_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 )
 output_parent_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
+    f"{root_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(
@@ -133,7 +133,7 @@ channel_mapping_file_path = pathlib.Path(
 compartment = "Nuclei"
 
 
-# In[ ]:
+# In[4]:
 
 
 # read in channel mapping
@@ -142,13 +142,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[ ]:
+# In[5]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[ ]:
+# In[6]:
 
 
 image_set_loader = ImageSetLoader(
@@ -162,7 +162,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[ ]:
+# In[7]:
 
 
 object_loader = ObjectLoader(
@@ -173,14 +173,14 @@ object_loader = ObjectLoader(
 )
 
 
-# In[ ]:
+# In[8]:
 
 
 label_ids = np.unique(object_loader.label_image)
 label_ids = label_ids[label_ids != 0]
 
 
-# In[ ]:
+# In[9]:
 
 
 list_of_feature_dicts = []
@@ -202,11 +202,15 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
         image=label_image, bbox=bbox_image, expand_pixels=25, anisotropy_factor=10
     )
     # make the bbox square in xy
-    new_bbox = square_off_xy_crop_bbox(bbox=new_bbox)
-    if not check_for_xy_squareness(bbox=new_bbox):
+    new_bbox1 = square_off_xy_crop_bbox(
+        bbox=new_bbox,
+        image_max_xy=object_loader.image.shape[1:],
+    )
+
+    if not check_for_xy_squareness(bbox=new_bbox1):
         print(f"Warning: bbox is not square in xy after expansion of 25 pixels")
     # crop the image
-    cropped_image = crop_3D_image(object_loader.image, new_bbox)
+    cropped_image = crop_3D_image(object_loader.image, new_bbox1)
     # z max project the image
     z_max_proj_image = cropped_image.max(axis=0)
 
@@ -217,7 +221,9 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
         extractor=extractor,
     )
     chammi75_features = call_chammi75_featurization_pipeline(
-        cropped_image=z_max_proj_image, model=chammi75_model
+        cropped_image=z_max_proj_image,
+        model=chammi75_model,
+        device=device,
     )
     # make a new dictionary to hold all features
     combined_feature_dict = {
@@ -254,30 +260,42 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
     df = pd.DataFrame(combined_feature_dict)
     list_of_feature_dicts.append(df)
 
-
-final_df = pd.concat(list_of_feature_dicts, ignore_index=True)
-# pivot the df such that the feature names are the columns and the feature values are the values, with object label as an id variable
-final_df = final_df.pivot(
-    index=["object_id", "image_set"], columns="feature_name", values="feature_value"
-).reset_index()
-# remove the labeld name of the index
-final_df.columns.name = None
-final_df["object_id"] = final_df["object_id"].astype(int)
-final_df.head()
+if len(list_of_feature_dicts) > 0:
+    final_df = pd.concat(list_of_feature_dicts, ignore_index=True)
+    # pivot the df such that the feature names are the columns and the feature values are the values, with object label as an id variable
+    final_df = final_df.pivot(
+        index=["object_id", "image_set"], columns="feature_name", values="feature_value"
+    ).reset_index()
+    # remove the labeld name of the index
+    final_df.columns.name = None
+    final_df["object_id"] = final_df["object_id"].astype(int)
+else:
+    chammi75_df = pd.read_parquet(
+        pathlib.Path(
+            f"{image_base_dir}/data/NF0014_T1/extracted_features/C4-1/Nucleocentric_{channel}_CHAMMI75_GPU_features.parquet"
+        ).resolve()
+    )[:0]
+    sammed_3d_df = pd.read_parquet(
+        pathlib.Path(
+            f"{image_base_dir}/data/NF0014_T1/extracted_features/C4-1/Nucleocentric_{channel}_SAMMed3D_GPU_features.parquet"
+        ).resolve()
+    )[:0]
+    final_df = None
 
 
 # In[ ]:
 
 
-# split between SAMMed3D and CHAMMI75 features in the column names
-sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
-chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
-sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
-chammi75_df = final_df[["object_id", "image_set"] + chammi75_feature_cols]
+if final_df is not None:
+    # split between SAMMed3D and CHAMMI75 features in the column names
+    sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
+    chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
+    sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
+    chammi75_df = final_df[["object_id", "image_set"] + chammi75_feature_cols]
 # save the features as parquet files
 save_path = save_features_as_parquet(
     parent_path=output_parent_path,
-    df=final_df,
+    df=sammed_3d_df,
     feature_type="SAMMed3D",
     channel=channel,
     compartment="Nucleocentric",
@@ -293,7 +311,7 @@ save_path = save_features_as_parquet(
 )
 
 
-# In[ ]:
+# In[11]:
 
 
 stop_profiling(
@@ -311,7 +329,7 @@ stop_profiling(
 )
 
 
-# In[ ]:
+# In[12]:
 
 
 if in_notebook:

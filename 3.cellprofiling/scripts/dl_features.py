@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import itertools
@@ -54,7 +54,7 @@ image_base_dir = bandicoot_check(
 logging.basicConfig(level=logging.INFO)
 
 
-# In[3]:
+# In[ ]:
 
 
 if not in_notebook:
@@ -68,10 +68,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C3-1"
     patient = "NF0014_T1"
     compartment = "Nuclei"
-    channel = "Mito"
+    channel = "AGP"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
     output_features_subparent_name = "extracted_features"
@@ -84,7 +84,7 @@ mask_set_path = pathlib.Path(
 )
 
 output_parent_path = pathlib.Path(
-    f"{image_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
+    f"{root_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(
@@ -148,7 +148,7 @@ else:
     all_channel_compartment_combinations = [(channel, compartment)]
 
 
-# In[ ]:
+# In[9]:
 
 
 for channel, compartment in all_channel_compartment_combinations:

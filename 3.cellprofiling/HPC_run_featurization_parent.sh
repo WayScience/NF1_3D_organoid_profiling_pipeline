@@ -2,9 +2,9 @@
 
 patient=$1
 well_fov=$2
-compartment=$3
-channel=$4
-feature=$5
+feature=$3
+compartment=$4
+channel=$5
 processor_type=$6
 input_subparent_name=$7
 mask_subparent_name=$8
@@ -21,13 +21,21 @@ anvil_scratch_dir="/anvil/scratch"
 
 if [[ -e "$alpine_scratch_dir" ]]; then
     partition="amilan"
+    gpu_partition="aa100"
+    gres="--gres=gpu:1" # only used for SAMMed3D feature extraction which is the only feature that uses GPU processing
     qos="--qos=normal"
+    account="amc-general"
+
 elif [[ -e "$anvil_scratch_dir" ]]; then
-    partition="standard"
+    partition="shared"
+    gpu_partition="gpu"
     qos="--mail-type=all"
+    gres="--gpus-per-node=1"
+    account="bio260064-gpu"
 else
     echo "Error: No known scratch directory found."
 fi
+
 
 
 echo "Patient: $patient, WellFOV: $well_fov, Feature: $feature, Compartment: $compartment, Channel: $channel, UseGPU: $processor_type"
@@ -36,7 +44,7 @@ echo "InputSubparent: $input_subparent_name, MaskSubparent: $mask_subparent_name
 if [ "$feature" == "Neighbors" ]; then
     sbatch \
     --nodes=1 \
-    --mem=2G \
+    --mem=6G \
     --partition="$partition" \
     "$qos" \
     --time=1:00 \
@@ -55,10 +63,10 @@ fi
 if [ "$feature" == "Granularity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=4G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
-        --time=5:00 \
+        --time=40:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_granularity_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_granularity_child.sh \
@@ -75,10 +83,10 @@ fi
 if [ "$feature" == "Texture" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=6G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
-        --time=1:00 \
+        --time=10:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_texture_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_texture_child.sh \
@@ -96,10 +104,10 @@ fi
 if [ "$feature" == "AreaSizeShape" ] ; then
     sbatch \
         --nodes=1 \
-        ---mem=2G \
+        --mem=6G \
         --partition="$partition" \
         "$qos" \
-        --time=00:00:30 \
+        --time=00:04:30 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_area_shape_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_area_shape_child.sh \
@@ -115,10 +123,10 @@ fi
 if [ "$feature" == "Colocalization" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=4G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
-        --time=2:00 \
+        --time=10:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_colocalization_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_colocalization_child.sh \
@@ -135,10 +143,10 @@ fi
 if [ "$feature" == "Intensity" ] ; then
     sbatch \
         --nodes=1 \
-        --mem=2G \
+        --mem=24G \
         --partition="$partition" \
         "$qos" \
-        --time=2:00 \
+        --time=25:00 \
         --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
         --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_intensity_child-%j.out" \
         "$git_root"/3.cellprofiling/slurm_scripts/run_intensity_child.sh \
@@ -150,6 +158,48 @@ if [ "$feature" == "Intensity" ] ; then
         "$input_subparent_name" \
         "$mask_subparent_name" \
         "$output_features_subparent_name"
+fi
+
+if [ "$feature" == "SAMMed3D" ] ; then
+    if [ "$compartment" == "Nucleocentric" ] ; then
+        sbatch \
+            --nodes=1 \
+            --account="$account" \
+            --mem=24G \
+            --partition="$gpu_partition" \
+            "$gres" \
+            "$qos" \
+            --time=30:00 \
+            --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
+            --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
+            "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
+                "$patient" \
+                "$well_fov" \
+                "$compartment" \
+                "$channel"  \
+                "$input_subparent_name" \
+                "$mask_subparent_name" \
+                "$output_features_subparent_name"
+    else
+        sbatch \
+            --nodes=1 \
+            --account="$account" \
+            --mem=24G \
+            --partition="$gpu_partition" \
+            "$gres" \
+            "$qos" \
+            --time=30:00 \
+            --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
+            --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
+            "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
+                "$patient" \
+                "$well_fov" \
+                "$compartment" \
+                "$channel"  \
+                "$input_subparent_name" \
+                "$mask_subparent_name" \
+                "$output_features_subparent_name"
+    fi
 fi
 
 echo "All Parent Jobs submitted"

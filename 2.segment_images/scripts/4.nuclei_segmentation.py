@@ -80,8 +80,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T1"
+    well_fov = "F10-1"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"
@@ -234,3 +234,8 @@ stop_profiling(
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a GPU + CPU and uses less than 3GB of RAM.
+
+# In[14]:
+
+
+np.unique(nuclei_mask)

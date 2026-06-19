@@ -13,6 +13,7 @@ echo "Texture feature extraction for patient: $patient, WellFOV: $well_fov, Comp
 git_root=$(git rev-parse --show-toplevel)
 
 if [ -d "/scratch/alpine" ]; then
+    echo "Using Alpine environment"
     ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
 elif [ -d "/anvil" ]; then
     ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
@@ -20,12 +21,10 @@ else
     ENV_PATH="$git_root/.venv"
 fi
 
-
-# shellcheck disable=SC1091
-source "$ENV_PATH"/bin/activate
+PYTHON_BIN="$ENV_PATH/bin/python3"
 
 
-uv run python "$git_root"/3.cellprofiling/scripts/texture.py \
+"$PYTHON_BIN" "$git_root"/3.cellprofiling/scripts/texture.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
     --compartment "$compartment" \

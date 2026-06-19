@@ -4,16 +4,30 @@
 #SBATCH --partition=amilan
 #SBATCH --qos=long
 #SBATCH --account=amc-general
-#SBATCH --time=1-00:00
+#SBATCH --time=2-00:00
 #SBATCH --output=logs/parent/segmentation_parent-%j.out
 
+
+
+jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
+
+
 git_root=$(git rev-parse --show-toplevel)
-if [ -z "$git_root" ]; then
-    echo "Error: Could not find the git root directory."
-    exit 1
+
+if [ -d "/scratch/alpine" ]; then
+    echo "Using Alpine environment"
+    ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
+elif [ -d "/anvil" ]; then
+    echo "Using Anvil environment"
+    ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
+else
+    ENV_PATH="$git_root/.venv"
 fi
 
-uv run "$git_root"/2.segment_images/scripts/get_run_combinations.py
+
+# PYTHON_BIN="$ENV_PATH/bin/python3"
+echo "$ENV_PATH"
+# "$PYTHON_BIN" "$git_root"/2.segment_images/scripts/get_run_combinations.py
 
 txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
@@ -50,12 +64,12 @@ while IFS= read -r line; do
     # --gres=gpu:1 \
     sbatch \
         --nodes=1 \
-        --ntasks=2 \
+        --ntasks=7 \
         --partition=aa100 \
         --gres=gpu:1 \
         --qos=normal \
         --account=amc-general \
-        --time=15:00 \
+        --time=6:00:00 \
         --output=logs/child/segmentation_child-%j.out \
         "${git_root}"/2.segment_images/child_segmentation.sh "$patient" "$well_fov" "$input_subparent_name" "$mask_subparent_name"
 

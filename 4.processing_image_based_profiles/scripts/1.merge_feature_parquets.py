@@ -22,6 +22,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -36,7 +37,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C4-1"
+    well_fov = "E9-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -59,6 +60,8 @@ DB_structure_path = pathlib.Path(
 parquet_files = list(result_path.rglob("*.parquet"))
 parquet_files.sort()
 print(len(parquet_files), "parquet files found")
+if len(parquet_files) != 101:
+    raise ValueError(f"Expected 101 parquet files, but found {len(parquet_files)}")
 
 
 # In[3]:
@@ -120,6 +123,18 @@ for i, row in files_df.iterrows():
     channel = row["channel"]
     file_path = row["file_path"]
     output_dict[compartment][feature_type].append(file_path)
+output_dict
+
+
+# In[47]:
+
+
+output_dict["Nucleocentric"]
+
+
+# In[ ]:
+
+
 final_df_dict = {compartment: {} for compartment in output_dict.keys()}
 for compartment in output_dict.keys():
     for feature_type in output_dict[compartment].keys():
@@ -142,16 +157,25 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[7]:
+# In[51]:
+
+
+final_df_dict["Nucleocentric"]["SAMMed3D"]
+
+
+# In[ ]:
+
+
+# In[43]:
 
 
 # merge the dfs such that each compartment has a single df with all feature types as columns
 compartment_dfs = {}
 for compartment in final_df_dict.keys():
     for df in final_df_dict[compartment].values():
-        if compartment == "Nucleocentric":
-            compartment_dfs[compartment] = df
-            break
+        # if compartment == "Nucleocentric":
+        #     compartment_dfs[compartment] = df
+        #     break
 
         compartment_dfs[compartment] = reduce(
             lambda left, right: pd.merge(
@@ -164,7 +188,54 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[8]:
+# In[44]:
+
+
+# assert that the number of Nuclei, Cell, Cytoplasm, Nucleocentric are all the same
+print(
+    len(compartment_dfs["Nuclei"]),
+    len(compartment_dfs["Cell"]),
+    len(compartment_dfs["Cytoplasm"]),
+    len(compartment_dfs["Nucleocentric"]),
+)
+assert (
+    len(compartment_dfs["Nuclei"])
+    == len(compartment_dfs["Cell"])
+    == len(compartment_dfs["Cytoplasm"])
+    == len(compartment_dfs["Nucleocentric"])
+)
+
+# assert that all object ids line up across compartments
+assert (
+    compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Cell"]["object_id"])
+    and compartment_dfs["Nuclei"]["object_id"].equals(
+        compartment_dfs["Cytoplasm"]["object_id"]
+    )
+    and compartment_dfs["Nuclei"]["object_id"].equals(
+        compartment_dfs["Nucleocentric"]["object_id"]
+    )
+)
+
+
+# In[45]:
+
+
+compartment_dfs["Nucleocentric"]
+
+
+# In[39]:
+
+
+nuclei_ids = compartment_dfs["Nuclei"]["object_id"].unique()
+nuclei_ids = [x * 257 for x in nuclei_ids]
+cell_ids = compartment_dfs["Cell"]["object_id"].unique()
+
+print(nuclei_ids)
+print(cell_ids)
+set(nuclei_ids) - set(cell_ids)
+
+
+# In[40]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -183,7 +254,7 @@ dict_of_DB_structues = {
 }
 
 
-# In[9]:
+# In[41]:
 
 
 # get the table from the DB_structue
@@ -202,3 +273,6 @@ with duckdb.connect(sqlite_path, read_only=False) as cx:
                 f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df"
             )
             cx.unregister("temp_df")
+
+
+# In[ ]:

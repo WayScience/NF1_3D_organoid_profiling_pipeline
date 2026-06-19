@@ -23,6 +23,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -34,7 +35,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0014_T2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -58,7 +59,7 @@ nucleocentric_profile_output_path = pathlib.Path(
 organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[ ]:
 
 
 # get all profiles in the directory recursively
@@ -67,7 +68,7 @@ profiles = list(profiles_path.rglob("*/*.parquet"))
 profiles = [x for x in profiles if "related" in str(x)]
 
 
-# In[5]:
+# In[ ]:
 
 
 sc_profiles = [str(x) for x in profiles if "sc" in str(x.name)]
@@ -75,7 +76,7 @@ organoid_profiles = [str(x) for x in profiles if "organoid" in str(x.name)]
 nucleocentric_profiles = [str(x) for x in profiles if "nucleocentric" in str(x.name)]
 
 
-# In[6]:
+# In[ ]:
 
 
 # concat all sc profiles with duckdb
@@ -97,7 +98,7 @@ print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape
 # ## Remove all BF channels
 #
 
-# In[7]:
+# In[ ]:
 
 
 print(f"Single-cell profiles shape: {sc_profile.shape}")
@@ -111,7 +112,7 @@ organoid_profile = organoid_profile.drop(columns=list_of_columns_to_drop)
 print(f"Organoid profiles shape after dropping BF channels: {organoid_profile.shape}")
 
 
-# In[8]:
+# In[ ]:
 
 
 sc_profile.to_parquet(sc_merged_output_path, index=False)

@@ -316,6 +316,7 @@ def check_for_xy_squareness(bbox: tuple[int, int, int, int, int, int]) -> float:
 
 def square_off_xy_crop_bbox(
     bbox: tuple[int, int, int, int, int, int],
+    image_max_xy: tuple[int, int],
 ) -> tuple[int, int, int, int, int, int]:
     """
     Adjust the bbox to be square in the XY plane.
@@ -329,6 +330,10 @@ def square_off_xy_crop_bbox(
         (z_min, y_min, x_min, z_max, y_max, x_max)
 
         Each value is an integer pixel coordinate in that dimension.
+    image_max_xy : tuple[int, int]
+        The maximum pixel coordinates in the x and y dimensions of the image,
+        used to ensure the adjusted bbox does not go out of bounds.
+            (max_y, max_x)
 
     Returns
     -------
@@ -338,6 +343,8 @@ def square_off_xy_crop_bbox(
 
         Each value is an integer pixel coordinate in that dimension.
     """
+    image_max_x = image_max_xy[1]
+    image_max_y = image_max_xy[0]
     zmin, ymin, xmin, zmax, ymax, xmax = bbox
     # first find the larger dimension between x and y
     x_size = xmax - xmin
@@ -346,11 +353,20 @@ def square_off_xy_crop_bbox(
         # need to expand y dimension
         new_ymin = int(ymin - (x_size - y_size) / 2)
         new_ymax = int(ymax + (x_size - y_size) / 2)
+        # if the new ymin or new ymax are out of bounds
+        if new_ymin < 0:
+            new_ymin = 0
+        if new_ymax > image_max_y:
+            new_ymax = image_max_y
         return (zmin, new_ymin, xmin, zmax, new_ymax, xmax)
     elif y_size > x_size:
         # need to expand x dimension
         new_xmin = int(xmin - (y_size - x_size) / 2)
         new_xmax = int(xmax + (y_size - x_size) / 2)
+        if new_xmin < 0:
+            new_xmin = 0
+        if new_xmax > image_max_x:
+            new_xmax = image_max_x
         return (zmin, ymin, new_xmin, zmax, ymax, new_xmax)
     else:
         # already square

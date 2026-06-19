@@ -8,6 +8,7 @@ import os
 import pathlib
 import sys
 import time
+import warnings
 
 import pandas as pd
 import psutil
@@ -42,8 +43,15 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
+warnings.filterwarnings(
+    "ignore",
+    message="invalid escape sequence",
+    category=SyntaxWarning,
+    module="mahotas",
+)
 
-# In[2]:
+
+# In[ ]:
 
 
 if not in_notebook:
@@ -58,10 +66,14 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-1"
-    patient = "NF0014_T1"
-    channel = "Mito"
-    compartment = "Cytoplasm"
+    # well_fov = "C9-7"
+    # patient = "NF0035_T1"
+    # channel = "Mito"
+    # compartment = "Cell"
+    well_fov = "G9-1"
+    patient = "NF0014_T2"
+    channel = "ER"
+    compartment = "Organoid"
     processor_type = "CPU"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -74,7 +86,7 @@ mask_set_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{mask_subparent_name}/{well_fov}/"
 )
 output_parent_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
+    f"{root_dir}/data/{patient}/{output_features_subparent_name}/{well_fov}/"
 )
 output_parent_path.mkdir(parents=True, exist_ok=True)
 channel_mapping_file_path = pathlib.Path(

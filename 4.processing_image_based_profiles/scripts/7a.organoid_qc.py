@@ -3,7 +3,7 @@
 
 # # Perform organoid-level quality control
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -23,6 +23,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -89,7 +90,7 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
     organoid_profiles_df[
         [
             "Metadata_Object_ObjectID",
-            "Metadata_Object_SingleCellCount",
+            "Metadata_Object_OrganoidSingleCellCount",
             "Organoid_NoChannel_AreaSizeShape_Volume",
         ]
     ]

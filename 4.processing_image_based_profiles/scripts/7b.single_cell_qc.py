@@ -3,7 +3,7 @@
 
 # # Perform single-cell level quality control
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -23,6 +23,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -102,7 +103,7 @@ print(f"Number of organoids flagged: {flagged_count}")
 sc_profiles_df.head()
 
 
-# In[6]:
+# In[5]:
 
 
 # Path to patient folders
@@ -148,7 +149,7 @@ print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
 
-# In[7]:
+# In[6]:
 
 
 sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
@@ -161,14 +162,14 @@ sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
-# In[8]:
+# In[7]:
 
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
 
 
-# In[9]:
+# In[8]:
 
 
 # Only process the rows that are not flagged
@@ -243,7 +244,7 @@ output_file_path = pathlib.Path(f"{output_dir}/sc_flagged_outliers.parquet").res
 sc_profiles_df.to_parquet(output_file_path, index=False)
 
 
-# In[10]:
+# In[9]:
 
 
 sc_profiles_df.head()
