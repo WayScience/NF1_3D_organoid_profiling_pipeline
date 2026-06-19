@@ -3,7 +3,7 @@
 [![Documentation status](https://readthedocs.org/projects/nf1-3d-organoid-profiling-pipeline/badge/?version=latest)](https://nf1-3d-organoid-profiling-pipeline.readthedocs.io/en/latest/?badge=latest)
 
 Patients living with neurofibromatosis type 1 (NF1) often develop neurofibromas (nfs), which are complex and benign tumors that can transform into malignant disease.
-However, there are only two FDA-approved therapies for NF1-associated inoperable plexiform neurofibromas (pnfs): mirdametinib and selumetinib.thus, we **urgently need more therapeutic options** for neurofibromas.
+However, there are only two FDA-approved therapies for NF1-associated inoperable plexiform neurofibromas (pnfs): mirdametinib and selumetinib. Thus, we **urgently need more therapeutic options** for neurofibromas.
 
 To address this, we have developed a 3D patient-derived tumor organoid model of NF1. We developed a modified 3D cell painting protocol to generate
 high-content imaging data from these organoids.
@@ -15,15 +15,15 @@ This pipeline was developed specifically for the NF1 3D organoid dataset, but th
 
 ### Raw channels
 
-| **405 Channel**                                                                                                                                                                | **488 channel**                                                                                                                                                              | **555 channel**                                                                                                                                                                  | **640 channel**                                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![DNA channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif?raw=1) | ![ER channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif?raw=1) | ![golgi channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif?raw=1) | ![mito channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif?raw=1) |
+| **405 channel** | **488 channel** | **555 channel** | **640 channel** |
+| --------------- | --------------- | --------------- | --------------- |
+| ![DNA channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif?raw=1) | ![ER channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif?raw=1) | ![Golgi channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif?raw=1) | ![Mito channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif?raw=1) |
 
 ### Organoid, nuclei, cell, and cytoplasm segmentations
 
-| **Organoid**                                                                                                                                                                                                      | **nuclei**                                                                                                                                                                                                    | **cell**                                                                                                                                                                                                  | **cytoplasm**                                                                                                                                                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Organoid segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif?raw=1) | ![nuclei segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif?raw=1) | ![cell segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif?raw=1) | ![cytoplasm segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif?raw=1) |
+| **Organoid** | **Nuclei** | **Cell** | **Cytoplasm** |
+| ------------ | ---------- | -------- | ------------- |
+| ![Organoid segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif?raw=1) | ![Nuclei segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif?raw=1) | ![Cell segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif?raw=1) | ![Cytoplasm segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif?raw=1) |
 
 ---
 
@@ -31,13 +31,14 @@ This pipeline was developed specifically for the NF1 3D organoid dataset, but th
 
 The pipeline follows a hierarchical processing structure:
 
+We present a full workflow to profile 3-dimensional images of organoids.
+Our end-to-end system processes raw 3D microscopy data through illumination correction, segmentation, feature extraction, quality control, and image-based profiling.
+
 **Execution strategy:**
 
 - SLURM-based HPC scheduling for parallel processing
 - Conditional execution based on file existence
 - Automatic job submission throttling (max 990 concurrent jobs)
-  We present a full workflow to profile 3-dimensional images of organoids.
-  Our end-to-end system processes raw 3D microscopy data through illumination correction, segmentation, feature extraction, quality control, and image-based profiling.
 
 ```mermaid
 flowchart TD
@@ -156,8 +157,7 @@ python scripts/1z.make_zstack_and_copy_over_CQ1.py --patient NF0014_T1
 - QC reports: HTML/PDF summaries with plots
 - Flagged well list for exclusion from downstream analysis
 
-**Purpose:** Assess image quality and flag problematic well fovs before
-segmentation.
+**Purpose:** Assess image quality and flag problematic well FOVs before segmentation.
 
 ### Image QC steps
 
@@ -283,14 +283,13 @@ W3 --> H1
 
 ### Organoid segmentation
 
-## Organoid segmentation was performed by using CellPose SAM on guassian smoothed (singma=10.0) AGP channel images with a size constraing of 200 pixel diameter.
+Organoid segmentation was performed using CellPose SAM on Gaussian-smoothed (sigma=10.0) AGP channel images with a size constraint of 200 pixel diameter.
 
 ## Stage 3: feature extraction
 
 **Directory:** `3.cellprofiling/`
 
-**Purpose:** Extract all morphology (hand-drawn) features (e.g., shape,
-Intensity, texture, etc.) from segmented objects.
+**Purpose:** Extract all morphology (hand-drawn) features (e.g., shape, intensity, texture, etc.) from segmented objects.
 
 ### Feature extraction steps
 
@@ -298,26 +297,22 @@ To maximize parallelization and processing speed, our featurization strategy fol
 
 1. **Level 1: all fovs for a patient, per well (grandparent process)**
    (`Run_featurization_grandparent.sh`)
-
-- Submits parent jobs for each FOV (level 2).
-
-1. **Level 2: all feature categories for each FOV (parent process)**
+   - Submits parent jobs for each FOV (level 2).
+2. **Level 2: all feature categories for each FOV (parent process)**
    (`Run_featurization_parent.sh`)
    - Loops through all combinations of feature types × compartments × channels.
    - Submits child jobs for each feature combination (level 3).
-2. **Level 3: compute specific feature categories (child process)**
+3. **Level 3: compute specific feature categories (child process)**
    (Individual feature extraction scripts)
    - Calculates specific features based on the hierarchical combination specified in levels 1 and 2.
    - Saves individual feature calculation outputs as a parquet file within a folder to be combined later.
 
-**Feature types:**
-For more details on feature types and extraction methods, refer to the
-`Features/` documentation.
+**Feature types:** For more details on feature types and extraction methods, refer to the `Features/` documentation.
 
 ### Feature extraction strategy
 
-We extract hand-drawn features across multiple categories (e.g., shape,intensity, texture) for each compartment and channel combination.
-In addition, we extract deep learning-based features using the sammmed3d model to capture complex morphological phenotypes that may not be described by hand-crafted features.
+We extract hand-drawn features across multiple categories (e.g., shape, intensity, texture) for each compartment and channel combination.
+In addition, we extract deep learning-based features using the sammed3d model to capture complex morphological phenotypes that may not be described by hand-crafted features.
 Sammed3d features are extracted as 384-dimensional embeddings per channel per object using the CLS token output from the vit encoder on the whole volume.
 Additionally, we take a `nucleocentric` feature extraction approach where we extract features from a cropped volumes centered around each nucleus.
 We use sammed3d to extract features from these nucleocentric volumes, and we z-maximally project the nucleocentric volumes to extract 2D features using CHAMMI-75 features.
@@ -325,7 +320,7 @@ CHAMMI-75 features are extracted as 384-dimensional embeddings per channel per o
 
 ### Feature extraction categories
 
-| Feature type           | description                                                     |
+| Feature type           | Description                                                     |
 | ---------------------- | --------------------------------------------------------------- |
 | Area + size            | object size, area, perimeter, etc.                              |
 | Colocalization         | overlap of signals between channels (e.g., pearson correlation) |
@@ -333,7 +328,7 @@ CHAMMI-75 features are extracted as 384-dimensional embeddings per channel per o
 | Granularity            | "granularity of pixel intensities"                              |
 | Neighbors              | number of neighboring objects, distance to neighbors            |
 | Texture                | haralick features, gabor filters, etc.                          |
-| Deep learning features | sammmed3d vit-based embeddings                                  |
+| Deep learning features | sammed3d vit-based embeddings                                   |
 | CHAMMI-75 features     | vit-based embeddings from nucleocentric 2D projections          |
 
 ## Stage 4: image-based profiling
@@ -362,124 +357,137 @@ Profile types:
 
 - **Object-level** standard scalar normalized profiles (one row per object with all features)
 - **Object-level** feature-selected profiles (one row per object with selected features)
-- **Well-level** aggregated profiles (one row per well with aggregated
-  Features)
+- **Well-level** aggregated profiles (one row per well with aggregated features)
 - **Consensus profiles** aggregated profiles with selected features (one row per treatment with selected features)
 
 With the combination of 6 profile types and 4 profile levels, we generate a total of 24 different profile outputs.
 Each profile output is saved as a parquet file in the `data/{patient}/image_based_profiles/`.
 
-### Profile file information flow diagram
+### Pipeline overview
 
-1. **Feature merging**
-   - Combine all feature csvs per well FOV
-   - Use DuckDB for sqlite → parquet conversion
-   - Create single-cell (sc) and organoid-level profiles
-2. **Annotation**
-   - Add treatment metadata from plate maps
-   - Link drug names, targets, concentrations
-   - Add patient genotype information
-3. **QC filtering**
-   - Apply image QC flags from stage 1
-   - Remove outlier objects (z-score > 3)
-   - Filter low-quality wells
-4. **Normalization**
-   - Z-score normalization per plate
-   - Applied to the entire plate based on the control wells (DMSO treated wells)
-   - Standardize features: `(x - μ) / σ`
-   - Handle batch effects
-5. **Feature selection**
-   - Remove low-variance features
-   - Remove correlated features (correlation > 0.9)
-   - Remove blocklisted features
-   - Remove features based on frequency cutoff categorical features
-6. **Aggregation**
-   - Calculate well-level statistics (mean, median, std)
-   - Generate organoid-parent aggregations
-   - Compute patient-level summaries
-7. **Form consensus profiles**
-   - Merge sc and organoid aggregations
-   - Export final consensus profiles
+Three processing tracks run in parallel — hand-crafted morphology features, SAMMed3D deep learning embeddings, and CHAMMI-75 deep learning embeddings — each following a distinct path determined by how the features were extracted and which compartments they cover.
 
 ```mermaid
 flowchart TD
-    A1[cellpainting images and segmentations]
-
-
-    A1 -->|featurization| B[nuclei features ]
-    A1 -->|featurization| C[cell features ]
-    A1 -->|featurization| D[cytoplasm features ]
-    A1 -->|featurization| E[organoid features ]
-    A1 -->|featurization| F[nucleocentric features ]
-
-
-    B --> |merging| G[single-cell features ]
-    C --> |merging| G[single-cell features ]
-    D --> |merging| G[single-cell features ]
-    G --> |annotation| G1[single-cell features ]
-
-    E --> |annotation| H[organoid features ]
-    F --> |annotation| I[nucleocentric features ]
-    G1 --> J[single-cell hand-drawn features ]
-    G1 --> K[single-cell deep learning features ]
-    H --> L[organoid hand-drawn features]
-    H --> M[organoid deep learning features]
-    I --> N[nucleocentric volumetric features]
-    I --> O[nucleocentric flat features]
-    J --> |QC| P1[QC profiles]
-    K --> |QC| P2[QC profiles]
-    L --> |QC| P3[QC profiles]
-    M --> |QC| P4[QC profiles]
-    N --> |QC| P5[QC profiles]
-    O --> |QC| P6[QC profiles]
-    P1 --> |normalization| S1[normalized profiles]
-    P2 --> |normalization| S2[normalized profiles]
-    P3 --> |normalization| S3[normalized profiles]
-    P4 --> |normalization| S4[normalized profiles]
-    P5 --> |normalization| S5[normalized profiles]
-    P6 --> |normalization| S6[normalized profiles]
-    S1 --> |feature selection| T1[selected features]
-    S2 --> |feature selection| T2[selected features]
-    S3 --> |feature selection| T3[selected features]
-    S4 --> |feature selection| T4[selected features]
-    S5 --> |feature selection| T5[selected features]
-    S6 --> |feature selection| T6[selected features]
-    T1 --> U1[aggregated profiles]
-    T2 --> U2[aggregated profiles]
-    T3 --> U3[aggregated profiles]
-    T4 --> U4[aggregated profiles]
-    T5 --> U5[aggregated profiles]
-    T6 --> U6[aggregated profiles]
-    T1 --> V1[consensus profiles]
-    T2 --> V2[consensus profiles]
-    T3 --> V3[consensus profiles]
-    T4 --> V4[consensus profiles]
-    T5 --> V5[consensus profiles]
-    T6 --> V6[consensus profiles]
+    A["<b>Feature parquets</b><br/>from Stage 3 (per well-FOV)"] --> B{Feature type}
+    B -->|Hand-crafted morphology| C["<b>Hand-crafted pipeline</b><br/>merge compartments → QC → normalize → select → aggregate"]
+    B -->|"SAMMed3D 3D embeddings<br/>SC · organoid · nucleocentric"| D["<b>SAMMed3D pipeline</b><br/>combine → normalize → select → aggregate"]
+    B -->|"CHAMMI-75 2D embeddings<br/>nucleocentric only"| E["<b>CHAMMI-75 pipeline</b><br/>combine → normalize → select → aggregate"]
 ```
 
 ---
 
-Separately from the above workflow, we also generate cross-patient consensus profiles by merging profiles across patients and applying global feature selection to identify a common set of features that are robust across patients.
-**Create all analysis ready output files**
+### Hand-crafted feature pipeline
+
+Traditional morphology features (shape, intensity, texture, colocalization, neighbors, granularity) extracted per object across four segmented compartments: **Nuclei**, **Cell**, **Cytoplasm**, and **Organoid**. Single-cell profiles are formed by joining Nuclei + Cell + Cytoplasm features into one row per cell. A **nucleocentric** representation is also included — see the box below.
+
+Hand-crafted features require merging across compartments and a two-stage QC cascade (organoid first, then single-cell inheriting organoid flags) before normalization.
 
 ```mermaid
-flowchart LR
-    A[all patient normalized profiles] --> B[combined profiles]
-    B --> C[global feature selection]
-    C --> D[cross-patient aggregated profiles]
-    D --> E[cross-patient consensus profiles]
+flowchart TD
+    classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
+
+    subgraph merge["Merge"]
+        A["<b>Merge feature parquets</b><br/>one parquet per compartment × feature type<br/>DuckDB"]
+        A --> B["<b>Merge single cells</b><br/>join Nuclei + Cell + Cytoplasm + Nucleocentric<br/>into one row per cell"]
+        B --> C["<b>Organoid–cell relationships</b><br/>spatially assign cells to parent organoids<br/>Mahalanobis distance · shell classification"]
+        C -.-> oMerge[/"sc_related.parquet<br/>organoid_related.parquet"/]:::out
+    end
+
+    C --> D["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
+    D -.-> oCombine[/"sc.parquet · organoid.parquet"/]:::out
+
+    D --> E["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
+    E -.-> oAnnotate[/"sc_anno.parquet<br/>organoid_anno.parquet"/]:::out
+
+    subgraph qc["Quality control"]
+        E --> F["<b>Organoid QC</b><br/>flag NaN rows + size outliers via z-score<br/>cosmicqc.find_outliers"]
+        F -.-> oOrgQC[/"organoid_flagged_outliers.parquet"/]:::out
+        F --> G["<b>Single-cell QC</b><br/>flag NaN · inherit organoid flags · nucleus size outliers<br/>cosmicqc.find_outliers"]
+        G -.-> oSCQC[/"sc_flagged_outliers.parquet"/]:::out
+    end
+
+    G --> H["<b>Normalize</b><br/>MAD-robustize · ref: QC-passing DMSO rows<br/>pycytominer.normalize"]
+    H -.-> oNorm[/"sc_norm.parquet<br/>organoid_norm.parquet"/]:::out
+
+    H --> I["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
+    I -.-> oFS[/"sc_fs.parquet<br/>organoid_fs.parquet"/]:::out
+
+    I --> J["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
+    J -.-> oAgg[/"sc_agg_well_level.parquet<br/>sc_consensus.parquet"/]:::out
 ```
 
 ---
 
-**Pycytominer feature selection parameters:**
+### SAMMed3D pipeline
 
-- Correlation threshold: 0.9
-- Variance threshold: 0.01
-- NA cutoff: 5%
-- Frequency cut: 0.1
-- Unique cut: 0.1
+SAMMed3D is a 3D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder, applied to whole 3D object volumes per fluorescence channel. It covers three object types:
+
+- **Single cells** (Nuclei, Cell, Cytoplasm volumes)
+- **Organoids** (full organoid volumes)
+- **Nucleocentric volumes** — 3D crops centered on each segmented nucleus, extracted from the raw image across all channels. These crops capture the immediate cellular microenvironment around the nucleus without relying on cell or organoid segmentation boundaries.
+
+SAMMed3D features are pre-computed per object in Stage 3 and do not require compartment merging or QC.
+
+```mermaid
+flowchart TD
+    classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
+
+    subgraph inputs["SAMMed3D inputs (from Stage 3)"]
+        A1["<b>Single-cell embeddings</b><br/>Nuclei · Cell · Cytoplasm volumes<br/>384-dim per channel per object"]
+        A2["<b>Organoid embeddings</b><br/>full organoid volumes<br/>384-dim per channel per object"]
+        A3["<b>Nucleocentric embeddings</b><br/>3D crops centered on each nucleus<br/>384-dim per channel per crop"]
+    end
+
+    A1 --> B["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
+    A2 --> B
+    A3 --> B
+    B -.-> oCombine[/"sammed_sc.parquet · sammed_organoid.parquet<br/>sammed_nucleocentric.parquet"/]:::out
+
+    B --> C["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
+    C -.-> oAnnotate[/"sammed_sc_anno.parquet · sammed_organoid_anno.parquet<br/>nucleocentric_sammed_anno.parquet"/]:::out
+
+    C --> D["<b>Normalize</b><br/>MAD-robustize · ref: all DMSO rows<br/>pycytominer.normalize"]
+    D -.-> oNorm[/"sammed_sc_norm.parquet · sammed_organoid_norm.parquet<br/>sammed_nucleocentric_norm.parquet"/]:::out
+
+    D --> E["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
+    E -.-> oFS[/"sammed_sc_fs.parquet · sammed_organoid_fs.parquet<br/>sammed_nucleocentric_fs.parquet"/]:::out
+
+    E --> F["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
+    F -.-> oAgg[/"sammed_sc_agg_well_level.parquet · sammed_organoid_agg_well_level.parquet<br/>sammed_nucleocentric_agg_well_level.parquet<br/>sammed_sc_consensus.parquet · sammed_organoid_consensus.parquet<br/>sammed_nucleocentric_consensus.parquet"/]:::out
+```
+
+---
+
+### CHAMMI-75 pipeline
+
+CHAMMI-75 is a 2D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder. It is applied exclusively to **nucleocentric volumes** — but unlike SAMMed3D, it operates on **2D maximum-intensity projections** of those volume crops rather than the full 3D crop. This collapses the z-axis and captures a 2D summary of the nuclear microenvironment per channel.
+
+CHAMMI-75 features are pre-computed per nucleus in Stage 3 and do not require compartment merging or QC.
+
+```mermaid
+flowchart TD
+    classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
+
+    A["<b>Nucleocentric embeddings</b><br/>2D max projections of nucleus-centered crops<br/>384-dim per channel per nucleus · CHAMMI-75"]
+
+    A --> B["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
+    B -.-> oCombine[/"nucleocentric_chammi.parquet"/]:::out
+
+    B --> C["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
+    C -.-> oAnnotate[/"nucleocentric_chammi_anno.parquet"/]:::out
+
+    C --> D["<b>Normalize</b><br/>MAD-robustize · ref: all DMSO rows<br/>pycytominer.normalize"]
+    D -.-> oNorm[/"chammi_nucleocentric_norm.parquet"/]:::out
+
+    D --> E["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
+    E -.-> oFS[/"chammi_nucleocentric_fs.parquet"/]:::out
+
+    E --> F["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
+    F -.-> oAgg[/"chammi_nucleocentric_agg_well_level.parquet<br/>chammi_nucleocentric_consensus.parquet"/]:::out
+```
+
+---
 
 **Execution:**
 
@@ -649,8 +657,7 @@ Note that the utilites should be imported into compute environments. see the
 - HPC/SLURM environment recommended for large-scale runs
 - At least multiple tbs of storage for raw and processed images
 - Sufficient RAM and CPU/GPU resources depending on dataset size
-  - We recommend at least 128GB RAM and multiple CPU cores for image
-    Processing steps
+  - We recommend at least 128GB RAM and multiple CPU cores for image processing steps
   - Though we have been able to get RAM usage under 8GB per well_fov by distributing the compute.
     - Please note that this RAM usage is highly dependent on the number of z-slices, image dimensions, and number of channels.
     - Here we generally have 30-50 z-slices, ~1500x1500 pixel images, and 4 channels. we rarely exceed 100 z-slices. additionally, scaling in z-slices will require more compute time and RAM.
@@ -687,8 +694,7 @@ We will have data available at some point on the NF data portal via Synapse.
 
 ## Associated repositories
 
-For more information on the NF1 organoid profiling project, please see the
-Following associated repositories:
+For more information on the NF1 organoid profiling project, please see the following associated repositories:
 
 - [NF1 3D organoid profiling
   Pipeline](https://github.com/wayscience/NF1_3D_organoid_profiling_pipeline)

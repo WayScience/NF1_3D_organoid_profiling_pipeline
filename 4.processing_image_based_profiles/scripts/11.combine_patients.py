@@ -1,6 +1,33 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # 11. Combine Patients
+# 
+# ## Purpose
+# Combine per-patient normalized profiles across all patients into a single
+# cross-patient dataset, then run feature selection and aggregation at the
+# population level.
+# 
+# This is **step 11 of Stage 4 (image-based profiling)** and the only notebook
+# that runs **once globally** (not per-patient). It must follow `10.aggregation.ipynb`
+# for all patients.
+# 
+# ## Inputs
+# - `data/patient_IDs.txt` — list of all patient IDs (one per line)
+# - Per-patient `5.normalized_profiles/*.parquet` for each of 6 profile types
+# 
+# ## Outputs
+# 
+# All outputs go to `data/all_patient_profiles/`. For each of 6 profile types,
+# four files are produced:
+# 
+# | Suffix | Content |
+# |---|---|
+# | `*_norm_profile.parquet` | All-patient concatenated normalized profiles |
+# | `*_fs_profiles.parquet` | Feature-selected (cross-patient FS) |
+# | `*_sc_agg_profiles.parquet` | Well-level aggregated (median by PatientTumor × Well) |
+# | `*_sc_consensus_profiles.parquet` | Consensus (median by PatientTumor × Treatment) |
+
 # In[ ]:
 
 
@@ -69,22 +96,31 @@ levels_to_merge_dict
 # In[5]:
 
 
+# Feature selection operations applied in order:
+#   drop_na_columns      — remove features with >na_cutoff fraction of NaN values
+#   blocklist            — remove features on the pycytominer blocklist (known noisy/artifactual)
+#   variance_threshold   — remove near-constant features (low frequency or unique value ratio)
+#   correlation_threshold — remove one feature from each pair with Pearson r > corr_threshold
 feature_select_ops = [
     "drop_na_columns",
     "blocklist",
     "variance_threshold",  # comment out to remove variance thresholding
     "correlation_threshold",  # comment out to remove correlation thresholding
 ]
-na_cutoff = 0.05
+na_cutoff = 0.05        # drop features with >5% NaN
+# Cross-patient threshold is 0.9 (vs 0.95 per-patient in notebook 9): the larger
+# combined dataset warrants stricter redundancy removal.
 corr_threshold = 0.9
-freq_cut = 0.01
-unique_cut = 0.01
+freq_cut = 0.01         # variance threshold: most-common / second-most-common value ratio
+unique_cut = 0.01       # variance threshold: minimum fraction of unique values
 
 
 # In[6]:
 
 
+# Well-level strata: one row per (patient, well) combination
 aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
+# Consensus strata: one row per (patient, treatment) combination
 consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
 
 
@@ -107,8 +143,9 @@ for profile_type, files in levels_to_merge_dict.items():
     ###############################################
     # Feature selection
     ###############################################
-    metadata_cols = [x for x in df.columns if "Metadata" in x]
-    # only perform feature selection on DMSO and staurosporine treatments and apply to rest of profiles
+    metadata_cols = [x for x in df.columns if x.startswith("Metadata_")]
+    # Phase 1: fit feature selection on reference treatments only.
+    # all_trt_df retains the full dataset; df is narrowed to the reference subset.
     all_trt_df = df.copy()
     df = df.loc[
         df["Metadata_Experiment_Treatment"].isin(["DMSO 1%", "Staurosporine 10 nM"])
@@ -124,7 +161,7 @@ for profile_type, files in levels_to_merge_dict.items():
         freq_cut=freq_cut,  # comment out to use default value
         unique_cut=unique_cut,  # comment out to use default value
     )
-    # apply feature selection to all profiles
+    # Phase 2: apply retained feature set back to the full dataset.
     fs_profiles = all_trt_df[
         [col for col in all_trt_df.columns if col in fs_profiles.columns]
     ]
@@ -133,38 +170,39 @@ for profile_type, files in levels_to_merge_dict.items():
         index=False,
     )
     ###############################################
-    # Aggregation
+    # Aggregation — produces well-level and consensus parquets
     ###############################################
-    feature_columns = [col for col in fs_profiles.columns if col not in metadata_cols]
+    # Recompute feature columns from fs_profiles after feature selection.
+    feature_columns = [col for col in fs_profiles.columns if not col.startswith("Metadata_")]
     # aggregate the profiles
-    sc_agg_df = aggregate(
+    agg_df = aggregate(
         population_df=fs_profiles,
         strata=aggregate_strata,
         features=feature_columns,
         operation="median",
     )
-    sc_agg_df.to_parquet(
+    agg_df.to_parquet(
         f"{all_patients_output_path}/{profile_type}_sc_agg_profiles.parquet",
         index=False,
     )
     ###############################################
     # Consensus profiles
     ###############################################
-    # consensus profiles
-    sc_consensus_df = aggregate(
+    consensus_df = aggregate(
         population_df=fs_profiles,
         strata=consensus_strata,
         features=feature_columns,
         operation="median",
     )
-    sc_consensus_df.to_parquet(
+    consensus_df.to_parquet(
         f"{all_patients_output_path}/{profile_type}_sc_consensus_profiles.parquet",
         index=False,
     )
     print("The number features before feature selection:", df.shape[1])
     print("The number features after feature selection:", fs_profiles.shape[1])
-    print("The number of profiles after aggregation:", sc_agg_df.shape[0])
+    print("The number of profiles after aggregation:", agg_df.shape[0])
     print(
         "The number of profiles after consensus profile generation:",
-        sc_consensus_df.shape[0],
+        consensus_df.shape[0],
     )
+

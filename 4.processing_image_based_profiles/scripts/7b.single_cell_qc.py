@@ -1,7 +1,31 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Perform single-cell level quality control
+# # 7b. Single-Cell QC
+# 
+# ## Purpose
+# Flag low-quality single cells per patient using three criteria applied in cascade:
+# 1. **NaN detection** — cells missing key metadata or feature values
+# 2. **Inherited organoid flags** — cells whose parent organoid was flagged in `7a`
+# 3. **Nucleus outliers** — abnormally small/large nuclei or high mass displacement
+# 
+# Outlier detection (step 3) only runs on cells that passed steps 1 and 2.
+# 
+# This is **step 7b of Stage 4 (image-based profiling)**. It runs once per patient
+# and depends on `7a.organoid_qc.ipynb` having run first.
+# 
+# ## Inputs
+# - `data/{patient}/image_based_profiles/3.annotated_profiles/sc_anno.parquet`
+# - `data/{patient}/image_based_profiles/4.qc_profiles/organoid_flagged_outliers.parquet`
+# 
+# ## Outputs
+# - `data/{patient}/image_based_profiles/4.qc_profiles/sc_flagged_outliers.parquet`
+#   — SC profile with added `Metadata_cqc_*` flag columns
+# 
+# ## Notes
+# - QC flags are additive: a cell can be flagged by multiple criteria simultaneously.
+# - The `Metadata_cqc_organoid_flagged` column propagates organoid-level flags down
+#   to all cells belonging to that organoid, linking 7a and 7b outputs.
 
 # In[ ]:
 
@@ -39,13 +63,13 @@ else:
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# ## Load in each single-cell level profile per patient and process
-#
-# 1. Load in the single-cell data (add `patient_id` column).
-# 2. Load in respective organoid qc data (only metadata and cqc columns) to already flag cells that come from a flagged organoid.
-#    - Also add a flag for if single-cells do not have an organoid segmentation (`parent_organoid` == -1).
-#    - Also add flag for if the `object_id` for a single-cell is NaN.
-# 3. Concat single-cell data together.
+# ## Load profiles and initialize QC flags
+# 
+# QC is applied in three rounds:
+# 1. **NaN detection** (`Metadata_cqc_nan_detected`) — missing ObjectID, volume, or parent
+# 2. **Inherited organoid flags** (`Metadata_cqc_organoid_flagged`, `Metadata_cqc_missing_parent_organoid`)
+#    — cells whose parent organoid failed QC in 7a, or have no parent organoid at all
+# 3. **Nucleus outliers** — applied only to cells that passed rounds 1 and 2
 
 # In[3]:
 
@@ -106,8 +130,10 @@ sc_profiles_df.head()
 # In[5]:
 
 
-# Path to patient folders
-
+# Round 2: propagate organoid-level QC flags to single cells.
+# A cell is flagged if its parent organoid was flagged in 7a.
+# We match on (ParentOrganoid, WellFOV) rather than ParentOrganoid alone because
+# object IDs are reassigned per-FOV and are not globally unique across the patient.
 
 # Default QC flags
 sc_profiles_df["Metadata_cqc_organoid_flagged"] = False
@@ -156,9 +182,9 @@ sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
-#
+# 
 # We will attempt to detect instances of poor quality segmentations using the nuclei compartment as the base. The conditions we are using are as follows:
-#
+# 
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
@@ -172,6 +198,10 @@ metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
 # In[8]:
 
 
+# Round 3: nucleus-based outlier detection using z-score thresholds.
+# Threshold sign: negative = flag below mean, positive = flag above mean.
+# Threshold magnitude: number of standard deviations from the mean.
+# Only cells that passed rounds 1 and 2 are evaluated here.
 # Only process the rows that are not flagged
 filtered_plate_df = sc_profiles_df[
     ~(
@@ -248,3 +278,4 @@ sc_profiles_df.to_parquet(output_file_path, index=False)
 
 
 sc_profiles_df.head()
+

@@ -1,6 +1,37 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # 2. Merge Single-Cell Profiles
+# 
+# ## Purpose
+# This notebook reads the per-compartment DuckDB produced by notebook 1 for a single
+# well-FOV and merges the Nuclei, Cell, and Cytoplasm tables into a single-cell (SC)
+# parquet profile. Organoid and Nucleocentric profiles are passed through and saved as
+# separate parquets.
+# 
+# This is **step 2 of Stage 4 (image-based profiling)**. It runs once per well-FOV and
+# is typically submitted as a child job via the SLURM scheduler.
+# 
+# ## Inputs
+# - `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/{well_fov}.duckdb`
+#   - Five compartment tables: `Organoid`, `Nuclei`, `Cell`, `Cytoplasm`, `Nucleocentric`
+#   - Produced by notebook 1 (`1.merge_feature_parquets.ipynb`)
+# 
+# ## Outputs
+# Three parquet files written to `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
+# 
+# | File | Content | Rows |
+# |---|---|---|
+# | `sc_profiles_{well_fov}.parquet` | Merged Nuclei + Cell + Cytoplasm features | One row per object present in all three compartments |
+# | `organoid_profiles_{well_fov}.parquet` | Organoid features passed through | One row per segmented organoid |
+# | `nucleocentric_profiles_{well_fov}.parquet` | Nucleocentric features passed through | One row per nucleus-centered volume |
+# 
+# ## Notes
+# - Only objects present in **all three** of Nuclei, Cell, and Cytoplasm are retained in the SC profile.
+#   Objects segmented in only some compartments are dropped.
+# - Object IDs are reassigned to a sequential `1..N` range at the end of this notebook.
+#   The original segmentation mask IDs are not preserved.
+
 # In[1]:
 
 
@@ -8,6 +39,7 @@ import os
 import pathlib
 
 import duckdb
+import pandas as pd
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -54,13 +86,12 @@ destination_nucleocentric_parquet_file = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/nucleocentric_profiles_{well_fov}.parquet"
 ).resolve()
 destination_sc_parquet_file.parent.mkdir(parents=True, exist_ok=True)
-dest_datatype = "parquet"
 
 
-# In[4]:
+# In[ ]:
 
 
-# show the tables
+# Load all five compartment tables from the DuckDB produced by notebook 1.
 with duckdb.connect(input_sqlite_file) as con:
     tables = con.execute("SHOW TABLES").fetchdf()
     print(tables)
@@ -71,14 +102,19 @@ with duckdb.connect(input_sqlite_file) as con:
     nucleocentric_table = con.sql("SELECT * FROM Nucleocentric").df()
 
 
-# In[5]:
+# In[ ]:
 
 
+# Retain only objects that were successfully segmented in all three compartments.
+# A nucleus without a matched cell/cytoplasm (or vice versa) is not a valid
+# single-cell profile and is dropped here.
 nuclei_id_set = set(nuclei_table["object_id"].to_list())
 cells_id_set = set(cells_table["object_id"].to_list())
 cytoplasm_id_set = set(cytoplasm_table["object_id"].to_list())
+
 # find the intersection of the three sets
 intersection_set = nuclei_id_set.intersection(cells_id_set, cytoplasm_id_set)
+
 # keep only the rows in the three tables that are in the intersection set
 nuclei_table = nuclei_table[nuclei_table["object_id"].isin(intersection_set)]
 cells_table = cells_table[cells_table["object_id"].isin(intersection_set)]
@@ -88,7 +124,9 @@ cytoplasm_table = cytoplasm_table[cytoplasm_table["object_id"].isin(intersection
 # In[6]:
 
 
-# connect to DuckDB and register the tables
+# Merge the three compartment tables into a single-cell dataframe.
+# Because object_ids were already filtered to the intersection in the cell above,
+# this LEFT JOIN is effectively an INNER JOIN — no NaN-filled rows will result.
 with duckdb.connect() as con:
     con.register("nuclei", nuclei_table)
     con.register("cells", cells_table)
@@ -103,6 +141,12 @@ with duckdb.connect() as con:
 
 
 # ## Reorder object IDs
+# 
+# Original segmentation IDs are assigned per-FOV by the mask labeling step and are not
+# globally unique. They are replaced here with a clean sequential `1..N` index.
+# Note: the original mask IDs are not preserved — traceability back to the segmentation
+# mask requires the `image_set` column (identifying the FOV) plus positional knowledge
+# of which objects survived the intersection filter above.
 
 # In[7]:
 
@@ -140,3 +184,4 @@ print(f"Final nucleocentric dataframe shape: {nucleocentric_table.shape}")
 # save the nucleocentric data as parquet
 nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
 nucleocentric_table.head()
+

@@ -1,7 +1,27 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Perform organoid-level quality control
+# # 7a. Organoid QC
+# 
+# ## Purpose
+# Flag low-quality organoids per patient using two criteria applied in sequence:
+# 1. **NaN detection** — organoids missing key metadata or feature values
+# 2. **Size outliers** — abnormally small or large organoids by volume (z-score)
+# 
+# This is **step 7a of Stage 4 (image-based profiling)**. It runs once per patient
+# and must complete before `7b.single_cell_qc.ipynb`, which inherits organoid flags.
+# 
+# ## Inputs
+# - `data/{patient}/image_based_profiles/3.annotated_profiles/organoid_anno.parquet`
+# 
+# ## Outputs
+# - `data/{patient}/image_based_profiles/4.qc_profiles/organoid_flagged_outliers.parquet`
+#   — original organoid profile with three added `Metadata_cqc_*` flag columns
+# 
+# ## Notes
+# - QC flags are **additive**: an organoid can be flagged by multiple criteria simultaneously.
+# - Outlier detection only runs on the subset of organoids that passed the NaN check,
+#   so NaN rows are never evaluated for size outliers.
 
 # In[ ]:
 
@@ -39,13 +59,6 @@ else:
     patient = "NF0014_T1"
 
 
-# In[3]:
-
-
-print(f"Processing patient: {patient}")
-print("This should not read none....")
-
-
 # ## Load in all the organoid profiles and concat together
 
 # In[4]:
@@ -76,11 +89,15 @@ print(orig_organoid_profiles_df.shape)
 orig_organoid_profiles_df.head()
 
 
-# ## Perform a first round of QC by flagging any row with NaNs in metadata
-#
-# We check for NaNs in the `object_id` and/or the `single_cell_count` column and flag them because:
-#    - An organoid can not exist if there aren't any cells.
-#    - NaN in object_id would be incorrect as that means the object/organoid does not exist (will have all NaNs in the feature space).
+# ## Round 1 QC: flag rows with NaN in key columns
+# 
+# `Metadata_cqc_*` columns are boolean flags added by this notebook. A value of `True`
+# means the organoid failed that criterion. Multiple flags can be True simultaneously.
+# 
+# We flag organoids where `ObjectID`, `SingleCellCount`, or `Volume` is NaN because:
+# - An organoid with no cells (`SingleCellCount` NaN) cannot be a valid profile row.
+# - A NaN `ObjectID` means the object does not exist and all features will be NaN.
+# - A NaN `Volume` means the core morphology feature is missing.
 
 # In[5]:
 
@@ -116,7 +133,11 @@ metadata_columns = [x for x in organoid_profiles_df.columns if "Metadata" in x]
 # In[7]:
 
 
-# Process each plate (patient_id) independently in the combined dataframe
+## Round 2 QC: size-based outlier detection
+
+# `find_outliers` uses z-score thresholds: negative values flag objects below the mean,
+# positive values flag objects above. Threshold magnitude is the number of standard
+# deviations from the mean. Only non-NaN rows (from Round 1) are evaluated.
 
 # Only process the rows that are not flagged
 filtered_profile_df = organoid_profiles_df[
@@ -154,10 +175,6 @@ organoid_profiles_df.loc[
     large_size_outliers.index, "Metadata_cqc_large_organoid_outlier"
 ] = True
 
-# Update original dataframe so flags persist
-organoid_profiles_df.loc[
-    small_size_outliers.index, "Metadata_cqc_small_organoid_outlier"
-] = True
 # Print number of outliers (only in filtered rows)
 small_count = filtered_profile_df.index.intersection(small_size_outliers.index).shape[0]
 large_count = filtered_profile_df.index.intersection(large_size_outliers.index).shape[0]
@@ -177,3 +194,4 @@ organoid_profiles_df.to_parquet(output_file_path, index=False)
 # Print example output of the flagged organoid profiles
 print(organoid_profiles_df.shape)
 organoid_profiles_df.head()
+

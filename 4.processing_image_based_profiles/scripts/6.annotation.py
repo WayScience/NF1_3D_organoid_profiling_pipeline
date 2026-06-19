@@ -1,9 +1,40 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This notebook performs profile annotation.
-# The platemap is mapped back to the profile to retain the sample metadata.
-#
+# # 6. Annotation
+# 
+# ## Purpose
+# Annotate the three combined profiles (SC, organoid, nucleocentric) for a single patient
+# with treatment metadata, drug information, and microscope metadata. Standardize column
+# naming under a `Metadata_*` prefix scheme and split each profile into hand-crafted and
+# deep-learning feature subsets, producing 6 output parquets.
+# 
+# This is **step 6 of Stage 4 (image-based profiling)**. It runs once per patient.
+# 
+# ## Inputs
+# - `data/{patient}/image_based_profiles/2.combined_profiles/sc.parquet`
+# - `data/{patient}/image_based_profiles/2.combined_profiles/organoid.parquet`
+# - `data/{patient}/image_based_profiles/2.combined_profiles/nucleocentric.parquet`
+# - `config/platemaps/{patient}_platemap.csv` — well-level treatment assignments
+# - `config/drug_information/drug_information.csv` — drug target, class, therapeutic category
+# 
+# ## Outputs
+# Six annotated parquets in `data/{patient}/image_based_profiles/3.annotated_profiles/`:
+# 
+# | File | Profile type | Feature set |
+# |---|---|---|
+# | `sc_anno.parquet` | Single-cell | Hand-crafted |
+# | `organoid_anno.parquet` | Organoid | Hand-crafted |
+# | `sammed_sc_anno.parquet` | Single-cell | SAMMed3D |
+# | `sammed_organoid_anno.parquet` | Organoid | SAMMed3D |
+# | `nucleocentric_sammed_anno.parquet` | Nucleocentric | SAMMed3D |
+# | `nucleocentric_chammi_anno.parquet` | Nucleocentric | CHAMMI-75 |
+# 
+# ## Notes
+# - Metadata columns are sub-categorized as `Metadata_Biology_*`, `Metadata_Experiment_*`,
+#   `Metadata_Object_*`, `Metadata_Location_*`, `Metadata_Neighbors_*`, `Metadata_Microscopy_*`.
+# - Location and neighbor features are promoted to `Metadata_*` so they are excluded from
+#   normalization and feature selection in downstream steps.
 
 # In[1]:
 
@@ -24,7 +55,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
 
 
 # In[2]:
@@ -69,10 +99,16 @@ def annotate_profiles(
         pd.DataFrame
             Annotated profile DataFrame with additional columns for treatment, dose, and unit.
     """
+    # Work on a copy to avoid mutating the caller's platemap across repeated calls.
+    platemap_df = platemap_df.copy()
     platemap_df["Treatment_platemap"] = platemap_df["Treatment"]
     platemap_df["merging_string_treatment"] = (
         platemap_df["Treatment_platemap"].str.split().str[0]
     )
+    # Merge strategy:
+    #   1. Join platemap with drug_information on the first word of Treatment
+    #      (e.g. "ARV-825 1 uM" → join key "ARV-825") to get Target, Class, etc.
+    #   2. Join the resulting table onto the profile on Well == WellPosition.
     drug_information_platemap_merged = (
         pd.merge(
             platemap_df[
@@ -102,7 +138,7 @@ def annotate_profiles(
     return profile_df
 
 
-# ## pathing
+# ## Pathing
 
 # In[4]:
 
@@ -145,7 +181,7 @@ sammed_annotated_organoid_profiles_path = pathlib.Path(
 organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[5]:
+# In[ ]:
 
 
 # read data
@@ -154,16 +190,8 @@ organoid_merged = pd.read_parquet(organoid_merged_path)
 nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
 # read platemap
 platemap = pd.read_csv(platemap_path)
-platemap["Treatment"] = (
-    platemap["Treatment"]
-    + " "
-    + platemap["Dose"].astype(str)
-    + " "
-    + platemap["Unit"].astype(str)
-)
 # if % is in Treatment then delete the space leading to %
 platemap["Treatment"] = platemap["Treatment"].str.replace(r"\s+%", "%", regex=True)
-platemap.drop(columns=["Unit", "Dose"], inplace=True)
 platemap.head()
 
 
@@ -211,7 +239,7 @@ nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.g
 )["image_set"].transform("count")
 
 
-# In[8]:
+# In[ ]:
 
 
 column_rename_mapping = {
@@ -219,14 +247,20 @@ column_rename_mapping = {
     "image_set": "WellFOV",
     "object_id": "ObjectID",
 }
+
 # rename columns for consistency across profiles
 sc_merged.rename(columns=column_rename_mapping, inplace=True)
 organoid_merged.rename(columns=column_rename_mapping, inplace=True)
 nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
 
-# In[9]:
+# In[ ]:
 
+
+# Promote spatial coordinate columns to Metadata_Location_* so they are excluded
+# from normalization and feature selection in downstream steps.
+# Intensity-based location columns (MinX/MaxX etc. from intensity measurements)
+# are dropped entirely — only AreaSizeShape-derived coordinates are kept.
 
 organoid_location_features = [
     x
@@ -239,6 +273,7 @@ organoid_location_features = [
         )
     )
 ]
+
 sc_location_features = [
     x
     for x in sc_merged.columns
@@ -367,8 +402,13 @@ nucleocentric_merged = nucleocentric_merged.rename(
 # In[12]:
 
 
-# Categorize the metadata features
-# Biology, Experiment, Image, Object, Microscopy,
+# Sub-categorize all Metadata_* columns into four namespaces:
+#   Biology_    — patient/tumor identity (who the sample came from)
+#   Experiment_ — treatment, well, and drug annotation (what was done)
+#   Object_     — per-object identifiers and counts (what object this row represents)
+#   Microscopy_ — instrument and acquisition parameters (how it was imaged)
+# Metadata_Location_* and Metadata_Neighbors_* were already renamed in earlier cells.
+# After renaming, all Metadata_* columns are moved to the front and rows are sorted.
 biology_features = [
     "Metadata_PatientTumor",
     "Metadata_Patient",
@@ -387,9 +427,7 @@ object_features = [
     "Metadata_ParentOrganoid",
     "Metadata_SingleCellCount",
     "Metadata_WellSingleCellCount",
-    "Metadata_WellOrganoidCount",
     "Metadata_OrganoidSingleCellCount",
-    "Metadata_WellNucleocentricCount",
 ]
 microscopy_features = [
     "Metadata_MicroscopeType",
@@ -452,7 +490,13 @@ nucleocentric_merged = nucleocentric_merged.sort_values(
 # In[13]:
 
 
-# split the sc_merged_data into hand crafted and sammed features
+# Split each profile into feature subsets by column name pattern:
+#   - Hand-crafted: columns with no 'sammed' or 'chammi75' in name (AreaSizeShape, Intensity, etc.)
+#   - SAMMed3D: columns containing 'sammed' (3D volumetric deep learning embeddings)
+#   - CHAMMI-75: columns containing 'chammi75' (2D nucleocentric projection embeddings)
+#
+# This produces 6 output dataframes (3 profile types × 2 feature sets for SC/organoid,
+# and SAMMed3D + CHAMMI-75 for nucleocentric) saved separately in cell 16.
 sc_metadata_columns = [x for x in sc_merged.columns if "Metadata" in x]
 sc_handcrafted_columns = [
     x for x in sc_merged.columns if "Metadata" not in x and "sammed" not in x.lower()
@@ -522,3 +566,4 @@ sc_annotated.head()
 
 
 organoid_annotated.head()
+
