@@ -2,32 +2,32 @@
 # coding: utf-8
 
 # # 7b. Single-Cell QC
-# 
+#
 # ## Purpose
 # Flag low-quality single cells per patient using three criteria applied in cascade:
 # 1. **NaN detection** — cells missing key metadata or feature values
 # 2. **Inherited organoid flags** — cells whose parent organoid was flagged in `7a`
 # 3. **Nucleus outliers** — abnormally small/large nuclei or high mass displacement
-# 
+#
 # Outlier detection (step 3) only runs on cells that passed steps 1 and 2.
-# 
+#
 # This is **step 7b of Stage 4 (image-based profiling)**. It runs once per patient
 # and depends on `7a.organoid_qc.ipynb` having run first.
-# 
+#
 # ## Inputs
 # - `data/{patient}/image_based_profiles/3.annotated_profiles/sc_anno.parquet`
 # - `data/{patient}/image_based_profiles/4.qc_profiles/organoid_flagged_outliers.parquet`
-# 
+#
 # ## Outputs
 # - `data/{patient}/image_based_profiles/4.qc_profiles/sc_flagged_outliers.parquet`
 #   — SC profile with added `Metadata_cqc_*` flag columns
-# 
+#
 # ## Notes
 # - QC flags are additive: a cell can be flagged by multiple criteria simultaneously.
 # - The `Metadata_cqc_organoid_flagged` column propagates organoid-level flags down
 #   to all cells belonging to that organoid, linking 7a and 7b outputs.
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -64,7 +64,7 @@ else:
 
 
 # ## Load profiles and initialize QC flags
-# 
+#
 # QC is applied in three rounds:
 # 1. **NaN detection** (`Metadata_cqc_nan_detected`) — missing ObjectID, volume, or parent
 # 2. **Inherited organoid flags** (`Metadata_cqc_organoid_flagged`, `Metadata_cqc_missing_parent_organoid`)
@@ -89,6 +89,29 @@ organoid_file = pathlib.Path(
     / "4.qc_profiles/organoid_flagged_outliers.parquet"
 )
 
+nucleocentric_annotated_sammed_path = pathlib.Path(
+    profile_base_dir
+    / "data"
+    / f"{patient}"
+    / f"{image_based_profiles_subparent_name}"
+    / "3.annotated_profiles/nucleocentric_sammed_anno.parquet"
+).resolve()
+nucleocentric_annotated_morphem_output_path = pathlib.Path(
+    profile_base_dir
+    / "data"
+    / f"{patient}"
+    / f"{image_based_profiles_subparent_name}"
+    / "3.annotated_profiles/nucleocentric_morphem_anno.parquet"
+).resolve()
+sammed_annotated_sc_profiles_path = pathlib.Path(
+    profile_base_dir
+    / "data"
+    / f"{patient}"
+    / f"{image_based_profiles_subparent_name}"
+    / "3.annotated_profiles/sammed_sc_anno.parquet"
+).resolve()
+
+
 output_dir = pathlib.Path(
     profile_base_dir
     / "data"
@@ -97,6 +120,17 @@ output_dir = pathlib.Path(
     / "4.qc_profiles"
 )
 output_dir.mkdir(parents=True, exist_ok=True)
+
+sc_qc_output_path = pathlib.Path(f"{output_dir}/sc_flagged_outliers.parquet").resolve()
+sammed_sc_qc_output_path = pathlib.Path(
+    f"{output_dir}/sammed_sc_flagged_outliers.parquet"
+).resolve()
+nucleocentric_sammed_qc_output_path = pathlib.Path(
+    f"{output_dir}/nucleocentric_sammed_flagged_outliers.parquet"
+).resolve()
+nucleocentric_morphem_qc_output_path = pathlib.Path(
+    f"{output_dir}/nucleocentric_morphem_flagged_outliers.parquet"
+).resolve()
 
 orig_sc_profiles_df = pd.read_parquet(sc_file)
 organoid_qc_profiles_df = pd.read_parquet(organoid_file)
@@ -182,9 +216,9 @@ sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
-# 
+#
 # We will attempt to detect instances of poor quality segmentations using the nuclei compartment as the base. The conditions we are using are as follows:
-# 
+#
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
@@ -270,8 +304,7 @@ print(f"Large nuclei outliers found: {large_count}")
 print(f"High mass displacement outliers found: {high_mass_count}")
 
 # Save updated plate_df with flag columns included
-output_file_path = pathlib.Path(f"{output_dir}/sc_flagged_outliers.parquet").resolve()
-sc_profiles_df.to_parquet(output_file_path, index=False)
+sc_profiles_df.to_parquet(sc_qc_output_path, index=False)
 
 
 # In[9]:
@@ -279,3 +312,60 @@ sc_profiles_df.to_parquet(output_file_path, index=False)
 
 sc_profiles_df.head()
 
+
+# ### Merge the qc flags to the deep learning-based profiles and save the output
+# Merge the QC flags back to the original single cell profiles, which will be used in downstream analyses and single cell QC.
+# We need to do this beacuase we do not run qc on black-box features.
+# Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
+# and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
+
+# In[10]:
+
+
+nucleocentric_annotated_sammed_df = pd.read_parquet(nucleocentric_annotated_sammed_path)
+nucleocentric_annotated_morphem_df = pd.read_parquet(
+    nucleocentric_annotated_morphem_output_path
+)
+sammed_annotated_sc_profiles_df = pd.read_parquet(sammed_annotated_sc_profiles_path)
+df_dict = {
+    "nulceocentric_sammed": {
+        "df": nucleocentric_annotated_sammed_df,
+        "qc_output_path": nucleocentric_sammed_qc_output_path,
+    },
+    "nucleocentric_chammi": {
+        "df": nucleocentric_annotated_morphem_df,
+        "qc_output_path": nucleocentric_morphem_qc_output_path,
+    },
+    "sammed_sc_profiles": {
+        "df": sammed_annotated_sc_profiles_df,
+        "qc_output_path": sammed_sc_qc_output_path,
+    },
+}
+
+
+# In[11]:
+
+
+# set the merge keys to int for both dataframes to ensure they match
+merge_keys = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_WellFOV",
+    "Metadata_Object_ObjectID",
+]
+qc_keys = [col for col in sc_profiles_df.columns if "Metadata_cqc" in col]
+
+for profile_name in df_dict:
+    df = df_dict[profile_name]["df"]
+    for key in merge_keys:
+        if key not in df.columns:
+            raise ValueError(f"Merge key {key} not found in dataframe columns.")
+    qc_annotated_df = df.merge(
+        sc_profiles_df[qc_keys + merge_keys],
+        on=merge_keys,
+        how="left",
+    )
+    if qc_annotated_df.shape[1] == df.shape[1]:
+        raise ValueError(
+            f"No new columns were added during the merge. Check that the merge keys {merge_keys} are correct and that the qc keys {qc_keys} are present in the sc_profiles_df."
+        )
+    qc_annotated_df.to_parquet(df_dict[profile_name]["qc_output_path"], index=False)

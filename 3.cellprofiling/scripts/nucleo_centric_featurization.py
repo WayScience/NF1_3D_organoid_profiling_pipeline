@@ -18,13 +18,6 @@ import skimage
 import tifffile
 import tomli
 import torch
-from image_analysis_3D.featurization_utils.chammi75_featurization import (
-    PerImageNormalize,
-    SaturationNoiseInjector,
-    call_chammi75_featurization_pipeline,
-    featurize_2D_image_w_chammi75,
-    get_chammi75_model,
-)
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
     save_features_as_parquet,
@@ -32,6 +25,13 @@ from image_analysis_3D.featurization_utils.feature_writing_utils import (
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
     ObjectLoader,
+)
+from image_analysis_3D.featurization_utils.morphem_featurization import (
+    PerImageNormalize,
+    SaturationNoiseInjector,
+    call_morphem_featurization_pipeline,
+    featurize_2D_image_w_morphem,
+    get_morphem_model,
 )
 from image_analysis_3D.featurization_utils.resource_profiling_util import (
     start_profiling,
@@ -86,7 +86,7 @@ extractor = MicroscopySAMMed3DPipeline(
     device="cuda" if torch.cuda.is_available() else "cpu",
 )
 device = "cuda" if torch.cuda.is_available() else "cpu"
-chammi75_model = get_chammi75_model(device)
+morphem_model = get_morphem_model(device)
 
 
 # In[ ]:
@@ -220,9 +220,9 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
         feature_type="cls",
         extractor=extractor,
     )
-    chammi75_features = call_chammi75_featurization_pipeline(
+    morphem_features = call_morphem_featurization_pipeline(
         cropped_image=z_max_proj_image,
-        model=chammi75_model,
+        model=morphem_model,
         device=device,
     )
     # make a new dictionary to hold all features
@@ -244,7 +244,7 @@ for label in tqdm.tqdm(label_ids, desc="Extracting features for objects"):
         combined_feature_dict["feature_value"].append(feat_value)
         combined_feature_dict["object_id"].append(label)
         combined_feature_dict["image_set"].append(well_fov)
-    for i, feat_value in enumerate(chammi75_features[0]):
+    for i, feat_value in enumerate(morphem_features[0]):
         print(feat_value)
         combined_feature_dict["feature_name"].append(
             format_morphology_feature_name(
@@ -270,7 +270,7 @@ if len(list_of_feature_dicts) > 0:
     final_df.columns.name = None
     final_df["object_id"] = final_df["object_id"].astype(int)
 else:
-    chammi75_df = pd.read_parquet(
+    morphem_df = pd.read_parquet(
         pathlib.Path(
             f"{image_base_dir}/data/NF0014_T1/extracted_features/C4-1/Nucleocentric_{channel}_CHAMMI75_GPU_features.parquet"
         ).resolve()
@@ -289,9 +289,9 @@ else:
 if final_df is not None:
     # split between SAMMed3D and CHAMMI75 features in the column names
     sammed3d_feature_cols = [col for col in final_df.columns if "SAMMed3D" in col]
-    chammi75_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
+    morphem_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
     sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
-    chammi75_df = final_df[["object_id", "image_set"] + chammi75_feature_cols]
+    morphem_df = final_df[["object_id", "image_set"] + morphem_feature_cols]
 # save the features as parquet files
 save_path = save_features_as_parquet(
     parent_path=output_parent_path,
@@ -303,7 +303,7 @@ save_path = save_features_as_parquet(
 )
 save_path = save_features_as_parquet(
     parent_path=output_parent_path,
-    df=chammi75_df,
+    df=morphem_df,
     feature_type="CHAMMI75",
     channel=channel,
     compartment="Nucleocentric",

@@ -15,14 +15,14 @@ This pipeline was developed specifically for the NF1 3D organoid dataset, but th
 
 ### Raw channels
 
-| **405 channel** | **488 channel** | **555 channel** | **640 channel** |
-| --------------- | --------------- | --------------- | --------------- |
+| **405 channel**                                                                                                                                                                | **488 channel**                                                                                                                                                              | **555 channel**                                                                                                                                                                  | **640 channel**                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![DNA channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif?raw=1) | ![ER channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif?raw=1) | ![Golgi channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif?raw=1) | ![Mito channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif?raw=1) |
 
 ### Organoid, nuclei, cell, and cytoplasm segmentations
 
-| **Organoid** | **Nuclei** | **Cell** | **Cytoplasm** |
-| ------------ | ---------- | -------- | ------------- |
+| **Organoid**                                                                                                                                                                                                      | **Nuclei**                                                                                                                                                                                                    | **Cell**                                                                                                                                                                                                  | **Cytoplasm**                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![Organoid segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif?raw=1) | ![Nuclei segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif?raw=1) | ![Cell segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif?raw=1) | ![Cytoplasm segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif?raw=1) |
 
 ---
@@ -315,8 +315,8 @@ We extract hand-drawn features across multiple categories (e.g., shape, intensit
 In addition, we extract deep learning-based features using the sammed3d model to capture complex morphological phenotypes that may not be described by hand-crafted features.
 Sammed3d features are extracted as 384-dimensional embeddings per channel per object using the CLS token output from the vit encoder on the whole volume.
 Additionally, we take a `nucleocentric` feature extraction approach where we extract features from a cropped volumes centered around each nucleus.
-We use sammed3d to extract features from these nucleocentric volumes, and we z-maximally project the nucleocentric volumes to extract 2D features using CHAMMI-75 features.
-CHAMMI-75 features are extracted as 384-dimensional embeddings per channel per object using the CLS token output from a separate vit encoder.
+We use sammed3d to extract features from these nucleocentric volumes, and we z-maximally project the nucleocentric volumes to extract 2D features using morphem features.
+morphem features are extracted as 384-dimensional embeddings per channel per object using the CLS token output from a separate vit encoder.
 
 ### Feature extraction categories
 
@@ -329,7 +329,7 @@ CHAMMI-75 features are extracted as 384-dimensional embeddings per channel per o
 | Neighbors              | number of neighboring objects, distance to neighbors            |
 | Texture                | haralick features, gabor filters, etc.                          |
 | Deep learning features | sammed3d vit-based embeddings                                   |
-| CHAMMI-75 features     | vit-based embeddings from nucleocentric 2D projections          |
+| morphem features       | vit-based embeddings from nucleocentric 2D projections          |
 
 ## Stage 4: image-based profiling
 
@@ -351,7 +351,7 @@ Profiles are generated at multiple levels with profiles being generated for each
 - **Organoid hand-drawn features** one row per organoid
 - **Organoid sammed3d features** one row per organoid
 - **Nucleocentric sammed3d features** one row per nucleus-centered volume
-- **Nucleocentric CHAMMI-75 features** one row per nucleus-centered volume
+- **Nucleocentric morphem features** one row per nucleus-centered volume
 
 Profile types:
 
@@ -365,14 +365,14 @@ Each profile output is saved as a parquet file in the `data/{patient}/image_base
 
 ### Pipeline overview
 
-Three processing tracks run in parallel — hand-crafted morphology features, SAMMed3D deep learning embeddings, and CHAMMI-75 deep learning embeddings — each following a distinct path determined by how the features were extracted and which compartments they cover.
+Three processing tracks run in parallel — hand-crafted morphology features, SAMMed3D deep learning embeddings, and morphem deep learning embeddings — each following a distinct path determined by how the features were extracted and which compartments they cover.
 
 ```mermaid
 flowchart TD
     A["<b>Feature parquets</b><br/>from Stage 3 (per well-FOV)"] --> B{Feature type}
     B -->|Hand-crafted morphology| C["<b>Hand-crafted pipeline</b><br/>merge compartments → QC → normalize → select → aggregate"]
     B -->|"SAMMed3D 3D embeddings<br/>SC · organoid · nucleocentric"| D["<b>SAMMed3D pipeline</b><br/>combine → normalize → select → aggregate"]
-    B -->|"CHAMMI-75 2D embeddings<br/>nucleocentric only"| E["<b>CHAMMI-75 pipeline</b><br/>combine → normalize → select → aggregate"]
+    B -->|"morphem 2D embeddings<br/>nucleocentric only"| E["<b>morphem pipeline</b><br/>combine → normalize → select → aggregate"]
 ```
 
 ---
@@ -459,32 +459,33 @@ flowchart TD
 
 ---
 
-### CHAMMI-75 pipeline
+### morphem pipeline
 
-CHAMMI-75 is a 2D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder. It is applied exclusively to **nucleocentric volumes** — but unlike SAMMed3D, it operates on **2D maximum-intensity projections** of those volume crops rather than the full 3D crop. This collapses the z-axis and captures a 2D summary of the nuclear microenvironment per channel.
+morphem is a 2D ViT-based model that extracts **384-dimensional embeddings** from the CLS token of the encoder. It is applied exclusively to **nucleocentric volumes** — but unlike SAMMed3D, it operates on **2D maximum-intensity projections** of those volume crops rather than the full 3D crop. This collapses the z-axis and captures a 2D summary of the nuclear microenvironment per channel.
+We named these features "CHAMMI75" features in our internal pipeline, but we refer to them as "morphem features" in this repository for clarity and consistency with the model name.
 
-CHAMMI-75 features are pre-computed per nucleus in Stage 3 and do not require compartment merging or QC.
+morphem features are pre-computed per nucleus in Stage 3 and do not require compartment merging or QC.
 
 ```mermaid
 flowchart TD
     classDef out fill:#f5f5f5,stroke:#aaa,stroke-dasharray:4 4,color:#444
 
-    A["<b>Nucleocentric embeddings</b><br/>2D max projections of nucleus-centered crops<br/>384-dim per channel per nucleus · CHAMMI-75"]
+    A["<b>Nucleocentric embeddings</b><br/>2D max projections of nucleus-centered crops<br/>384-dim per channel per nucleus · morphem"]
 
     A --> B["<b>Combine profiles</b><br/>concat per-FOV parquets across patient<br/>drop brightfield channels · DuckDB union_by_name"]
     B -.-> oCombine[/"nucleocentric_chammi.parquet"/]:::out
 
     B --> C["<b>Annotate</b><br/>join platemap metadata (treatment · target · patient)<br/>pycytominer.annotate"]
-    C -.-> oAnnotate[/"nucleocentric_chammi_anno.parquet"/]:::out
+    C -.-> oAnnotate[/"nucleocentric_morphem_anno.parquet"/]:::out
 
     C --> D["<b>Normalize</b><br/>MAD-robustize · ref: all DMSO rows<br/>pycytominer.normalize"]
-    D -.-> oNorm[/"chammi_nucleocentric_norm.parquet"/]:::out
+    D -.-> oNorm[/"nucleocentric_morphem_norm.parquet"/]:::out
 
     D --> E["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
-    E -.-> oFS[/"chammi_nucleocentric_fs.parquet"/]:::out
+    E -.-> oFS[/"nucleocentric_morphem_fs.parquet"/]:::out
 
     E --> F["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
-    F -.-> oAgg[/"chammi_nucleocentric_agg_well_level.parquet<br/>chammi_nucleocentric_consensus.parquet"/]:::out
+    F -.-> oAgg[/"nucleocentric_morphem_agg_well_level.parquet<br/>nucleocentric_morphem_consensus.parquet"/]:::out
 ```
 
 ---
@@ -599,7 +600,7 @@ Note that while these are the channels we have used for our NF1 3D organoid data
 
 - Objective: 60x/1.35 NA oil immersion
 - Oil RI: 1.518
-- Voxel size: 0.108 μm (XY) × 1 μm (Z)
+- Voxel size: 0.101μm (XY) × 1 μm (Z)
 - Bit depth: 16-bit
 - Dynamic range: 0-65535
 

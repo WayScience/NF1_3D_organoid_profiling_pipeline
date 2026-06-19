@@ -48,7 +48,7 @@ patients = pd.read_csv(
     header=None,
     names=["patient_id"],
 ).patient_id.tolist()
-# patients = ["NF0014_T1"]  # --- IGNORE ---
+patients = ["NF0014_T1"]  # --- IGNORE ---
 load_file_path = pathlib.Path(
     f"{root_dir}/4.processing_image_based_profiles/load_data/load_file.txt"
 ).resolve()
@@ -148,10 +148,10 @@ df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
 print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
-# In[9]:
+# In[11]:
 
 
-df
+df.loc[df["duckdb_exists"] == False]
 
 
 # In[10]:
@@ -164,3 +164,43 @@ summary_df = (
     .assign(missing=lambda x: x["total"] - x["present"])
 )
 summary_df.reset_index()
+
+
+# In[23]:
+
+
+# send to df
+df = pd.DataFrame(
+    list(
+        pathlib.Path(
+            "/home/lippincm/Documents/NF1_3D_organoid_profiling_pipeline/data/NF0014_T1/extracted_features/C4-2"
+        ).glob("*.parquet")
+    )
+)
+df.rename(columns={0: "file_path"}, inplace=True)
+df["file_name"] = df["file_path"].apply(lambda p: p.stem)
+df["Compatment"] = df["file_name"].apply(lambda s: s.split("_")[0])
+df["Channel"] = df["file_name"].apply(lambda s: s.split("_")[1])
+df["FeatureType"] = df["file_name"].apply(lambda s: s.split("_")[2])
+df.head()
+
+
+# In[24]:
+
+
+df["Compatment"].value_counts()
+
+
+# In[25]:
+
+
+df["Channel"].value_counts()
+
+
+# In[26]:
+
+
+df["FeatureType"].value_counts()
+
+
+# In[ ]:

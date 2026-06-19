@@ -1,43 +1,43 @@
 repos:
--   repo: https://gitlab.com/vojko.pribudic.foss/pre-commit-update
+  - repo: https://gitlab.com/vojko.pribudic.foss/pre-commit-update
     rev: v0.9.0 # Insert the latest tag here
 
     hooks:
-    -   id: pre-commit-update
+      - id: pre-commit-update
         args: [--exclude, black, --keep, isort]
     # Formats import order
--   repo: https://github.com/pycqa/isort
+  - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
-    -   id: isort
+      - id: isort
         name: isort (python)
         args: ["--profile", "black", "--filter-files"]
 
     #Code formatter for both python files and jupyter notebooks
--   repo: https://github.com/astral-sh/ruff-pre-commit
+  - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.15.18
     hooks:
       # Run the formatter.
-    -   id: ruff-format
+      - id: ruff-format
 
--   repo: https://github.com/nbQA-dev/nbQA
+  - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
-    -   id: nbqa-isort
+      - id: nbqa-isort
         additional_dependencies: [isort==5.6.4]
         args: [--profile=black]
 
--   repo: https://github.com/pre-commit/mirrors-prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier
     rev: "v3.1.0"
     hooks:
-    -   id: prettier
+      - id: prettier
         types_or: [markdown, yaml, json, html, css, python, r]
 
--   repo: https://github.com/hadialqattan/pycln
+  - repo: https://github.com/hadialqattan/pycln
     rev: v2.6.0
     hooks:
-    -   id: pycln
+      - id: pycln
         args: [--config=pyproject.toml]
         exclude: |
           (?x)^(
@@ -45,17 +45,17 @@ repos:
             3\.cellprofiling/scripts/.*\.py$
           )$
     # additional hooks found with in the pre-commit lib
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-    -   id: trailing-whitespace # removes trailing white spaces
-    -   id: mixed-line-ending # removes mixed end of line
+      - id: trailing-whitespace # removes trailing white spaces
+      - id: mixed-line-ending # removes mixed end of line
         args:
-        -   --fix=lf
+          - --fix=lf
 
--   repo: local
+  - repo: local
     hooks:
-    -   id: shellcheck
+      - id: shellcheck
         name: shellcheck
         description: Test shell scripts with shellcheck
         entry: shellcheck

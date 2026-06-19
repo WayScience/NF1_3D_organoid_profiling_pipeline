@@ -1,5 +1,5 @@
 """
-This utils file has module that utilize CHAMMI-75's featurization model.
+This utils file has module that utilize morphem's featurization model.
 This used a self-supervised deep-learning model
 that uses a Vision Transformer (ViT) architecture
 """
@@ -14,8 +14,8 @@ from transformers import AutoModel
 
 
 # get the model
-def get_chammi75_model(device: str | None) -> torch.nn.Module:
-    """Load the CHAMMI-75 (MorphEm) model from Hugging Face.
+def get_morphem_model(device: str | None) -> torch.nn.Module:
+    """Load the morphem (MorphEm) model from Hugging Face.
 
     Parameters
     ----------
@@ -26,7 +26,7 @@ def get_chammi75_model(device: str | None) -> torch.nn.Module:
     Returns
     -------
     torch.nn.Module
-        The CHAMMI-75 (MorphEm) model in evaluation mode.
+        The morphem (MorphEm) model in evaluation mode.
     """
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -45,7 +45,7 @@ class SaturationNoiseInjector(nn.Module):
     This transformation replaces saturated pixels (value == 255) in the first
     channel of an image with uniform random noise sampled from
     ``[low, high]``. It is applied as a pre-processing step before
-    passing the image to the CHAMMI-75 model.
+    passing the image to the morphem model.
     """
 
     def __init__(self, low: int = 200, high: int = 255) -> None:
@@ -131,10 +131,10 @@ class PerImageNormalize(nn.Module):
         return x
 
 
-def featurize_2D_image_w_chammi75(
+def featurize_2D_image_w_morphem(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
 ) -> list[numpy.ndarray]:
-    """Extract CHAMMI-75 CLS-token features from a multi-channel 2D image.
+    """Extract morphem CLS-token features from a multi-channel 2D image.
 
     The function processes each channel of the input image independently (Bag-of-Channels
     strategy). In step 1, the function resizes the image tensor to 224×224. In step 2, the function injects random noise
@@ -149,7 +149,7 @@ def featurize_2D_image_w_chammi75(
         size, *C* is the number of channels, and *H*, *W* are the spatial
         dimensions.
     model : torch.nn.Module
-        The loaded CHAMMI-75 (MorphEm) model (see :func:`get_chammi75_model`).
+        The loaded morphem (MorphEm) model (see :func:`get_morphem_model`).
     device : torch.device
         Device on which to run inference (``'cuda'`` or ``'cpu'``).
 
@@ -189,12 +189,12 @@ def featurize_2D_image_w_chammi75(
     return batch_feat
 
 
-def call_chammi75_featurization_pipeline(
+def call_morphem_featurization_pipeline(
     cropped_image: numpy.ndarray,
     model: torch.nn.Module,
     device: str | torch.device = "cpu",
 ) -> numpy.ndarray:
-    """Run the CHAMMI-75 featurization pipeline on a single cropped 2D image.
+    """Run the morphem featurization pipeline on a single cropped 2D image.
 
     Converts the input NumPy array to a three-channel PyTorch tensor (by
     replicating the single channel) and extracts CLS-token features from the
@@ -208,7 +208,7 @@ def call_chammi75_featurization_pipeline(
         A 2D single-channel image array of shape ``(H, W)`` containing the
         cropped object region.
     model : torch.nn.Module
-        The loaded CHAMMI-75 model (see :func:`get_chammi75_model`).
+        The loaded morphem model (see :func:`get_morphem_model`).
 
     Returns
     -------
@@ -220,7 +220,7 @@ def call_chammi75_featurization_pipeline(
     images = images.unsqueeze(1)
     # Replicate channel 3 times to get (B, 3, Y, X)
     images = images.repeat(1, 3, 1, 1)
-    batch_feat = featurize_2D_image_w_chammi75(images, model, device)
+    batch_feat = featurize_2D_image_w_morphem(images, model, device)
     # return the first element
     # the other elements are duplications as we copied the channel into 3
     # the ViT framework is designed for 3-channel input,

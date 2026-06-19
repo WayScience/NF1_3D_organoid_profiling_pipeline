@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[1]:
 
 
 import argparse
@@ -32,7 +32,7 @@ profile_base_dir = bandicoot_check(
 profile_base_dir = root_dir  # default to root_dir instead of NAS
 
 
-# In[13]:
+# In[2]:
 
 
 patient_id_file = pathlib.Path(f"{profile_base_dir}/data/patient_IDs.txt").resolve(
@@ -43,7 +43,7 @@ patients = pd.read_csv(
 ).patient_id.tolist()
 
 
-# In[14]:
+# In[3]:
 
 
 out_dict = {
@@ -75,11 +75,13 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
 df = df.loc[df["patient_id"] == "NF0014_T1"]
-df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
+# df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
+df = df.loc[(df["compartment"] != "Organoid")]
+
 df.head()
 
 
-# In[15]:
+# In[4]:
 
 
 from tqdm import tqdm
@@ -106,15 +108,14 @@ df.to_parquet("../logs/feature_file_info.parquet", index=False)
 #     df = pd.read_parquet("../logs/feature_file_info.parquet")
 
 
-# In[16]:
+# In[5]:
 
 
-df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
 df.sort_values(["patient_id", "well_fov"], inplace=True)
 df.reset_index(drop=True, inplace=True)
 
 
-# In[17]:
+# In[6]:
 
 
 # merge the cells, cytoplasm, and whole cell features for a given well_fov and patient_id
@@ -139,7 +140,7 @@ out_df = out_df.pivot(
 ).reset_index()
 
 
-# In[18]:
+# In[ ]:
 
 
 labels_dict = {
@@ -171,7 +172,7 @@ for row in tqdm(
 labels_df = pd.DataFrame(labels_dict)
 
 
-# In[19]:
+# In[ ]:
 
 
 labels_df["labels_match"] = labels_df.apply(
@@ -188,13 +189,13 @@ labels_df["unique_labels_across_compartments"] = labels_df.apply(
 labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[20]:
+# In[ ]:
 
 
 labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
 
 
-# In[21]:
+# In[ ]:
 
 
 # # show the well fov and the patient id
@@ -205,7 +206,7 @@ labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient
 #     print(f"cd ../../{row.patient_id}/extracted_features/ ; rm -r {row.well_fov}")
 
 
-# In[22]:
+# In[ ]:
 
 
 tmp_df = pd.merge(
@@ -218,6 +219,3 @@ tmp_df = pd.merge(
     on=["object_id", "image_set"],
 )
 tmp_df.head()
-
-
-# In[ ]:

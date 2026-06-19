@@ -2,25 +2,25 @@
 # coding: utf-8
 
 # # 11. Combine Patients
-# 
+#
 # ## Purpose
 # Combine per-patient normalized profiles across all patients into a single
 # cross-patient dataset, then run feature selection and aggregation at the
 # population level.
-# 
+#
 # This is **step 11 of Stage 4 (image-based profiling)** and the only notebook
 # that runs **once globally** (not per-patient). It must follow `10.aggregation.ipynb`
 # for all patients.
-# 
+#
 # ## Inputs
 # - `data/patient_IDs.txt` — list of all patient IDs (one per line)
 # - Per-patient `5.normalized_profiles/*.parquet` for each of 6 profile types
-# 
+#
 # ## Outputs
-# 
+#
 # All outputs go to `data/all_patient_profiles/`. For each of 6 profile types,
 # four files are produced:
-# 
+#
 # | Suffix | Content |
 # |---|---|
 # | `*_norm_profile.parquet` | All-patient concatenated normalized profiles |
@@ -28,7 +28,7 @@
 # | `*_sc_agg_profiles.parquet` | Well-level aggregated (median by PatientTumor × Well) |
 # | `*_sc_consensus_profiles.parquet` | Consensus (median by PatientTumor × Treatment) |
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -75,7 +75,7 @@ levels_to_merge_dict = {
     "sammed_sc_norm": [],
     "sammed_organoid_norm": [],
     "sammed_nucleocentric_norm": [],
-    "chammi_nucleocentric_norm": [],
+    "nucleocentric_morphem_norm": [],
 }
 
 
@@ -93,7 +93,7 @@ for patient in patients:
 levels_to_merge_dict
 
 
-# In[5]:
+# In[6]:
 
 
 # Feature selection operations applied in order:
@@ -107,15 +107,13 @@ feature_select_ops = [
     "variance_threshold",  # comment out to remove variance thresholding
     "correlation_threshold",  # comment out to remove correlation thresholding
 ]
-na_cutoff = 0.05        # drop features with >5% NaN
-# Cross-patient threshold is 0.9 (vs 0.95 per-patient in notebook 9): the larger
-# combined dataset warrants stricter redundancy removal.
-corr_threshold = 0.9
-freq_cut = 0.01         # variance threshold: most-common / second-most-common value ratio
-unique_cut = 0.01       # variance threshold: minimum fraction of unique values
+na_cutoff = 0.05  # drop features with >5% NaN
+corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.95
+freq_cut = 0.05  # variance threshold: most-common / second-most-common value ratio
+unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 
 
-# In[6]:
+# In[7]:
 
 
 # Well-level strata: one row per (patient, well) combination
@@ -124,7 +122,7 @@ aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
 consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
 
 
-# In[7]:
+# In[8]:
 
 
 for profile_type, files in levels_to_merge_dict.items():
@@ -173,7 +171,9 @@ for profile_type, files in levels_to_merge_dict.items():
     # Aggregation — produces well-level and consensus parquets
     ###############################################
     # Recompute feature columns from fs_profiles after feature selection.
-    feature_columns = [col for col in fs_profiles.columns if not col.startswith("Metadata_")]
+    feature_columns = [
+        col for col in fs_profiles.columns if not col.startswith("Metadata_")
+    ]
     # aggregate the profiles
     agg_df = aggregate(
         population_df=fs_profiles,
@@ -205,4 +205,3 @@ for profile_type, files in levels_to_merge_dict.items():
         "The number of profiles after consensus profile generation:",
         consensus_df.shape[0],
     )
-

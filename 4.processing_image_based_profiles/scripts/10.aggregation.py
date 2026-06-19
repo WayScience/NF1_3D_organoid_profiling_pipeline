@@ -2,22 +2,22 @@
 # coding: utf-8
 
 # # 10. Aggregation
-# 
+#
 # ## Purpose
 # Aggregate each feature-selected profile across single cells or organoids into
 # two levels of summary:
 # 1. **Well-level** — median across all objects in a well (`PatientTumor × Well`)
 # 2. **Consensus** — median across all objects sharing a treatment (`PatientTumor × Treatment`)
-# 
+#
 # Both aggregations use pycytominer's `aggregate` with median as the operation.
-# 
+#
 # This is **step 10 of Stage 4 (image-based profiling)**. It runs once per patient
 # and must follow `9.feature_selection.ipynb`.
-# 
+#
 # ## Inputs
-# 
+#
 # Six feature-selected parquets from `6.feature_selected_profiles/`:
-# 
+#
 # | File | Profile type |
 # |---|---|
 # | `sc_fs.parquet` | Hand-crafted SC |
@@ -25,24 +25,24 @@
 # | `sammed_sc_fs.parquet` | Deep-learning SC (SAMMed3D) |
 # | `sammed_organoid_fs.parquet` | Deep-learning organoid (SAMMed3D) |
 # | `sammed_nucleocentric_fs.parquet` | Deep-learning nucleocentric (SAMMed3D) |
-# | `chammi_nucleocentric_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
-# 
+# | `nucleocentric_morphem_fs.parquet` | Deep-learning nucleocentric (morphem) |
+#
 # ## Outputs
-# 
+#
 # Twelve parquets across two stage directories:
-# 
+#
 # | Directory | Files |
 # |---|---|
-# | `7.aggregated_profiles/` | `sc_agg_well_level.parquet`, `organoid_agg_well_level.parquet`, `sammed_sc_agg_well_level.parquet`, `sammed_organoid_agg_well_level.parquet`, `sammed_nucleocentric_agg_well_level.parquet`, `chammi_nucleocentric_agg_well_level.parquet` |
-# | `8.consensus_profiles/` | `sc_consensus.parquet`, `organoid_consensus.parquet`, `sammed_sc_consensus.parquet`, `sammed_organoid_consensus.parquet`, `sammed_nucleocentric_consensus.parquet`, `chammi_nucleocentric_consensus.parquet` |
-# 
+# | `7.aggregated_profiles/` | `sc_agg_well_level.parquet`, `organoid_agg_well_level.parquet`, `sammed_sc_agg_well_level.parquet`, `sammed_organoid_agg_well_level.parquet`, `sammed_nucleocentric_agg_well_level.parquet`, `nucleocentric_morphem_agg_well_level.parquet` |
+# | `8.consensus_profiles/` | `sc_consensus.parquet`, `organoid_consensus.parquet`, `sammed_sc_consensus.parquet`, `sammed_organoid_consensus.parquet`, `sammed_nucleocentric_consensus.parquet`, `nucleocentric_morphem_consensus.parquet` |
+#
 # ## Notes
 # - QC-flagged rows are not filtered before aggregation; downstream analysis decides
 #   whether to exclude them.
 # - Consensus profiles collapse treatment replicates to a single row per treatment,
 #   making them the primary input for treatment-level comparisons.
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -97,8 +97,8 @@ organoid_sammed_fs_path = pathlib.Path(
 nucleocentric_sammed_sc_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet"
 ).resolve(strict=True)
-nucleocentric_chammi_sc_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/chammi_nucleocentric_fs.parquet"
+nucleocentric_morphem_sc_fs_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/nucleocentric_morphem_fs.parquet"
 ).resolve(strict=True)
 
 
@@ -138,15 +138,15 @@ nucleocentric_sammed_consensus_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_nucleocentric_consensus.parquet"
 ).resolve()
 
-nucleocentric_chammi_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/chammi_nucleocentric_agg_well_level.parquet"
+nucleocentric_morphem_agg_well_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/nucleocentric_morphem_agg_well_level.parquet"
 ).resolve()
-nucleocentric_chammi_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/chammi_nucleocentric_consensus.parquet"
+nucleocentric_morphem_consensus_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/nucleocentric_morphem_consensus.parquet"
 ).resolve()
 
-nucleocentric_chammi_agg_well_output_path.parent.mkdir(parents=True, exist_ok=True)
-nucleocentric_chammi_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)
+nucleocentric_morphem_agg_well_output_path.parent.mkdir(parents=True, exist_ok=True)
+nucleocentric_morphem_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 # In[4]:
@@ -158,14 +158,18 @@ organoid_fs = pd.read_parquet(organoid_fs_path)
 sc_sammed_fs = pd.read_parquet(sc_sammed_fs_path)
 organoid_sammed_fs = pd.read_parquet(organoid_sammed_fs_path)
 nucleocentric_sammed_sc_fs = pd.read_parquet(nucleocentric_sammed_sc_fs_path)
-nucleocentric_chammi_sc_fs = pd.read_parquet(nucleocentric_chammi_sc_fs_path)
+nucleocentric_morphem_sc_fs = pd.read_parquet(nucleocentric_morphem_sc_fs_path)
 
 print(f"SC feature-selected loaded. Shape: {sc_fs.shape}")
 print(f"Organoid feature-selected loaded. Shape: {organoid_fs.shape}")
 print(f"SAMMed3D SC feature-selected loaded. Shape: {sc_sammed_fs.shape}")
 print(f"SAMMed3D organoid feature-selected loaded. Shape: {organoid_sammed_fs.shape}")
-print(f"SAMMed3D nucleocentric feature-selected loaded. Shape: {nucleocentric_sammed_sc_fs.shape}")
-print(f"CHAMMI-75 nucleocentric feature-selected loaded. Shape: {nucleocentric_chammi_sc_fs.shape}")
+print(
+    f"SAMMed3D nucleocentric feature-selected loaded. Shape: {nucleocentric_sammed_sc_fs.shape}"
+)
+print(
+    f"morphem nucleocentric feature-selected loaded. Shape: {nucleocentric_morphem_sc_fs.shape}"
+)
 
 
 # In[5]:
@@ -197,16 +201,16 @@ run_dict = {
         "agg_well_output_path": nucleocentric_sammed_agg_well_output_path,
         "consensus_output_path": nucleocentric_sammed_consensus_output_path,
     },
-    "nucleocentric_chammi_sc": {
-        "df": nucleocentric_chammi_sc_fs,
-        "agg_well_output_path": nucleocentric_chammi_agg_well_output_path,
-        "consensus_output_path": nucleocentric_chammi_consensus_output_path,
+    "nucleocentric_morphem_sc": {
+        "df": nucleocentric_morphem_sc_fs,
+        "agg_well_output_path": nucleocentric_morphem_agg_well_output_path,
+        "consensus_output_path": nucleocentric_morphem_consensus_output_path,
     },
 }
 
 
 # ## Aggregate the profiles
-# 
+#
 # Each profile type is aggregated at two levels:
 # 1. **Well-level** (`aggregate_strata`): median across all objects in a well,
 #    grouped by `PatientTumor x Well`. Preserves within-patient well-to-well variation.
@@ -254,10 +258,3 @@ for profile_name in run_dict.keys():
     )
     consensus_df.to_parquet(consensus_output_path, index=False)
     print(f"  Consensus aggregated. Shape: {consensus_df.shape}")
-
-
-# In[ ]:
-
-
-
-
