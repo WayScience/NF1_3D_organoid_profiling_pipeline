@@ -25,7 +25,7 @@
 # | `sammed_sc_fs.parquet` | Deep-learning SC (SAMMed3D) |
 # | `sammed_organoid_fs.parquet` | Deep-learning organoid (SAMMed3D) |
 # | `sammed_nucleocentric_fs.parquet` | Deep-learning nucleocentric (SAMMed3D) |
-# | `chammi_nucleocentric_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
+# | `nucleocentric_chammi_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
 #
 # ## Outputs
 #
@@ -33,8 +33,8 @@
 #
 # | Directory | Files |
 # |---|---|
-# | `7.aggregated_profiles/` | `sc_agg_well_level.parquet`, `organoid_agg_well_level.parquet`, `sammed_sc_agg_well_level.parquet`, `sammed_organoid_agg_well_level.parquet`, `sammed_nucleocentric_agg_well_level.parquet`, `chammi_nucleocentric_agg_well_level.parquet` |
-# | `8.consensus_profiles/` | `sc_consensus.parquet`, `organoid_consensus.parquet`, `sammed_sc_consensus.parquet`, `sammed_organoid_consensus.parquet`, `sammed_nucleocentric_consensus.parquet`, `chammi_nucleocentric_consensus.parquet` |
+# | `7.aggregated_profiles/` | `sc_agg_well_level.parquet`, `organoid_agg_well_level.parquet`, `sammed_sc_agg_well_level.parquet`, `sammed_organoid_agg_well_level.parquet`, `sammed_nucleocentric_agg_well_level.parquet`, `nucleocentric_chammi_agg_well_level.parquet` |
+# | `8.consensus_profiles/` | `sc_consensus.parquet`, `organoid_consensus.parquet`, `sammed_sc_consensus.parquet`, `sammed_organoid_consensus.parquet`, `sammed_nucleocentric_consensus.parquet`, `nucleocentric_chammi_consensus.parquet` |
 #
 # ## Notes
 # - QC-flagged rows are not filtered before aggregation; downstream analysis decides
@@ -98,7 +98,7 @@ nucleocentric_sammed_sc_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet"
 ).resolve(strict=True)
 nucleocentric_chammi_sc_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/chammi_nucleocentric_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/nucleocentric_chammi_fs.parquet"
 ).resolve(strict=True)
 
 
@@ -139,10 +139,10 @@ nucleocentric_sammed_consensus_output_path = pathlib.Path(
 ).resolve()
 
 nucleocentric_chammi_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/chammi_nucleocentric_agg_well_level.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/nucleocentric_chammi_agg_well_level.parquet"
 ).resolve()
 nucleocentric_chammi_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/chammi_nucleocentric_consensus.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/nucleocentric_chammi_consensus.parquet"
 ).resolve()
 
 nucleocentric_chammi_agg_well_output_path.parent.mkdir(parents=True, exist_ok=True)

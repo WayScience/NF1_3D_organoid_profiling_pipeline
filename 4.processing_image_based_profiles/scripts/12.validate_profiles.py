@@ -61,7 +61,7 @@ for patient in patient_ids:
         f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
     ).resolve()
     nucleocentric_chammi_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/chammi_nucleocentric_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/nucleocentric_chammi_norm.parquet"
     ).resolve()
 
     sc_annotated_df = pd.read_parquet(sc_normalized_path)

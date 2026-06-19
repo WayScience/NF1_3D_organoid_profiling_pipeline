@@ -478,13 +478,13 @@ flowchart TD
     C -.-> oAnnotate[/"nucleocentric_chammi_anno.parquet"/]:::out
 
     C --> D["<b>Normalize</b><br/>MAD-robustize · ref: all DMSO rows<br/>pycytominer.normalize"]
-    D -.-> oNorm[/"chammi_nucleocentric_norm.parquet"/]:::out
+    D -.-> oNorm[/"nucleocentric_chammi_norm.parquet"/]:::out
 
     D --> E["<b>Feature select</b><br/>drop-NA · blocklist · correlation · variance<br/>fit on DMSO + Staurosporine · apply to all treatments<br/>pycytominer.feature_select"]
-    E -.-> oFS[/"chammi_nucleocentric_fs.parquet"/]:::out
+    E -.-> oFS[/"nucleocentric_chammi_fs.parquet"/]:::out
 
     E --> F["<b>Aggregate</b><br/>median by well · median by treatment (consensus)<br/>pycytominer.aggregate"]
-    F -.-> oAgg[/"chammi_nucleocentric_agg_well_level.parquet<br/>chammi_nucleocentric_consensus.parquet"/]:::out
+    F -.-> oAgg[/"nucleocentric_chammi_agg_well_level.parquet<br/>nucleocentric_chammi_consensus.parquet"/]:::out
 ```
 
 ---

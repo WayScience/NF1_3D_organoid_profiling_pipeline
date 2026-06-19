@@ -26,7 +26,7 @@
 # | `sammed_sc_norm.parquet` | Deep-learning SC (SAMMed3D) |
 # | `sammed_organoid_norm.parquet` | Deep-learning organoid (SAMMed3D) |
 # | `sammed_nucleocentric_norm.parquet` | Deep-learning nucleocentric (SAMMed3D) |
-# | `chammi_nucleocentric_norm.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
+# | `nucleocentric_chammi_norm.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
 #
 # ## Outputs
 #
@@ -39,7 +39,7 @@
 # | `sammed_sc_fs.parquet` | Deep-learning SC (SAMMed3D) |
 # | `sammed_organoid_fs.parquet` | Deep-learning organoid (SAMMed3D) |
 # | `sammed_nucleocentric_fs.parquet` | Deep-learning nucleocentric (SAMMed3D) |
-# | `chammi_nucleocentric_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
+# | `nucleocentric_chammi_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
 #
 # ## Notes
 # - Feature selection is fit on DMSO and Staurosporine rows only, then the retained
@@ -103,7 +103,7 @@ nucleocentric_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
 ).resolve(strict=True)
 nucleocentric_chammi_normalized_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/chammi_nucleocentric_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/nucleocentric_chammi_norm.parquet"
 ).resolve(strict=True)
 
 
@@ -124,7 +124,7 @@ nucleocentric_sammed_feature_selected_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet"
 ).resolve()
 nucleocentric_chammi_feature_selected_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/chammi_nucleocentric_fs.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/nucleocentric_chammi_fs.parquet"
 ).resolve()
 
 organoid_fs_output_path.parent.mkdir(parents=True, exist_ok=True)

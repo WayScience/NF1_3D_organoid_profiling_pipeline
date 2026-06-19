@@ -33,7 +33,7 @@
 # | `sammed_sc_norm.parquet` | Normalized SAMMed3D SC profiles |
 # | `sammed_organoid_norm.parquet` | Normalized SAMMed3D organoid profiles |
 # | `sammed_nucleocentric_norm.parquet` | Normalized SAMMed3D nucleocentric profiles |
-# | `chammi_nucleocentric_norm.parquet` | Normalized CHAMMI-75 nucleocentric profiles |
+# | `nucleocentric_chammi_norm.parquet` | Normalized CHAMMI-75 nucleocentric profiles |
 #
 # ## Notes
 # - **MAD_robustize**: subtracts the median and divides by the MAD of the reference
@@ -122,7 +122,7 @@ nucleocentric_sammed_normalized_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
 ).resolve()
 nucleocentric_chammi_normalized_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/chammi_nucleocentric_norm.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/nucleocentric_chammi_norm.parquet"
 ).resolve()
 sc_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
 
