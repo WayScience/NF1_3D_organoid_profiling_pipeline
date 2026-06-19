@@ -326,21 +326,17 @@ def square_off_xy_crop_bbox(
     Parameters
     ----------
     bbox : tuple[int, int, int, int, int, int]
-        The bbox to adjust:
-        (z_min, y_min, x_min, z_max, y_max, x_max)
-
+        The bbox to adjust: (z_min, y_min, x_min, z_max, y_max, x_max).
         Each value is an integer pixel coordinate in that dimension.
     image_max_xy : tuple[int, int]
-        The maximum pixel coordinates in the x and y dimensions of the image,
-        used to ensure the adjusted bbox does not go out of bounds.
-            (max_y, max_x)
+        The maximum pixel coordinates in the x and y dimensions of the image
+        (max_y, max_x), used to ensure the adjusted bbox does not go out of bounds.
 
     Returns
     -------
     tuple[int, int, int, int, int, int]
         The adjusted bbox that is square in the XY plane:
-        (z_min, new_y_min, new_x_min, z_max, new_y_max, new_x_max)
-
+        (z_min, new_y_min, new_x_min, z_max, new_y_max, new_x_max).
         Each value is an integer pixel coordinate in that dimension.
     """
     image_max_x = image_max_xy[1]
