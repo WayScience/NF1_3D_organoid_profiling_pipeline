@@ -42,7 +42,7 @@
 # - Consensus profiles collapse treatment replicates to a single row per treatment,
 #   making them the primary input for treatment-level comparisons.
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -62,6 +62,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -253,4 +254,10 @@ for profile_name in run_dict.keys():
     )
     consensus_df.to_parquet(consensus_output_path, index=False)
     print(f"  Consensus aggregated. Shape: {consensus_df.shape}")
+
+
+# In[ ]:
+
+
+
 

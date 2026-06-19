@@ -298,11 +298,12 @@ def measure_3D_granularity(
         "value": [],
     }
 
-    nobjects = int(numpy.max(original_labels)) if numpy.any(original_labels > 0) else 0
+    # fixes any changes in non sequential labels
+    # finds the total number of objects in the image and creates a new label range from 1 to nobjects
+    label_range = numpy.unique(original_labels[original_labels > 0])
+    nobjects = len(label_range)
 
     if nobjects > 0:
-        label_range = numpy.arange(1, nobjects + 1)
-
         # CellProfiler: self.labels[~im.mask] = 0
         masked_labels = original_labels.copy()
         masked_labels[~original_mask] = 0

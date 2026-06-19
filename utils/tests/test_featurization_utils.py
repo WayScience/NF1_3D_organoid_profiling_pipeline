@@ -244,6 +244,7 @@ class TestTextureUtils:
 
         # Should handle uniform images gracefully
         assert scaled.shape == uniform_image.shape
+        assert np.all(scaled == 0)
 
     def test_measure_3d_texture_basic(self, object_loader_simple):
         """Test basic texture measurement."""
@@ -316,6 +317,27 @@ class TestTextureUtils:
         # Object 1 (uniform) should have lower standard deviation than object 2 (random)
         # Check contrast or homogeneity features if available
         assert len(obj_textures) >= 2
+
+    def test_measure_3d_texture_uniform_full_object(self):
+        """Test that a completely uniform object returns NaNs instead of crashing."""
+        image = np.ones((6, 6, 6), dtype=np.uint16) * 500
+        labels = np.ones((6, 6, 6), dtype=np.uint8)
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        result = measure_3D_texture(
+            object_loader=loader,
+            distance=1,
+            grayscale=256,
+        )
+
+        assert len(result["texture_value"]) == 13
+        assert all(np.isnan(value) for value in result["texture_value"])
 
 
 # ============================================================================

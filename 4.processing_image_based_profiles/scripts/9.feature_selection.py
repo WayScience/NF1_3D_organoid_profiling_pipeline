@@ -44,7 +44,7 @@
 #   feature selection is not biased by the full treatment distribution.
 # - QC-flagged rows are not filtered here; that is left to downstream analysis.
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -64,6 +64,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:

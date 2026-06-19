@@ -1,16 +1,16 @@
-import gc
-
 import mahotas
 import numpy
-import tqdm
+import skimage
 from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
 def scale_image(image: numpy.ndarray, num_gray_levels: int = 256) -> numpy.ndarray:
     """
     Scale the image to a specified number of gray levels.
-    Example: 1024 gray levels will be scaled to 256 gray levels if num_gray_levels=256.
-    An image with a pixel value of 0 will be scaled to 0 and a pixel value of 1023 will be scaled to 255.
+    Example: 1024 gray levels will be scaled to 256 gray levels if
+    num_gray_levels=256.
+    An image with a pixel value of 0 will be scaled to 0 and a pixel value
+    of 1023 will be scaled to 255.
 
     Parameters
     ----------
@@ -24,10 +24,22 @@ def scale_image(image: numpy.ndarray, num_gray_levels: int = 256) -> numpy.ndarr
     numpy.ndarray
         The gray level scaled image of any shape.
     """
-    # scale the image to 256 gray levels
-    image = (image - image.min()) / (image.max() - image.min())
-    image = (image * (num_gray_levels - 1)).astype(numpy.uint8)
-    return image
+    outrange_mapping = {
+        256: "uint8",
+        65536: "uint16",
+    }
+    out_range = outrange_mapping.get(num_gray_levels)
+    if out_range is None:
+        raise ValueError(
+            f"Unsupported num_gray_levels: {num_gray_levels}. "
+            f"Supported values are: {list(outrange_mapping.keys())}"
+        )
+    # scale the image to the requested gray levels
+    return skimage.exposure.rescale_intensity(
+        image,
+        in_range="image",
+        out_range=out_range,
+    )
 
 
 def measure_3D_texture(
@@ -38,7 +50,8 @@ def measure_3D_texture(
     """
     Calculate texture features for each object in the image using Haralick features.
 
-    The features are calculated for each object separately and the mean value is returned.
+    The features are calculated for each object separately and the mean value
+    is returned.
 
     Parameters
     ----------
@@ -52,7 +65,8 @@ def measure_3D_texture(
     Returns
     -------
     dict
-        A dictionary containing the object ID, texture name, and texture value with keys:
+        A dictionary containing the object ID, texture name, and texture value
+        with keys:
         - object_id
         - texture_name
         - texture_value
@@ -93,32 +107,75 @@ def measure_3D_texture(
         "InformationMeasureOfCorrelation1",
         "InformationMeasureOfCorrelation2",
     ]
+    # set the number of directions based on the dimensionality of the image
+    n_directions = 13
 
     output_texture_dict = {
         "object_id": [],
         "texture_name": [],
         "texture_value": [],
     }
-    for index, label in tqdm.tqdm(enumerate(labels)):
-        selected_label_object = label_object.copy()
-        selected_label_object[selected_label_object != label] = 0
-        image_object = object_loader.image.copy()
-        image_object[selected_label_object == 0] = 0
-        image_object = scale_image(image_object)
-        haralick_features = mahotas.features.haralick(
-            ignore_zeros=False,
-            f=image_object,
-            distance=distance,
-            compute_14th_feature=False,
+
+    if len(labels) != 0:
+        # Precompute bounding boxes for labeled regions to avoid per-object full-array copies
+        props = skimage.measure.regionprops_table(
+            label_object, properties=["label", "bbox"]
         )
-        haralick_mean = haralick_features.mean(axis=0)
-        for i, feature_name in enumerate(feature_names):
-            output_texture_dict["object_id"].append(label)
-            output_texture_dict["texture_name"].append(
-                f"{feature_name}-{grayscale}-{distance}"
+        # Map label id to bbox (z0, y0, x0, z1, y1, x1)
+        label_to_bbox = {}
+        labels_prop = props.get("label", [])
+        for i, lbl in enumerate(labels_prop):
+            label_to_bbox[int(lbl)] = (
+                int(props["bbox-0"][i]),
+                int(props["bbox-1"][i]),
+                int(props["bbox-2"][i]),
+                int(props["bbox-3"][i]),
+                int(props["bbox-4"][i]),
+                int(props["bbox-5"][i]),
             )
-            output_texture_dict["texture_value"].append(haralick_mean[i])
-        del haralick_mean
-        del haralick_features
-        gc.collect()
+
+        for _, label in enumerate(labels):
+            bbox = label_to_bbox.get(int(label))
+            if bbox is None:
+                continue
+
+            min_z, min_y, min_x, max_z, max_y, max_x = bbox
+
+            # Crop to the object's bounding box (skimage bboxes are half-open)
+            image_object = object_loader.image[
+                min_z:max_z, min_y:max_y, min_x:max_x
+            ].copy()
+            selected_label_object = label_object[min_z:max_z, min_y:max_y, min_x:max_x]
+            object_mask = selected_label_object == label
+            if not numpy.any(object_mask):
+                continue
+            image_object[~object_mask] = 0
+            n_features = len(feature_names)
+            features = numpy.empty((n_directions, 13, max(labels)))
+            image_object = scale_image(image_object, num_gray_levels=grayscale)
+
+            try:
+                features[:, :, label - 1] = mahotas.features.haralick(
+                    ignore_zeros=True,
+                    f=image_object,
+                    distance=distance,
+                    compute_14th_feature=False,
+                )
+            except ValueError:
+                features[:, :, label - 1] = numpy.full(
+                    (n_directions, n_features), numpy.nan
+                )
+    else:
+        features = numpy.zeros((n_directions, 13, 0))
+
+    for direction, direction_features in enumerate(features):
+        direction_str = f"{direction:02d}"
+        for feature_name, feature in zip(feature_names, direction_features):
+            for object_id, feature_value in zip(labels, feature):
+                output_texture_dict["object_id"].append(object_id)
+                output_texture_dict["texture_name"].append(
+                    f"{feature_name}-{distance}-{direction_str}-{grayscale}"
+                )
+                output_texture_dict["texture_value"].append(feature_value)
+
     return output_texture_dict

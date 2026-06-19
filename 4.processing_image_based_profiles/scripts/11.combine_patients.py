@@ -28,7 +28,7 @@
 # | `*_sc_agg_profiles.parquet` | Well-level aggregated (median by PatientTumor × Well) |
 # | `*_sc_consensus_profiles.parquet` | Consensus (median by PatientTumor × Treatment) |
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -47,6 +47,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:

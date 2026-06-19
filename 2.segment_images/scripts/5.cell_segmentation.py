@@ -84,8 +84,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0021_T1"
-    well_fov = "G7-2"
+    patient = "NF0014_T1"
+    well_fov = "F10-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -124,6 +124,9 @@ elif morphology_class.empty:
     print(f"No morphology label found for {well_fov} in {patient}.")
 elif len(morphology_class) > 1:
     print(f"Multiple morphology labels found for {well_fov} in {patient}.")
+    # pick one at random
+    print(f"Picking one at random for {well_fov} in {patient}.")
+    morphology_class = morphology_class.sample(n=1).iloc[0]
 
 print(f"Organoid morphology for {well_fov}: {morphology_class}")
 
@@ -162,7 +165,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[9]:
+# In[8]:
 
 
 if in_notebook:
@@ -185,7 +188,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[10]:
+# In[9]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -199,18 +202,6 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 # In[11]:
 
 
-nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
-    nuclei_mask=nuclei_mask,
-    cell_mask=cell_mask,
-    nuclei_df=nuclei_df,
-    cell_df=cell_df,
-    return_dataframe=True,
-)
-
-
-# In[12]:
-
-
 # refine the cell masks
 # run the post hoc refinement step to reassign nuclei and cell masks to be the same label
 # if they are "connected" i.e. if the nucleus is within the cell mask, then assign the same label to the cell mask as the nucleus mask
@@ -222,7 +213,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[13]:
+# In[12]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -233,7 +224,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Remove border objects
 
-# In[14]:
+# In[13]:
 
 
 # nuclei should already have objects removed at the border from the previous notebook,
@@ -243,7 +234,7 @@ cell_mask = clean_border_objects(cell_mask, border_width=5)
 cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
 
 
-# In[15]:
+# In[14]:
 
 
 # since the nuclei - cell masks should be 1:1
@@ -259,7 +250,7 @@ for label_id in unmatched_labels_to_remove:
     cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
 
 
-# In[16]:
+# In[15]:
 
 
 if in_notebook:
@@ -282,7 +273,7 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[17]:
+# In[16]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -293,7 +284,7 @@ tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 
 
-# In[18]:
+# In[17]:
 
 
 stop_profiling(
@@ -313,3 +304,27 @@ stop_profiling(
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
+
+# In[19]:
+
+
+print(np.unique(nuclei_mask))
+print(np.unique(cell_mask))
+print(np.unique(cytoplasm_mask))
+
+
+# In[20]:
+
+
+nuclei_mask = tifffile.imread(
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/nuclei_mask.tiff"
+)
+cell_mask = tifffile.imread(
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/cell_mask.tiff"
+)
+cytoplasm_mask = tifffile.imread(
+    f"{image_base_dir}/data/{patient}/segmentation_masks/{well_fov}/cytoplasm_mask.tiff"
+)
+print(np.unique(nuclei_mask))
+print(np.unique(cell_mask))
+print(np.unique(cytoplasm_mask))

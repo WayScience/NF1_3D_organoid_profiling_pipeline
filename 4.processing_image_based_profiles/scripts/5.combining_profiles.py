@@ -52,6 +52,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -63,7 +64,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0014_T2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -87,7 +88,7 @@ nucleocentric_profile_output_path = pathlib.Path(
 organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[ ]:
 
 
 # Discover all per-FOV parquet files under 1.related_profiles/.
@@ -96,7 +97,7 @@ organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
 profiles = list(profiles_path.rglob("*/*.parquet"))
 
 
-# In[5]:
+# In[ ]:
 
 
 # Split files by profile type using filename prefix.
@@ -133,7 +134,7 @@ print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape
 # ## Remove all BF channels
 # 
 
-# In[7]:
+# In[ ]:
 
 
 # Remove brightfield (BF) channel features from all three profile types.
@@ -154,7 +155,7 @@ nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric
 print(f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}")
 
 
-# In[8]:
+# In[ ]:
 
 
 sc_profile.to_parquet(sc_merged_output_path, index=False)

@@ -188,20 +188,10 @@ organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 sc_merged = pd.read_parquet(sc_merged_path)
 organoid_merged = pd.read_parquet(organoid_merged_path)
 nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
-
 # read platemap
 platemap = pd.read_csv(platemap_path)
-platemap["Treatment"] = (
-    platemap["Treatment"]
-    + " "
-    + platemap["Dose"].astype(str)
-    + " "
-    + platemap["Unit"].astype(str)
-)
-
 # if % is in Treatment then delete the space leading to %
 platemap["Treatment"] = platemap["Treatment"].str.replace(r"\s+%", "%", regex=True)
-platemap.drop(columns=["Unit", "Dose"], inplace=True)
 platemap.head()
 
 
@@ -356,7 +346,7 @@ metadata_features_list = [
     "Treatment",
     "WellFOV",
     "ParentOrganoid",
-    "SingleCellCount",
+    "OrganoidSingleCellCount",
     "Target",
     "Class",
     "TherapeuticCategories",

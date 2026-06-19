@@ -202,16 +202,11 @@ for compartment in final_df_dict.keys():
 
 
 # Merge all feature-type dataframes into one dataframe per compartment.
-# Standard compartments (Organoid, Nuclei, Cell, Cytoplasm) reduce all feature types
-# into a single dataframe via left joins on object_id + image_set.
-# Nucleocentric is handled separately. See known issue in the notebook header.
+# All compartments (including Nucleocentric) are merged via left joins on
+# object_id + image_set across feature types.
 compartment_dfs = {}
 for compartment in final_df_dict.keys():
     for df in final_df_dict[compartment].values():
-        if compartment == "Nucleocentric":
-            compartment_dfs[compartment] = df
-            break
-
         compartment_dfs[compartment] = reduce(
             lambda left, right: pd.merge(
                 left,
@@ -221,6 +216,30 @@ for compartment in final_df_dict.keys():
             ),
             final_df_dict[compartment].values(),
         )
+
+
+# In[ ]:
+
+
+# Validate that all single-cell compartments have the same number of objects
+# and that object IDs are aligned across Nuclei, Cell, Cytoplasm, and Nucleocentric.
+print(
+    len(compartment_dfs["Nuclei"]),
+    len(compartment_dfs["Cell"]),
+    len(compartment_dfs["Cytoplasm"]),
+    len(compartment_dfs["Nucleocentric"]),
+)
+assert (
+    len(compartment_dfs["Nuclei"])
+    == len(compartment_dfs["Cell"])
+    == len(compartment_dfs["Cytoplasm"])
+    == len(compartment_dfs["Nucleocentric"])
+)
+assert (
+    compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Cell"]["object_id"])
+    and compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Cytoplasm"]["object_id"])
+    and compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Nucleocentric"]["object_id"])
+)
 
 
 # In[8]:
