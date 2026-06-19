@@ -58,5 +58,5 @@ CHAMMI-75 features are useful for:
 
 ## References
 
-- <Https://arxiv.org/abs/2512.20833>
+- <https://arxiv.org/abs/2512.20833>
 - Hugging face model card: <https://huggingface.co/caicedolab/morphem>
