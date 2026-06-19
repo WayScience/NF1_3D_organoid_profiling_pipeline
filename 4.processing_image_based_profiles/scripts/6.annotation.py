@@ -2,25 +2,25 @@
 # coding: utf-8
 
 # # 6. Annotation
-# 
+#
 # ## Purpose
 # Annotate the three combined profiles (SC, organoid, nucleocentric) for a single patient
 # with treatment metadata, drug information, and microscope metadata. Standardize column
 # naming under a `Metadata_*` prefix scheme and split each profile into hand-crafted and
 # deep-learning feature subsets, producing 6 output parquets.
-# 
+#
 # This is **step 6 of Stage 4 (image-based profiling)**. It runs once per patient.
-# 
+#
 # ## Inputs
 # - `data/{patient}/image_based_profiles/2.combined_profiles/sc.parquet`
 # - `data/{patient}/image_based_profiles/2.combined_profiles/organoid.parquet`
 # - `data/{patient}/image_based_profiles/2.combined_profiles/nucleocentric.parquet`
 # - `config/platemaps/{patient}_platemap.csv` — well-level treatment assignments
 # - `config/drug_information/drug_information.csv` — drug target, class, therapeutic category
-# 
+#
 # ## Outputs
 # Six annotated parquets in `data/{patient}/image_based_profiles/3.annotated_profiles/`:
-# 
+#
 # | File | Profile type | Feature set |
 # |---|---|---|
 # | `sc_anno.parquet` | Single-cell | Hand-crafted |
@@ -29,7 +29,7 @@
 # | `sammed_organoid_anno.parquet` | Organoid | SAMMed3D |
 # | `nucleocentric_sammed_anno.parquet` | Nucleocentric | SAMMed3D |
 # | `nucleocentric_chammi_anno.parquet` | Nucleocentric | CHAMMI-75 |
-# 
+#
 # ## Notes
 # - Metadata columns are sub-categorized as `Metadata_Biology_*`, `Metadata_Experiment_*`,
 #   `Metadata_Object_*`, `Metadata_Location_*`, `Metadata_Neighbors_*`, `Metadata_Microscopy_*`.
@@ -55,6 +55,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -181,7 +182,7 @@ sammed_annotated_organoid_profiles_path = pathlib.Path(
 organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 # read data
@@ -239,7 +240,7 @@ nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.g
 )["image_set"].transform("count")
 
 
-# In[ ]:
+# In[8]:
 
 
 column_rename_mapping = {
@@ -254,7 +255,7 @@ organoid_merged.rename(columns=column_rename_mapping, inplace=True)
 nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
 
-# In[ ]:
+# In[9]:
 
 
 # Promote spatial coordinate columns to Metadata_Location_* so they are excluded
@@ -386,12 +387,12 @@ nucleocentric_merged = nucleocentric_merged.rename(
     sc_merged["Metadata_XResolutionUm"],
     organoid_merged["Metadata_XResolutionUm"],
     nucleocentric_merged["Metadata_XResolutionUm"],
-) = (0.106, 0.106, 0.106)
+) = (0.101, 0.101, 0.101)
 (
     sc_merged["Metadata_YResolutionUm"],
     organoid_merged["Metadata_YResolutionUm"],
     nucleocentric_merged["Metadata_YResolutionUm"],
-) = (0.106, 0.106, 0.106)
+) = (0.101, 0.101, 0.101)
 (
     sc_merged["Metadata_ZResolutionUm"],
     organoid_merged["Metadata_ZResolutionUm"],
@@ -566,4 +567,3 @@ sc_annotated.head()
 
 
 organoid_annotated.head()
-

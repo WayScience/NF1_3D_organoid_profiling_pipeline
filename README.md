@@ -15,14 +15,14 @@ This pipeline was developed specifically for the NF1 3D organoid dataset, but th
 
 ### Raw channels
 
-| **405 channel** | **488 channel** | **555 channel** | **640 channel** |
-| --------------- | --------------- | --------------- | --------------- |
+| **405 channel**                                                                                                                                                                | **488 channel**                                                                                                                                                              | **555 channel**                                                                                                                                                                  | **640 channel**                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![DNA channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_DNA_animation.gif?raw=1) | ![ER channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_ER_animation.gif?raw=1) | ![Golgi channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_AGP_animation.gif?raw=1) | ![Mito channel animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_mitochondria_animation.gif?raw=1) |
 
 ### Organoid, nuclei, cell, and cytoplasm segmentations
 
-| **Organoid** | **Nuclei** | **Cell** | **Cytoplasm** |
-| ------------ | ---------- | -------- | ------------- |
+| **Organoid**                                                                                                                                                                                                      | **Nuclei**                                                                                                                                                                                                    | **Cell**                                                                                                                                                                                                  | **Cytoplasm**                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![Organoid segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Organoid_mask_animation.gif?raw=1) | ![Nuclei segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Nuclei_mask_animation.gif?raw=1) | ![Cell segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cell_mask_animation.gif?raw=1) | ![Cytoplasm segmentation animation](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/2.segment_images/animations/media_for_readme/C4-2_NF0014_T1_C4-2_Cytoplasm_mask_animation.gif?raw=1) |
 
 ---
@@ -599,7 +599,7 @@ Note that while these are the channels we have used for our NF1 3D organoid data
 
 - Objective: 60x/1.35 NA oil immersion
 - Oil RI: 1.518
-- Voxel size: 0.108 μm (XY) × 1 μm (Z)
+- Voxel size: 0.101μm (XY) × 1 μm (Z)
 - Bit depth: 16-bit
 - Dynamic range: 0-65535
 

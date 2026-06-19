@@ -166,30 +166,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.32"
+version = "1.43.33"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jmespath", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "s3transfer", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/34/5cd5603cf76730cac3e92c04bf7f076d5a2686fc57af8371e3f37f30ac88/boto3-1.43.32.tar.gz", hash = "sha256:15544d42af8aa8f775ea636f77c9c97fbc90ff28c0e5a0d1d47c8acd9f5b1982", size = 113169 }
+sdist = { url = "https://files.pythonhosted.org/packages/10/9d/794d03504b8c72bf978a1ef93bc9e7d0867951bf5fbbe50881cd50fb26d5/boto3-1.43.33.tar.gz", hash = "sha256:da6e400b2d11eb041fbbb2743ef3ffe6540889676ffdff0e628628e9b4f04cde", size = 113152 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/96/ab658327b0d628b6deb14dd0e4898557f495a7b236e5db0f437c4c2c0a38/boto3-1.43.32-py3-none-any.whl", hash = "sha256:a3d7d7a9489c18cc9c806aca9be689677779d17ddbf919fe300146576c1bdee2", size = 140533 },
+    { url = "https://files.pythonhosted.org/packages/b1/42/bb88180fe1e46f77fe9507083a256dad243747e29aa0f2fbf6ff421b4132/boto3-1.43.33-py3-none-any.whl", hash = "sha256:97b563127f7678ad20249f9bf99877b7a3a78f6fcdcf222c6e25d27d4406ce0d", size = 140534 },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.43.32"
+version = "1.43.33"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "python-dateutil", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "urllib3", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/f2/3052825265c331886a92da823212ae4830471efd726ac901349d1a6b7c51/botocore-1.43.32.tar.gz", hash = "sha256:88ed52268b8f7e8ff8f9df5adbbf61e5bbb5dc618ee50de4346cabe93a482792", size = 15580749 }
+sdist = { url = "https://files.pythonhosted.org/packages/20/d5/8ec6df4e82bec2be4ac417f542736dc6cfe89152693337152421b336eb71/botocore-1.43.33.tar.gz", hash = "sha256:74b3d5626ebeb2677fac1ca12ac975faf328e54349ceb4dcda17f50674d5b9b4", size = 15586539 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f6/20/b09c65e5903dc61ebbb3e000f725403e8c3dfc7b0f4697db84b5902032d0/botocore-1.43.32-py3-none-any.whl", hash = "sha256:429796537fde1301df90d394808985d88cd51b36a6e769e5c12f6a6877605428", size = 15264015 },
+    { url = "https://files.pythonhosted.org/packages/a1/f5/55fc2d15a81ae39115ebcf8db876f54e78f834446b468e178c9de8e7977e/botocore-1.43.33-py3-none-any.whl", hash = "sha256:4292bb2cc645e5cb404515c54b5b164563f2b4218c52aeee3f1ce851724e177a", size = 15272140 },
 ]
 
 [[package]]
@@ -449,7 +449,7 @@ wheels = [
 
 [[package]]
 name = "cytotable"
-version = "1.2.1"
+version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -462,8 +462,9 @@ dependencies = [
     { name = "scipy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "zarr", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/ab/c5/030598aec364d8485aac6af086797ea4b2d3f89970fd327028c613259ce7/cytotable-1.2.2.tar.gz", hash = "sha256:a79091e447d7cc5e7dbc6a03fa85a769c6f9a0cf65f816217aa6080f6ac4f61b", size = 601457 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/f8/9349c9e2c87691e221f11fc4eae448c19f273d72298fd8999868e7343b25/cytotable-1.2.1-py3-none-any.whl", hash = "sha256:555dd24b2d9d2b90b20876e25370fb803e88d68fd12d70f903951c95b0744ece", size = 61658 },
+    { url = "https://files.pythonhosted.org/packages/d7/45/3fd67aa43d92704f40ed66fa23dac33b158f55f997f63d76788f0c684f58/cytotable-1.2.2-py3-none-any.whl", hash = "sha256:e9afab2dccf333b2e68808fe91bed91293c5839c71cb622d9c420854a4811e96", size = 62365 },
 ]
 
 [[package]]
@@ -1536,7 +1537,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "pip", specifier = ">=26.0.1" },
     { name = "pyarrow", specifier = ">=23.0.0" },
-    { name = "pycytominer", specifier = ">=1.6.0" },
+    { name = "pycytominer", specifier = ">=1.6.1" },
     { name = "pyside6", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "<6.10" },
     { name = "rpy2", specifier = ">=3.6.7" },
     { name = "scikit-image", specifier = ">=0.26.0" },
@@ -2005,16 +2006,16 @@ wheels = [
 
 [[package]]
 name = "pydantic-settings"
-version = "2.14.1"
+version = "2.14.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "python-dotenv", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "typing-inspection", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/60/1d1e59c9c90d54591469ada7d268251f71c24bdb765f1a8a832cee8c6653/pydantic_settings-2.14.1.tar.gz", hash = "sha256:e874d3bec7e787b0c9958277956ed9b4dd5de6a80e162188fdaff7c5e26fd5fa", size = 235551 }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/b5/8f48e906c3e0205276e8bd8cb7512217a87b2685304d64be27cad5b3019f/pydantic_settings-2.14.2.tar.gz", hash = "sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f", size = 237700 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/8d/f1af3832f5e6eb13ba94ee809e72b8ecb5eef226d27ee0bef7d963d943c7/pydantic_settings-2.14.1-py3-none-any.whl", hash = "sha256:6e3c7edfd8277687cdc598f56e5cff0e9bfff0910a3749deaa8d4401c3a2b9de", size = 60964 },
+    { url = "https://files.pythonhosted.org/packages/77/c1/6e422f34e569cf8e18df68d1939c81c099d2b61e4f7d9621c8a77560799c/pydantic_settings-2.14.2-py3-none-any.whl", hash = "sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440", size = 61715 },
 ]
 
 [[package]]

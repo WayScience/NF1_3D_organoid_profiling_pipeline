@@ -2,29 +2,29 @@
 # coding: utf-8
 
 # # 5. Combining Profiles
-# 
+#
 # ## Purpose
 # Concatenate all per-well-FOV parquet files for a single patient into three
 # patient-level combined parquets (SC, organoid, nucleocentric).
-# 
+#
 # This is **step 5 of Stage 4 (image-based profiling)**. It runs once per patient
 # and is typically submitted as a per-patient SLURM job.
-# 
+#
 # ## Inputs
 # - `data/{patient}/image_based_profiles/1.related_profiles/{well_fov}/`
 #   - `sc_profiles_{well_fov}_related.parquet`
 #   - `organoid_profiles_{well_fov}_related.parquet`
 #   - `nucleocentric_profiles_{well_fov}_related.parquet`
-# 
+#
 # ## Outputs
 # Three combined parquets in `data/{patient}/image_based_profiles/2.combined_profiles/`:
-# 
+#
 # | File | Content |
 # |---|---|
 # | `sc.parquet` | All SC profiles stacked across FOVs |
 # | `organoid.parquet` | All organoid profiles stacked across FOVs |
 # | `nucleocentric.parquet` | All nucleocentric profiles stacked across FOVs |
-# 
+#
 # ## Notes
 # - Concatenation uses DuckDB `union_by_name=true`, which aligns columns by name
 #   rather than position. FOVs with missing columns (e.g. empty scaffold tables)
@@ -39,7 +39,6 @@ import os
 import pathlib
 
 import duckdb
-import pandas as pd
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -64,7 +63,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T2"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -88,7 +87,7 @@ nucleocentric_profile_output_path = pathlib.Path(
 organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 # Discover all per-FOV parquet files under 1.related_profiles/.
@@ -97,17 +96,19 @@ organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
 profiles = list(profiles_path.rglob("*/*.parquet"))
 
 
-# In[ ]:
+# In[5]:
 
 
 # Split files by profile type using filename prefix.
 # Expected prefixes: 'sc_', 'organoid_', 'nucleocentric_'.
 sc_profiles = [str(x) for x in profiles if x.name.startswith("sc_")]
 organoid_profiles = [str(x) for x in profiles if x.name.startswith("organoid_")]
-nucleocentric_profiles = [str(x) for x in profiles if x.name.startswith("nucleocentric_")]
+nucleocentric_profiles = [
+    str(x) for x in profiles if x.name.startswith("nucleocentric_")
+]
 
 
-# In[ ]:
+# In[6]:
 
 
 # Concatenate per-FOV parquets for each profile type using DuckDB.
@@ -132,14 +133,15 @@ print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape
 
 
 # ## Remove all BF channels
-# 
+#
 
-# In[ ]:
+# In[7]:
 
 
 # Remove brightfield (BF) channel features from all three profile types.
 # BF is a transmitted-light channel not part of the fluorescent cell painting
-# panel; its features are not meaningful for morphological profiling.
+# panel; its features are may not meaningful for morphological profiling.
+# and are interpreted differently
 # Note: if no BF columns exist in the data, these drops are no-ops.
 
 bf_cols_sc = [col for col in sc_profile.columns if "BF" in col]
@@ -148,17 +150,20 @@ print(f"SC: dropped {len(bf_cols_sc)} BF columns. Shape: {sc_profile.shape}")
 
 bf_cols_organoid = [col for col in organoid_profile.columns if "BF" in col]
 organoid_profile = organoid_profile.drop(columns=bf_cols_organoid)
-print(f"Organoid: dropped {len(bf_cols_organoid)} BF columns. Shape: {organoid_profile.shape}")
+print(
+    f"Organoid: dropped {len(bf_cols_organoid)} BF columns. Shape: {organoid_profile.shape}"
+)
 
 bf_cols_nucleocentric = [col for col in nucleocentric_profile.columns if "BF" in col]
 nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric)
-print(f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}")
+print(
+    f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}"
+)
 
 
-# In[ ]:
+# In[8]:
 
 
 sc_profile.to_parquet(sc_merged_output_path, index=False)
 organoid_profile.to_parquet(organoid_merged_output_path, index=False)
 nucleocentric_profile.to_parquet(nucleocentric_profile_output_path, index=False)
-

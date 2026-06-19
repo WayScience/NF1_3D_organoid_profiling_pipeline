@@ -2,17 +2,17 @@
 # coding: utf-8
 
 # # 8. Normalization
-# 
+#
 # ## Purpose
 # Normalize per-patient profiles using **MAD_robustize** (Median Absolute Deviation
 # robust z-score), fitting on DMSO-treated samples that passed QC as the reference
 # population. Normalization is applied independently to each of the six profile types.
-# 
+#
 # This is **step 8 of Stage 4 (image-based profiling)**. It runs once per patient
 # and must follow `7b.single_cell_qc.ipynb`.
-# 
+#
 # ## Inputs
-# 
+#
 # | File | Stage |
 # |---|---|
 # | `4.qc_profiles/sc_flagged_outliers.parquet` | post-QC hand-crafted SC |
@@ -21,11 +21,11 @@
 # | `3.annotated_profiles/sammed_organoid_anno.parquet` | deep-learning organoid (SAMMed3D) |
 # | `3.annotated_profiles/nucleocentric_sammed_anno.parquet` | deep-learning nucleocentric (SAMMed3D) |
 # | `3.annotated_profiles/nucleocentric_chammi_anno.parquet` | deep-learning nucleocentric (CHAMMI-75) |
-# 
+#
 # ## Outputs
-# 
+#
 # Six normalized parquets in `data/{patient}/image_based_profiles/5.normalized_profiles/`:
-# 
+#
 # | File | Content |
 # |---|---|
 # | `sc_norm.parquet` | Normalized hand-crafted SC profiles |
@@ -34,7 +34,7 @@
 # | `sammed_organoid_norm.parquet` | Normalized SAMMed3D organoid profiles |
 # | `sammed_nucleocentric_norm.parquet` | Normalized SAMMed3D nucleocentric profiles |
 # | `chammi_nucleocentric_norm.parquet` | Normalized CHAMMI-75 nucleocentric profiles |
-# 
+#
 # ## Notes
 # - **MAD_robustize**: subtracts the median and divides by the MAD of the reference
 #   population, producing a robust z-score that is less sensitive to outliers than
@@ -65,6 +65,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -91,16 +92,16 @@ organoid_annotated_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/organoid_flagged_outliers.parquet"
 ).resolve(strict=True)
 sc_sammed_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/sammed_sc_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/sammed_sc_flagged_outliers.parquet"
 ).resolve(strict=True)
 organoid_sc_sammed_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/sammed_organoid_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/sammed_organoid_flagged_outliers.parquet"
 ).resolve(strict=True)
 nucleocentric_sammed_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/nucleocentric_sammed_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/nucleocentric_sammed_flagged_outliers.parquet"
 ).resolve(strict=True)
 nucleocentric_chammi_annotated_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/nucleocentric_chammi_anno.parquet"
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/nucleocentric_chammi_flagged_outliers.parquet"
 ).resolve(strict=True)
 
 
@@ -146,22 +147,28 @@ nucleocentric_chammi_annotated_profiles = pd.read_parquet(
 print(f"SC profiles loaded. Shape: {sc_annotated_profiles.shape}")
 print(f"Organoid profiles loaded. Shape: {organoid_annotated_profiles.shape}")
 print(f"SAMMed3D SC profiles loaded. Shape: {sc_sammed_annotated_profiles.shape}")
-print(f"SAMMed3D organoid profiles loaded. Shape: {organoid_sc_sammed_annotated_profiles.shape}")
-print(f"SAMMed3D nucleocentric profiles loaded. Shape: {nucleocentric_sammed_annotated_profiles.shape}")
-print(f"CHAMMI-75 nucleocentric profiles loaded. Shape: {nucleocentric_chammi_annotated_profiles.shape}")
+print(
+    f"SAMMed3D organoid profiles loaded. Shape: {organoid_sc_sammed_annotated_profiles.shape}"
+)
+print(
+    f"SAMMed3D nucleocentric profiles loaded. Shape: {nucleocentric_sammed_annotated_profiles.shape}"
+)
+print(
+    f"CHAMMI-75 nucleocentric profiles loaded. Shape: {nucleocentric_chammi_annotated_profiles.shape}"
+)
 
 
 # ## Normalize the profiles
-# 
+#
 # For each profile type, metadata columns (those starting with `Metadata_`) are
 # identified and separated from feature columns. Features are then normalized using
 # `MAD_robustize` from pycytominer.
-# 
+#
 # For hand-crafted profiles (SC, organoid), the reference population is DMSO-treated
 # samples that passed all QC checks — i.e., all `Metadata_cqc_*` flags are `False`.
 # This prevents outlier cells from skewing the normalization fit while keeping them
 # in the output for downstream filtering decisions.
-# 
+#
 # For deep-learning profiles, the reference is all DMSO-treated samples (no QC
 # filter exists for these profiles).
 
@@ -170,7 +177,9 @@ print(f"CHAMMI-75 nucleocentric profiles loaded. Shape: {nucleocentric_chammi_an
 
 # Metadata columns start with "Metadata_". Use startswith for precision
 # to avoid matching feature columns that happen to contain the word "Metadata".
-sc_metadata_cols = [col for col in sc_annotated_profiles.columns if col.startswith("Metadata_")]
+sc_metadata_cols = [
+    col for col in sc_annotated_profiles.columns if col.startswith("Metadata_")
+]
 sc_sammed_metadata_cols = [
     col for col in sc_sammed_annotated_profiles.columns if "Metadata" in col
 ]
@@ -217,6 +226,7 @@ nucleocentric_chammi_feature_cols = [
     if col not in nucleocentric_chammi_metadata_cols
 ]
 
+
 def _dmso_qc_samples_query(df):
     """Build a pandas query string for DMSO rows that passed all QC checks."""
     cqc_cols = [col for col in df.columns if col.startswith("Metadata_cqc_")]
@@ -228,31 +238,63 @@ def _dmso_qc_samples_query(df):
 # In[6]:
 
 
-sc_normalized_df = normalize(
-    profiles=sc_annotated_profiles,
-    features=sc_feature_cols,
-    meta_features=sc_metadata_cols,
-    method="MAD_robustize",
-    samples=_dmso_qc_samples_query(sc_annotated_profiles),
-    output_file=sc_normalized_output_path,
-    output_type="parquet",
+# sc_normalized_df = normalize(
+#     profiles=sc_annotated_profiles,
+#     features=sc_feature_cols,
+#     meta_features=sc_metadata_cols,
+#     method="MAD_robustize",
+#     samples=_dmso_qc_samples_query(sc_annotated_profiles),
+#     output_file=sc_normalized_output_path,
+#     output_type="parquet",
+# )
+# sc_sammed_normalized_df = normalize(
+#     profiles=sc_sammed_annotated_profiles,
+#     features=sc_sammed_feature_cols,
+#     meta_features=sc_sammed_metadata_cols,
+#     method="MAD_robustize",
+#     samples="Metadata_Experiment_Treatment == 'DMSO'",
+#     output_file=sc_sammed_normalized_output_path,
+#     output_type="parquet",
+# )
+# nucleocentric_sammed_normalized_df = normalize(
+#     profiles=nucleocentric_sammed_annotated_profiles,
+#     features=nucleocentric_sammed_feature_cols,
+#     meta_features=nucleocentric_sammed_metadata_cols,
+#     method="MAD_robustize",
+#     samples="Metadata_Experiment_Treatment == 'DMSO'",
+#     output_file=nucleocentric_sammed_normalized_output_path,
+#     output_type="parquet",
+# )
+# nucleocentric_chammi_normalized_df = normalize(
+#     profiles=nucleocentric_chammi_annotated_profiles,
+#     features=nucleocentric_chammi_feature_cols,
+#     meta_features=nucleocentric_chammi_metadata_cols,
+#     method="MAD_robustize",
+#     samples="Metadata_Experiment_Treatment == 'DMSO'",
+#     output_file=nucleocentric_chammi_normalized_output_path,
+#     output_type="parquet",
+# )
+
+# for organoid normalization
+# we will normalize to the whole plate instead of just the DMSO samples,
+# since there are fewer organoid samples and thus
+# fewer DMSO samples to use for normalization.
+
+# type cast to all float64 so numpy and scipy can properly handle the data during normalization
+organoid_annotated_profiles[organoid_feature_cols] = organoid_annotated_profiles[
+    organoid_feature_cols
+].astype("float64")
+organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols] = (
+    organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols].astype(
+        "float64"
+    )
 )
 organoid_normalized_df = normalize(
     profiles=organoid_annotated_profiles,
     features=organoid_feature_cols,
     meta_features=organoid_metadata_cols,
     method="MAD_robustize",
-    samples=_dmso_qc_samples_query(organoid_annotated_profiles),
     output_file=organoid_normalized_output_path,
-    output_type="parquet",
-)
-sc_sammed_normalized_df = normalize(
-    profiles=sc_sammed_annotated_profiles,
-    features=sc_sammed_feature_cols,
-    meta_features=sc_sammed_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=sc_sammed_normalized_output_path,
     output_type="parquet",
 )
 organoid_sc_sammed_normalized_df = normalize(
@@ -260,28 +302,10 @@ organoid_sc_sammed_normalized_df = normalize(
     features=organoid_sc_sammed_feature_cols,
     meta_features=organoid_sc_sammed_metadata_cols,
     method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
     output_file=organoid_sc_sammed_normalized_output_path,
     output_type="parquet",
 )
-nucleocentric_sammed_normalized_df = normalize(
-    profiles=nucleocentric_sammed_annotated_profiles,
-    features=nucleocentric_sammed_feature_cols,
-    meta_features=nucleocentric_sammed_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=nucleocentric_sammed_normalized_output_path,
-    output_type="parquet",
-)
-nucleocentric_chammi_normalized_df = normalize(
-    profiles=nucleocentric_chammi_annotated_profiles,
-    features=nucleocentric_chammi_feature_cols,
-    meta_features=nucleocentric_chammi_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=nucleocentric_chammi_normalized_output_path,
-    output_type="parquet",
-)
+
 
 output_df_paths = [
     sc_normalized_output_path,
@@ -294,4 +318,3 @@ output_df_paths = [
 for output_path in output_df_paths:
     if not output_path.exists():
         print(f"Error: Normalized output file {output_path} was not created.")
-

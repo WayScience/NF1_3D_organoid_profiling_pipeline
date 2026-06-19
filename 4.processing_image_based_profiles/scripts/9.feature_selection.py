@@ -2,20 +2,23 @@
 # coding: utf-8
 
 # # 9. Feature Selection
-# 
+#
 # ## Purpose
 # Remove low-information features from each normalized profile using pycytominer's
 # `feature_select`. Feature selection is **fit on a reference subset** (DMSO and
 # Staurosporine wells) but **applied to all treatments**, so the retained feature set
 # is determined by the reference population and then used to subset the full dataset.
-# 
+#
+# We fit on DMSO and Staurosporine wells because we expect that these two treatments will have the most distinct profiles, so features that are uninformative in this context are likely to be uninformative across the full treatment set.
+# By fitting on this reference subset, we can identify and retain features that capture meaningful variation while removing those that do not contribute to distinguishing between treatments.
+#
 # This is **step 9 of Stage 4 (image-based profiling)**. It runs once per patient
 # and must follow `8.normalization.ipynb`.
-# 
+#
 # ## Inputs
-# 
+#
 # Six normalized parquets from `5.normalized_profiles/`:
-# 
+#
 # | File | Profile type |
 # |---|---|
 # | `sc_norm.parquet` | Hand-crafted SC |
@@ -24,11 +27,11 @@
 # | `sammed_organoid_norm.parquet` | Deep-learning organoid (SAMMed3D) |
 # | `sammed_nucleocentric_norm.parquet` | Deep-learning nucleocentric (SAMMed3D) |
 # | `chammi_nucleocentric_norm.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
-# 
+#
 # ## Outputs
-# 
+#
 # Six feature-selected parquets in `6.feature_selected_profiles/`:
-# 
+#
 # | File | Profile type |
 # |---|---|
 # | `sc_fs.parquet` | Hand-crafted SC |
@@ -37,14 +40,14 @@
 # | `sammed_organoid_fs.parquet` | Deep-learning organoid (SAMMed3D) |
 # | `sammed_nucleocentric_fs.parquet` | Deep-learning nucleocentric (SAMMed3D) |
 # | `chammi_nucleocentric_fs.parquet` | Deep-learning nucleocentric (CHAMMI-75) |
-# 
+#
 # ## Notes
 # - Feature selection is fit on DMSO and Staurosporine rows only, then the retained
 #   feature set is applied back to the full (all-treatment) dataset. This ensures
 #   feature selection is not biased by the full treatment distribution.
 # - QC-flagged rows are not filtered here; that is left to downstream analysis.
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -141,9 +144,15 @@ nucleocentric_chammi_normalized = pd.read_parquet(nucleocentric_chammi_normalize
 print(f"SC normalized loaded. Shape: {sc_normalized.shape}")
 print(f"Organoid normalized loaded. Shape: {organoid_normalized.shape}")
 print(f"SAMMed3D SC normalized loaded. Shape: {sc_sammed_normalized.shape}")
-print(f"SAMMed3D organoid normalized loaded. Shape: {organoid_sc_sammed_normalized.shape}")
-print(f"SAMMed3D nucleocentric normalized loaded. Shape: {nucleocentric_sammed_normalized.shape}")
-print(f"CHAMMI-75 nucleocentric normalized loaded. Shape: {nucleocentric_chammi_normalized.shape}")
+print(
+    f"SAMMed3D organoid normalized loaded. Shape: {organoid_sc_sammed_normalized.shape}"
+)
+print(
+    f"SAMMed3D nucleocentric normalized loaded. Shape: {nucleocentric_sammed_normalized.shape}"
+)
+print(
+    f"CHAMMI-75 nucleocentric normalized loaded. Shape: {nucleocentric_chammi_normalized.shape}"
+)
 
 
 # In[5]:
@@ -191,21 +200,21 @@ feature_select_ops = [
     "correlation_threshold",  # comment out to remove correlation thresholding
     "variance_threshold",  # comment out to remove variance thresholding
 ]
-na_cutoff = 0.05        # drop features with >5% NaN
-corr_threshold = 0.95   # drop one of any pair with Pearson r >= 0.95
-freq_cut = 0.01         # variance threshold: most-common / second-most-common value ratio
-unique_cut = 0.01       # variance threshold: minimum fraction of unique values
+na_cutoff = 0.05  # drop features with >5% NaN
+corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.95
+freq_cut = 0.05  # variance threshold: most-common / second-most-common value ratio
+unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 
 
 # ## Feature select the profiles
-# 
+#
 # For each profile type:
 # 1. Feature selection is **fit** on DMSO and Staurosporine rows only — a controlled
 #    reference that avoids biasing feature selection on the full treatment distribution.
 # 2. The retained feature set is applied back to the **full dataset** (all treatments),
 #    so no treatment rows are dropped from the output.
 
-# In[7]:
+# In[ ]:
 
 
 for profile_name in run_dict.keys():
@@ -220,9 +229,7 @@ for profile_name in run_dict.keys():
     # Phase 1: fit feature selection on reference treatments only.
     # all_trt_df retains the full dataset; df is narrowed to the reference subset.
     all_trt_df = df.copy()
-    df = df.loc[
-        df["Metadata_Experiment_Treatment"].isin(["DMSO 1%", "Staurosporine 10 nM"])
-    ]
+    df = df.loc[df["Metadata_Experiment_Treatment"].isin(["DMSO", "Staurosporine"])]
 
     # run feature selection
     fs_profiles = feature_select(
@@ -243,10 +250,3 @@ for profile_name in run_dict.keys():
     print("The number features before feature selection:", original_data_shape[1])
     print("The number features after feature selection:", fs_profiles.shape[1])
     fs_profiles.to_parquet(output_path, index=False)
-
-
-# In[8]:
-
-
-fs_profiles.head()
-

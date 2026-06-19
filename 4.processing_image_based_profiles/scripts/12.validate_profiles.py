@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -22,7 +22,7 @@ profile_base_dir = bandicoot_check(
 profile_base_dir = root_dir
 
 
-# In[5]:
+# In[2]:
 
 
 patient_ids_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
@@ -34,13 +34,10 @@ patient_ids = pd.read_csv(patient_ids_file_path, header=None).iloc[:, 0].tolist(
 # In[6]:
 
 
-patient = "NF0014_T1"
+patient_ids = ["NF0014_T1"]
 
 
-# In[ ]:
-
-
-# In[49]:
+# In[7]:
 
 
 for patient in patient_ids:
@@ -49,22 +46,22 @@ for patient in patient_ids:
     )
     # output path
     sc_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sc_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sc_norm.parquet"
     ).resolve()
     organoid_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/organoid_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/organoid_norm.parquet"
     ).resolve()
     sc_sammed_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_sc_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_sc_norm.parquet"
     ).resolve()
     organoid_sc_sammed_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_organoid_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_organoid_norm.parquet"
     ).resolve()
     nucleocentric_sammed_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
     ).resolve()
     nucleocentric_chammi_normalized_path = pathlib.Path(
-        f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/chammi_nucleocentric_norm.parquet"
+        f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/chammi_nucleocentric_norm.parquet"
     ).resolve()
 
     sc_annotated_df = pd.read_parquet(sc_normalized_path)
@@ -108,6 +105,3 @@ for patient in patient_ids:
             print(
                 f"{name} - infs: {np.isinf(df.select_dtypes(include=[np.number])).sum().sum()}"
             )
-
-
-# In[ ]:

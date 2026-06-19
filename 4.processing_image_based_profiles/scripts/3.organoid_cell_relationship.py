@@ -2,30 +2,30 @@
 # coding: utf-8
 
 # # 3. Organoid–Cell Relationship
-# 
+#
 # ## Purpose
 # This notebook assigns each single cell and nucleocentric object to its parent organoid,
 # then computes spatial relationship features (Euclidean distance, Mahalanobis distance,
 # and shell classification) for each cell relative to its parent organoid centroid.
-# 
+#
 # This is **step 3 of Stage 4 (image-based profiling)**. It runs once per well-FOV and
 # is typically submitted as a child job via the SLURM scheduler.
-# 
+#
 # ## Inputs
 # Three parquet files from `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
 # - `sc_profiles_{well_fov}.parquet` — merged Nuclei + Cell + Cytoplasm features
 # - `organoid_profiles_{well_fov}.parquet` — organoid features
 # - `nucleocentric_profiles_{well_fov}.parquet` — nucleocentric features
-# 
+#
 # ## Outputs
 # Three enriched parquet files written to `data/{patient}/image_based_profiles/1.related_profiles/{well_fov}/`:
-# 
+#
 # | File | Added columns |
 # |---|---|
 # | `sc_profiles_{well_fov}_related.parquet` | `ParentOrganoid`, shell/distance features |
 # | `organoid_profiles_{well_fov}_related.parquet` | `OrganoidSingleCellCount` |
 # | `nucleocentric_profiles_{well_fov}_related.parquet` | `ParentOrganoid` |
-# 
+#
 # ## Notes
 # - Parent organoid assignment uses bbox containment: a cell is assigned to the first
 #   organoid whose bounding box contains the cell's nuclear centroid.
@@ -40,7 +40,6 @@
 import os
 import pathlib
 
-import numpy as np
 import pandas as pd
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
@@ -82,7 +81,7 @@ else:
 
 # ### Pathing
 
-# In[4]:
+# In[3]:
 
 
 # input paths
@@ -108,7 +107,7 @@ nucleocentric_profile_output_path = pathlib.Path(
 sc_profile_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[5]:
+# In[4]:
 
 
 sc_profile_df = pd.read_parquet(sc_profile_path)
@@ -119,7 +118,7 @@ print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 print(f"Organoid profile shape: {organoid_profile_df.shape}")
 
 
-# In[7]:
+# In[5]:
 
 
 x_y_z_sc_colnames = [
@@ -130,7 +129,7 @@ x_y_z_sc_colnames = [
 x_y_z_sc_colnames
 
 
-# In[8]:
+# In[6]:
 
 
 organoid_bbox_colnames = [
@@ -145,7 +144,7 @@ organoid_bbox_colnames = sorted(organoid_bbox_colnames)
 # This ordering is assumed in the bbox tuple construction below.
 
 
-# In[ ]:
+# In[7]:
 
 
 # Initialize ParentOrganoid to -1 (sentinel for unassigned cells).
@@ -194,7 +193,9 @@ for organoid_index, organoid_row in tqdm(
     final_mask = mask & unassigned_mask
 
     # Assign parent organoid to matching cells
-    sc_profile_df.loc[sc_profile_df.index[final_mask], "ParentOrganoid"] = organoid_row["object_id"]
+    sc_profile_df.loc[sc_profile_df.index[final_mask], "ParentOrganoid"] = organoid_row[
+        "object_id"
+    ]
 
 print(f"Assigned {(sc_profile_df['ParentOrganoid'] != -1).sum()} cells to organoids")
 print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
@@ -202,7 +203,7 @@ print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
 
 # ### Add single-cell counts for each organoid
 
-# In[11]:
+# In[8]:
 
 
 organoid_sc_counts = (
@@ -224,11 +225,11 @@ organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 
 
 # ### Empty dataframe fallbacks
-# 
+#
 # If either the organoid or SC profile is empty for this well-FOV, a placeholder row
 # is inserted so that downstream merges always find consistent columns.
 
-# In[12]:
+# In[9]:
 
 
 # replace NaN with 0 for organoids that have no assigned cells
@@ -238,7 +239,7 @@ organoid_profile_df["OrganoidSingleCellCount"] = (
 organoid_profile_df.head()
 
 
-# In[13]:
+# In[10]:
 
 
 if organoid_profile_df.empty:
@@ -249,13 +250,13 @@ if organoid_profile_df.empty:
     organoid_profile_df["image_set"] = well_fov
 
 
-# In[14]:
+# In[11]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
 
-# In[15]:
+# In[12]:
 
 
 if sc_profile_df.empty:
@@ -264,7 +265,7 @@ if sc_profile_df.empty:
     sc_profile_df["image_set"] = well_fov
 
 
-# In[16]:
+# In[13]:
 
 
 # Propagate ParentOrganoid to nucleocentric profiles.
@@ -280,7 +281,7 @@ nucleocentric_df = pd.merge(
 
 # ## Get single cell and organoid relationships and spatial distributions
 
-# In[17]:
+# In[14]:
 
 
 x_y_z_organoid_centroid_colnames = [
@@ -295,7 +296,7 @@ x_y_z_organoid_bbox_colnames = [
 ]
 
 
-# In[18]:
+# In[15]:
 
 
 results = []
@@ -369,7 +370,7 @@ for organoid_id in organoid_ids:
     results.append(shell_classification_df)
 
 
-# In[19]:
+# In[16]:
 
 
 # Concatenate per-organoid shell results and rename columns to standard feature name format.
@@ -403,7 +404,7 @@ df.rename(
 )
 
 
-# In[20]:
+# In[17]:
 
 
 # concat the shell classification with the single cell profile df to get the full single cell profile with the shell classification and the parent organoid id
@@ -418,29 +419,22 @@ sc_profile_with_shells_df = pd.merge(
 
 # ### Save the profiles
 
-# In[21]:
+# In[18]:
 
 
 organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
 organoid_profile_df.head()
 
 
-# In[22]:
+# In[19]:
 
 
 sc_profile_with_shells_df.to_parquet(sc_profile_output_path, index=False)
 sc_profile_with_shells_df.head()
 
 
-# In[23]:
+# In[20]:
 
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
 nucleocentric_df.head()
-
-
-# In[24]:
-
-
-sc_profile_with_shells_df.isna().sum().sum()
-

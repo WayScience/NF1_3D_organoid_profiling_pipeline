@@ -2,23 +2,23 @@
 # coding: utf-8
 
 # # 1. Merge Feature Parquets
-# 
+#
 # ## Purpose
 # This notebook merges all per-channel, per-feature-type parquet files for a single well-FOV into a single DuckDB database file, with one table per compartment.
-# 
+#
 # This is **step 1 of Stage 4 (image-based profiling)**. It runs once per well-FOV and is typically submitted as a child job via the SLURM scheduler.
-# 
+#
 # ## Inputs
 # - `data/{patient}/extracted_features/{well_fov}/*.parquet`
 #   - One parquet per compartment × channel × feature type combination (125–189 files per FOV)
 #   - Expected filename format: `{Compartment}_{Channel}_{FeatureType}_{Processor}_features.parquet`
 #     - Example: `Nuclei_ER_Granularity_CPU_features.parquet`
 #   - Each file contains columns: `object_id`, `image_set`, and feature columns
-# 
+#
 # ## Outputs
 # - `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/{well_fov}.duckdb`
 #   - Five tables, one per compartment:
-# 
+#
 # | Table | Compartment | Description | Feature types |
 # |---|---|---|---|
 # | `Organoid` | Whole organoid | One row per segmented organoid | Hand-crafted + SAMMed3D |
@@ -26,10 +26,10 @@
 # | `Cell` | Whole cell | One row per segmented cell | Hand-crafted + SAMMed3D |
 # | `Cytoplasm` | Cell minus nucleus | One row per cytoplasm region | Hand-crafted + SAMMed3D |
 # | `Nucleocentric` | Nucleus-centered crop | One row per nucleus-centered volume | SAMMed3D and CHAMMI75 only |
-# 
+#
 #   - Handcrafted features include AreaSizeShape, Colocalization, Intensity, Granularity, Neighbors, and Texture.
 #   - If a compartment has no extracted features for a given well-FOV (e.g. no organoids were detected), an empty scaffold table matching the expected schema is written so downstream scripts don't fail on a missing table.
-# 
+#
 # ## Notes
 # - Merges within a compartment use left joins on `object_id` + `image_set`. Objects missing from some channels will have NaN-filled feature columns — this is expected when not all feature types apply to all channels (e.g. colocalization requires two channels).
 # - Nucleocentric compartment only supports SAMMed3D and CHAMMI-75 feature types; hand-crafted features are not extracted for nucleocentric volumes.
@@ -37,10 +37,8 @@
 # In[1]:
 
 
-import argparse
 import os
 import pathlib
-import sys
 from functools import reduce
 
 import duckdb
@@ -57,6 +55,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -71,7 +70,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C4-1"
+    well_fov = "F4-2"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -156,12 +155,14 @@ unknown_feature_types = set(files_df["feature_type"]) - set(feature_types)
 if unknown_compartments:
     raise ValueError(f"Unexpected compartment(s) in filenames: {unknown_compartments}")
 if unknown_feature_types:
-    raise ValueError(f"Unexpected feature type(s) in filenames: {unknown_feature_types}")
+    raise ValueError(
+        f"Unexpected feature type(s) in filenames: {unknown_feature_types}"
+    )
 
 files_df.head()
 
 
-# In[ ]:
+# In[6]:
 
 
 # Phase 1: route each file path into output_dict by compartment x feature type.
@@ -198,7 +199,7 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[ ]:
+# In[7]:
 
 
 # Merge all feature-type dataframes into one dataframe per compartment.
@@ -218,7 +219,7 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[ ]:
+# In[8]:
 
 
 # Validate that all single-cell compartments have the same number of objects
@@ -237,12 +238,16 @@ assert (
 )
 assert (
     compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Cell"]["object_id"])
-    and compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Cytoplasm"]["object_id"])
-    and compartment_dfs["Nuclei"]["object_id"].equals(compartment_dfs["Nucleocentric"]["object_id"])
+    and compartment_dfs["Nuclei"]["object_id"].equals(
+        compartment_dfs["Cytoplasm"]["object_id"]
+    )
+    and compartment_dfs["Nuclei"]["object_id"].equals(
+        compartment_dfs["Nucleocentric"]["object_id"]
+    )
 )
 
 
-# In[8]:
+# In[9]:
 
 
 # Load the reference DB schema from a pre-built DuckDB file.
@@ -265,7 +270,7 @@ dict_of_DB_structures = {
 }
 
 
-# In[9]:
+# In[10]:
 
 
 # Write each compartment dataframe as a table in the output DuckDB.
@@ -278,4 +283,3 @@ with duckdb.connect(sqlite_path, read_only=False) as cx:
         cx.register("temp_df", write_df)
         cx.execute(f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df")
         cx.unregister("temp_df")
-
