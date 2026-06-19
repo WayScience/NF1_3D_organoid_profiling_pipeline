@@ -151,6 +151,12 @@ print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 # In[9]:
 
 
+df
+
+
+# In[10]:
+
+
 # Summary by patient
 summary_df = (
     df.groupby("patient")[["duckdb_exists"]]

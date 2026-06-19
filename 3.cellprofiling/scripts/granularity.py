@@ -176,18 +176,6 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[15]:
-
-
-pd.read_parquet(save_path).head()
-
-
-# In[16]:
-
-
-save_path
-
-
 # In[14]:
 
 

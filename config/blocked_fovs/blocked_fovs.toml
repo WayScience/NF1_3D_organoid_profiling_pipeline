@@ -1,4 +1,6 @@
 [blocked_patient_well_fovs]
+# blank images, corrupted raw files, missing z-slices that
+# cause errors in the segmentation pipeline, etc.
 patient  = [
     "NF0014_T1",
     "NF0016_T1",

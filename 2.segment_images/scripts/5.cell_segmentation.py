@@ -85,7 +85,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "D5-1"
+    well_fov = "F10-1"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -199,19 +199,6 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[ ]:
-
-
-# comment out as this should be down with the watershed already
-# nuclei_mask, reassigned_nuclei_df = run_post_hoc_mask_reassignment(
-#     nuclei_mask=nuclei_mask,
-#     cell_mask=cell_mask,
-#     nuclei_df=nuclei_df,
-#     cell_df=cell_df,
-#     return_dataframe=True,
-# )
-
-
 # In[11]:
 
 
@@ -317,13 +304,6 @@ stop_profiling(
 
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
-
-# In[18]:
-
-
-# if the number of nuclei labels and cell labels do not match
-# take care of of any unmatched labels by
-
 
 # In[19]:
 

@@ -37,7 +37,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "G5-1"
+    well_fov = "E9-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -126,7 +126,13 @@ for i, row in files_df.iterrows():
 output_dict
 
 
-# In[7]:
+# In[47]:
+
+
+output_dict["Nucleocentric"]
+
+
+# In[ ]:
 
 
 final_df_dict = {compartment: {} for compartment in output_dict.keys()}
@@ -151,16 +157,25 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[8]:
+# In[51]:
+
+
+final_df_dict["Nucleocentric"]["SAMMed3D"]
+
+
+# In[ ]:
+
+
+# In[43]:
 
 
 # merge the dfs such that each compartment has a single df with all feature types as columns
 compartment_dfs = {}
 for compartment in final_df_dict.keys():
     for df in final_df_dict[compartment].values():
-        if compartment == "Nucleocentric":
-            compartment_dfs[compartment] = df
-            break
+        # if compartment == "Nucleocentric":
+        #     compartment_dfs[compartment] = df
+        #     break
 
         compartment_dfs[compartment] = reduce(
             lambda left, right: pd.merge(
@@ -173,7 +188,7 @@ for compartment in final_df_dict.keys():
         )
 
 
-# In[9]:
+# In[44]:
 
 
 # assert that the number of Nuclei, Cell, Cytoplasm, Nucleocentric are all the same
@@ -202,7 +217,13 @@ assert (
 )
 
 
-# In[ ]:
+# In[45]:
+
+
+compartment_dfs["Nucleocentric"]
+
+
+# In[39]:
 
 
 nuclei_ids = compartment_dfs["Nuclei"]["object_id"].unique()
@@ -214,7 +235,7 @@ print(cell_ids)
 set(nuclei_ids) - set(cell_ids)
 
 
-# In[11]:
+# In[40]:
 
 
 with duckdb.connect(DB_structure_path, read_only=True) as cx:
@@ -233,7 +254,7 @@ dict_of_DB_structues = {
 }
 
 
-# In[12]:
+# In[41]:
 
 
 # get the table from the DB_structue
@@ -252,3 +273,6 @@ with duckdb.connect(sqlite_path, read_only=False) as cx:
                 f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df"
             )
             cx.unregister("temp_df")
+
+
+# In[ ]:

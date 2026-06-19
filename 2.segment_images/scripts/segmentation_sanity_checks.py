@@ -30,17 +30,9 @@ bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[2]:
+# In[ ]:
 
 
-# def normalize_mask_labels1(x):
-#     if isinstance(x, np.ndarray):
-#         return x.astype(np.int32)
-#     elif x is None or (isinstance(x, float) and np.isnan(x)):
-#         return np.array([], dtype=np.int32)  # empty array instead of null
-#     else:
-#         # Handle unexpected scalar values
-#         return np.array([x], dtype=np.int32)
 def normalize_mask_labels(val):
     if val is None or (isinstance(val, float) and np.isnan(val)):
         return []

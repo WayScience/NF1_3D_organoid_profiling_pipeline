@@ -79,7 +79,7 @@ flowchart TD
     T6 --> V6[consensus profiles]
 ```
 
-## Number of feature files
+## Number of feature files per image-set (well_fov)
 
 | Feature type     | # of compartments | # of channels | Total number of feature files |
 | ---------------- | ----------------- | ------------- | ----------------------------- |

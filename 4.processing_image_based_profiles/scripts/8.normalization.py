@@ -157,85 +157,75 @@ nucleocentric_chammi_feature_cols = [
 ]
 
 
-# In[ ]:
+# In[6]:
 
 
-sc_normalized_df = normalize(
-    profiles=sc_annotated_profiles,
-    features=sc_feature_cols,
-    meta_features=sc_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-    output_file=sc_normalized_output_path,
-    output_type="parquet",
-)
-# if there are NAs and not enough samples, we get an error, this is not an issue in the sc profiles
-try:
-    organoid_normalized_df = normalize(
-        profiles=organoid_annotated_profiles,
-        features=organoid_feature_cols,
-        meta_features=organoid_metadata_cols,
-        method="MAD_robustize",
-        samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-        output_file=organoid_normalized_output_path,
-        output_type="parquet",
-    )
-except Exception as e:
-    organoid_annotated_profiles.dropna(subset=organoid_feature_cols, inplace=True)
-    organoid_normalized_df = normalize(
-        profiles=organoid_annotated_profiles,
-        features=organoid_feature_cols,
-        meta_features=organoid_metadata_cols,
-        method="MAD_robustize",
-        samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-        output_file=organoid_normalized_output_path,
-        output_type="parquet",
-    )
-sc_sammed_normalized_df = normalize(
-    profiles=sc_sammed_annotated_profiles,
-    features=sc_sammed_feature_cols,
-    meta_features=sc_sammed_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-    output_file=sc_sammed_normalized_output_path,
-    output_type="parquet",
-)
-organoid_sc_sammed_normalized_df = normalize(
-    profiles=organoid_sc_sammed_annotated_profiles,
-    features=organoid_sc_sammed_feature_cols,
-    meta_features=organoid_sc_sammed_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-    output_file=organoid_sc_sammed_normalized_output_path,
-    output_type="parquet",
-)
-nucleocentric_sammed_normalized_df = normalize(
-    profiles=nucleocentric_sammed_annotated_profiles,
-    features=nucleocentric_sammed_feature_cols,
-    meta_features=nucleocentric_sammed_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-    output_file=nucleocentric_sammed_normalized_output_path,
-    output_type="parquet",
-)
-nucleocentric_chammi_normalized_df = normalize(
-    profiles=nucleocentric_chammi_annotated_profiles,
-    features=nucleocentric_chammi_feature_cols,
-    meta_features=nucleocentric_chammi_metadata_cols,
-    method="MAD_robustize",
-    samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
-    output_file=nucleocentric_chammi_normalized_output_path,
-    output_type="parquet",
-)
+normalization_dict = {
+    "sc": {
+        "annotated_profiles": sc_annotated_profiles,
+        "metadata_cols": sc_metadata_cols,
+        "feature_cols": sc_feature_cols,
+        "normalized_output_path": sc_normalized_output_path,
+    },
+    "organoid": {
+        "annotated_profiles": organoid_annotated_profiles,
+        "metadata_cols": organoid_metadata_cols,
+        "feature_cols": organoid_feature_cols,
+        "normalized_output_path": organoid_normalized_output_path,
+    },
+    "sc_sammed": {
+        "annotated_profiles": sc_sammed_annotated_profiles,
+        "metadata_cols": sc_sammed_metadata_cols,
+        "feature_cols": sc_sammed_feature_cols,
+        "normalized_output_path": sc_sammed_normalized_output_path,
+    },
+    "organoid_sc_sammed": {
+        "annotated_profiles": organoid_sc_sammed_annotated_profiles,
+        "metadata_cols": organoid_sc_sammed_metadata_cols,
+        "feature_cols": organoid_sc_sammed_feature_cols,
+        "normalized_output_path": organoid_sc_sammed_normalized_output_path,
+    },
+    "nucleocentric_sammed": {
+        "annotated_profiles": nucleocentric_sammed_annotated_profiles,
+        "metadata_cols": nucleocentric_sammed_metadata_cols,
+        "feature_cols": nucleocentric_sammed_feature_cols,
+        "normalized_output_path": nucleocentric_sammed_normalized_output_path,
+    },
+    "nucleocentric_chammi": {
+        "annotated_profiles": nucleocentric_chammi_annotated_profiles,
+        "metadata_cols": nucleocentric_chammi_metadata_cols,
+        "feature_cols": nucleocentric_chammi_feature_cols,
+        "normalized_output_path": nucleocentric_chammi_normalized_output_path,
+    },
+}
 
-output_df_paths = [
-    sc_normalized_output_path,
-    organoid_normalized_output_path,
-    sc_sammed_normalized_output_path,
-    organoid_sc_sammed_normalized_output_path,
-    nucleocentric_sammed_normalized_output_path,
-    nucleocentric_chammi_normalized_output_path,
-]
-for output_path in output_df_paths:
-    if not output_path.exists():
-        print(f"Error: Normalized output file {output_path} was not created.")
+
+# In[7]:
+
+
+for profile_type in normalization_dict.keys():
+    print(f"Normalizing {profile_type} profiles...")
+    try:
+        _output_path = normalize(
+            profiles=normalization_dict[profile_type]["annotated_profiles"],
+            features=normalization_dict[profile_type]["feature_cols"],
+            meta_features=normalization_dict[profile_type]["metadata_cols"],
+            method="MAD_robustize",
+            samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
+            output_file=normalization_dict[profile_type]["normalized_output_path"],
+            output_type="parquet",
+        )
+    except Exception as e:
+        print(f"Error normalizing {profile_type} profiles: {e}")
+        normalization_dict[profile_type]["annotated_profiles"].dropna(inplace=True)
+        _output_path = normalize(
+            profiles=normalization_dict[profile_type]["annotated_profiles"],
+            features=normalization_dict[profile_type]["feature_cols"],
+            meta_features=normalization_dict[profile_type]["metadata_cols"],
+            method="MAD_robustize",
+            samples="Metadata_Experiment_Treatment == 'DMSO 1%'",
+            output_file=normalization_dict[profile_type]["normalized_output_path"],
+            output_type="parquet",
+        )
+    if not normalization_dict[profile_type]["normalized_output_path"].exists():
+        print(f"Error: Normalized {profile_type} profiles were not saved to disk.")

@@ -187,7 +187,7 @@ channel_map = {
 scaling_values = [1, 0.1, 0.1]
 
 
-# In[6]:
+# In[ ]:
 
 
 patient_ids = [
@@ -200,14 +200,14 @@ well_fovs_to_animate = [
 # np.random.seed(0)
 for patient in tqdm.tqdm(patient_ids, desc="Processing patients"):
     # get a list of all well_fovs in the zstack_images dir
-    # images_dir = pathlib.Path(
-    #     f"{image_base_dir}/data/{patient}/{input_subparent_name}"
-    # ).resolve(strict=True)
-    # list_of_well_fovs = images_dir.glob("*")
-    # list_of_well_fovs = [x for x in list_of_well_fovs if x.is_dir()]
-    # list_of_well_fovs = [x.name for x in list_of_well_fovs]
+    images_dir = pathlib.Path(
+        f"{image_base_dir}/data/{patient}/{input_subparent_name}"
+    ).resolve(strict=True)
+    list_of_well_fovs = images_dir.glob("*")
+    list_of_well_fovs = [x for x in list_of_well_fovs if x.is_dir()]
+    list_of_well_fovs = [x.name for x in list_of_well_fovs]
     # select 5 random well_fovs to animate
-    # well_fovs_to_animate = np.random.choice(list_of_well_fovs, size=5, replace=False)
+    well_fovs_to_animate = np.random.choice(list_of_well_fovs, size=5, replace=False)
     for well_fov in tqdm.tqdm(well_fovs_to_animate, desc=f"Animating {patient}"):
         try:
             print(f"Animating {patient} {well_fov}")
