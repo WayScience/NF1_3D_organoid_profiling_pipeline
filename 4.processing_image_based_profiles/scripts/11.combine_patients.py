@@ -93,7 +93,7 @@ for patient in patients:
 levels_to_merge_dict
 
 
-# In[6]:
+# In[5]:
 
 
 # Feature selection operations applied in order:
@@ -113,7 +113,7 @@ freq_cut = 0.05  # variance threshold: most-common / second-most-common value ra
 unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 
 
-# In[7]:
+# In[6]:
 
 
 # Well-level strata: one row per (patient, well) combination
@@ -122,7 +122,7 @@ aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
 consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
 
 
-# In[8]:
+# In[7]:
 
 
 for profile_type, files in levels_to_merge_dict.items():

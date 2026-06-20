@@ -74,7 +74,7 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             out_dict["compartment"].append(compartment)
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
-df = df.loc[df["patient_id"] == "NF0014_T1"]
+# df = df.loc[df["patient_id"] == "NF0014_T1"]
 # df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
 df = df.loc[(df["compartment"] != "Organoid")]
 
@@ -134,13 +134,14 @@ for row in tqdm(
     out_dict["path"].append(row.file_path)
     out_dict["type"].append(f"{row.compartment}")
 out_df = pd.DataFrame(out_dict)
+out_df.drop_duplicates(subset=["patient_id", "well_fov", "type"], inplace=True)
 # pivot such that each type has its own column
 out_df = out_df.pivot(
     index=["patient_id", "well_fov"], columns="type", values="path"
 ).reset_index()
 
 
-# In[ ]:
+# In[7]:
 
 
 labels_dict = {
@@ -172,7 +173,7 @@ for row in tqdm(
 labels_df = pd.DataFrame(labels_dict)
 
 
-# In[ ]:
+# In[8]:
 
 
 labels_df["labels_match"] = labels_df.apply(
@@ -189,13 +190,19 @@ labels_df["unique_labels_across_compartments"] = labels_df.apply(
 labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[ ]:
+# In[9]:
+
+
+labels_df["patient_id"].unique()
+
+
+# In[10]:
 
 
 labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
 
 
-# In[ ]:
+# In[11]:
 
 
 # # show the well fov and the patient id
@@ -206,7 +213,7 @@ labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient
 #     print(f"cd ../../{row.patient_id}/extracted_features/ ; rm -r {row.well_fov}")
 
 
-# In[ ]:
+# In[12]:
 
 
 tmp_df = pd.merge(
@@ -219,3 +226,6 @@ tmp_df = pd.merge(
     on=["object_id", "image_set"],
 )
 tmp_df.head()
+
+
+# In[ ]:
