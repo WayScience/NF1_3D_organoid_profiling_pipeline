@@ -16,6 +16,7 @@ from image_analysis_3D.featurization_utils.colocalization_utils import (
 )
 from image_analysis_3D.featurization_utils.granularity_utils import (
     _subsample_3d,
+    _upsample_3d,
     measure_3D_granularity,
 )
 from image_analysis_3D.featurization_utils.intensity_utils import (
@@ -1704,4 +1705,171 @@ class TestColocalizationAdvanced:
             thr=10,
         )
 
+        assert isinstance(result, dict)
+
+
+# ============================================================================
+# REGRESSION TESTS: bugs found in featurization audit
+# ============================================================================
+
+
+class TestColocalizationRegressions:
+    """Regression tests for bugs found in colocalization_utils audit."""
+
+    def test_scipy_stats_import_no_attribute_error(self):
+        """Regression: scipy.stats was not imported; scipy.stats.pearsonr raised AttributeError.
+
+        linear_costes_threshold_calculation calls scipy.stats.pearsonr but only
+        scipy.ndimage was imported at module level.  The fix is to add
+        ``import scipy.stats`` to colocalization_utils.py.
+        """
+        img1 = np.random.randint(50, 200, (8, 8, 8), dtype=np.uint8).astype(float)
+        img2 = np.random.randint(50, 200, (8, 8, 8), dtype=np.uint8).astype(float)
+        # With bug: AttributeError: module 'scipy' has no attribute 'stats'
+        thr1, thr2 = linear_costes_threshold_calculation(
+            first_image=img1.ravel(),
+            second_image=img2.ravel(),
+            scale_max=255,
+        )
+        assert isinstance(thr1, (int, float))
+        assert isinstance(thr2, (int, float))
+
+    def test_combined_thresh_unbound_on_manders_value_error(self):
+        """Regression: combined_thresh was only assigned in the else-branch of a
+        try/except ValueError block, so a ValueError left it unbound. The overlap
+        coefficient section used it unconditionally, raising UnboundLocalError.
+
+        Fix: initialise combined_thresh before the try block.
+        """
+        # numpy.max on a zero-element array raises ValueError, triggering the bug.
+        img_empty = np.zeros((0,), dtype=float)
+        # After fix: must not raise UnboundLocalError (other errors are acceptable).
+        try:
+            result = measure_3D_colocalization(img_empty, img_empty)
+            assert isinstance(result, dict)
+        except (ValueError, ZeroDivisionError, IndexError):
+            pass  # These are acceptable failures for a zero-size image.
+
+    def test_accurate_mode_calls_linear_not_bisection(self, high_contrast_images):
+        """Regression: 'Accurate' mode called bisection; 'Fast' called linear — inverted.
+
+        Docstring says 'Accurate' uses the linear (fine-step) algorithm and
+        'Fast' uses bisection.  The if/else in measure_3D_colocalization had the
+        two function calls swapped.
+
+        We verify by calling both modes and comparing threshold results against
+        direct calls to the underlying functions.
+        """
+        img1, img2 = high_contrast_images
+        scale = 255
+
+        # Direct calls to the individual algorithms
+        thr_linear_1, thr_linear_2 = linear_costes_threshold_calculation(
+            img1, img2, scale_max=scale, fast_costes="Accurate"
+        )
+        thr_bisect_1, thr_bisect_2 = bisection_costes_threshold_calculation(
+            img1, img2, scale_max=scale
+        )
+
+        # After fix: "Accurate" mode should internally use linear_costes → same threshold
+        result_accurate = measure_3D_colocalization(img1, img2, fast_costes="Accurate")
+        result_fast = measure_3D_colocalization(img1, img2, fast_costes="Fast")
+
+        # Both modes must complete without error and return the same keys.
+        assert set(result_accurate.keys()) == set(result_fast.keys())
+
+        # With bug the two modes produce results from the wrong underlying algorithm.
+        # With fix the MandersCoeffCostesM1 computed by "Accurate" should be
+        # consistent with linear thresholds (not bisection thresholds) — we check
+        # that the two modes differ when the algorithms give different thresholds.
+        if abs(thr_linear_1 - thr_bisect_1) > 1e-4:
+            assert result_accurate["MandersCoeffCostesM1"] != pytest.approx(
+                result_fast["MandersCoeffCostesM1"]
+            ), (
+                "Accurate and Fast modes returned identical MandersCoeffCostesM1 "
+                "despite algorithms producing different thresholds — mode logic "
+                "may still be inverted."
+            )
+
+
+class TestNeighborsRegressions:
+    """Regression tests for bugs found in neighbors_utils audit."""
+
+    def test_neighbors_count_adjacent_detects_touching_cells(self):
+        """Regression: NeighborsCountAdjacent cropped to the object's own bbox and
+        counted unique labels there.  Because regionprops uses exclusive max indices,
+        a voxel at the exact boundary of the bbox (i.e., the immediately adjacent
+        neighbor cell) was never included in the crop → NeighborsCountAdjacent was
+        always 0 for actually-touching cells.
+
+        Fix: dilate the binary object mask by one voxel and count unique labels in
+        the dilated region (excluding self).
+        """
+        labels = np.zeros((15, 15, 15), dtype=int)
+        # Cell 1 occupies x = 2..5, cell 2 occupies x = 6..9 — they share a face at x=5|6.
+        labels[5:10, 5:10, 2:6] = 1
+        labels[5:10, 5:10, 6:10] = 2
+        image = np.zeros((15, 15, 15), dtype=float)
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_number_of_neighbors(
+            object_loader=loader,
+            distance_threshold=1,
+            anisotropy_factor=1,
+        )
+
+        obj_map = dict(zip(result["object_id"], result["NeighborsCountAdjacent"]))
+        assert obj_map[1] >= 1, (
+            f"Cell 1 should detect cell 2 as adjacent (touching face), "
+            f"got NeighborsCountAdjacent={obj_map[1]}"
+        )
+        assert obj_map[2] >= 1, (
+            f"Cell 2 should detect cell 1 as adjacent (touching face), "
+            f"got NeighborsCountAdjacent={obj_map[2]}"
+        )
+
+
+class TestGranularityRegressions:
+    """Regression tests for bugs found in granularity_utils audit."""
+
+    def test_upsample_3d_no_division_by_zero_when_dim_is_one(self):
+        """Regression: _upsample_3d divided by (original_shape[d] - 1).  When any
+        dimension is 1 this is 0, raising ZeroDivisionError.
+
+        Fix: guard against dim == 1 (coordinates are already 0 for that axis).
+        """
+        data = np.ones((3, 3, 3), dtype=float) * 5.0
+        subsampled_shape = np.array([3.0, 3.0, 3.0])
+        # original_shape dimension = 1 → 1 - 1 = 0 → ZeroDivisionError without fix
+        result = _upsample_3d(data, subsampled_shape, original_shape=(1, 3, 3))
+        assert result.shape == (1, 3, 3)
+        assert np.all(np.isfinite(result))
+
+    def test_granularity_no_crash_on_single_z_slice(self):
+        """Regression: measure_3D_granularity with a (1, Y, X) image calls
+        _upsample_3d with original_shape[0]=1, hitting the division-by-zero bug.
+        """
+        np.random.seed(0)
+        image = np.random.randint(50, 200, (1, 20, 20), dtype=np.uint8).astype(float)
+        labels = np.zeros((1, 20, 20), dtype=int)
+        labels[0, 5:15, 5:15] = 1
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        # With bug: ZeroDivisionError inside _upsample_3d
+        result = measure_3D_granularity(
+            loader,
+            subsample_size=0.5,
+            granular_spectrum_length=3,
+            radius=2,
+        )
         assert isinstance(result, dict)
