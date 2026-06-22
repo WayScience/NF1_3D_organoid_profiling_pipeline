@@ -25,68 +25,6 @@ else:
     patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
-base = pathlib.Path(profile_base_dir) / "data" / patient / image_based_profiles_subparent_name
-qc_dir = base / "4.qc_profiles"
-anno_dir = base / "3.annotated_profiles"
-qc_dir.mkdir(parents=True, exist_ok=True)
-
-# Source CQC profiles (handcrafted, already flagged)
-sc_cqc_path = (qc_dir / "sc_flagged_outliers.parquet").resolve(strict=True)
-organoid_cqc_path = (qc_dir / "organoid_flagged_outliers.parquet").resolve(strict=True)
-
-# DL profiles to annotate
-sammed_sc_path = (anno_dir / "sammed_sc_anno.parquet").resolve(strict=True)
-sammed_organoid_path = (anno_dir / "sammed_organoid_anno.parquet").resolve(strict=True)
-nucleocentric_sammed_path = (anno_dir / "nucleocentric_sammed_anno.parquet").resolve(strict=True)
-nucleocentric_morphem_path = (anno_dir / "nucleocentric_morphem_anno.parquet").resolve(strict=True)
-
-# Outputs
-sammed_sc_output_path = (qc_dir / "sammed_sc_flagged_outliers.parquet").resolve()
-sammed_organoid_output_path = (qc_dir / "sammed_organoid_flagged_outliers.parquet").resolve()
-nucleocentric_sammed_output_path = (qc_dir / "nucleocentric_sammed_flagged_outliers.parquet").resolve()
-nucleocentric_morphem_output_path = (qc_dir / "nucleocentric_morphem_flagged_outliers.parquet").resolve()
-
-sc_cqc_df = pd.read_parquet(sc_cqc_path)
-organoid_cqc_df = pd.read_parquet(organoid_cqc_path)
-
-sammed_sc_df = pd.read_parquet(sammed_sc_path)
-sammed_organoid_df = pd.read_parquet(sammed_organoid_path)
-nucleocentric_sammed_df = pd.read_parquet(nucleocentric_sammed_path)
-nucleocentric_morphem_df = pd.read_parquet(nucleocentric_morphem_path)
-
-print(f"SC CQC source:          {sc_cqc_df.shape}")
-print(f"Organoid CQC source:    {organoid_cqc_df.shape}")
-print(f"SAMMed SC:              {sammed_sc_df.shape}")
-print(f"SAMMed organoid:        {sammed_organoid_df.shape}")
-print(f"Nucleocentric SAMMed:   {nucleocentric_sammed_df.shape}")
-print(f"Nucleocentric morphem:  {nucleocentric_morphem_df.shape}")
-
-JOIN_KEY = ["Metadata_Experiment_WellFOV", "Metadata_Object_ObjectID"]
-CQC_PREFIX = "Metadata_cqc_"
-
-sc_cqc_cols = [c for c in sc_cqc_df.columns if c.startswith(CQC_PREFIX)]
-organoid_cqc_cols = [c for c in organoid_cqc_df.columns if c.startswith(CQC_PREFIX)]
-
-print(f"SC CQC columns to propagate: {sc_cqc_cols}")
-print(f"Organoid CQC columns to propagate: {organoid_cqc_cols}")
-
-# Validate join key is present in all profiles
-for name, df in [
-    ("sc_cqc", sc_cqc_df),
-    ("organoid_cqc", organoid_cqc_df),
-    ("sammed_sc", sammed_sc_df),
-    ("sammed_organoid", sammed_organoid_df),
-    ("nucleocentric_sammed", nucleocentric_sammed_df),
-    ("nucleocentric_morphem", nucleocentric_morphem_df),
-]:
-    for col in JOIN_KEY:
-        assert col in df.columns, (
-            f"Join key column '{col}' missing from {name}. "
-            f"Cannot propagate CQC flags without a reliable join key."
-        )
-
-print("\nJoin key present in all profiles. ✓")
-
 def propagate_cqc(
     source_df: pd.DataFrame,
     target_df: pd.DataFrame,
@@ -160,6 +98,68 @@ def propagate_cqc(
     )
 
     return merged
+
+base = pathlib.Path(profile_base_dir) / "data" / patient / image_based_profiles_subparent_name
+qc_dir = base / "4.qc_profiles"
+anno_dir = base / "3.annotated_profiles"
+qc_dir.mkdir(parents=True, exist_ok=True)
+
+# Source CQC profiles (handcrafted, already flagged)
+sc_cqc_path = (qc_dir / "sc_flagged_outliers.parquet").resolve(strict=True)
+organoid_cqc_path = (qc_dir / "organoid_flagged_outliers.parquet").resolve(strict=True)
+
+# DL profiles to annotate
+sammed_sc_path = (anno_dir / "sammed_sc_anno.parquet").resolve(strict=True)
+sammed_organoid_path = (anno_dir / "sammed_organoid_anno.parquet").resolve(strict=True)
+nucleocentric_sammed_path = (anno_dir / "nucleocentric_sammed_anno.parquet").resolve(strict=True)
+nucleocentric_morphem_path = (anno_dir / "nucleocentric_morphem_anno.parquet").resolve(strict=True)
+
+# Outputs
+sammed_sc_output_path = (qc_dir / "sammed_sc_flagged_outliers.parquet").resolve()
+sammed_organoid_output_path = (qc_dir / "sammed_organoid_flagged_outliers.parquet").resolve()
+nucleocentric_sammed_output_path = (qc_dir / "nucleocentric_sammed_flagged_outliers.parquet").resolve()
+nucleocentric_morphem_output_path = (qc_dir / "nucleocentric_morphem_flagged_outliers.parquet").resolve()
+
+sc_cqc_df = pd.read_parquet(sc_cqc_path)
+organoid_cqc_df = pd.read_parquet(organoid_cqc_path)
+
+sammed_sc_df = pd.read_parquet(sammed_sc_path)
+sammed_organoid_df = pd.read_parquet(sammed_organoid_path)
+nucleocentric_sammed_df = pd.read_parquet(nucleocentric_sammed_path)
+nucleocentric_morphem_df = pd.read_parquet(nucleocentric_morphem_path)
+
+print(f"SC CQC source:          {sc_cqc_df.shape}")
+print(f"Organoid CQC source:    {organoid_cqc_df.shape}")
+print(f"SAMMed SC:              {sammed_sc_df.shape}")
+print(f"SAMMed organoid:        {sammed_organoid_df.shape}")
+print(f"Nucleocentric SAMMed:   {nucleocentric_sammed_df.shape}")
+print(f"Nucleocentric morphem:  {nucleocentric_morphem_df.shape}")
+
+JOIN_KEY = ["Metadata_Experiment_WellFOV", "Metadata_Object_ObjectID"]
+CQC_PREFIX = "Metadata_cqc_"
+
+sc_cqc_cols = [c for c in sc_cqc_df.columns if c.startswith(CQC_PREFIX)]
+organoid_cqc_cols = [c for c in organoid_cqc_df.columns if c.startswith(CQC_PREFIX)]
+
+print(f"SC CQC columns to propagate: {sc_cqc_cols}")
+print(f"Organoid CQC columns to propagate: {organoid_cqc_cols}")
+
+# Validate join key is present in all profiles
+for name, df in [
+    ("sc_cqc", sc_cqc_df),
+    ("organoid_cqc", organoid_cqc_df),
+    ("sammed_sc", sammed_sc_df),
+    ("sammed_organoid", sammed_organoid_df),
+    ("nucleocentric_sammed", nucleocentric_sammed_df),
+    ("nucleocentric_morphem", nucleocentric_morphem_df),
+]:
+    for col in JOIN_KEY:
+        assert col in df.columns, (
+            f"Join key column '{col}' missing from {name}. "
+            f"Cannot propagate CQC flags without a reliable join key."
+        )
+
+print("\nJoin key present in all profiles. ✓")
 
 sammed_sc_flagged = propagate_cqc(
     source_df=sc_cqc_df,
