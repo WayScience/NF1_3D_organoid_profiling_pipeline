@@ -2,30 +2,30 @@
 # coding: utf-8
 
 # # 3. Organoid–Cell Relationship
-#
+# 
 # ## Purpose
 # This notebook assigns each single cell and nucleocentric object to its parent organoid,
 # then computes spatial relationship features (Euclidean distance, Mahalanobis distance,
 # and shell classification) for each cell relative to its parent organoid centroid.
-#
+# 
 # This is **step 3 of Stage 4 (image-based profiling)**. It runs once per well-FOV and
 # is typically submitted as a child job via the SLURM scheduler.
-#
+# 
 # ## Inputs
 # Three parquet files from `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
 # - `sc_profiles_{well_fov}.parquet` — merged Nuclei + Cell + Cytoplasm features
 # - `organoid_profiles_{well_fov}.parquet` — organoid features
 # - `nucleocentric_profiles_{well_fov}.parquet` — nucleocentric features
-#
+# 
 # ## Outputs
 # Three enriched parquet files written to `data/{patient}/image_based_profiles/1.related_profiles/{well_fov}/`:
-#
+# 
 # | File | Added columns |
 # |---|---|
 # | `sc_profiles_{well_fov}_related.parquet` | `ParentOrganoid`, shell/distance features |
 # | `organoid_profiles_{well_fov}_related.parquet` | `OrganoidSingleCellCount` |
 # | `nucleocentric_profiles_{well_fov}_related.parquet` | `ParentOrganoid` |
-#
+# 
 # ## Notes
 # - Parent organoid assignment uses bbox containment: a cell is assigned to the first
 #   organoid whose bounding box contains the cell's nuclear centroid.
@@ -40,6 +40,7 @@
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
 from image_analysis_3D.featurization_utils.feature_writing_utils import (
     format_morphology_feature_name,
@@ -225,7 +226,7 @@ organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 
 
 # ### Empty dataframe fallbacks
-#
+# 
 # If either the organoid or SC profile is empty for this well-FOV, a placeholder row
 # is inserted so that downstream merges always find consistent columns.
 
@@ -239,15 +240,16 @@ organoid_profile_df["OrganoidSingleCellCount"] = (
 organoid_profile_df.head()
 
 
-# In[10]:
+# In[ ]:
 
 
 if organoid_profile_df.empty:
-    # add a row with 0 values
-    organoid_profile_df.loc[len(organoid_profile_df)] = [0] * len(
-        organoid_profile_df.columns
-    )
-    organoid_profile_df["image_set"] = well_fov
+    # Write the empty DataFrame as-is. Parquet preserves schema (columns) even with
+    # zero rows, so downstream union_by_name in 5.combining_profiles handles this
+    # correctly. A fake zero-filled row was previously inserted here but produced
+    # object_id=0 (the background label), creating a spurious organoid row that
+    # propagated through all downstream stages.
+    pass
 
 
 # In[11]:
@@ -438,3 +440,4 @@ sc_profile_with_shells_df.head()
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
 nucleocentric_df.head()
+

@@ -134,6 +134,7 @@ def measure_3D_texture(
                 int(props["bbox-5"][i]),
             )
 
+        features = numpy.empty((n_directions, 13, max(labels)))
         for _, label in enumerate(labels):
             bbox = label_to_bbox.get(int(label))
             if bbox is None:
@@ -151,7 +152,6 @@ def measure_3D_texture(
                 continue
             image_object[~object_mask] = 0
             n_features = len(feature_names)
-            features = numpy.empty((n_directions, 13, max(labels)))
             image_object = scale_image(image_object, num_gray_levels=grayscale)
 
             try:
