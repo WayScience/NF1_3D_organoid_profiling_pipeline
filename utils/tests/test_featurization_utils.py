@@ -320,6 +320,83 @@ class TestTextureUtils:
         # Check contrast or homogeneity features if available
         assert len(obj_textures) >= 2
 
+    def test_texture_values_correct_per_object(self, texture_varied_objects):
+        """Each object must receive its own Haralick values, not another object's or garbage.
+
+        Regression test for a bug where features = numpy.empty(...) was called
+        inside the per-object loop, resetting the array every iteration and leaving
+        only the last object's values intact. All other objects received uninitialized
+        memory from numpy.empty.
+        """
+        import mahotas
+
+        image, labels = texture_varied_objects
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        result = measure_3D_texture(object_loader=loader, distance=1, grayscale=256)
+
+        # Build per-object lookup: {object_id: {texture_name: value}}
+        obj_textures = {}
+        for obj_id, name, val in zip(
+            result["object_id"], result["texture_name"], result["texture_value"]
+        ):
+            obj_textures.setdefault(obj_id, {})[name] = val
+
+        # Independently compute expected Haralick values for each object
+        # by replicating what the function should do: crop to bbox, mask, scale, haralick
+        import skimage.measure
+
+        props = skimage.measure.regionprops_table(labels, properties=["label", "bbox"])
+        label_to_bbox = {
+            int(props["label"][i]): (
+                int(props["bbox-0"][i]),
+                int(props["bbox-1"][i]),
+                int(props["bbox-2"][i]),
+                int(props["bbox-3"][i]),
+                int(props["bbox-4"][i]),
+                int(props["bbox-5"][i]),
+            )
+            for i in range(len(props["label"]))
+        }
+
+        feature_names = [
+            "AngularSecondMoment", "Contrast", "Correlation", "Variance",
+            "InverseDifferenceMoment", "SumAverage", "SumVariance", "SumEntropy",
+            "Entropy", "DifferenceVariance", "DifferenceEntropy",
+            "InformationMeasureOfCorrelation1", "InformationMeasureOfCorrelation2",
+        ]
+
+        unique_labels = sorted(np.unique(labels[labels != 0]))
+        for label in unique_labels:
+            z0, y0, x0, z1, y1, x1 = label_to_bbox[label]
+            crop = image[z0:z1, y0:y1, x0:x1].copy()
+            mask = labels[z0:z1, y0:y1, x0:x1] == label
+            crop[~mask] = 0
+            crop_scaled = scale_image(crop, num_gray_levels=256)
+            try:
+                expected = mahotas.features.haralick(
+                    ignore_zeros=True, f=crop_scaled, distance=1, compute_14th_feature=False
+                )
+            except ValueError:
+                continue  # uniform object — haralick raises, both paths yield nan
+
+            # Check direction 0 (first direction) for each feature
+            for feat_idx, feat_name in enumerate(feature_names):
+                key = f"{feat_name}-1-00-256"
+                assert key in obj_textures[label], f"Missing {key} for object {label}"
+                actual = obj_textures[label][key]
+                exp = expected[0, feat_idx]
+                assert numpy.isclose(actual, exp, rtol=1e-5, equal_nan=True), (
+                    f"Object {label}, feature {feat_name}: got {actual}, expected {exp}. "
+                    f"Likely caused by features array being reset inside the per-object loop."
+                )
+
     def test_measure_3d_texture_uniform_full_object(self):
         """Test that a completely uniform object is handled gracefully."""
         image = np.ones((6, 6, 6), dtype=np.uint16) * 500
