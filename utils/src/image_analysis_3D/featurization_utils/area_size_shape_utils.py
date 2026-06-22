@@ -129,7 +129,7 @@ def measure_3D_area_size_shape(
         try:
             features_to_record["SurfaceArea"].append(
                 calculate_surface_area(
-                    label_object=label_object,
+                    label_object=subset_lab_object,
                     props=props,
                     spacing=spacing,
                 )

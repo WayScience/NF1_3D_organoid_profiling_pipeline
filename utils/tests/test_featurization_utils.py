@@ -146,15 +146,25 @@ class TestAreaSizeShapeUtils:
         """
         from unittest.mock import Mock
 
-        # Build a 10x10x10 label image with two touching cells.
-        # Cell 1 (label=1): a small 3x3x3 cube at the corner [0:3, 0:3, 0:3].
-        # Cell 2 (label=2): fills the rest of the volume.
-        # Cell 1's bounding box [0:3, 0:3, 0:3] is entirely label>0 (no background),
-        # so the bug causes marching_cubes to fail → NaN for cell 1's SurfaceArea.
-        labels = np.ones((10, 10, 10), dtype=np.int32) * 2
-        labels[0:3, 0:3, 0:3] = 1
+        # Build a 15x15x15 label image with two touching cells.
+        # Cell 1 (label=1): a cross/plus shape (strips along each axis) centred at
+        #   [7,7,7] within a 5x5x5 bounding box [5:10, 5:10, 5:10].
+        #   Because it is not a solid cube it does NOT fill its own bbox — the
+        #   8 corners of [5:10,5:10,5:10] are empty.
+        # Cell 2 (label=2): fills all remaining voxels, including those corners.
+        #
+        # With the bug (full label_object passed to calculate_surface_area):
+        #   volume = full_image[5:10,5:10,5:10] → all non-zero (label 1 or 2)
+        #   → volume_truths = all True → marching_cubes raises ValueError → NaN
+        # With the fix (subset_lab_object passed):
+        #   volume = subset[5:10,5:10,5:10] → cross of 1s, corner zeros
+        #   → marching_cubes succeeds → real surface area returned
+        labels = np.ones((15, 15, 15), dtype=np.int32) * 2
+        labels[5:10, 7, 7] = 1  # z-strip of the cross
+        labels[7, 5:10, 7] = 1  # y-strip
+        labels[7, 7, 5:10] = 1  # x-strip
 
-        image = np.zeros((10, 10, 10), dtype=np.float32)
+        image = np.zeros((15, 15, 15), dtype=np.float32)
 
         loader = ObjectLoader(
             image=image,
