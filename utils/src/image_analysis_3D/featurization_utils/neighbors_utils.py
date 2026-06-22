@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy
 import pandas
 import skimage.measure
+import skimage.morphology
 from image_analysis_3D.featurization_utils.loading_classes import ObjectLoader
 
 
@@ -158,18 +159,16 @@ def measure_3D_number_of_neighbors(
         )
         bbox = (new_z_min, new_y_min, new_x_min, new_z_max, new_y_max, new_x_max)
         croppped_neighbor_image = crop_3D_image(image=label_object, bbox=bbox)
-        self_cropped_neighbor_image = crop_3D_image(
-            image=label_object, bbox=original_bbox
-        )
-        # find all the unique values in the cropped image of the object of interest
-        # this is the number of neighbors in the cropped image
-        n_neighbors_adjacent = (
-            len(
-                numpy.unique(
-                    self_cropped_neighbor_image[self_cropped_neighbor_image > 0]
-                )
-            )
-            - 1
+        # Dilate the binary mask of this object by 1 voxel to find cells that
+        # share at least one face, edge, or corner voxel (26-connectivity).
+        # The old approach cropped to the object's own bbox (exclusive max indices),
+        # which excluded immediately adjacent voxels → always returned 0.
+        binary_mask = label_object == label
+        dilated_mask = skimage.morphology.dilation(binary_mask)
+        labels_in_dilation = label_object[dilated_mask]
+        adjacent_labels = numpy.unique(labels_in_dilation)
+        n_neighbors_adjacent = int(
+            numpy.sum((adjacent_labels != 0) & (adjacent_labels != label))
         )
 
         # find all the unique values in the expanded cropped image of the object of interest

@@ -313,6 +313,9 @@ def measure_3D_colocalization(
     ################################################################################################
 
     # Threshold as percentage of maximum intensity of objects in each channel
+    # Initialise before the try block so combined_thresh is always bound even
+    # when the except branch fires (numpy.max raises ValueError on empty arrays).
+    combined_thresh = numpy.zeros_like(cropped_image_1, dtype=bool)
     try:
         tff = (thr / 100) * numpy.max(cropped_image_1)
         tss = (thr / 100) * numpy.max(cropped_image_2)
@@ -346,25 +349,28 @@ def measure_3D_colocalization(
     # Calculate the overlap coefficient
     ################################################################################################
 
-    fpsq = scipy.ndimage.sum(
-        cropped_image_1[combined_thresh] ** 2,
-    )
-    spsq = scipy.ndimage.sum(
-        cropped_image_2[combined_thresh] ** 2,
-    )
-    pdt = numpy.sqrt(numpy.array(fpsq) * numpy.array(spsq))
-    overlap = (
-        scipy.ndimage.sum(
-            cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+    if numpy.any(combined_thresh):
+        fpsq = scipy.ndimage.sum(
+            cropped_image_1[combined_thresh] ** 2,
         )
-        / pdt
-    )
-    K1 = scipy.ndimage.sum(
-        cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
-    ) / (numpy.array(fpsq))
-    K2 = scipy.ndimage.sum(
-        cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
-    ) / (numpy.array(spsq))
+        spsq = scipy.ndimage.sum(
+            cropped_image_2[combined_thresh] ** 2,
+        )
+        pdt = numpy.sqrt(numpy.array(fpsq) * numpy.array(spsq))
+        overlap = (
+            scipy.ndimage.sum(
+                cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+            )
+            / pdt
+        )
+        K1 = scipy.ndimage.sum(
+            cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+        ) / (numpy.array(fpsq))
+        K2 = scipy.ndimage.sum(
+            cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+        ) / (numpy.array(spsq))
+    else:
+        overlap, K1, K2 = 0.0, 0.0, 0.0
 
     # first_pixels, second_pixels = flattened image arrays
     # combined_thresh = boolean mask of pixels above threshold in both channels
