@@ -805,6 +805,61 @@ class TestIntensityUtils:
         # Should have expected outline
         assert outline.shape == full_mask.shape
 
+    def test_min_intensity_edge_not_zero_for_bright_cell(self):
+        """MinIntensityEdge must reflect actual boundary pixel intensities, not 0.
+
+        Regression test for a bug where get_outline used find_boundaries with the
+        default mode='thick', which returns both inner (object-side) and outer
+        (background-side) boundary pixels. Because selected_image_object is zeroed
+        outside the cell before the outline is computed, the outer boundary pixels
+        always have intensity 0, making numpy.min always return 0 regardless of
+        the cell's true edge intensity.
+
+        The fix is to use mode='inner' in find_boundaries so only pixels that are
+        inside the object boundary are included in the edge mask.
+        """
+        # Build a 10x10x10 image with a solid bright cell (intensity=100) in the centre.
+        # Every voxel of the cell has intensity 100, so MinIntensityEdge should be 100.
+        # With the bug, outer boundary pixels (zeroed background) are included and
+        # min returns 0 instead.
+        shape = (10, 10, 10)
+        image = numpy.zeros(shape, dtype=numpy.float32)
+        labels = numpy.zeros(shape, dtype=numpy.int32)
+
+        image[3:7, 3:7, 3:7] = 100
+        labels[3:7, 3:7, 3:7] = 1
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        result = measure_3D_intensity_CPU(object_loader=loader)
+
+        # Extract MinIntensityEdge for object 1
+        min_edge_values = [
+            v
+            for oid, name, v in zip(
+                result["object_id"], result["feature_name"], result["value"]
+            )
+            if oid == 1 and name == "MinIntensityEdge"
+        ]
+
+        assert min_edge_values, "MinIntensityEdge not found in result"
+        min_edge = min_edge_values[0]
+
+        assert min_edge != 0, (
+            f"MinIntensityEdge is 0 for a cell with uniform intensity 100. "
+            f"Likely caused by find_boundaries(mode='thick') including outer "
+            f"(background) boundary pixels that have been zeroed, so numpy.min "
+            f"always returns 0."
+        )
+        assert min_edge == pytest.approx(100.0), (
+            f"MinIntensityEdge should be 100 (cell intensity) but got {min_edge}"
+        )
+
     def test_measure_3d_intensity_cpu_basic(self, object_loader_simple):
         """Test basic intensity measurement."""
         result = measure_3D_intensity_CPU(object_loader=object_loader_simple)

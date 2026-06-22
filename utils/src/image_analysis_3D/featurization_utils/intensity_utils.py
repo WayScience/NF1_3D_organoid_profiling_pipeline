@@ -27,7 +27,7 @@ def get_outline(mask: numpy.ndarray) -> numpy.ndarray:
     """
     outline = numpy.zeros_like(mask)
     for z in range(mask.shape[0]):
-        outline[z] = skimage.segmentation.find_boundaries(mask[z])
+        outline[z] = skimage.segmentation.find_boundaries(mask[z], mode="inner")
     return outline
 
 
