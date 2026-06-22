@@ -130,6 +130,62 @@ class TestAreaSizeShapeUtils:
         assert 400 < volumes[2] < 700  # ~512 voxels
         assert 2500 < volumes[3] < 4000  # ~3375 voxels
 
+    def test_surface_area_not_nan_for_surrounded_cell(self):
+        """SurfaceArea must be non-NaN for a cell whose bbox is fully occupied by neighbors.
+
+        Regression test for a bug where calculate_surface_area received the full
+        multi-cell label_object instead of the single-cell masked subset_lab_object.
+        Inside calculate_surface_area, volume_truths = volume > 0 treats neighbor
+        voxels as foreground. For a small cell completely surrounded by a larger
+        neighbor, its bounding box contains no background voxels, so marching_cubes
+        raises ValueError (surface level not within data range), which is caught
+        silently and stored as NaN.
+
+        The fix is to pass subset_lab_object (single-cell mask) instead of
+        label_object (full image) at the calculate_surface_area call site.
+        """
+        from unittest.mock import Mock
+
+        # Build a 10x10x10 label image with two touching cells.
+        # Cell 1 (label=1): a small 3x3x3 cube at the corner [0:3, 0:3, 0:3].
+        # Cell 2 (label=2): fills the rest of the volume.
+        # Cell 1's bounding box [0:3, 0:3, 0:3] is entirely label>0 (no background),
+        # so the bug causes marching_cubes to fail → NaN for cell 1's SurfaceArea.
+        labels = np.ones((10, 10, 10), dtype=np.int32) * 2
+        labels[0:3, 0:3, 0:3] = 1
+
+        image = np.zeros((10, 10, 10), dtype=np.float32)
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        mock_image_set_loader = Mock()
+        mock_image_set_loader.anisotropy_spacing = (1.0, 1.0, 1.0)
+
+        result = measure_3D_area_size_shape(
+            image_set_loader=mock_image_set_loader,
+            object_loader=loader,
+        )
+
+        surface_areas = {
+            obj_id: sa
+            for obj_id, sa in zip(result["object_id"], result["SurfaceArea"])
+        }
+
+        assert 1 in surface_areas, "Cell 1 missing from result"
+        assert not numpy.isnan(surface_areas[1]), (
+            f"SurfaceArea for surrounded cell is NaN. "
+            f"Likely caused by passing the full label_object instead of the "
+            f"single-cell subset_lab_object to calculate_surface_area, so "
+            f"volume_truths = volume > 0 includes neighbor voxels and leaves "
+            f"no background for marching_cubes."
+        )
+        assert surface_areas[1] > 0, "SurfaceArea for cell 1 should be positive"
+
 
 class TestCalculateSurfaceArea:
     """Tests for surface area calculation."""
