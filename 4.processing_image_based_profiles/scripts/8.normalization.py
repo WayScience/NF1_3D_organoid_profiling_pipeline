@@ -235,7 +235,50 @@ def _dmso_qc_samples_query(df):
     return f"{base} and {qc_filter}" if qc_filter else base
 
 
+# ## Row-level NaN filter
+#
+# Before normalization, drop any row where more than ROW_NA_CUTOFF (20%) of its
+# feature columns are NaN. This removes cells/organoids where the deep learning
+# model was never run, cells with near-complete Nuclei feature dropout due to
+# missing image planes, and extreme outlier cells where nucleus segmentation
+# produced too few pixels to measure.
+
 # In[6]:
+
+
+ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
+
+
+def drop_high_na_rows(
+    df: pd.DataFrame, feature_cols: list[str], cutoff: float = ROW_NA_CUTOFF
+) -> pd.DataFrame:
+    """Drop rows where the fraction of NaN feature values exceeds cutoff."""
+    row_na_frac = df[feature_cols].isnull().mean(axis=1)
+    mask = row_na_frac <= cutoff
+    n_dropped = (~mask).sum()
+    if n_dropped > 0:
+        print(f"  Dropped {n_dropped} rows ({n_dropped / len(df):.1%}) with >{cutoff:.0%} NaN features")
+    else:
+        print(f"  No rows dropped (all rows have <={cutoff:.0%} NaN features)")
+    return df.loc[mask].reset_index(drop=True)
+
+
+print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
+sc_annotated_profiles = drop_high_na_rows(sc_annotated_profiles, sc_feature_cols)
+print(f"  SC handcrafted: {len(sc_annotated_profiles)} rows remaining")
+sc_sammed_annotated_profiles = drop_high_na_rows(sc_sammed_annotated_profiles, sc_sammed_feature_cols)
+print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
+organoid_annotated_profiles = drop_high_na_rows(organoid_annotated_profiles, organoid_feature_cols)
+print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
+organoid_sc_sammed_annotated_profiles = drop_high_na_rows(organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols)
+print(f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining")
+nucleocentric_sammed_annotated_profiles = drop_high_na_rows(nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols)
+print(f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining")
+nucleocentric_morphem_annotated_profiles = drop_high_na_rows(nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols)
+print(f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining")
+
+
+# In[7]:
 
 
 # sc_normalized_df = normalize(
