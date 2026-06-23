@@ -76,23 +76,23 @@ def measure_3D_intensity_CPU(
 
         # Extract only coordinates where object exists
         z_indices, y_indices, x_indices = numpy.where(selected_label_object > 0)
-        min_z, bbox_max_z = numpy.min(z_indices), numpy.max(z_indices)
-        min_y, bbox_max_y = numpy.min(y_indices), numpy.max(y_indices)
-        min_x, bbox_max_x = numpy.min(x_indices), numpy.max(x_indices)
+        bbox_min_z, bbox_max_z = numpy.min(z_indices), numpy.max(z_indices)
+        bbox_min_y, bbox_max_y = numpy.min(y_indices), numpy.max(y_indices)
+        bbox_min_x, bbox_max_x = numpy.min(x_indices), numpy.max(x_indices)
 
         # Crop to bounding box for efficiency
         cropped_label = selected_label_object[
-            min_z : bbox_max_z + 1, min_y : bbox_max_y + 1, min_x : bbox_max_x + 1
+            bbox_min_z : bbox_max_z + 1, bbox_min_y : bbox_max_y + 1, bbox_min_x : bbox_max_x + 1
         ]
         cropped_image = selected_image_object[
-            min_z : bbox_max_z + 1, min_y : bbox_max_y + 1, min_x : bbox_max_x + 1
+            bbox_min_z : bbox_max_z + 1, bbox_min_y : bbox_max_y + 1, bbox_min_x : bbox_max_x + 1
         ]
 
         # Create coordinate grids for the bounding box
         mesh_z, mesh_y, mesh_x = numpy.mgrid[
-            min_z : bbox_max_z + 1,  # + 1 to include the max index
-            min_y : bbox_max_y + 1,
-            min_x : bbox_max_x + 1,
+            bbox_min_z : bbox_max_z + 1,  # + 1 to include the max index
+            bbox_min_y : bbox_max_y + 1,
+            bbox_min_x : bbox_max_x + 1,
         ]
 
         # calculate the integrated intensity
