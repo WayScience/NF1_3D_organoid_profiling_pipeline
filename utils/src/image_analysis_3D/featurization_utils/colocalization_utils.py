@@ -74,8 +74,6 @@ def linear_costes_threshold_calculation(
     first_image_max = first_image.max()
     second_image_max = second_image.max()
 
-    # Initialise without a threshold
-    costReg, _ = scipy.stats.pearsonr(first_image, second_image)
     thr_first_image_c = i
     thr_second_image_c = (a * i) + b
     while i > first_image_max and (a * i) + b > second_image_max:
