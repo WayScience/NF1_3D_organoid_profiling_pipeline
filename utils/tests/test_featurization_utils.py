@@ -1751,44 +1751,39 @@ class TestColocalizationRegressions:
             pass  # These are acceptable failures for a zero-size image.
 
     def test_accurate_mode_calls_linear_not_bisection(self, high_contrast_images):
-        """Regression: 'Accurate' mode called bisection; 'Fast' called linear — inverted.
+        """Regression: 'Accurate' mode called bisection_costes; 'Fast' called linear — inverted.
 
-        Docstring says 'Accurate' uses the linear (fine-step) algorithm and
-        'Fast' uses bisection.  The if/else in measure_3D_colocalization had the
-        two function calls swapped.
+        The docstring of measure_3D_colocalization states:
+          'Accurate' uses the linear (fine-step) algorithm
+          'Fast'     uses the bisection algorithm
+        But the if/else had the two function calls swapped.
 
-        We verify by calling both modes and comparing threshold results against
-        direct calls to the underlying functions.
+        We spy on both functions to verify which one is dispatched.
         """
+        from unittest.mock import patch
+
         img1, img2 = high_contrast_images
-        scale = 255
-
-        # Direct calls to the individual algorithms
-        thr_linear_1, thr_linear_2 = linear_costes_threshold_calculation(
-            img1, img2, scale_max=scale, fast_costes="Accurate"
+        coloc_mod = (
+            "image_analysis_3D.featurization_utils.colocalization_utils"
         )
-        thr_bisect_1, thr_bisect_2 = bisection_costes_threshold_calculation(
-            img1, img2, scale_max=scale
-        )
-
-        # After fix: "Accurate" mode should internally use linear_costes → same threshold
-        result_accurate = measure_3D_colocalization(img1, img2, fast_costes="Accurate")
-        result_fast = measure_3D_colocalization(img1, img2, fast_costes="Fast")
-
-        # Both modes must complete without error and return the same keys.
-        assert set(result_accurate.keys()) == set(result_fast.keys())
-
-        # With bug the two modes produce results from the wrong underlying algorithm.
-        # With fix the MandersCoeffCostesM1 computed by "Accurate" should be
-        # consistent with linear thresholds (not bisection thresholds) — we check
-        # that the two modes differ when the algorithms give different thresholds.
-        if abs(thr_linear_1 - thr_bisect_1) > 1e-4:
-            assert result_accurate["MandersCoeffCostesM1"] != pytest.approx(
-                result_fast["MandersCoeffCostesM1"]
-            ), (
-                "Accurate and Fast modes returned identical MandersCoeffCostesM1 "
-                "despite algorithms producing different thresholds — mode logic "
-                "may still be inverted."
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Accurate")
+            # With bug: bisection is called, linear is not.
+            # With fix: linear is called, bisection is not.
+            assert mock_linear.called, (
+                "'Accurate' mode should dispatch linear_costes_threshold_calculation"
+            )
+            assert not mock_bisect.called, (
+                "'Accurate' mode should NOT dispatch bisection_costes_threshold_calculation"
             )
 
 

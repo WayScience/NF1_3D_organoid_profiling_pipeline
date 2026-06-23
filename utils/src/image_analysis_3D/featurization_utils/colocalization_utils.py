@@ -430,12 +430,12 @@ def measure_3D_colocalization(
         scale = 255
 
     if fast_costes == "Accurate":
-        thr_first_image_c, thr_second_image_c = bisection_costes_threshold_calculation(
-            cropped_image_1, cropped_image_2, scale
-        )
-    else:
         thr_first_image_c, thr_second_image_c = linear_costes_threshold_calculation(
             cropped_image_1, cropped_image_2, scale, fast_costes
+        )
+    else:
+        thr_first_image_c, thr_second_image_c = bisection_costes_threshold_calculation(
+            cropped_image_1, cropped_image_2, scale
         )
 
     # Costes' thershold for entire image is applied to each object
