@@ -76,23 +76,23 @@ def measure_3D_intensity_CPU(
 
         # Extract only coordinates where object exists
         z_indices, y_indices, x_indices = numpy.where(selected_label_object > 0)
-        min_z, max_z = numpy.min(z_indices), numpy.max(z_indices)
-        min_y, max_y = numpy.min(y_indices), numpy.max(y_indices)
-        min_x, max_x = numpy.min(x_indices), numpy.max(x_indices)
+        min_z, bbox_max_z = numpy.min(z_indices), numpy.max(z_indices)
+        min_y, bbox_max_y = numpy.min(y_indices), numpy.max(y_indices)
+        min_x, bbox_max_x = numpy.min(x_indices), numpy.max(x_indices)
 
         # Crop to bounding box for efficiency
         cropped_label = selected_label_object[
-            min_z : max_z + 1, min_y : max_y + 1, min_x : max_x + 1
+            min_z : bbox_max_z + 1, min_y : bbox_max_y + 1, min_x : bbox_max_x + 1
         ]
         cropped_image = selected_image_object[
-            min_z : max_z + 1, min_y : max_y + 1, min_x : max_x + 1
+            min_z : bbox_max_z + 1, min_y : bbox_max_y + 1, min_x : bbox_max_x + 1
         ]
 
         # Create coordinate grids for the bounding box
         mesh_z, mesh_y, mesh_x = numpy.mgrid[
-            min_z : max_z + 1,  # + 1 to include the max index
-            min_y : max_y + 1,
-            min_x : max_x + 1,
+            min_z : bbox_max_z + 1,  # + 1 to include the max index
+            min_y : bbox_max_y + 1,
+            min_x : bbox_max_x + 1,
         ]
 
         # calculate the integrated intensity
@@ -121,10 +121,10 @@ def measure_3D_intensity_CPU(
         upper_quartile_intensity = numpy.percentile(non_zero_pixels_object, 75)
         # median intensity
         median_intensity = numpy.median(non_zero_pixels_object)
-        # max intensity location
-        max_z, max_y, max_x = scipy.ndimage.maximum_position(
-            selected_image_object,
-        )  # z, y, x
+        # location of maximum intensity pixel (z, y, x)
+        max_intensity_z, max_intensity_y, max_intensity_x = (
+            scipy.ndimage.maximum_position(selected_image_object)
+        )
 
         # Calculate center of mass (geometric center) using cropped arrays
         object_mask = cropped_label > 0
@@ -173,9 +173,9 @@ def measure_3D_intensity_CPU(
             "StdIntensityEdge": std_intensity_edge,
             "MinIntensityEdge": min_intensity_edge,
             "MaxIntensityEdge": max_intensity_edge,
-            "MaxZ": max_z,
-            "MaxY": max_y,
-            "MaxX": max_x,
+            "MaxZ": max_intensity_z,
+            "MaxY": max_intensity_y,
+            "MaxX": max_intensity_x,
             "CMI.X": cmi_x,
             "CMI.Y": cmi_y,
             "CMI.Z": cmi_z,
