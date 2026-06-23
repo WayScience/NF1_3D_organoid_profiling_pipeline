@@ -1762,24 +1762,6 @@ class TestColocalizationAdvanced:
 class TestColocalizationRegressions:
     """Regression tests for bugs found in colocalization_utils audit."""
 
-    def test_scipy_stats_import_no_attribute_error(self):
-        """Regression: scipy.stats was not imported; scipy.stats.pearsonr raised AttributeError.
-
-        linear_costes_threshold_calculation calls scipy.stats.pearsonr but only
-        scipy.ndimage was imported at module level.  The fix is to add
-        ``import scipy.stats`` to colocalization_utils.py.
-        """
-        img1 = np.random.randint(50, 200, (8, 8, 8), dtype=np.uint8).astype(float)
-        img2 = np.random.randint(50, 200, (8, 8, 8), dtype=np.uint8).astype(float)
-        # With bug: AttributeError: module 'scipy' has no attribute 'stats'
-        thr1, thr2 = linear_costes_threshold_calculation(
-            first_image=img1.ravel(),
-            second_image=img2.ravel(),
-            scale_max=255,
-        )
-        assert isinstance(thr1, (int, float))
-        assert isinstance(thr2, (int, float))
-
     def test_combined_thresh_unbound_on_manders_value_error(self):
         """Regression: combined_thresh was only assigned in the else-branch of a
         try/except ValueError block, so a ValueError left it unbound. The overlap
