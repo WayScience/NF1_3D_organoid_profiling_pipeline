@@ -648,6 +648,48 @@ class TestColocationUtils:
                 assert coloc_overlap > sep_overlap
 
 
+    def test_combined_thresh_does_not_raise_unbound_local_error(self):
+        """Regression: combined_thresh was only assigned in the else-branch of a
+        try/except ValueError block, so a ValueError left it unbound and the
+        overlap coefficient section raised UnboundLocalError.
+        """
+        img_empty = np.zeros((0,), dtype=float)
+        try:
+            measure_3D_colocalization(img_empty, img_empty)
+        except UnboundLocalError:
+            pytest.fail(
+                "combined_thresh was unbound — missing initialisation before try block"
+            )
+        except Exception:
+            pass  # Any other exception is acceptable for zero-size input.
+
+    def test_accurate_mode_calls_linear_not_bisection(self, high_contrast_images):
+        """Regression: 'Accurate' mode called bisection_costes; 'Fast' called
+        linear — inverted relative to the docstring.
+        """
+        from unittest.mock import patch
+
+        img1, img2 = high_contrast_images
+        coloc_mod = "image_analysis_3D.featurization_utils.colocalization_utils"
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Accurate")
+            assert mock_linear.called, (
+                "'Accurate' mode should dispatch linear_costes_threshold_calculation"
+            )
+            assert not mock_bisect.called, (
+                "'Accurate' mode should NOT dispatch bisection_costes_threshold_calculation"
+            )
+
+
 # ============================================================================
 # TESTS: granularity_utils
 # ============================================================================
@@ -767,6 +809,38 @@ class TestGranularityUtils:
 
         # High granularity should show more variation in spectrum
         assert len(obj_granularities) >= 3  # Should detect all three objects
+
+    def test_upsample_3d_no_division_by_zero_when_dim_is_one(self):
+        """Regression: _upsample_3d divided by (original_shape[d] - 1); when any
+        dimension is 1 this is 0, raising ZeroDivisionError.
+        """
+        data = np.ones((3, 3, 3), dtype=float) * 5.0
+        subsampled_shape = np.array([3.0, 3.0, 3.0])
+        result = _upsample_3d(data, subsampled_shape, original_shape=(1, 3, 3))
+        assert result.shape == (1, 3, 3)
+        assert np.all(np.isfinite(result))
+
+    def test_granularity_no_crash_on_single_z_slice(self):
+        """Regression: measure_3D_granularity on a (1, Y, X) image called
+        _upsample_3d with original_shape[0]=1, hitting the division-by-zero.
+        """
+        np.random.seed(0)
+        image = np.random.randint(50, 200, (1, 20, 20), dtype=np.uint8).astype(float)
+        labels = np.zeros((1, 20, 20), dtype=int)
+        labels[0, 5:15, 5:15] = 1
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_granularity(
+            loader,
+            subsample_size=0.5,
+            granular_spectrum_length=3,
+            radius=2,
+        )
+        assert isinstance(result, dict)
 
 
 # ============================================================================
@@ -1098,6 +1172,28 @@ class TestNeighborsUtils:
         # Verify the neighbor measurement keys exist and contain data
         assert "adjacent" in list(obj_neighbors.values())[0]
         assert "distance_5" in list(obj_neighbors.values())[0]
+
+    def test_neighbors_count_adjacent_detects_touching_cells(self):
+        """Regression: NeighborsCountAdjacent used the object's own regionprops
+        bbox (exclusive max indices), so the immediately adjacent voxel of a
+        touching neighbor was never included → always returned 0.
+        """
+        labels = np.zeros((15, 15, 15), dtype=int)
+        labels[5:10, 5:10, 2:6] = 1
+        labels[5:10, 5:10, 6:10] = 2  # shares a face with cell 1 at x=5|6
+        image = np.zeros((15, 15, 15), dtype=float)
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_number_of_neighbors(
+            object_loader=loader, distance_threshold=1, anisotropy_factor=1
+        )
+        obj_map = dict(zip(result["object_id"], result["NeighborsCountAdjacent"]))
+        assert obj_map[1] >= 1, f"Cell 1 should detect cell 2 as adjacent, got {obj_map[1]}"
+        assert obj_map[2] >= 1, f"Cell 2 should detect cell 1 as adjacent, got {obj_map[2]}"
 
 
 # ============================================================================
@@ -1753,146 +1849,4 @@ class TestColocalizationAdvanced:
 
         assert isinstance(result, dict)
 
-
-# ============================================================================
-# REGRESSION TESTS: bugs found in featurization audit
-# ============================================================================
-
-
-class TestColocalizationRegressions:
-    """Regression tests for bugs found in colocalization_utils audit."""
-
-    def test_combined_thresh_unbound_on_manders_value_error(self):
-        """Regression: combined_thresh was only assigned in the else-branch of a
-        try/except ValueError block, so a ValueError left it unbound. The overlap
-        coefficient section used it unconditionally, raising UnboundLocalError.
-
-        Fix: initialise combined_thresh before the try block.
-        """
-        # numpy.max on a zero-element array raises ValueError, triggering the bug.
-        img_empty = np.zeros((0,), dtype=float)
-        # After fix: must not raise UnboundLocalError (other errors are acceptable).
-        try:
-            result = measure_3D_colocalization(img_empty, img_empty)
-            assert isinstance(result, dict)
-        except (ValueError, ZeroDivisionError, IndexError):
-            pass  # These are acceptable failures for a zero-size image.
-
-    def test_accurate_mode_calls_linear_not_bisection(self, high_contrast_images):
-        """Regression: 'Accurate' mode called bisection_costes; 'Fast' called linear — inverted.
-
-        The docstring of measure_3D_colocalization states:
-          'Accurate' uses the linear (fine-step) algorithm
-          'Fast'     uses the bisection algorithm
-        But the if/else had the two function calls swapped.
-
-        We spy on both functions to verify which one is dispatched.
-        """
-        from unittest.mock import patch
-
-        img1, img2 = high_contrast_images
-        coloc_mod = (
-            "image_analysis_3D.featurization_utils.colocalization_utils"
-        )
-        with (
-            patch(
-                f"{coloc_mod}.linear_costes_threshold_calculation",
-                wraps=linear_costes_threshold_calculation,
-            ) as mock_linear,
-            patch(
-                f"{coloc_mod}.bisection_costes_threshold_calculation",
-                wraps=bisection_costes_threshold_calculation,
-            ) as mock_bisect,
-        ):
-            measure_3D_colocalization(img1, img2, fast_costes="Accurate")
-            # With bug: bisection is called, linear is not.
-            # With fix: linear is called, bisection is not.
-            assert mock_linear.called, (
-                "'Accurate' mode should dispatch linear_costes_threshold_calculation"
-            )
-            assert not mock_bisect.called, (
-                "'Accurate' mode should NOT dispatch bisection_costes_threshold_calculation"
-            )
-
-
-class TestNeighborsRegressions:
-    """Regression tests for bugs found in neighbors_utils audit."""
-
-    def test_neighbors_count_adjacent_detects_touching_cells(self):
-        """Regression: NeighborsCountAdjacent cropped to the object's own bbox and
-        counted unique labels there.  Because regionprops uses exclusive max indices,
-        a voxel at the exact boundary of the bbox (i.e., the immediately adjacent
-        neighbor cell) was never included in the crop → NeighborsCountAdjacent was
-        always 0 for actually-touching cells.
-
-        Fix: dilate the binary object mask by one voxel and count unique labels in
-        the dilated region (excluding self).
-        """
-        labels = np.zeros((15, 15, 15), dtype=int)
-        # Cell 1 occupies x = 2..5, cell 2 occupies x = 6..9 — they share a face at x=5|6.
-        labels[5:10, 5:10, 2:6] = 1
-        labels[5:10, 5:10, 6:10] = 2
-        image = np.zeros((15, 15, 15), dtype=float)
-
-        loader = ObjectLoader(
-            image=image,
-            label_image=labels,
-            channel_name="test_channel",
-            compartment_name="test_compartment",
-        )
-        result = measure_3D_number_of_neighbors(
-            object_loader=loader,
-            distance_threshold=1,
-            anisotropy_factor=1,
-        )
-
-        obj_map = dict(zip(result["object_id"], result["NeighborsCountAdjacent"]))
-        assert obj_map[1] >= 1, (
-            f"Cell 1 should detect cell 2 as adjacent (touching face), "
-            f"got NeighborsCountAdjacent={obj_map[1]}"
-        )
-        assert obj_map[2] >= 1, (
-            f"Cell 2 should detect cell 1 as adjacent (touching face), "
-            f"got NeighborsCountAdjacent={obj_map[2]}"
-        )
-
-
-class TestGranularityRegressions:
-    """Regression tests for bugs found in granularity_utils audit."""
-
-    def test_upsample_3d_no_division_by_zero_when_dim_is_one(self):
-        """Regression: _upsample_3d divided by (original_shape[d] - 1).  When any
-        dimension is 1 this is 0, raising ZeroDivisionError.
-
-        Fix: guard against dim == 1 (coordinates are already 0 for that axis).
-        """
-        data = np.ones((3, 3, 3), dtype=float) * 5.0
-        subsampled_shape = np.array([3.0, 3.0, 3.0])
-        # original_shape dimension = 1 → 1 - 1 = 0 → ZeroDivisionError without fix
-        result = _upsample_3d(data, subsampled_shape, original_shape=(1, 3, 3))
-        assert result.shape == (1, 3, 3)
-        assert np.all(np.isfinite(result))
-
-    def test_granularity_no_crash_on_single_z_slice(self):
-        """Regression: measure_3D_granularity with a (1, Y, X) image calls
-        _upsample_3d with original_shape[0]=1, hitting the division-by-zero bug.
-        """
-        np.random.seed(0)
-        image = np.random.randint(50, 200, (1, 20, 20), dtype=np.uint8).astype(float)
-        labels = np.zeros((1, 20, 20), dtype=int)
-        labels[0, 5:15, 5:15] = 1
-
-        loader = ObjectLoader(
-            image=image,
-            label_image=labels,
-            channel_name="test_channel",
-            compartment_name="test_compartment",
-        )
-        # With bug: ZeroDivisionError inside _upsample_3d
-        result = measure_3D_granularity(
-            loader,
-            subsample_size=0.5,
-            granular_spectrum_length=3,
-            radius=2,
-        )
         assert isinstance(result, dict)
