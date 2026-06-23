@@ -777,6 +777,52 @@ class TestGranularityUtils:
 class TestIntensityUtils:
     """Tests for intensity feature extraction."""
 
+    def test_integrated_intensity_is_per_object_not_global(self):
+        """IntegratedIntensity for each object must equal only that object's pixel sum.
+
+        scipy.ndimage.sum(input, labels) without an explicit index= argument
+        sums all elements where labels != 0 — which coincidentally gives the
+        right answer when labels is binarised to {0, 1}, but would silently
+        sum across all objects if the binarisation were ever removed.
+
+        This test documents the expected semantic contract: IntegratedIntensity
+        for object N == numpy.sum(image[label_image == N]).
+        """
+        image = np.zeros((10, 10, 10), dtype=np.float32)
+        label = np.zeros((10, 10, 10), dtype=np.int32)
+
+        # Object 1: intensity 50, 8 voxels → expected sum = 400
+        image[1:3, 1:3, 1:3] = 50.0
+        label[1:3, 1:3, 1:3] = 1
+
+        # Object 2: intensity 100, 8 voxels → expected sum = 800
+        image[7:9, 7:9, 7:9] = 100.0
+        label[7:9, 7:9, 7:9] = 2
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=label,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_intensity_CPU(object_loader=loader)
+
+        obj_to_integrated = {}
+        for obj_id, feat, val in zip(
+            result["object_id"], result["feature_name"], result["value"]
+        ):
+            if feat == "IntegratedIntensity":
+                obj_to_integrated[int(obj_id)] = float(val)
+
+        assert obj_to_integrated[1] == pytest.approx(400.0), (
+            f"Object 1 IntegratedIntensity should be 400 (8 voxels × 50), "
+            f"got {obj_to_integrated[1]}"
+        )
+        assert obj_to_integrated[2] == pytest.approx(800.0), (
+            f"Object 2 IntegratedIntensity should be 800 (8 voxels × 100), "
+            f"got {obj_to_integrated[2]}"
+        )
+
     def test_get_outline_basic(self, simple_3d_binary_mask):
         """Test outline extraction."""
         outline = get_outline(simple_3d_binary_mask)

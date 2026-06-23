@@ -99,6 +99,7 @@ def measure_3D_intensity_CPU(
         integrated_intensity = scipy.ndimage.sum(
             selected_image_object,
             selected_label_object,
+            index=1,
         )
         # calculate the volume
         volume = numpy.sum(selected_label_object)
