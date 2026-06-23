@@ -1848,5 +1848,3 @@ class TestColocalizationAdvanced:
         )
 
         assert isinstance(result, dict)
-
-        assert isinstance(result, dict)
