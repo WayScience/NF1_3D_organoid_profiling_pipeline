@@ -75,7 +75,7 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
 # df = df.loc[df["patient_id"] == "NF0014_T1"]
-# df = df.loc[(df["feature_type"] == "AreaSizeShape") & (df["compartment"] != "Organoid")]
+df = df.loc[(df["feature_type"] == "Granularity") & (df["compartment"] != "Organoid")]
 df = df.loc[(df["compartment"] != "Organoid")]
 
 df.head()
@@ -113,6 +113,7 @@ df.to_parquet("../logs/feature_file_info.parquet", index=False)
 
 df.sort_values(["patient_id", "well_fov"], inplace=True)
 df.reset_index(drop=True, inplace=True)
+df
 
 
 # In[6]:
@@ -125,6 +126,7 @@ out_dict = {
     "well_fov": [],
     "path": [],
     "type": [],
+    "feature_type": [],
 }
 for row in tqdm(
     df.itertuples(), total=df.shape[0], desc="Merging features", leave=True
@@ -133,15 +135,27 @@ for row in tqdm(
     out_dict["well_fov"].append(row.well_fov)
     out_dict["path"].append(row.file_path)
     out_dict["type"].append(f"{row.compartment}")
+    out_dict["feature_type"].append(row.feature_type)
 out_df = pd.DataFrame(out_dict)
 out_df.drop_duplicates(subset=["patient_id", "well_fov", "type"], inplace=True)
 # pivot such that each type has its own column
 out_df = out_df.pivot(
-    index=["patient_id", "well_fov"], columns="type", values="path"
+    index=[
+        "patient_id",
+        "well_fov",
+    ],
+    columns="type",
+    values="path",
 ).reset_index()
 
 
 # In[7]:
+
+
+out_df
+
+
+# In[8]:
 
 
 labels_dict = {
@@ -173,7 +187,7 @@ for row in tqdm(
 labels_df = pd.DataFrame(labels_dict)
 
 
-# In[8]:
+# In[9]:
 
 
 labels_df["labels_match"] = labels_df.apply(
@@ -190,19 +204,33 @@ labels_df["unique_labels_across_compartments"] = labels_df.apply(
 labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[9]:
+# In[14]:
 
 
-labels_df["patient_id"].unique()
+# get the patient_id and well_fov for the rows where the labels do not match and check the corresponding feature files for those rows
+mismatched_labels = labels_df.loc[
+    labels_df["labels_match"] == False, ["patient_id", "well_fov"]
+]
+mismatched_labels
+for row in tqdm(
+    mismatched_labels.itertuples(),
+    total=mismatched_labels.shape[0],
+    desc="Checking mismatched labels",
+    leave=True,
+):
+    patient_id = row.patient_id
+    well_fov = row.well_fov
+    print(f"cd ../../{patient_id}/extracted_features/ ; rm -r {well_fov}")
+    # print(f'cd ../../../{patient_id}/extracted_features/{well_fov} ; find . -maxdepth 1 -type f ! -name "*AreaSizeShape*" -delete')
 
 
-# In[10]:
+# In[11]:
 
 
 labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
 
 
-# In[11]:
+# In[12]:
 
 
 # # show the well fov and the patient id
@@ -213,7 +241,7 @@ labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient
 #     print(f"cd ../../{row.patient_id}/extracted_features/ ; rm -r {row.well_fov}")
 
 
-# In[12]:
+# In[13]:
 
 
 tmp_df = pd.merge(
