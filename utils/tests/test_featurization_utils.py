@@ -130,6 +130,72 @@ class TestAreaSizeShapeUtils:
         assert 400 < volumes[2] < 700  # ~512 voxels
         assert 2500 < volumes[3] < 4000  # ~3375 voxels
 
+    def test_surface_area_not_nan_for_surrounded_cell(self):
+        """SurfaceArea must be non-NaN for a cell whose bbox is fully occupied by neighbors.
+
+        Regression test for a bug where calculate_surface_area received the full
+        multi-cell label_object instead of the single-cell masked subset_lab_object.
+        Inside calculate_surface_area, volume_truths = volume > 0 treats neighbor
+        voxels as foreground. For a small cell completely surrounded by a larger
+        neighbor, its bounding box contains no background voxels, so marching_cubes
+        raises ValueError (surface level not within data range), which is caught
+        silently and stored as NaN.
+
+        The fix is to pass subset_lab_object (single-cell mask) instead of
+        label_object (full image) at the calculate_surface_area call site.
+        """
+        from unittest.mock import Mock
+
+        # Build a 15x15x15 label image with two touching cells.
+        # Cell 1 (label=1): a cross/plus shape (strips along each axis) centred at
+        #   [7,7,7] within a 5x5x5 bounding box [5:10, 5:10, 5:10].
+        #   Because it is not a solid cube it does NOT fill its own bbox — the
+        #   8 corners of [5:10,5:10,5:10] are empty.
+        # Cell 2 (label=2): fills all remaining voxels, including those corners.
+        #
+        # With the bug (full label_object passed to calculate_surface_area):
+        #   volume = full_image[5:10,5:10,5:10] → all non-zero (label 1 or 2)
+        #   → volume_truths = all True → marching_cubes raises ValueError → NaN
+        # With the fix (subset_lab_object passed):
+        #   volume = subset[5:10,5:10,5:10] → cross of 1s, corner zeros
+        #   → marching_cubes succeeds → real surface area returned
+        labels = np.ones((15, 15, 15), dtype=np.int32) * 2
+        labels[5:10, 7, 7] = 1  # z-strip of the cross
+        labels[7, 5:10, 7] = 1  # y-strip
+        labels[7, 7, 5:10] = 1  # x-strip
+
+        image = np.zeros((15, 15, 15), dtype=np.float32)
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        mock_image_set_loader = Mock()
+        mock_image_set_loader.anisotropy_spacing = (1.0, 1.0, 1.0)
+
+        result = measure_3D_area_size_shape(
+            image_set_loader=mock_image_set_loader,
+            object_loader=loader,
+        )
+
+        surface_areas = {
+            obj_id: sa
+            for obj_id, sa in zip(result["object_id"], result["SurfaceArea"])
+        }
+
+        assert 1 in surface_areas, "Cell 1 missing from result"
+        assert not numpy.isnan(surface_areas[1]), (
+            f"SurfaceArea for surrounded cell is NaN. "
+            f"Likely caused by passing the full label_object instead of the "
+            f"single-cell subset_lab_object to calculate_surface_area, so "
+            f"volume_truths = volume > 0 includes neighbor voxels and leaves "
+            f"no background for marching_cubes."
+        )
+        assert surface_areas[1] > 0, "SurfaceArea for cell 1 should be positive"
+
 
 class TestCalculateSurfaceArea:
     """Tests for surface area calculation."""
@@ -319,6 +385,83 @@ class TestTextureUtils:
         # Object 1 (uniform) should have lower standard deviation than object 2 (random)
         # Check contrast or homogeneity features if available
         assert len(obj_textures) >= 2
+
+    def test_texture_values_correct_per_object(self, texture_varied_objects):
+        """Each object must receive its own Haralick values, not another object's or garbage.
+
+        Regression test for a bug where features = numpy.empty(...) was called
+        inside the per-object loop, resetting the array every iteration and leaving
+        only the last object's values intact. All other objects received uninitialized
+        memory from numpy.empty.
+        """
+        import mahotas
+
+        image, labels = texture_varied_objects
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        result = measure_3D_texture(object_loader=loader, distance=1, grayscale=256)
+
+        # Build per-object lookup: {object_id: {texture_name: value}}
+        obj_textures = {}
+        for obj_id, name, val in zip(
+            result["object_id"], result["texture_name"], result["texture_value"]
+        ):
+            obj_textures.setdefault(obj_id, {})[name] = val
+
+        # Independently compute expected Haralick values for each object
+        # by replicating what the function should do: crop to bbox, mask, scale, haralick
+        import skimage.measure
+
+        props = skimage.measure.regionprops_table(labels, properties=["label", "bbox"])
+        label_to_bbox = {
+            int(props["label"][i]): (
+                int(props["bbox-0"][i]),
+                int(props["bbox-1"][i]),
+                int(props["bbox-2"][i]),
+                int(props["bbox-3"][i]),
+                int(props["bbox-4"][i]),
+                int(props["bbox-5"][i]),
+            )
+            for i in range(len(props["label"]))
+        }
+
+        feature_names = [
+            "AngularSecondMoment", "Contrast", "Correlation", "Variance",
+            "InverseDifferenceMoment", "SumAverage", "SumVariance", "SumEntropy",
+            "Entropy", "DifferenceVariance", "DifferenceEntropy",
+            "InformationMeasureOfCorrelation1", "InformationMeasureOfCorrelation2",
+        ]
+
+        unique_labels = sorted(np.unique(labels[labels != 0]))
+        for label in unique_labels:
+            z0, y0, x0, z1, y1, x1 = label_to_bbox[label]
+            crop = image[z0:z1, y0:y1, x0:x1].copy()
+            mask = labels[z0:z1, y0:y1, x0:x1] == label
+            crop[~mask] = 0
+            crop_scaled = scale_image(crop, num_gray_levels=256)
+            try:
+                expected = mahotas.features.haralick(
+                    ignore_zeros=True, f=crop_scaled, distance=1, compute_14th_feature=False
+                )
+            except ValueError:
+                continue  # uniform object — haralick raises, both paths yield nan
+
+            # Check direction 0 (first direction) for each feature
+            for feat_idx, feat_name in enumerate(feature_names):
+                key = f"{feat_name}-1-00-256"
+                assert key in obj_textures[label], f"Missing {key} for object {label}"
+                actual = obj_textures[label][key]
+                exp = expected[0, feat_idx]
+                assert numpy.isclose(actual, exp, rtol=1e-5, equal_nan=True), (
+                    f"Object {label}, feature {feat_name}: got {actual}, expected {exp}. "
+                    f"Likely caused by features array being reset inside the per-object loop."
+                )
 
     def test_measure_3d_texture_uniform_full_object(self):
         """Test that a completely uniform object is handled gracefully."""
@@ -661,6 +804,61 @@ class TestIntensityUtils:
 
         # Should have expected outline
         assert outline.shape == full_mask.shape
+
+    def test_min_intensity_edge_not_zero_for_bright_cell(self):
+        """MinIntensityEdge must reflect actual boundary pixel intensities, not 0.
+
+        Regression test for a bug where get_outline used find_boundaries with the
+        default mode='thick', which returns both inner (object-side) and outer
+        (background-side) boundary pixels. Because selected_image_object is zeroed
+        outside the cell before the outline is computed, the outer boundary pixels
+        always have intensity 0, making numpy.min always return 0 regardless of
+        the cell's true edge intensity.
+
+        The fix is to use mode='inner' in find_boundaries so only pixels that are
+        inside the object boundary are included in the edge mask.
+        """
+        # Build a 10x10x10 image with a solid bright cell (intensity=100) in the centre.
+        # Every voxel of the cell has intensity 100, so MinIntensityEdge should be 100.
+        # With the bug, outer boundary pixels (zeroed background) are included and
+        # min returns 0 instead.
+        shape = (10, 10, 10)
+        image = numpy.zeros(shape, dtype=numpy.float32)
+        labels = numpy.zeros(shape, dtype=numpy.int32)
+
+        image[3:7, 3:7, 3:7] = 100
+        labels[3:7, 3:7, 3:7] = 1
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+
+        result = measure_3D_intensity_CPU(object_loader=loader)
+
+        # Extract MinIntensityEdge for object 1
+        min_edge_values = [
+            v
+            for oid, name, v in zip(
+                result["object_id"], result["feature_name"], result["value"]
+            )
+            if oid == 1 and name == "MinIntensityEdge"
+        ]
+
+        assert min_edge_values, "MinIntensityEdge not found in result"
+        min_edge = min_edge_values[0]
+
+        assert min_edge != 0, (
+            f"MinIntensityEdge is 0 for a cell with uniform intensity 100. "
+            f"Likely caused by find_boundaries(mode='thick') including outer "
+            f"(background) boundary pixels that have been zeroed, so numpy.min "
+            f"always returns 0."
+        )
+        assert min_edge == pytest.approx(100.0), (
+            f"MinIntensityEdge should be 100 (cell intensity) but got {min_edge}"
+        )
 
     def test_measure_3d_intensity_cpu_basic(self, object_loader_simple):
         """Test basic intensity measurement."""
