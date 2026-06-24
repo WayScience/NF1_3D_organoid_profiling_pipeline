@@ -5,7 +5,7 @@
 #
 # This notebook keeps the original behavior while reducing repetitive row-building code via a small helper function.
 
-# In[1]:
+# In[14]:
 
 
 import itertools
@@ -29,7 +29,7 @@ bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[2]:
+# In[15]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -71,7 +71,7 @@ channel_combinations = list(itertools.combinations(channels, 2))
 input_subdir_name = "zstack_images"
 
 
-# In[3]:
+# In[16]:
 
 
 rows = []
@@ -130,7 +130,7 @@ def add_row(
     )
 
 
-# In[4]:
+# In[17]:
 
 
 for patient in patients:
@@ -216,7 +216,7 @@ df = pd.DataFrame(rows)
 print(f"Total combinations: {df.shape[0]}")
 
 
-# In[5]:
+# In[18]:
 
 
 # Build paths with vectorized string ops
@@ -257,7 +257,7 @@ for patient, subdir_output, well_fov in tqdm.tqdm(
 df["feature_file_path_exists"] = df["feature_file_path"].isin(existing_feature_files)
 
 
-# In[6]:
+# In[19]:
 
 
 # If Nucleocentric has both CHAMMI75 and SAMMed3D, keep only CHAMMI75 entry
@@ -304,32 +304,32 @@ print(
 )
 
 
-# In[7]:
+# In[20]:
 
 
 df = df.loc[df["feature"] == "AreaSizeShape"]
 
 
-# In[8]:
+# In[21]:
 
 
 df.to_csv(load_combinations_path, sep="\t", index=False)
 df.head()
 
 
-# In[9]:
+# In[22]:
 
 
 df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
-# In[10]:
+# In[23]:
 
 
 df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
 
 
-# In[11]:
+# In[24]:
 
 
 # Find patient well_fovs with complete feature-file coverage
@@ -351,13 +351,13 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
 complete_feature_count
 
 
-# In[12]:
+# In[25]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[13]:
+# In[26]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]
