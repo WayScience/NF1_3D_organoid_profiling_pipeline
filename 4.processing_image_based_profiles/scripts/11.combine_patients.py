@@ -119,7 +119,11 @@ unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 # Well-level strata: one row per (patient, well) combination
 aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
 # Consensus strata: one row per (patient, treatment) combination
-consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
+consensus_strata = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_Treatment",
+    "Metadata_Experiment_Dose",
+]
 
 
 # In[7]:
