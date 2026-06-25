@@ -664,9 +664,7 @@ class TestColocationUtils:
             pass  # Any other exception is acceptable for zero-size input.
 
     def test_accurate_mode_calls_linear_not_bisection(self, high_contrast_images):
-        """Regression: 'Accurate' mode called bisection_costes; 'Fast' called
-        linear — inverted relative to the docstring.
-        """
+        """'Accurate' dispatches linear scan (all steps); bisection not called."""
         from unittest.mock import patch
 
         img1, img2 = high_contrast_images
@@ -687,6 +685,54 @@ class TestColocationUtils:
             )
             assert not mock_bisect.called, (
                 "'Accurate' mode should NOT dispatch bisection_costes_threshold_calculation"
+            )
+
+    def test_fast_mode_calls_linear_with_skipping(self, high_contrast_images):
+        """'Fast' dispatches linear scan with adaptive step-skipping; bisection not called."""
+        from unittest.mock import patch
+
+        img1, img2 = high_contrast_images
+        coloc_mod = "image_analysis_3D.featurization_utils.colocalization_utils"
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Fast")
+            assert mock_linear.called, (
+                "'Fast' mode should dispatch linear_costes_threshold_calculation"
+            )
+            assert not mock_bisect.called, (
+                "'Fast' mode should NOT dispatch bisection_costes_threshold_calculation"
+            )
+
+    def test_faster_mode_calls_bisection(self, high_contrast_images):
+        """'Faster' dispatches bisection algorithm; linear scan not called."""
+        from unittest.mock import patch
+
+        img1, img2 = high_contrast_images
+        coloc_mod = "image_analysis_3D.featurization_utils.colocalization_utils"
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Faster")
+            assert mock_bisect.called, (
+                "'Faster' mode should dispatch bisection_costes_threshold_calculation"
+            )
+            assert not mock_linear.called, (
+                "'Faster' mode should NOT dispatch linear_costes_threshold_calculation"
             )
 
 

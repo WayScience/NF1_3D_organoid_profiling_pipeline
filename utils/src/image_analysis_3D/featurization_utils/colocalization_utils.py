@@ -276,9 +276,13 @@ def measure_3D_colocalization(
         The threshold for the Manders' coefficients, by default 15
     fast_costes : str, optional
         The mode for Costes' threshold calculation, by default "Accurate".
-        Options are "Accurate" or "Fast".
-        "Accurate" uses a linear algorithm, while "Fast" uses a bisection algorithm.
-        The "Fast" mode is faster but less accurate.
+        Options are "Accurate", "Fast", or "Faster" (matching CellProfiler's
+        three Costes methods). "Accurate" tests every threshold value using a
+        linear scan (slowest, most precise). "Fast" uses the same linear scan
+        but skips candidate thresholds when the Pearson R is far from the
+        crossing point (faster, slightly less precise). "Faster" uses a
+        bisection algorithm and is substantially faster for 16-bit images
+        (least precise).
 
     Returns
     -------
@@ -429,11 +433,23 @@ def measure_3D_colocalization(
 
     if fast_costes == "Accurate":
         thr_first_image_c, thr_second_image_c = linear_costes_threshold_calculation(
-            cropped_image_1, cropped_image_2, scale, fast_costes
+            first_image=cropped_image_1,
+            second_image=cropped_image_2,
+            scale_max=scale,
+            fast_costes="Accurate",
         )
-    else:
+    elif fast_costes == "Fast":
+        thr_first_image_c, thr_second_image_c = linear_costes_threshold_calculation(
+            first_image=cropped_image_1,
+            second_image=cropped_image_2,
+            scale_max=scale,
+            fast_costes="Fast",
+        )
+    else:  # "Faster"
         thr_first_image_c, thr_second_image_c = bisection_costes_threshold_calculation(
-            cropped_image_1, cropped_image_2, scale
+            first_image=cropped_image_1,
+            second_image=cropped_image_2,
+            scale_max=scale,
         )
 
     # Costes' thershold for entire image is applied to each object
