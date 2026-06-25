@@ -34,7 +34,7 @@
 # - Merges within a compartment use left joins on `object_id` + `image_set`. Objects missing from some channels will have NaN-filled feature columns — this is expected when not all feature types apply to all channels (e.g. colocalization requires two channels).
 # - Nucleocentric compartment only supports SAMMed3D and morphem feature types; hand-crafted features are not extracted for nucleocentric volumes.
 
-# In[1]:
+# In[11]:
 
 
 import os
@@ -58,7 +58,7 @@ profile_base_dir = bandicoot_check(
 profile_base_dir = root_dir
 
 
-# In[2]:
+# In[12]:
 
 
 if not in_notebook:
@@ -70,7 +70,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C4-2"
+    well_fov = "C7-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -95,7 +95,7 @@ parquet_files.sort()
 print(len(parquet_files), "parquet files found")
 
 
-# In[3]:
+# In[13]:
 
 
 # create the nested dictionary to hold the feature types and compartments
@@ -112,7 +112,7 @@ feature_types = [
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 
 
-# In[4]:
+# In[14]:
 
 
 output_dict = {
@@ -129,7 +129,7 @@ output_dict = {
 output_dict
 
 
-# In[5]:
+# In[15]:
 
 
 # Parse filename metadata for each parquet file.
@@ -162,7 +162,7 @@ if unknown_feature_types:
 files_df.head()
 
 
-# In[6]:
+# In[16]:
 
 
 # Phase 1: route each file path into output_dict by compartment x feature type.
@@ -199,7 +199,7 @@ for compartment in final_df_dict.keys():
         ][feature_type]["object_id"].astype(int)
 
 
-# In[7]:
+# In[17]:
 
 
 # Merge all feature-type dataframes into one dataframe per compartment.
@@ -224,7 +224,7 @@ except Exception as e:
     raise
 
 
-# In[8]:
+# In[18]:
 
 
 # Validate that all single-cell compartments have the same number of objects

@@ -68,7 +68,7 @@ if not in_notebook:
 
 else:
     well_fov = "C2-3"
-    patient = "NF0021_T1"
+    patient = "NF0055_T1"
     compartment = "Nuclei"
     channel = "NoChannel"
     processor_type = "CPU"

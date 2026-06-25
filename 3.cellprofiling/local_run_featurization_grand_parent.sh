@@ -6,7 +6,6 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
 txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
 
