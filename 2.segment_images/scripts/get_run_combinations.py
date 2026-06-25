@@ -35,7 +35,7 @@ patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(stric
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-patients = ["NF0014_T1"]  # --- IGNORE ---
+# patients = ["NF0014_T1"]  # --- IGNORE ---
 rerun_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
 )
@@ -143,7 +143,7 @@ df.head()
 # A job is considered complete when its mask directory contains at least 4 `.tiff` files.
 # Scan each unique mask directory once to build counts, then filter.
 
-# In[5]:
+# In[ ]:
 
 
 # Scan each unique mask directory once — count existing .tiff files
@@ -191,25 +191,25 @@ print(f"{df_rerun.shape[0]} jobs to rerun")
 df_rerun.head()
 
 
-# In[6]:
+# In[ ]:
 
 
 df_rerun.to_csv(rerun_combinations_path, sep="\t", index=False)
 
 
-# In[7]:
+# In[ ]:
 
 
 print(df.groupby("patient").size())
 
 
-# In[8]:
+# In[ ]:
 
 
 print(df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index())
 
 
-# In[9]:
+# In[ ]:
 
 
 df_rerun

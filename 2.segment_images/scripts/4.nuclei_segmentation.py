@@ -81,7 +81,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T1"
-    well_fov = "F10-1"
+    well_fov = "E10-1"
     window_size = 3
     clip_limit = 0.01
     input_subparent_name = "zstack_images"

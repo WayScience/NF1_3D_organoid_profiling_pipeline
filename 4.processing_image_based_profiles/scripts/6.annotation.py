@@ -102,25 +102,15 @@ def annotate_profiles(
     """
     # Work on a copy to avoid mutating the caller's platemap across repeated calls.
     platemap_df = platemap_df.copy()
-    platemap_df["Treatment_platemap"] = platemap_df["Treatment"]
-    platemap_df["merging_string_treatment"] = (
-        platemap_df["Treatment_platemap"].str.split().str[0]
-    )
     # Merge strategy:
     #   1. Join platemap with drug_information on the first word of Treatment
     #      (e.g. "ARV-825 1 uM" → join key "ARV-825") to get Target, Class, etc.
     #   2. Join the resulting table onto the profile on Well == WellPosition.
-    drug_information_platemap_merged = (
-        pd.merge(
-            platemap_df[
-                ["WellPosition", "Treatment_platemap", "merging_string_treatment"]
-            ],
-            drug_information_df,
-            left_on="merging_string_treatment",
-            right_on="Treatment",
-        )
-        .drop(columns=["merging_string_treatment", "Treatment"])
-        .rename(columns={"Treatment_platemap": "Treatment"})
+    drug_information_platemap_merged = pd.merge(
+        platemap_df,
+        drug_information_df,
+        left_on="Treatment",
+        right_on="Treatment",
     )
 
     profile_df["Well"] = profile_df["image_set"].str.split("-").str[0]
@@ -219,9 +209,21 @@ nucleocentric_merged = annotate_profiles(
 )
 # remove redundant columns
 columns_to_drop = [
-    col for col in sc_merged.columns if "image_set_1" in col or "image_set_2" in col
+    "image_set_1",
+    "image_set_2",
+    "WellRow",
+    "WellCol",
 ]
-sc_merged.drop(columns=columns_to_drop, inplace=True)
+sc_merged.drop(
+    columns=[x for x in columns_to_drop if x in sc_merged.columns], inplace=True
+)
+organoid_merged.drop(
+    columns=[x for x in columns_to_drop if x in organoid_merged.columns], inplace=True
+)
+nucleocentric_merged.drop(
+    columns=[x for x in columns_to_drop if x in nucleocentric_merged.columns],
+    inplace=True,
+)
 
 
 # ### Get single cell counts per well and organoid counts per well
@@ -345,6 +347,8 @@ metadata_features_list = [
     "ObjectID",
     "Well",
     "Treatment",
+    "Dose",
+    "Unit",
     "WellFOV",
     "ParentOrganoid",
     "OrganoidSingleCellCount",
@@ -417,6 +421,8 @@ biology_features = [
 ]
 experiment_features = [
     "Metadata_Treatment",
+    "Metadata_Dose",
+    "Metadata_Unit",
     "Metadata_Well",
     "Metadata_WellFOV",
     "Metadata_Target",
