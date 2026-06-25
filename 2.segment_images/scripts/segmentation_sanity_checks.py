@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[6]:
 
 
 import itertools
@@ -30,7 +30,7 @@ bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[ ]:
+# In[7]:
 
 
 def normalize_mask_labels(val):
@@ -44,13 +44,13 @@ def normalize_mask_labels(val):
     return [val]
 
 
-# In[3]:
+# In[8]:
 
 
-OVERWRITE = False
+OVERWRITE = True
 
 
-# In[4]:
+# In[9]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -81,7 +81,7 @@ channels = ["DNA", "ER", "Mito", "AGP"]
 compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 
 
-# In[5]:
+# In[10]:
 
 
 if sanity_df_save_path.exists() and not OVERWRITE:
@@ -136,47 +136,47 @@ else:
                 final_dict["image_path"].append(mask)
         list_of_dicts.append(final_dict)
 
-    df = pd.DataFrame(
-        {
-            "patient": [],
-            "well_fov": [],
-            "image_path": [],
-            # "image_shape": [],
-        }
-    )
+#     df = pd.DataFrame(
+#         {
+#             "patient": [],
+#             "well_fov": [],
+#             "image_path": [],
+#             # "image_shape": [],
+#         }
+#     )
 
-    # concatenate all the dictionaries into a single dataframe
-    for d in list_of_dicts:
-        df = pd.concat([df, pd.DataFrame(d)], ignore_index=True)
-    # add another column to capture the image shape
-    shapes = []
-    for image_path in tqdm.tqdm(
-        df["image_path"], desc="Loading image shapes", unit="image"
-    ):
-        try:
-            with tifffile.TiffFile(image_path) as tif:
-                shape = tif.series[0].shape
-        except Exception as e:
-            print(f"Error loading {image_path}: {e}")
-            shape = None
-        shapes.append(shape)
-    df["image_shape"] = shapes
-    # convert the posix path to string for parquet compatibility
-    df["image_path"] = df["image_path"].astype(str)
+#     # concatenate all the dictionaries into a single dataframe
+#     for d in list_of_dicts:
+#         df = pd.concat([df, pd.DataFrame(d)], ignore_index=True)
+#     # add another column to capture the image shape
+#     shapes = []
+#     for image_path in tqdm.tqdm(
+#         df["image_path"], desc="Loading image shapes", unit="image"
+#     ):
+#         try:
+#             with tifffile.TiffFile(image_path) as tif:
+#                 shape = tif.series[0].shape
+#         except Exception as e:
+#             print(f"Error loading {image_path}: {e}")
+#             shape = None
+#         shapes.append(shape)
+#     df["image_shape"] = shapes
+#     # convert the posix path to string for parquet compatibility
+#     df["image_path"] = df["image_path"].astype(str)
 
-    df.to_parquet(sanity_df_save_path, index=False)
+#     df.to_parquet(sanity_df_save_path, index=False)
 
-print(f"Sanity check df shape: {df.shape}")
-df["z_shape"] = df["image_shape"].apply(lambda x: x[0] if x is not None else None)
-df["y_shape"] = df["image_shape"].apply(lambda x: x[1] if x is not None else None)
-df["x_shape"] = df["image_shape"].apply(lambda x: x[2] if x is not None else None)
-df["unique_shape_string"] = (
-    f"{df['z_shape'].astype(str)}_{df['y_shape'].astype(str)}_{df['x_shape'].astype(str)}"
-)
-df.head()
+# print(f"Sanity check df shape: {df.shape}")
+# df["z_shape"] = df["image_shape"].apply(lambda x: x[0] if x is not None else None)
+# df["y_shape"] = df["image_shape"].apply(lambda x: x[1] if x is not None else None)
+# df["x_shape"] = df["image_shape"].apply(lambda x: x[2] if x is not None else None)
+# df["unique_shape_string"] = (
+#     f"{df['z_shape'].astype(str)}_{df['y_shape'].astype(str)}_{df['x_shape'].astype(str)}"
+# )
+# df.head()
 
 
-# In[6]:
+# In[11]:
 
 
 df["unique_shape_string"] = (
@@ -189,7 +189,7 @@ df["unique_shape_string"] = (
 df
 
 
-# In[7]:
+# In[12]:
 
 
 # check that there area total of 8 unique shapes (5 channels and 4 masks)
@@ -198,7 +198,7 @@ df.groupby(["patient", "well_fov"]).size().reset_index(name="count").loc[
 ]
 
 
-# In[9]:
+# In[ ]:
 
 
 mismatched_shapes = 0
@@ -216,19 +216,19 @@ print(
 mismatched_shapes_list
 
 
-# In[10]:
+# In[ ]:
 
 
 OVERWRITE = True
 
 
-# In[13]:
+# In[ ]:
 
 
-df = df.loc[df["patient"] == "NF0014_T1"]
+# df = df.loc[df["patient"] == "NF0014_T1"]
 
 
-# In[14]:
+# In[ ]:
 
 
 if sanity_df_save_path.exists() and not OVERWRITE:
@@ -277,7 +277,7 @@ else:
     df.to_parquet(patient_save_path, index=False)
 
 
-# In[16]:
+# In[ ]:
 
 
 patient_df
