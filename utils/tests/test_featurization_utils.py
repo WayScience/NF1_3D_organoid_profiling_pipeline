@@ -539,9 +539,155 @@ class TestColocationUtils:
             scale_max=255,
         )
 
-        # Thresholds should be reasonable
+        # Thresholds must be in raw pixel units (0–255), not normalised (0–1).
+        # CellProfiler's library divides by scale_max here — that is a bug we
+        # intentionally diverge from.
         assert isinstance(thr1, (int, float))
         assert isinstance(thr2, (int, float))
+        assert 0 <= thr1 <= 255
+        assert 0 <= thr2 <= 255
+
+    def test_all_costes_modes_converge_on_same_threshold(self, high_contrast_images):
+        """All three Costes modes must return thresholds in the same units and ballpark.
+
+        The three algorithms solve the same underlying problem (find the threshold
+        where Pearson R crosses zero) via different search strategies. For the
+        same input they should agree to within a small tolerance. A large
+        divergence indicates a unit mismatch (e.g. one function returning a
+        normalised value while another returns raw pixel units).
+        """
+        img1, img2 = high_contrast_images
+        flat1 = img1.flatten().astype(float)
+        flat2 = img2.flatten().astype(float)
+
+        thr_accurate, _ = linear_costes_threshold_calculation(
+            first_image=flat1,
+            second_image=flat2,
+            scale_max=255,
+            fast_costes="Accurate",
+        )
+        thr_fast, _ = linear_costes_threshold_calculation(
+            first_image=flat1,
+            second_image=flat2,
+            scale_max=255,
+            fast_costes="Fast",
+        )
+        thr_faster, _ = bisection_costes_threshold_calculation(
+            first_image=flat1,
+            second_image=flat2,
+            scale_max=255,
+        )
+
+        tolerance = 15  # pixel units out of 255
+        assert abs(thr_accurate - thr_fast) < tolerance, (
+            f"'Accurate' ({thr_accurate:.1f}) and 'Fast' ({thr_fast:.1f}) "
+            f"thresholds differ by more than {tolerance}"
+        )
+        assert abs(thr_accurate - thr_faster) < tolerance, (
+            f"'Accurate' ({thr_accurate:.1f}) and 'Faster' ({thr_faster:.1f}) "
+            f"thresholds differ by more than {tolerance} — possible unit mismatch"
+        )
+        assert abs(thr_fast - thr_faster) < tolerance, (
+            f"'Fast' ({thr_fast:.1f}) and 'Faster' ({thr_faster:.1f}) "
+            f"thresholds differ by more than {tolerance}"
+        )
+
+    def test_costes_threshold_low_for_perfectly_correlated_images(self):
+        """Pearson R never crosses zero for perfectly correlated images.
+
+        All three modes must step all the way down, yielding a threshold near
+        zero — meaning the entire image is considered colocalized.
+        """
+        img = numpy.linspace(10, 200, 300)
+
+        thr_accurate, _ = linear_costes_threshold_calculation(
+            first_image=img,
+            second_image=img,
+            scale_max=255,
+            fast_costes="Accurate",
+        )
+        thr_fast, _ = linear_costes_threshold_calculation(
+            first_image=img,
+            second_image=img,
+            scale_max=255,
+            fast_costes="Fast",
+        )
+        thr_faster, _ = bisection_costes_threshold_calculation(
+            first_image=img,
+            second_image=img,
+            scale_max=255,
+        )
+
+        max_expected = 15  # near zero in 0–255 space
+        assert thr_accurate < max_expected, (
+            f"Expected threshold near 0 for fully correlated images, got {thr_accurate:.3f}"
+        )
+        assert thr_fast < max_expected, (
+            f"Expected threshold near 0 for fully correlated images, got {thr_fast:.3f}"
+        )
+        assert thr_faster < max_expected, (
+            f"Expected threshold near 0 for fully correlated images, got {thr_faster:.3f}"
+        )
+
+    def test_costes_threshold_high_for_anticorrelated_images_linear(self):
+        """Pearson R is immediately negative for anti-correlated images.
+
+        Both linear modes must break on the first iteration, yielding a
+        threshold near the image maximum — meaning no pixels are considered
+        colocalized.
+
+        Note: the bisection algorithm has a different degenerate behaviour for
+        purely anti-correlated inputs — its ``valid`` counter starts at 1 and
+        is never updated, so it returns 0 rather than scale_max. That is a
+        known limitation shared with CellProfiler's library and is documented
+        in test_bisection_degenerate_anticorrelation below.
+        """
+        img1 = numpy.linspace(0, 255, 300)
+        img2 = numpy.linspace(255, 0, 300)  # perfectly anti-correlated
+
+        thr_accurate, _ = linear_costes_threshold_calculation(
+            first_image=img1,
+            second_image=img2,
+            scale_max=255,
+            fast_costes="Accurate",
+        )
+        thr_fast, _ = linear_costes_threshold_calculation(
+            first_image=img1,
+            second_image=img2,
+            scale_max=255,
+            fast_costes="Fast",
+        )
+
+        min_expected = 200  # near max (255) in 0–255 space
+        assert thr_accurate > min_expected, (
+            f"Expected threshold near max for anti-correlated images, got {thr_accurate:.3f}"
+        )
+        assert thr_fast > min_expected, (
+            f"Expected threshold near max for anti-correlated images, got {thr_fast:.3f}"
+        )
+
+    def test_bisection_degenerate_anticorrelation_returns_zero(self):
+        """Document bisection's edge-case behaviour for purely anti-correlated images.
+
+        When Pearson R is negative for every candidate threshold, the bisection
+        algorithm never updates its ``valid`` counter from its initial value of 1,
+        so it returns ``valid - 1 = 0``. This is the same behaviour as
+        CellProfiler's library. Real images are rarely perfectly anti-correlated,
+        so this edge case does not affect typical usage.
+        """
+        img1 = numpy.linspace(0, 255, 300)
+        img2 = numpy.linspace(255, 0, 300)
+
+        thr, _ = bisection_costes_threshold_calculation(
+            first_image=img1,
+            second_image=img2,
+            scale_max=255,
+        )
+
+        assert thr == 0.0, (
+            f"Expected bisection to return 0 for fully anti-correlated images "
+            f"(degenerate case), got {thr}"
+        )
 
     def test_measure_3d_colocalization_basic(self, high_contrast_images):
         """Test basic colocalization measurement."""

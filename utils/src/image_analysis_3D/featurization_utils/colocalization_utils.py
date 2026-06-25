@@ -162,7 +162,11 @@ def bisection_costes_threshold_calculation(
     valid = 1
 
     while lastmid != mid:
-        thr_first_image_c = mid / scale_max
+        # Use raw pixel units (not normalised) so the threshold is comparable
+        # with linear_costes_threshold_calculation and with the outer dispatch's
+        # `image > thr` comparison. CellProfiler's library has the same
+        # mid/scale_max normalisation bug; this is an intentional divergence.
+        thr_first_image_c = float(mid)
         thr_second_image_c = (a * thr_first_image_c) + b
         combt = (first_image < thr_first_image_c) | (second_image < thr_second_image_c)
         if numpy.count_nonzero(combt) <= 2:
@@ -187,7 +191,7 @@ def bisection_costes_threshold_calculation(
         else:
             mid = ((right - left) // 2) + left
 
-    thr_first_image_c = (valid - 1) / scale_max
+    thr_first_image_c = float(valid - 1)
     thr_second_image_c = (a * thr_first_image_c) + b
 
     return thr_first_image_c, thr_second_image_c
