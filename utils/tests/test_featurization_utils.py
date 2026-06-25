@@ -16,6 +16,7 @@ from image_analysis_3D.featurization_utils.colocalization_utils import (
 )
 from image_analysis_3D.featurization_utils.granularity_utils import (
     _subsample_3d,
+    _upsample_3d,
     measure_3D_granularity,
 )
 from image_analysis_3D.featurization_utils.intensity_utils import (
@@ -538,9 +539,155 @@ class TestColocationUtils:
             scale_max=255,
         )
 
-        # Thresholds should be reasonable
+        # Thresholds must be in raw pixel units (0–255), not normalised (0–1).
+        # CellProfiler's library divides by scale_max here — that is a bug we
+        # intentionally diverge from.
         assert isinstance(thr1, (int, float))
         assert isinstance(thr2, (int, float))
+        assert 0 <= thr1 <= 255
+        assert 0 <= thr2 <= 255
+
+    def test_all_costes_modes_converge_on_same_threshold(self, high_contrast_images):
+        """All three Costes modes must return thresholds in the same units and ballpark.
+
+        The three algorithms solve the same underlying problem (find the threshold
+        where Pearson R crosses zero) via different search strategies. For the
+        same input they should agree to within a small tolerance. A large
+        divergence indicates a unit mismatch (e.g. one function returning a
+        normalised value while another returns raw pixel units).
+        """
+        img1, img2 = high_contrast_images
+        flat1 = img1.flatten().astype(float)
+        flat2 = img2.flatten().astype(float)
+
+        thr_accurate, _ = linear_costes_threshold_calculation(
+            first_image=flat1,
+            second_image=flat2,
+            scale_max=255,
+            fast_costes="Accurate",
+        )
+        thr_fast, _ = linear_costes_threshold_calculation(
+            first_image=flat1,
+            second_image=flat2,
+            scale_max=255,
+            fast_costes="Fast",
+        )
+        thr_faster, _ = bisection_costes_threshold_calculation(
+            first_image=flat1,
+            second_image=flat2,
+            scale_max=255,
+        )
+
+        tolerance = 15  # pixel units out of 255
+        assert abs(thr_accurate - thr_fast) < tolerance, (
+            f"'Accurate' ({thr_accurate:.1f}) and 'Fast' ({thr_fast:.1f}) "
+            f"thresholds differ by more than {tolerance}"
+        )
+        assert abs(thr_accurate - thr_faster) < tolerance, (
+            f"'Accurate' ({thr_accurate:.1f}) and 'Faster' ({thr_faster:.1f}) "
+            f"thresholds differ by more than {tolerance} — possible unit mismatch"
+        )
+        assert abs(thr_fast - thr_faster) < tolerance, (
+            f"'Fast' ({thr_fast:.1f}) and 'Faster' ({thr_faster:.1f}) "
+            f"thresholds differ by more than {tolerance}"
+        )
+
+    def test_costes_threshold_low_for_perfectly_correlated_images(self):
+        """Pearson R never crosses zero for perfectly correlated images.
+
+        All three modes must step all the way down, yielding a threshold near
+        zero — meaning the entire image is considered colocalized.
+        """
+        img = numpy.linspace(10, 200, 300)
+
+        thr_accurate, _ = linear_costes_threshold_calculation(
+            first_image=img,
+            second_image=img,
+            scale_max=255,
+            fast_costes="Accurate",
+        )
+        thr_fast, _ = linear_costes_threshold_calculation(
+            first_image=img,
+            second_image=img,
+            scale_max=255,
+            fast_costes="Fast",
+        )
+        thr_faster, _ = bisection_costes_threshold_calculation(
+            first_image=img,
+            second_image=img,
+            scale_max=255,
+        )
+
+        max_expected = 15  # near zero in 0–255 space
+        assert thr_accurate < max_expected, (
+            f"Expected threshold near 0 for fully correlated images, got {thr_accurate:.3f}"
+        )
+        assert thr_fast < max_expected, (
+            f"Expected threshold near 0 for fully correlated images, got {thr_fast:.3f}"
+        )
+        assert thr_faster < max_expected, (
+            f"Expected threshold near 0 for fully correlated images, got {thr_faster:.3f}"
+        )
+
+    def test_costes_threshold_high_for_anticorrelated_images_linear(self):
+        """Pearson R is immediately negative for anti-correlated images.
+
+        Both linear modes must break on the first iteration, yielding a
+        threshold near the image maximum — meaning no pixels are considered
+        colocalized.
+
+        Note: the bisection algorithm has a different degenerate behaviour for
+        purely anti-correlated inputs — its ``valid`` counter starts at 1 and
+        is never updated, so it returns 0 rather than scale_max. That is a
+        known limitation shared with CellProfiler's library and is documented
+        in test_bisection_degenerate_anticorrelation below.
+        """
+        img1 = numpy.linspace(0, 255, 300)
+        img2 = numpy.linspace(255, 0, 300)  # perfectly anti-correlated
+
+        thr_accurate, _ = linear_costes_threshold_calculation(
+            first_image=img1,
+            second_image=img2,
+            scale_max=255,
+            fast_costes="Accurate",
+        )
+        thr_fast, _ = linear_costes_threshold_calculation(
+            first_image=img1,
+            second_image=img2,
+            scale_max=255,
+            fast_costes="Fast",
+        )
+
+        min_expected = 200  # near max (255) in 0–255 space
+        assert thr_accurate > min_expected, (
+            f"Expected threshold near max for anti-correlated images, got {thr_accurate:.3f}"
+        )
+        assert thr_fast > min_expected, (
+            f"Expected threshold near max for anti-correlated images, got {thr_fast:.3f}"
+        )
+
+    def test_bisection_degenerate_anticorrelation_returns_zero(self):
+        """Document bisection's edge-case behaviour for purely anti-correlated images.
+
+        When Pearson R is negative for every candidate threshold, the bisection
+        algorithm never updates its ``valid`` counter from its initial value of 1,
+        so it returns ``valid - 1 = 0``. This is the same behaviour as
+        CellProfiler's library. Real images are rarely perfectly anti-correlated,
+        so this edge case does not affect typical usage.
+        """
+        img1 = numpy.linspace(0, 255, 300)
+        img2 = numpy.linspace(255, 0, 300)
+
+        thr, _ = bisection_costes_threshold_calculation(
+            first_image=img1,
+            second_image=img2,
+            scale_max=255,
+        )
+
+        assert thr == 0.0, (
+            f"Expected bisection to return 0 for fully anti-correlated images "
+            f"(degenerate case), got {thr}"
+        )
 
     def test_measure_3d_colocalization_basic(self, high_contrast_images):
         """Test basic colocalization measurement."""
@@ -645,6 +792,94 @@ class TestColocationUtils:
             # Only compare if neither is NaN
             if not (np.isnan(coloc_overlap) or np.isnan(sep_overlap)):
                 assert coloc_overlap > sep_overlap
+
+
+    def test_combined_thresh_does_not_raise_unbound_local_error(self):
+        """Regression: combined_thresh was only assigned in the else-branch of a
+        try/except ValueError block, so a ValueError left it unbound and the
+        overlap coefficient section raised UnboundLocalError.
+        """
+        img_empty = np.zeros((0,), dtype=float)
+        try:
+            measure_3D_colocalization(img_empty, img_empty)
+        except UnboundLocalError:
+            pytest.fail(
+                "combined_thresh was unbound — missing initialisation before try block"
+            )
+        except Exception:
+            pass  # Any other exception is acceptable for zero-size input.
+
+    def test_accurate_mode_calls_linear_not_bisection(self, high_contrast_images):
+        """'Accurate' dispatches linear scan (all steps); bisection not called."""
+        from unittest.mock import patch
+
+        img1, img2 = high_contrast_images
+        coloc_mod = "image_analysis_3D.featurization_utils.colocalization_utils"
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Accurate")
+            assert mock_linear.called, (
+                "'Accurate' mode should dispatch linear_costes_threshold_calculation"
+            )
+            assert not mock_bisect.called, (
+                "'Accurate' mode should NOT dispatch bisection_costes_threshold_calculation"
+            )
+
+    def test_fast_mode_calls_linear_with_skipping(self, high_contrast_images):
+        """'Fast' dispatches linear scan with adaptive step-skipping; bisection not called."""
+        from unittest.mock import patch
+
+        img1, img2 = high_contrast_images
+        coloc_mod = "image_analysis_3D.featurization_utils.colocalization_utils"
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Fast")
+            assert mock_linear.called, (
+                "'Fast' mode should dispatch linear_costes_threshold_calculation"
+            )
+            assert not mock_bisect.called, (
+                "'Fast' mode should NOT dispatch bisection_costes_threshold_calculation"
+            )
+
+    def test_faster_mode_calls_bisection(self, high_contrast_images):
+        """'Faster' dispatches bisection algorithm; linear scan not called."""
+        from unittest.mock import patch
+
+        img1, img2 = high_contrast_images
+        coloc_mod = "image_analysis_3D.featurization_utils.colocalization_utils"
+        with (
+            patch(
+                f"{coloc_mod}.linear_costes_threshold_calculation",
+                wraps=linear_costes_threshold_calculation,
+            ) as mock_linear,
+            patch(
+                f"{coloc_mod}.bisection_costes_threshold_calculation",
+                wraps=bisection_costes_threshold_calculation,
+            ) as mock_bisect,
+        ):
+            measure_3D_colocalization(img1, img2, fast_costes="Faster")
+            assert mock_bisect.called, (
+                "'Faster' mode should dispatch bisection_costes_threshold_calculation"
+            )
+            assert not mock_linear.called, (
+                "'Faster' mode should NOT dispatch linear_costes_threshold_calculation"
+            )
 
 
 # ============================================================================
@@ -767,6 +1002,38 @@ class TestGranularityUtils:
         # High granularity should show more variation in spectrum
         assert len(obj_granularities) >= 3  # Should detect all three objects
 
+    def test_upsample_3d_no_division_by_zero_when_dim_is_one(self):
+        """Regression: _upsample_3d divided by (original_shape[d] - 1); when any
+        dimension is 1 this is 0, raising ZeroDivisionError.
+        """
+        data = np.ones((3, 3, 3), dtype=float) * 5.0
+        subsampled_shape = np.array([3.0, 3.0, 3.0])
+        result = _upsample_3d(data, subsampled_shape, original_shape=(1, 3, 3))
+        assert result.shape == (1, 3, 3)
+        assert np.all(np.isfinite(result))
+
+    def test_granularity_no_crash_on_single_z_slice(self):
+        """Regression: measure_3D_granularity on a (1, Y, X) image called
+        _upsample_3d with original_shape[0]=1, hitting the division-by-zero.
+        """
+        np.random.seed(0)
+        image = np.random.randint(50, 200, (1, 20, 20), dtype=np.uint8).astype(float)
+        labels = np.zeros((1, 20, 20), dtype=int)
+        labels[0, 5:15, 5:15] = 1
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_granularity(
+            loader,
+            subsample_size=0.5,
+            granular_spectrum_length=3,
+            radius=2,
+        )
+        assert isinstance(result, dict)
+
 
 # ============================================================================
 # TESTS: intensity_utils
@@ -775,6 +1042,52 @@ class TestGranularityUtils:
 
 class TestIntensityUtils:
     """Tests for intensity feature extraction."""
+
+    def test_integrated_intensity_is_per_object_not_global(self):
+        """IntegratedIntensity for each object must equal only that object's pixel sum.
+
+        scipy.ndimage.sum(input, labels) without an explicit index= argument
+        sums all elements where labels != 0 — which coincidentally gives the
+        right answer when labels is binarised to {0, 1}, but would silently
+        sum across all objects if the binarisation were ever removed.
+
+        This test documents the expected semantic contract: IntegratedIntensity
+        for object N == numpy.sum(image[label_image == N]).
+        """
+        image = np.zeros((10, 10, 10), dtype=np.float32)
+        label = np.zeros((10, 10, 10), dtype=np.int32)
+
+        # Object 1: intensity 50, 8 voxels → expected sum = 400
+        image[1:3, 1:3, 1:3] = 50.0
+        label[1:3, 1:3, 1:3] = 1
+
+        # Object 2: intensity 100, 8 voxels → expected sum = 800
+        image[7:9, 7:9, 7:9] = 100.0
+        label[7:9, 7:9, 7:9] = 2
+
+        loader = ObjectLoader(
+            image=image,
+            label_image=label,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_intensity_CPU(object_loader=loader)
+
+        obj_to_integrated = {}
+        for obj_id, feat, val in zip(
+            result["object_id"], result["feature_name"], result["value"]
+        ):
+            if feat == "IntegratedIntensity":
+                obj_to_integrated[int(obj_id)] = float(val)
+
+        assert obj_to_integrated[1] == pytest.approx(400.0), (
+            f"Object 1 IntegratedIntensity should be 400 (8 voxels × 50), "
+            f"got {obj_to_integrated[1]}"
+        )
+        assert obj_to_integrated[2] == pytest.approx(800.0), (
+            f"Object 2 IntegratedIntensity should be 800 (8 voxels × 100), "
+            f"got {obj_to_integrated[2]}"
+        )
 
     def test_get_outline_basic(self, simple_3d_binary_mask):
         """Test outline extraction."""
@@ -1051,6 +1364,28 @@ class TestNeighborsUtils:
         # Verify the neighbor measurement keys exist and contain data
         assert "adjacent" in list(obj_neighbors.values())[0]
         assert "distance_5" in list(obj_neighbors.values())[0]
+
+    def test_neighbors_count_adjacent_detects_touching_cells(self):
+        """Regression: NeighborsCountAdjacent used the object's own regionprops
+        bbox (exclusive max indices), so the immediately adjacent voxel of a
+        touching neighbor was never included → always returned 0.
+        """
+        labels = np.zeros((15, 15, 15), dtype=int)
+        labels[5:10, 5:10, 2:6] = 1
+        labels[5:10, 5:10, 6:10] = 2  # shares a face with cell 1 at x=5|6
+        image = np.zeros((15, 15, 15), dtype=float)
+        loader = ObjectLoader(
+            image=image,
+            label_image=labels,
+            channel_name="test_channel",
+            compartment_name="test_compartment",
+        )
+        result = measure_3D_number_of_neighbors(
+            object_loader=loader, distance_threshold=1, anisotropy_factor=1
+        )
+        obj_map = dict(zip(result["object_id"], result["NeighborsCountAdjacent"]))
+        assert obj_map[1] >= 1, f"Cell 1 should detect cell 2 as adjacent, got {obj_map[1]}"
+        assert obj_map[2] >= 1, f"Cell 2 should detect cell 1 as adjacent, got {obj_map[2]}"
 
 
 # ============================================================================
