@@ -204,7 +204,7 @@ labels_df["unique_labels_across_compartments"] = labels_df.apply(
 labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[14]:
+# In[10]:
 
 
 # get the patient_id and well_fov for the rows where the labels do not match and check the corresponding feature files for those rows
@@ -221,16 +221,36 @@ for row in tqdm(
     patient_id = row.patient_id
     well_fov = row.well_fov
     print(f"cd ../../{patient_id}/extracted_features/ ; rm -r {well_fov}")
-    # print(f'cd ../../../{patient_id}/extracted_features/{well_fov} ; find . -maxdepth 1 -type f ! -name "*AreaSizeShape*" -delete')
 
 
 # In[11]:
 
 
-labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
+for patient_id in patients:
+    print(
+        f'cd ../../{patient_id}/extracted_features/ ; find . -type f -name "*Intensity*" -delete'
+    )
+    print(
+        f'cd ../../{patient_id}/extracted_features/ ; find . -type f -name "*Colocalization*" -delete'
+    )
+    print(
+        f'cd ../../{patient_id}/extracted_features/ ; find . -type f -name "*Granularity*" -delete'
+    )
+    print(
+        f'cd ../../{patient_id}/extracted_features ; find . -type f -name "*Texture*" -delete'
+    )
+    print(
+        f'cd ../../{patient_id}/extracted_features ; find . -type f -name "*Neighbors*" -delete'
+    )
 
 
 # In[12]:
+
+
+labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
+
+
+# In[13]:
 
 
 # # show the well fov and the patient id
@@ -241,7 +261,7 @@ labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient
 #     print(f"cd ../../{row.patient_id}/extracted_features/ ; rm -r {row.well_fov}")
 
 
-# In[13]:
+# In[14]:
 
 
 tmp_df = pd.merge(

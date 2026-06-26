@@ -4,5 +4,3 @@ NF0030_T1	G2-2	zstack_images	segmentation_masks
 NF0030_T1	G2-3	zstack_images	segmentation_masks
 NF0035_T1	C9-7	zstack_images	segmentation_masks
 NF0037_T1	B10-1	zstack_images	segmentation_masks
-NF0037_T1	B10-5	zstack_images	segmentation_masks
-NF0037_T1	B10-7	zstack_images	segmentation_masks
