@@ -143,7 +143,7 @@ coloc_loader = TwoObjectLoader(
 )
 
 
-# In[ ]:
+# In[8]:
 
 
 list_of_dfs = []
@@ -216,7 +216,7 @@ save_path = save_features_as_parquet(
 coloc_df.head()
 
 
-# In[ ]:
+# In[9]:
 
 
 stop_profiling(
