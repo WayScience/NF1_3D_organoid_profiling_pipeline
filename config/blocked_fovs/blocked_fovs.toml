@@ -3,6 +3,7 @@
 # cause errors in the segmentation pipeline, etc.
 patient  = [
     "NF0014_T1",
+    "NF0014_T1",
     "NF0016_T1",
     "NF0016_T1",
     "NF0016_T1",
@@ -13,14 +14,15 @@ patient  = [
     "NF0021_T1",
     "NF0030_T1",
     "NF0030_T1",
-        "NF0030_T1",
-        "NF0030_T1",
-        "NF0030_T1",
-        "NF0035_T1",
+    "NF0030_T1",
+    "NF0030_T1",
+    "NF0030_T1",
+    "NF0035_T1",
     "NF0035_T1",
     "NF0055_T1",
     "SARCO361_T1"]
 well_fov = [
+    "E10-1",
     "F11-3",
     "D3-2",
     "G3-2",

@@ -89,7 +89,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 morphem_model = get_morphem_model(device)
 
 
-# In[ ]:
+# In[13]:
 
 
 if not in_notebook:
@@ -104,8 +104,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "G3-5"
-    patient = "NF0055_T1"
+    well_fov = "C2-1"
+    patient = "NF0014_T1"
     channel = "Mito"
     compartment = "Nuclei"
     processor_type = "GPU"
@@ -133,7 +133,7 @@ channel_mapping_file_path = pathlib.Path(
 compartment = "Nuclei"
 
 
-# In[4]:
+# In[14]:
 
 
 # read in channel mapping
@@ -142,13 +142,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[5]:
+# In[15]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[6]:
+# In[16]:
 
 
 image_set_loader = ImageSetLoader(
@@ -162,7 +162,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[7]:
+# In[17]:
 
 
 object_loader = ObjectLoader(
@@ -173,14 +173,14 @@ object_loader = ObjectLoader(
 )
 
 
-# In[8]:
+# In[18]:
 
 
 label_ids = np.unique(object_loader.label_image)
 label_ids = label_ids[label_ids != 0]
 
 
-# In[9]:
+# In[19]:
 
 
 list_of_feature_dicts = []
@@ -283,7 +283,7 @@ else:
     final_df = None
 
 
-# In[ ]:
+# In[20]:
 
 
 if final_df is not None:
@@ -292,26 +292,26 @@ if final_df is not None:
     morphem_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
     sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
     morphem_df = final_df[["object_id", "image_set"] + morphem_feature_cols]
-# save the features as parquet files
-save_path = save_features_as_parquet(
-    parent_path=output_parent_path,
-    df=sammed_3d_df,
-    feature_type="SAMMed3D",
-    channel=channel,
-    compartment="Nucleocentric",
-    cpu_or_gpu=processor_type,
-)
-save_path = save_features_as_parquet(
-    parent_path=output_parent_path,
-    df=morphem_df,
-    feature_type="CHAMMI75",
-    channel=channel,
-    compartment="Nucleocentric",
-    cpu_or_gpu=processor_type,
-)
+    # save the features as parquet files
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=sammed_3d_df,
+        feature_type="SAMMed3D",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=morphem_df,
+        feature_type="CHAMMI75",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
 
 
-# In[11]:
+# In[21]:
 
 
 stop_profiling(
@@ -329,7 +329,7 @@ stop_profiling(
 )
 
 
-# In[12]:
+# In[22]:
 
 
 if in_notebook:
@@ -338,7 +338,7 @@ if in_notebook:
     label_image = select_objects_from_label(object_loader.label_image, [label])
 
 
-# In[ ]:
+# In[23]:
 
 
 if in_notebook:

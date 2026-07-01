@@ -108,7 +108,7 @@ df.to_parquet("../logs/feature_file_info.parquet", index=False)
 #     df = pd.read_parquet("../logs/feature_file_info.parquet")
 
 
-# In[5]:
+# In[ ]:
 
 
 df.sort_values(["patient_id", "well_fov"], inplace=True)
@@ -116,7 +116,7 @@ df.reset_index(drop=True, inplace=True)
 df
 
 
-# In[6]:
+# In[ ]:
 
 
 # merge the cells, cytoplasm, and whole cell features for a given well_fov and patient_id
@@ -149,13 +149,13 @@ out_df = out_df.pivot(
 ).reset_index()
 
 
-# In[7]:
+# In[ ]:
 
 
 out_df
 
 
-# In[8]:
+# In[ ]:
 
 
 labels_dict = {
@@ -187,7 +187,7 @@ for row in tqdm(
 labels_df = pd.DataFrame(labels_dict)
 
 
-# In[9]:
+# In[ ]:
 
 
 labels_df["labels_match"] = labels_df.apply(
@@ -201,10 +201,22 @@ labels_df["same_number_of_labels"] = labels_df.apply(
 labels_df["unique_labels_across_compartments"] = labels_df.apply(
     lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
 )
+labels_df["nuc_cyto_unique"] = labels_df.apply(
+    lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
+)
+labels_df["nuc_cell_unique"] = labels_df.apply(
+    lambda row: set(row["Nuclei_labels"]) - set(row["Cell_labels"]), axis=1
+)
+labels_df["cyto_cell_unique"] = labels_df.apply(
+    lambda row: set(row["Cytoplasm_labels"]) - set(row["Cell_labels"]), axis=1
+)
 labels_df.loc[labels_df["labels_match"] == False]
 
 
-# In[10]:
+# In[ ]:
+
+
+# In[ ]:
 
 
 # get the patient_id and well_fov for the rows where the labels do not match and check the corresponding feature files for those rows
@@ -220,37 +232,17 @@ for row in tqdm(
 ):
     patient_id = row.patient_id
     well_fov = row.well_fov
-    print(f"cd ../../{patient_id}/extracted_features/ ; rm -r {well_fov}")
+    # print(f"cd ../../{patient_id}/extracted_features/ ; rm -r {well_fov}")
+    continue
 
 
-# In[11]:
-
-
-for patient_id in patients:
-    print(
-        f'cd ../../{patient_id}/extracted_features/ ; find . -type f -name "*Intensity*" -delete'
-    )
-    print(
-        f'cd ../../{patient_id}/extracted_features/ ; find . -type f -name "*Colocalization*" -delete'
-    )
-    print(
-        f'cd ../../{patient_id}/extracted_features/ ; find . -type f -name "*Granularity*" -delete'
-    )
-    print(
-        f'cd ../../{patient_id}/extracted_features ; find . -type f -name "*Texture*" -delete'
-    )
-    print(
-        f'cd ../../{patient_id}/extracted_features ; find . -type f -name "*Neighbors*" -delete'
-    )
-
-
-# In[12]:
+# In[ ]:
 
 
 labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
 
 
-# In[13]:
+# In[ ]:
 
 
 # # show the well fov and the patient id
@@ -261,19 +253,57 @@ labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient
 #     print(f"cd ../../{row.patient_id}/extracted_features/ ; rm -r {row.well_fov}")
 
 
-# In[14]:
+# In[ ]:
 
 
-tmp_df = pd.merge(
-    left=pd.merge(
-        left=cell_df,
-        right=cytoplasm_df,
-        on=["object_id", "image_set"],
-    ),
-    right=nuclei_df,
-    on=["object_id", "image_set"],
-)
-tmp_df.head()
+# parse through all feature files and find any files that have nas for all of a column
 
 
 # In[ ]:
+
+
+patient_ids = pd.read_csv(
+    pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(strict=True),
+    header=None,
+    names=["patient_id"],
+).patient_id.tolist()
+
+
+# In[ ]:
+
+
+import tqdm.notebook as tqdm
+
+all_nans = []
+for patient in tqdm.tqdm(
+    patient_ids, desc="Checking for missing values in features", leave=True
+):
+    patient_dir = profile_base_dir / "data" / patient / "extracted_features"
+    well_fovs = patient_dir.glob("*")  # get all well_fovs for a patient
+    for well_fov in tqdm.tqdm(
+        well_fovs, desc=f"Checking {patient} for missing values", leave=False
+    ):
+        if "stats" in well_fov.stem:
+            continue
+        features = pathlib.Path(well_fov).glob("*.parquet")
+        for feature in features:
+            if "sam" not in feature.stem.lower():
+                continue
+            try:
+                df = pd.read_parquet(feature)
+                if df.isna().all().any():
+                    all_nans.append(feature)
+            except Exception as e:
+                print(f"Error reading {feature}: {e}")
+
+
+# In[ ]:
+
+
+all_nans
+
+
+# In[ ]:
+
+
+all_nans[0]

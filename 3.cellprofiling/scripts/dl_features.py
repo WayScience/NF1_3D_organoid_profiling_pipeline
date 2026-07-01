@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import itertools
@@ -54,7 +54,7 @@ image_base_dir = bandicoot_check(
 logging.basicConfig(level=logging.INFO)
 
 
-# In[ ]:
+# In[3]:
 
 
 if not in_notebook:
@@ -68,10 +68,10 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C3-1"
+    well_fov = "E10-1"
     patient = "NF0014_T1"
     compartment = "Nuclei"
-    channel = "AGP"
+    channel = "ER"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
     output_features_subparent_name = "extracted_features"
@@ -222,3 +222,9 @@ stop_profiling(
         f"{root_dir}/data/{patient}/extracted_features/run_stats/{well_fov}_SAMMed3D_{channel}_{compartment}_GPU.parquet"
     ),
 )
+
+
+# In[11]:
+
+
+final_df.head()

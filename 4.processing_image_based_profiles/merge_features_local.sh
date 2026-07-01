@@ -18,6 +18,7 @@ load_data_file_path="$git_root/4.processing_image_based_profiles/load_data/load_
 patient_ids_file_path="$git_root/data/patient_IDs.txt"
 # read the patient IDs into an array
 mapfile -t patient_array < "$patient_ids_file_path"
+patient_array=("NF0014_T1")
 # setup the logs dir
 if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ]; then
     rm -rf "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/"
@@ -55,6 +56,7 @@ for patient in "${patient_array[@]}"; do
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/6.annotation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/7a.organoid_qc.py  --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/7b.single_cell_qc.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/7c.propagate_cqc_to_dl.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/8.normalization.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/9.feature_selection.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/10.aggregation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
@@ -62,10 +64,8 @@ for patient in "${patient_array[@]}"; do
 
 done
 
-
 # "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/11.combine_patients.py --image_based_profiles_subparent_name "image_based_profiles"
 # "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/0a.get_profiling_stats.py --image_based_profiles_subparent_name "image_based_profiles"
 # Rscript "$git_root"/4.processing_image_based_profiles/scripts/0b.plot_profiling_stats.r
 
 echo "All features merged for patients" "${patient_array[@]}"
-

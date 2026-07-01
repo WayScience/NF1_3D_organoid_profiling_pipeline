@@ -65,7 +65,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C6-2"
+    well_fov = "C10-2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -164,3 +164,12 @@ print(f"Final nucleocentric dataframe shape: {nucleocentric_table.shape}")
 # save the nucleocentric data as parquet
 nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
 nucleocentric_table.head()
+
+
+# In[10]:
+
+
+[x for x in nucleocentric_table.columns if "_x" in x or "_y" in x]
+
+
+# In[ ]:

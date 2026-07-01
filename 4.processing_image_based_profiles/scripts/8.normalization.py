@@ -83,7 +83,7 @@ else:
 
 # ## Functions
 
-# In[ ]:
+# In[3]:
 
 
 ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
@@ -113,7 +113,7 @@ def drop_high_na_rows(
     return df.loc[mask].reset_index(drop=True)
 
 
-# In[3]:
+# In[4]:
 
 
 ## Pathing
@@ -159,7 +159,30 @@ nucleocentric_morphem_normalized_output_path = pathlib.Path(
 sc_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[5]:
+
+
+sc_annotated_profiles = pd.read_parquet(sc_annotated_path)
+sc_sammed_annotated_profiles = pd.read_parquet(sc_sammed_annotated_path)
+organoid_annotated_profiles = pd.read_parquet(organoid_annotated_path)
+organoid_sc_sammed_annotated_profiles = pd.read_parquet(
+    organoid_sc_sammed_annotated_path
+)
+nucleocentric_sammed_annotated_profiles = pd.read_parquet(
+    nucleocentric_sammed_annotated_path
+)
+nucleocentric_morphem_annotated_profiles = pd.read_parquet(
+    nucleocentric_morphem_annotated_path
+)
+
+
+# In[8]:
+
+
+nucleocentric_morphem_annotated_profiles
+
+
+# In[6]:
 
 
 # Metadata columns start with "Metadata_". Use startswith for precision
@@ -228,7 +251,7 @@ nucleocentric_morphem_feature_cols = [
 # For deep-learning profiles, the reference is all DMSO-treated samples (no QC
 # filter exists for these profiles).
 
-# In[ ]:
+# In[7]:
 
 
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
@@ -275,7 +298,7 @@ print(
 # incomplete observations do not influence the normalization reference distribution.
 # The pre-filter row counts are logged for traceability.
 
-# In[ ]:
+# In[8]:
 
 
 ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
@@ -328,7 +351,7 @@ print(
 )
 
 
-# In[6]:
+# In[9]:
 
 
 sc_normalized_df = normalize(

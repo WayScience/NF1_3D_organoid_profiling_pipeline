@@ -39,6 +39,7 @@ import os
 import pathlib
 
 import duckdb
+import pandas as pd
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -111,6 +112,16 @@ nucleocentric_profiles = [
 # In[6]:
 
 
+for x in nucleocentric_profiles:
+    df = pd.read_parquet(x)
+    if df.isnull().any().any():
+        print(f"Null values found in {x}")
+df
+
+
+# In[7]:
+
+
 # Concatenate per-FOV parquets for each profile type using DuckDB.
 # union_by_name=true aligns columns by name rather than position, so FOVs with
 # differing column sets (e.g. empty scaffold tables from notebook 1) are handled
@@ -135,7 +146,7 @@ print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape
 # ## Remove all BF channels
 #
 
-# In[7]:
+# In[8]:
 
 
 # Remove brightfield (BF) channel features from all three profile types.
@@ -161,9 +172,15 @@ print(
 )
 
 
-# In[8]:
+# In[9]:
 
 
 sc_profile.to_parquet(sc_merged_output_path, index=False)
 organoid_profile.to_parquet(organoid_merged_output_path, index=False)
 nucleocentric_profile.to_parquet(nucleocentric_profile_output_path, index=False)
+
+
+# In[10]:
+
+
+nucleocentric_profile

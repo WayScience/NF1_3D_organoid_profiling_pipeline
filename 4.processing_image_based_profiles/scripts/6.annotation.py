@@ -525,7 +525,7 @@ nucleocentric_sammed_columns = [
     x for x in nucleocentric_merged.columns if "sammed" in x.lower()
 ]
 nucleocentric_morphem_columns = [
-    x for x in nucleocentric_merged.columns if "morphem" in x.lower()
+    x for x in nucleocentric_merged.columns if "chammi" in x.lower()
 ]
 
 # split the profiles
@@ -573,3 +573,9 @@ sc_annotated.head()
 
 
 organoid_annotated.head()
+
+
+# In[17]:
+
+
+nucleocentric_morphem_annotated
