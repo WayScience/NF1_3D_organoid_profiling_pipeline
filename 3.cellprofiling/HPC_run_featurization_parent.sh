@@ -24,12 +24,14 @@ if [[ -e "$alpine_scratch_dir" ]]; then
     gpu_partition="aa100"
     gres="--gres=gpu:1" # only used for SAMMed3D feature extraction which is the only feature that uses GPU processing
     qos="--qos=normal"
+    gpu_qos="--qos=gpu-normal"
     account="amc-general"
 
 elif [[ -e "$anvil_scratch_dir" ]]; then
     partition="shared"
     gpu_partition="gpu"
     qos="--mail-type=all"
+    gpu_qos="--mail-type=all"
     gres="--gpus-per-node=1"
     account="bio260064-gpu"
 else
@@ -168,7 +170,7 @@ if [ "$feature" == "SAMMed3D" ] ; then
             --mem=24G \
             --partition="$gpu_partition" \
             "$gres" \
-            "$qos" \
+            "$gpu_qos" \
             --time=30:00 \
             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
@@ -187,7 +189,7 @@ if [ "$feature" == "SAMMed3D" ] ; then
             --mem=24G \
             --partition="$gpu_partition" \
             "$gres" \
-            "$qos" \
+            "$gpu_qos" \
             --time=30:00 \
             --export=patient="$patient",well_fov="$well_fov",compartment="$compartment",channel="$channel" \
             --output="logs/child/${patient}_${well_fov}/${compartment}_${channel}_sammed3d_child-%j.out" \
