@@ -134,7 +134,7 @@ def measure_3D_texture(
                 int(props["bbox-5"][i]),
             )
 
-        features = numpy.empty((n_directions, 13, max(labels)))
+        features = numpy.full((n_directions, 13, max(labels)), numpy.nan)
         for _, label in enumerate(labels):
             bbox = label_to_bbox.get(int(label))
             if bbox is None:
