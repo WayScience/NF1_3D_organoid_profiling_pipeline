@@ -134,8 +134,10 @@ def measure_3D_texture(
                 int(props["bbox-5"][i]),
             )
 
-        features = numpy.full((n_directions, 13, max(labels)), numpy.nan)
-        for _, label in enumerate(labels):
+        label_to_idx = {int(lbl): i for i, lbl in enumerate(labels)}
+        features = numpy.full((n_directions, 13, len(labels)), numpy.nan)
+        for label in labels:
+            idx = label_to_idx[int(label)]
             bbox = label_to_bbox.get(int(label))
             if bbox is None:
                 continue
@@ -155,14 +157,14 @@ def measure_3D_texture(
             image_object = scale_image(image_object, num_gray_levels=grayscale)
 
             try:
-                features[:, :, label - 1] = mahotas.features.haralick(
+                features[:, :, idx] = mahotas.features.haralick(
                     ignore_zeros=True,
                     f=image_object,
                     distance=distance,
                     compute_14th_feature=False,
                 )
             except ValueError:
-                features[:, :, label - 1] = numpy.full(
+                features[:, :, idx] = numpy.full(
                     (n_directions, n_features), numpy.nan
                 )
     else:
@@ -171,11 +173,11 @@ def measure_3D_texture(
     for direction, direction_features in enumerate(features):
         direction_str = f"{direction:02d}"
         for feature_name, feature in zip(feature_names, direction_features):
-            for object_id, feature_value in zip(labels, feature):
-                output_texture_dict["object_id"].append(object_id)
+            for label in labels:
+                output_texture_dict["object_id"].append(label)
                 output_texture_dict["texture_name"].append(
                     f"{feature_name}-{distance}-{direction_str}-{grayscale}"
                 )
-                output_texture_dict["texture_value"].append(feature_value)
+                output_texture_dict["texture_value"].append(feature[label_to_idx[int(label)]])
 
     return output_texture_dict
