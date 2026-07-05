@@ -18,7 +18,6 @@ load_data_file_path="$git_root/4.processing_image_based_profiles/load_data/load_
 patient_ids_file_path="$git_root/data/patient_IDs.txt"
 # read the patient IDs into an array
 mapfile -t patient_array < "$patient_ids_file_path"
-patient_array=("NF0014_T1")
 # setup the logs dir
 if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ]; then
     rm -rf "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/"
