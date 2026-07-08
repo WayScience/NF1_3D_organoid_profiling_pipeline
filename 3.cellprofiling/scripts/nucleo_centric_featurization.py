@@ -89,7 +89,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 morphem_model = get_morphem_model(device)
 
 
-# In[13]:
+# In[3]:
 
 
 if not in_notebook:
@@ -104,8 +104,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C2-1"
-    patient = "NF0014_T1"
+    well_fov = "D9-1"
+    patient = "NF0014_T2"
     channel = "Mito"
     compartment = "Nuclei"
     processor_type = "GPU"
@@ -133,7 +133,7 @@ channel_mapping_file_path = pathlib.Path(
 compartment = "Nuclei"
 
 
-# In[14]:
+# In[4]:
 
 
 # read in channel mapping
@@ -142,13 +142,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[15]:
+# In[5]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[16]:
+# In[6]:
 
 
 image_set_loader = ImageSetLoader(
@@ -162,7 +162,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[17]:
+# In[7]:
 
 
 object_loader = ObjectLoader(
@@ -173,14 +173,14 @@ object_loader = ObjectLoader(
 )
 
 
-# In[18]:
+# In[8]:
 
 
 label_ids = np.unique(object_loader.label_image)
 label_ids = label_ids[label_ids != 0]
 
 
-# In[19]:
+# In[9]:
 
 
 list_of_feature_dicts = []
@@ -283,7 +283,7 @@ else:
     final_df = None
 
 
-# In[20]:
+# In[10]:
 
 
 if final_df is not None:
@@ -311,7 +311,7 @@ if final_df is not None:
     )
 
 
-# In[21]:
+# In[11]:
 
 
 stop_profiling(
@@ -329,7 +329,7 @@ stop_profiling(
 )
 
 
-# In[22]:
+# In[12]:
 
 
 if in_notebook:
@@ -338,7 +338,7 @@ if in_notebook:
     label_image = select_objects_from_label(object_loader.label_image, [label])
 
 
-# In[23]:
+# In[ ]:
 
 
 if in_notebook:

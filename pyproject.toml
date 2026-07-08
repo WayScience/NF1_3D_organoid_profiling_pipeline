@@ -44,7 +44,6 @@ dependencies = [
     "tomli>=2.4.0",
     "transformers<5.0",
     "certifi>=2026.5.20",
-    "rpy2>=3.6.7",
     "scipy>=1.17.1",
 ]
 

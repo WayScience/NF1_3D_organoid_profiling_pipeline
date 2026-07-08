@@ -22,7 +22,7 @@ anvil_scratch_dir="/anvil/scratch"
 if [[ -e "$alpine_scratch_dir" ]]; then
     partition="amilan"
     gpu_partition="aa100"
-    gres="--gres=gpu:1" # only used for SAMMed3D feature extraction which is the only feature that uses GPU processing
+    gres="--gres=gpu:a100-40gb:1" # only used for SAMMed3D feature extraction which is the only feature that uses GPU processing
     qos="--qos=normal"
     gpu_qos="--qos=gpu-normal"
     account="amc-general"

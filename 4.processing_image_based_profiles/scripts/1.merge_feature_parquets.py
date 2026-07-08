@@ -34,7 +34,7 @@
 # - Merges within a compartment use left joins on `object_id` + `image_set`. Objects missing from some channels will have NaN-filled feature columns — this is expected when not all feature types apply to all channels (e.g. colocalization requires two channels).
 # - Nucleocentric compartment only supports SAMMed3D and morphem feature types; hand-crafted features are not extracted for nucleocentric volumes.
 
-# In[1]:
+# In[13]:
 
 
 import os
@@ -70,7 +70,7 @@ if not in_notebook:
 
 
 else:
-    well_fov = "C10-2"
+    well_fov = "E6-1"
     patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
@@ -288,9 +288,3 @@ with duckdb.connect(sqlite_path, read_only=False) as cx:
         cx.register("temp_df", write_df)
         cx.execute(f"CREATE OR REPLACE TABLE {compartment} AS SELECT * FROM temp_df")
         cx.unregister("temp_df")
-
-
-# In[11]:
-
-
-write_df

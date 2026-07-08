@@ -357,7 +357,22 @@ complete_feature_count
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[ ]:
+# In[13]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]
+
+
+# In[14]:
+
+
+# get the per patient total expected feature count and the number of missing features
+df = complete_feature_count.groupby(["patient"]).agg(
+    total_expected_feature_count=("expected_feature_count", "sum"),
+    total_missing_feature_count=("feature_file_path_exists_count", "sum"),
+)
+df["percent_completed"] = (
+    df["total_missing_feature_count"] / df["total_expected_feature_count"]
+) * 100
+df["percent_completed"] = df["percent_completed"].round(2)
+df
