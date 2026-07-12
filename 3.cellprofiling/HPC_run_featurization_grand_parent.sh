@@ -74,8 +74,8 @@ while IFS= read -r line; do
         "$output_features_subparent_name"
 
 
-done < "$txt_file"
-# done < <(tac "$txt_file")
+# done < "$txt_file"
+done < <(tac "$txt_file")
 
 
 
