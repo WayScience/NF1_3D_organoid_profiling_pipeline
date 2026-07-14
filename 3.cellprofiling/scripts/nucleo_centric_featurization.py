@@ -309,6 +309,23 @@ if final_df is not None:
         compartment="Nucleocentric",
         cpu_or_gpu=processor_type,
     )
+else:
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=sammed_3d_df,
+        feature_type="SAMMed3D",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=morphem_df,
+        feature_type="CHAMMI75",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
 
 
 # In[11]:

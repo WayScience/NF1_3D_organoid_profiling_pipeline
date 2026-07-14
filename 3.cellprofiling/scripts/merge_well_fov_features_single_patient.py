@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
 # # Merge & Validate Well-FOV Feature Parquets
 #
 # ## Purpose
@@ -11,8 +10,9 @@
 # `1.merge_feature_parquets.py` does. Unlike that production script, this notebook does
 # **not** write merged output — its purpose is quality control: surface every place the
 # merge could silently go wrong (missing files, unreadable files, missing merge keys,
-# duplicate object IDs, merge blow-ups, object-ID misalignment across compartments) and
-# summarize the findings in a report.
+# duplicate object IDs, merge blow-ups, object-ID misalignment across compartments, and
+# object IDs that exceed the expected small-sequential-ID range) and summarize the
+# findings in a report.
 #
 # ## Inputs
 # - `data/{patient}/extracted_features/{well_fov}/*.parquet`
@@ -36,9 +36,21 @@
 #   seen across that compartment's input files (a "blow-up", meaning a merge key was
 #   duplicated and fanned out the outer join — a real bug, unlike the expected case where
 #   different feature types/channels simply detect slightly different object sets)
+# - An Organoid merge that fails outright because one of its input files is an empty
+#   (0-row) profile — a dtype-clash symptom, reclassified from a generic merge error
+# - A compartment's profile containing any `object_id` greater than 255 — small
+#   sequential IDs (1, 2, 3, ...) are the expected scheme, so any ID above 255 suggests
+#   that profile is using the "z_slice_global" scheme (IDs that encode a z-slice offset)
+#   instead, which is worth a closer look
 # - Object IDs that disagree across the single-cell compartments (`Nuclei`, `Cell`,
 #   `Cytoplasm`, `Nucleocentric`) for the same well-FOV as a whole — a coarser, known issue
 #   tracked separately in `3.cellprofiling/logs/well_fov_object_id_mismatches.csv`.
+#
+# **Not** counted as an error: a well-FOV with no readable Organoid feature files, or an
+# Organoid merge that produces zero rows. Some well-FOVs legitimately have no organoids,
+# so an empty Organoid profile is tracked and reported on its own (see
+# `organoid_profiles_empty` in the summary and the Organoid section of the report) but
+# does **not** count toward `n_issues` or trigger the source-mask consistency check below.
 #
 # ## Source mask consistency check
 # For every compartment implicated in one of the merge errors above, this notebook reads
@@ -54,7 +66,7 @@
 # a distinct feature space (one row per whole organoid) with its own, much smaller object-ID
 # space, and is never expected to line up with the per-cell compartments — it is merged
 # internally, but not checked against Nuclei/Cell/Cytoplasm/Nucleocentric.
-
+#
 
 # In[1]:
 
@@ -110,7 +122,7 @@ COMPARTMENTS = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 SINGLE_CELL_COMPARTMENTS = ["Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
 EXPECTED_N_FILES = 101
 # Nucleocentric features are extracted against the Nuclei mask (see
-# scripts/nucleo_centric_featurization.py), so it shares Nuclei's source mask file.
+# scripts/nucleo_centric_featurization.py), so it shares Nuclei\'s source mask file.
 COMPARTMENT_MASK_FILENAME = {
     "Organoid": "organoid_mask.tiff",
     "Nuclei": "nuclei_mask.tiff",
@@ -118,6 +130,14 @@ COMPARTMENT_MASK_FILENAME = {
     "Cytoplasm": "cytoplasm_mask.tiff",
     "Nucleocentric": "nuclei_mask.tiff",
 }
+# A profile\'s object_id > 255 is the signature of the "z_slice_global" ID scheme
+# (ids encode a z-slice offset), vs. small sequential ids (1, 2, 3, ...) from the
+# "sequential" scheme.
+OBJECT_ID_SCHEME_THRESHOLD = 255
+# Issue types that describe a legitimately-empty Organoid profile rather than a real
+# merge/extraction bug — logged for visibility, but excluded from the n_issues/error
+# counts and from triggering the source-mask consistency check.
+NON_ERROR_ISSUE_TYPES = {"empty_organoid_profiles", "organoid_object_ids_empty"}
 
 extracted_features_dir
 
@@ -125,7 +145,6 @@ extracted_features_dir
 # ## Discover well-FOV directories
 # Every subdirectory of `extracted_features` is a well-FOV except `run_stats`, which holds
 # per-run diagnostic parquets rather than merged feature files.
-
 
 # In[3]:
 
@@ -145,21 +164,27 @@ print(f"Found {len(well_fov_dirs)} well-FOV directories for {patient}")
 #    (outer, not left, so a merge error can never silently drop rows without being counted).
 # 4. Flag a merge "blow-up" if the merged row count exceeds the union of `object_id`
 #    values seen across that compartment's input files.
-# 5. Compare object-ID sets across the single-cell compartments (`Nuclei`, `Cell`,
+# 5. Flag a profile (compartment) whose `object_id` values include any value greater
+#    than 255 — small sequential IDs are the expected scheme, so any value above 255
+#    suggests the "z_slice_global" ID scheme is in play for that well-FOV/compartment.
+# 6. Compare object-ID sets across the single-cell compartments (`Nuclei`, `Cell`,
 #    `Cytoplasm`, `Nucleocentric`) to catch alignment drift. `Organoid` is deliberately
 #    excluded from this comparison — it is a separate feature space (one row per whole
 #    organoid, not per cell) and its object-ID space is not expected to match the
 #    single-cell compartments.
-# 6. For every compartment implicated in a merge-related issue above (a blow-up, a
-#    duplicate `object_id` within one of its files, or a cross-compartment
-#    misalignment), read that compartment's segmentation mask TIFF directly and
-#    compare its actual unique object IDs against the object IDs present in the
-#    extracted feature files. If the mask's own object-ID set doesn't match what was
+# 7. For every compartment implicated in a merge-related issue above (a blow-up, a
+#    duplicate `object_id` within one of its files, an object ID over 255, or a
+#    cross-compartment misalignment), read that compartment's segmentation mask TIFF
+#    directly and compare its actual unique object IDs against the object IDs present in
+#    the extracted feature files. If the mask's own object-ID set doesn't match what was
 #    extracted, the discrepancy traces back to the segmentation mask on disk (e.g. it
 #    was re-segmented/overwritten after features were last extracted) rather than a
 #    bug in the merge/extraction code — this tells you whether to rerun featurization
 #    or re-segmentation.
-
+#
+# A well-FOV with no readable Organoid feature files, or an Organoid merge that produces
+# zero rows, is tracked but **not** counted as an issue and does **not** trigger the
+# source-mask check on its own — some well-FOVs legitimately have no organoids.
 
 # In[4]:
 
@@ -240,19 +265,64 @@ def process_well_fov(well_fov_dir: pathlib.Path) -> tuple[dict, list[dict]]:
             )
         per_compartment_dfs[compartment].append((f.name, df))
 
+    # Organoid profiles are expected for every well-FOV (one row per organoid, unlike
+    # the per-cell compartments), but some well-FOVs legitimately have none. Track it
+    # for visibility without a `compartment=` kwarg — this is deliberately NOT counted
+    # as an error and does NOT trigger the source-mask consistency check on its own.
+    if not per_compartment_dfs["Organoid"]:
+        log_issue(
+            "empty_organoid_profiles",
+            f"no readable Organoid feature files for {well_fov}; Organoid merge skipped",
+        )
+
     compartment_shapes = {}
     for compartment, items in per_compartment_dfs.items():
         if not items:
             continue
         names = [n for n, _ in items]
         dfs = [d for _, d in items]
-        union_n_objects = len(set().union(*(set(d["object_id"]) for d in dfs)))
+        union_ids = set().union(*(set(d["object_id"]) for d in dfs))
+        union_n_objects = len(union_ids)
+
+        if union_ids and max(union_ids) > OBJECT_ID_SCHEME_THRESHOLD:
+            log_issue(
+                "object_id_exceeds_threshold",
+                f"{compartment}: object_id values across {len(dfs)} input file(s) "
+                f"include a maximum of {max(union_ids)}, greater than "
+                f"{OBJECT_ID_SCHEME_THRESHOLD} — likely the 'z_slice_global' ID "
+                f"scheme rather than small sequential IDs for this profile",
+                compartment=compartment,
+            )
+
         try:
             merged = reduce(
                 lambda left, right: pd.merge(left, right, on=MERGE_KEYS, how="outer"),
                 dfs,
             )
         except Exception as e:
+            # A merge failure on the Organoid compartment that complains about a
+            # dtype clash on the merge key is a known symptom of one of the input
+            # files being an empty (0-row) profile: pandas infers float64 for an
+            # empty object_id column, which then conflicts with the object/int
+            # dtype of the populated Organoid files during the outer join. Detect
+            # that root cause directly (rather than string-matching the pandas
+            # error) and reclassify it as an Organoid-specific empty-profile issue
+            # instead of a generic merge_error.
+            empty_names = (
+                [n for n, d in items if len(d) == 0]
+                if compartment == "Organoid"
+                else []
+            )
+            if compartment == "Organoid" and empty_names:
+                log_issue(
+                    "organoid_empty_profile_merge_error",
+                    f"Organoid merge failed because {empty_names} contain 0 rows "
+                    f"(an empty object_id column typed as float64 conflicts with "
+                    f"the object/int dtype in the populated Organoid files during "
+                    f"merge). Original error: {e}",
+                    compartment="Organoid",
+                )
+                continue
             log_issue("merge_error", f"{compartment} ({names}): {e}")
             continue
         compartment_shapes[compartment] = merged.shape
@@ -263,6 +333,19 @@ def process_well_fov(well_fov_dir: pathlib.Path) -> tuple[dict, list[dict]]:
                 f"object_id values across its {len(dfs)} input files is only "
                 f"{union_n_objects} — a merge key was duplicated somewhere",
                 compartment=compartment,
+            )
+        # Organoid files can exist and read successfully but still carry zero
+        # object_id rows (e.g. an upstream step wrote an empty table). Distinct
+        # from the "no Organoid files at all" case checked above — this one only
+        # shows up after merging, since union_n_objects is also 0 in this case so
+        # it would not otherwise trip the merge-blowup check. Also not counted as
+        # an error, for the same reason as the "no Organoid files" case.
+        if compartment == "Organoid" and merged.shape[0] == 0:
+            log_issue(
+                "organoid_object_ids_empty",
+                f"Organoid files present ({names}) but merged frame has 0 rows — "
+                f"no object_id values found in any Organoid feature file for "
+                f"{well_fov}",
             )
 
     id_sets = {
@@ -327,14 +410,34 @@ def process_well_fov(well_fov_dir: pathlib.Path) -> tuple[dict, list[dict]]:
         "n_files_found": len(files),
         "n_files_expected": EXPECTED_N_FILES,
         "file_count_mismatch": len(files) != EXPECTED_N_FILES,
-        "n_issues": len(issues),
+        "n_issues": sum(
+            1 for i in issues if i["issue_type"] not in NON_ERROR_ISSUE_TYPES
+        ),
         "n_read_errors": sum(i["issue_type"] == "read_error" for i in issues),
         "n_merge_errors": sum(i["issue_type"] == "merge_error" for i in issues),
         "n_merge_blowups": sum(i["issue_type"] == "merge_blowup" for i in issues),
         "n_duplicate_object_id_files": sum(
             i["issue_type"] == "duplicate_object_id_in_file" for i in issues
         ),
+        "n_object_id_exceeds_threshold": sum(
+            i["issue_type"] == "object_id_exceeds_threshold" for i in issues
+        ),
         "object_ids_aligned_across_compartments": aligned,
+        "organoid_profiles_empty": any(
+            i["issue_type"]
+            in (
+                "empty_organoid_profiles",
+                "organoid_object_ids_empty",
+                "organoid_empty_profile_merge_error",
+            )
+            for i in issues
+        ),
+        "organoid_object_ids_empty": any(
+            i["issue_type"] == "organoid_object_ids_empty" for i in issues
+        ),
+        "n_organoid_empty_profile_merge_errors": sum(
+            i["issue_type"] == "organoid_empty_profile_merge_error" for i in issues
+        ),
         "n_source_mask_mismatches": sum(
             i["issue_type"] == "source_mask_object_id_mismatch" for i in issues
         ),
@@ -371,7 +474,6 @@ summary_df[summary_df["n_merge_errors"] > 0]
 
 # ## Save the flattened per-well-FOV summary and the long-format issue log
 
-
 # In[9]:
 
 
@@ -390,7 +492,6 @@ print(f"Wrote {issues_out_path}")
 
 # ## Summarize findings
 
-
 # In[10]:
 
 
@@ -407,6 +508,15 @@ n_source_mask_mismatches = int(summary_df["n_source_mask_mismatches"].sum())
 n_source_mask_missing = int(summary_df["n_source_mask_missing"].sum())
 n_well_fovs_with_source_mask_mismatch = int(
     (summary_df["n_source_mask_mismatches"] > 0).sum()
+)
+n_organoid_profiles_empty = int(summary_df["organoid_profiles_empty"].sum())
+n_organoid_object_ids_empty = int(summary_df["organoid_object_ids_empty"].sum())
+n_organoid_empty_profile_merge_errors = int(
+    summary_df["n_organoid_empty_profile_merge_errors"].sum()
+)
+n_object_id_exceeds_threshold = int(summary_df["n_object_id_exceeds_threshold"].sum())
+n_well_fovs_with_object_id_exceeds_threshold = int(
+    (summary_df["n_object_id_exceeds_threshold"] > 0).sum()
 )
 
 issue_type_counts = (
@@ -426,6 +536,23 @@ print(
 )
 print(f"Total source-mask object-ID mismatches: {n_source_mask_mismatches}")
 print(f"Total missing source mask files:   {n_source_mask_missing}")
+print(
+    "Well-FOVs with empty Organoid profiles (informational only, NOT counted as an "
+    f"issue): {n_organoid_profiles_empty}"
+)
+print(
+    f"  - of which Organoid files present but zero object IDs: {n_organoid_object_ids_empty}"
+)
+print(
+    "Organoid merges that failed due to an empty (0-row) profile file (a real merge "
+    f"bug, reclassified from a generic merge error and still counted as an issue): "
+    f"{n_organoid_empty_profile_merge_errors}"
+)
+print(
+    f"Well-FOVs with a profile whose object_id exceeds {OBJECT_ID_SCHEME_THRESHOLD}: "
+    f"{n_well_fovs_with_object_id_exceeds_threshold}"
+)
+print(f"Total object_id-exceeds-threshold flags: {n_object_id_exceeds_threshold}")
 print()
 print("Issue counts by type:")
 issue_type_counts
@@ -445,6 +572,20 @@ summary_df.loc[
 ]
 
 
+# ## Object IDs exceeding 255
+#
+# Profiles (compartments) whose `object_id` values include anything greater than 255 —
+# small sequential IDs are the expected scheme, so this likely means the
+# "z_slice_global" ID scheme is in play for that well-FOV/compartment instead.
+
+# In[13]:
+
+
+issues_df.loc[issues_df["issue_type"] == "object_id_exceeds_threshold"].sort_values(
+    ["well_fov"]
+).reset_index(drop=True)
+
+
 # ## Source mask consistency check
 #
 # For every well-FOV/compartment implicated in a merge-related issue (blow-up,
@@ -456,8 +597,7 @@ summary_df.loc[
 # this merge/QC logic. `source_mask_missing` means the expected mask TIFF wasn't found
 # at all.
 
-
-# In[13]:
+# In[14]:
 
 
 issues_df.loc[
@@ -467,7 +607,7 @@ issues_df.loc[
 ].sort_values(["well_fov"]).reset_index(drop=True)
 
 
-# In[14]:
+# In[15]:
 
 
 summary_df.loc[
@@ -478,8 +618,7 @@ summary_df.loc[
 
 # ## Generate the markdown report
 
-
-# In[15]:
+# In[16]:
 
 
 worst_offenders = summary_df.sort_values("n_issues", ascending=False).loc[
@@ -490,6 +629,7 @@ worst_offenders = summary_df.sort_values("n_issues", ascending=False).loc[
         "file_count_mismatch",
         "object_ids_aligned_across_compartments",
         "n_source_mask_mismatches",
+        "n_object_id_exceeds_threshold",
     ],
 ]
 
@@ -501,6 +641,26 @@ source_mask_issues_df = issues_df.loc[
 source_mask_section_lines = (
     source_mask_issues_df.to_markdown(index=False)
     if len(source_mask_issues_df)
+    else "_None._"
+)
+
+object_id_threshold_issues_df = issues_df.loc[
+    issues_df["issue_type"] == "object_id_exceeds_threshold"
+].sort_values(["well_fov"])
+object_id_threshold_section_lines = (
+    object_id_threshold_issues_df.to_markdown(index=False)
+    if len(object_id_threshold_issues_df)
+    else "_None._"
+)
+
+organoid_issues_df = issues_df.loc[
+    issues_df["issue_type"].isin(
+        ["empty_organoid_profiles", "organoid_object_ids_empty"]
+    )
+].sort_values(["well_fov"])
+organoid_section_lines = (
+    organoid_issues_df.to_markdown(index=False)
+    if len(organoid_issues_df)
     else "_None._"
 )
 
@@ -542,6 +702,11 @@ report_lines = (
         f"extracted features: **{n_well_fovs_with_source_mask_mismatch}**",
         f"- Total source-mask object-ID mismatches: **{n_source_mask_mismatches}**",
         f"- Total missing source mask files: **{n_source_mask_missing}**",
+        f"- Well-FOVs with a profile whose object_id exceeds {OBJECT_ID_SCHEME_THRESHOLD}: **{n_well_fovs_with_object_id_exceeds_threshold}**",
+        f"- Total object_id-exceeds-threshold flags: **{n_object_id_exceeds_threshold}**",
+        f"- Well-FOVs with empty Organoid profiles (*informational, not counted as an issue*): **{n_organoid_profiles_empty}**",
+        f"- Well-FOVs with Organoid files present but zero object IDs (*informational, not counted as an issue*): **{n_organoid_object_ids_empty}**",
+        f"- Organoid merges that failed due to an empty (0-row) profile file (a real merge bug, reclassified from a generic merge error — still counted as an issue): **{n_organoid_empty_profile_merge_errors}**",
         f"- Total read errors: **{n_read_errors}**",
         f"- Total merge errors: **{n_merge_errors}**",
         f"- Total merge blow-ups: **{n_merge_blowups}**",
@@ -561,13 +726,33 @@ report_lines = (
         if n_file_count_mismatch
         else "_None._",
         "",
+        "## Organoid profile checks (informational, not counted as issues)",
+        "",
+        "Well-FOVs with no readable Organoid feature files at all, or an Organoid merge ",
+        "that produced zero rows. Some well-FOVs legitimately have no organoids, so ",
+        "these are tracked for visibility only and do not count toward `n_issues` or ",
+        "trigger the source-mask consistency check on their own.",
+        "",
+        organoid_section_lines,
+        "",
+        "## Object IDs exceeding {}".format(OBJECT_ID_SCHEME_THRESHOLD),
+        "",
+        "Profiles (compartments) whose object_id values include anything greater than "
+        f"{OBJECT_ID_SCHEME_THRESHOLD} — likely the 'z_slice_global' ID scheme rather ",
+        "than small sequential IDs for that well-FOV/compartment.",
+        "",
+        object_id_threshold_section_lines,
+        "",
         "## Source mask consistency check",
         "",
         "For every well-FOV/compartment implicated in a merge-related issue (blow-up, ",
-        "duplicate object_id, or cross-compartment misalignment), the segmentation mask ",
-        "TIFF was read directly and its unique object IDs compared against the object IDs ",
-        "in the extracted features. A mismatch points to the mask on disk (likely ",
-        "re-segmented/overwritten after featurization last ran) rather than a merge bug.",
+        "duplicate object_id, an object ID over {}, or cross-compartment ".format(
+            OBJECT_ID_SCHEME_THRESHOLD
+        ),
+        "misalignment), the segmentation mask TIFF was read directly and its unique ",
+        "object IDs compared against the object IDs in the extracted features. A ",
+        "mismatch points to the mask on disk (likely re-segmented/overwritten after ",
+        "featurization last ran) rather than a merge bug.",
         "",
         source_mask_section_lines,
         "",
@@ -590,6 +775,11 @@ report_lines = (
         "  duplicated and fanned out the join. This is distinct from (and rarer than) two",
         "  feature types/channels simply detecting slightly different object sets, which is",
         "  expected and only grows the merged row count up to the union size.",
+        "- An empty Organoid profile (no files, or a merge with zero rows) is tracked",
+        "  separately and does NOT count as an issue — some well-FOVs legitimately have",
+        "  no organoids. An Organoid merge that fails outright because one input file is",
+        "  an empty (0-row) profile IS still counted, since that reflects an actual",
+        "  merge bug rather than a legitimately-empty well-FOV.",
         "- The source mask consistency check reads segmentation mask TIFFs directly (not ",
         "  through the extracted features) to determine whether an object-ID discrepancy ",
         "  originates from the mask itself vs. from feature extraction/merging.",
@@ -606,7 +796,7 @@ report_out_path.write_text(report_text)
 print(f"Wrote {report_out_path}")
 
 
-# In[16]:
+# In[17]:
 
 
 from IPython.display import Markdown, display
@@ -614,37 +804,17 @@ from IPython.display import Markdown, display
 display(Markdown(report_text))
 
 
-# In[17]:
+# In[21]:
 
 
-lst = [
-    "F11-1",
-    "F5-2",
-    "C11-2",
-    "D11-2",
-    "D5-1",
-    "D4-1",
-    "F6-2",
-    "E2-2",
-    "D9-1",
-    "F6-1",
-    "D2-3",
-]
-lst.sort()
-lst
-
-
-# In[18]:
-
-
-well_fov = "D4-1"
+well_fov = "G9-1"
 # investigate the X well fov
 files = list(
     pathlib.Path(
         f"/home/lippincm/Documents/NF1_3D_organoid_profiling_pipeline/data/NF0014_T1/extracted_features/{well_fov}"
     ).glob("*.parquet")
 )
-files = [f for f in files if "Organoid" in f.name]
+files = [f for f in files if not "Organoid" in f.name]
 new_df = pd.DataFrame()
 for f in files:
     df = pd.read_parquet(f)
@@ -659,7 +829,7 @@ new_df
 
 # get the nan columns now
 tmp_df = (
-    new_df.loc[new_df["object_id"] == 4]
+    new_df.loc[new_df["object_id"] == 2]
     .isnull()
     .sum()
     .sort_values(ascending=False)
@@ -683,6 +853,9 @@ cell_unique = get_mask_object_ids(segmentation_masks_dir / well_fov / "cell_mask
 nuclei_unique = get_mask_object_ids(
     segmentation_masks_dir / well_fov / "nuclei_mask.tiff"
 )
+organoid_unique = get_mask_object_ids(
+    segmentation_masks_dir / well_fov / "organoid_mask.tiff"
+)
 print(cell_unique - nuclei_unique)
 if len(cell_unique - nuclei_unique) > 0:
     print(
@@ -690,3 +863,7 @@ if len(cell_unique - nuclei_unique) > 0:
     )
 print(len(nuclei_unique), len(cell_unique))
 print(cell_unique)
+print(organoid_unique)
+
+
+# In[ ]:
