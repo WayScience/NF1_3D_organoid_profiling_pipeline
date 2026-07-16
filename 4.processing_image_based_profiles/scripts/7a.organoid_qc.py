@@ -56,7 +56,7 @@ if not in_notebook:
 
 else:
     image_based_profiles_subparent_name = "image_based_profiles"
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
 
 
 # ## Load in all the organoid profiles and concat together

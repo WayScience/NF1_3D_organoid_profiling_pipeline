@@ -77,7 +77,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -176,13 +176,13 @@ nucleocentric_morphem_annotated_profiles = pd.read_parquet(
 )
 
 
-# In[8]:
+# In[6]:
 
 
 nucleocentric_morphem_annotated_profiles
 
 
-# In[6]:
+# In[7]:
 
 
 # Metadata columns start with "Metadata_". Use startswith for precision
@@ -251,7 +251,7 @@ nucleocentric_morphem_feature_cols = [
 # For deep-learning profiles, the reference is all DMSO-treated samples (no QC
 # filter exists for these profiles).
 
-# In[7]:
+# In[8]:
 
 
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
@@ -298,7 +298,7 @@ print(
 # incomplete observations do not influence the normalization reference distribution.
 # The pre-filter row counts are logged for traceability.
 
-# In[8]:
+# In[9]:
 
 
 ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
@@ -351,7 +351,7 @@ print(
 )
 
 
-# In[9]:
+# In[10]:
 
 
 sc_normalized_df = normalize(

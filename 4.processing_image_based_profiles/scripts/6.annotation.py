@@ -36,7 +36,7 @@
 # - Location and neighbor features are promoted to `Metadata_*` so they are excluded from
 #   normalization and feature selection in downstream steps.
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -58,7 +58,7 @@ profile_base_dir = bandicoot_check(
 profile_base_dir = root_dir
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -67,11 +67,11 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# In[ ]:
+# In[3]:
 
 
 def annotate_profiles(
@@ -131,7 +131,7 @@ def annotate_profiles(
 
 # ## Pathing
 
-# In[ ]:
+# In[4]:
 
 
 sc_merged_path = pathlib.Path(
@@ -172,7 +172,7 @@ sammed_annotated_organoid_profiles_path = pathlib.Path(
 organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 # read data
@@ -186,7 +186,7 @@ platemap["Treatment"] = platemap["Treatment"].str.replace(r"\s+%", "%", regex=Tr
 platemap.head()
 
 
-# In[ ]:
+# In[6]:
 
 
 sc_merged = annotate_profiles(
@@ -228,7 +228,7 @@ nucleocentric_merged.drop(
 
 # ### Get single cell counts per well and organoid counts per well
 
-# In[ ]:
+# In[7]:
 
 
 sc_merged["Metadata_WellSingleCellCount"] = sc_merged.groupby("Well")[
@@ -242,7 +242,7 @@ nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.g
 )["image_set"].transform("count")
 
 
-# In[ ]:
+# In[8]:
 
 
 column_rename_mapping = {
@@ -257,7 +257,7 @@ organoid_merged.rename(columns=column_rename_mapping, inplace=True)
 nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
 
-# In[ ]:
+# In[9]:
 
 
 # Promote spatial coordinate columns to Metadata_Location_* so they are excluded
@@ -324,7 +324,7 @@ _ = [
 ]
 
 
-# In[ ]:
+# In[10]:
 
 
 sc_neighbors_features = [col for col in sc_merged.columns if "neighbors" in col.lower()]
@@ -338,7 +338,7 @@ _ = [
 ]
 
 
-# In[ ]:
+# In[11]:
 
 
 metadata_features_list = [
@@ -404,7 +404,7 @@ nucleocentric_merged = nucleocentric_merged.rename(
 ) = (1.0, 1.0, 1.0)
 
 
-# In[ ]:
+# In[12]:
 
 
 # Sub-categorize all Metadata_* columns into four namespaces:
@@ -494,7 +494,7 @@ nucleocentric_merged = nucleocentric_merged.sort_values(
 ).reset_index(drop=True)
 
 
-# In[ ]:
+# In[13]:
 
 
 # Split each profile into feature subsets by column name pattern:
@@ -545,7 +545,7 @@ nucleocentric_morphem_annotated = nucleocentric_merged[
 ]
 
 
-# In[ ]:
+# In[14]:
 
 
 # save annotated profiles
@@ -563,19 +563,19 @@ nucleocentric_morphem_annotated.to_parquet(
 )
 
 
-# In[ ]:
+# In[15]:
 
 
 sc_annotated.head()
 
 
-# In[ ]:
+# In[16]:
 
 
 organoid_annotated.head()
 
 
-# In[ ]:
+# In[17]:
 
 
 nucleocentric_morphem_annotated
