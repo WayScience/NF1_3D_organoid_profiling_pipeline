@@ -74,8 +74,6 @@ def linear_costes_threshold_calculation(
     first_image_max = first_image.max()
     second_image_max = second_image.max()
 
-    # Initialise without a threshold
-    costReg, _ = scipy.stats.pearsonr(first_image, second_image)
     thr_first_image_c = i
     thr_second_image_c = (a * i) + b
     while i > first_image_max and (a * i) + b > second_image_max:
@@ -164,7 +162,11 @@ def bisection_costes_threshold_calculation(
     valid = 1
 
     while lastmid != mid:
-        thr_first_image_c = mid / scale_max
+        # Use raw pixel units (not normalised) so the threshold is comparable
+        # with linear_costes_threshold_calculation and with the outer dispatch's
+        # `image > thr` comparison. CellProfiler's library has the same
+        # mid/scale_max normalisation bug; this is an intentional divergence.
+        thr_first_image_c = float(mid)
         thr_second_image_c = (a * thr_first_image_c) + b
         combt = (first_image < thr_first_image_c) | (second_image < thr_second_image_c)
         if numpy.count_nonzero(combt) <= 2:
@@ -189,7 +191,7 @@ def bisection_costes_threshold_calculation(
         else:
             mid = ((right - left) // 2) + left
 
-    thr_first_image_c = (valid - 1) / scale_max
+    thr_first_image_c = float(valid - 1)
     thr_second_image_c = (a * thr_first_image_c) + b
 
     return thr_first_image_c, thr_second_image_c
@@ -278,9 +280,13 @@ def measure_3D_colocalization(
         The threshold for the Manders' coefficients, by default 15
     fast_costes : str, optional
         The mode for Costes' threshold calculation, by default "Accurate".
-        Options are "Accurate" or "Fast".
-        "Accurate" uses a linear algorithm, while "Fast" uses a bisection algorithm.
-        The "Fast" mode is faster but less accurate.
+        Options are "Accurate", "Fast", or "Faster" (matching CellProfiler's
+        three Costes methods). "Accurate" tests every threshold value using a
+        linear scan (slowest, most precise). "Fast" uses the same linear scan
+        but skips candidate thresholds when the Pearson R is far from the
+        crossing point (faster, slightly less precise). "Faster" uses a
+        bisection algorithm and is substantially faster for 16-bit images
+        (least precise).
 
     Returns
     -------
@@ -313,6 +319,9 @@ def measure_3D_colocalization(
     ################################################################################################
 
     # Threshold as percentage of maximum intensity of objects in each channel
+    # Initialise before the try block so combined_thresh is always bound even
+    # when the except branch fires (numpy.max raises ValueError on empty arrays).
+    combined_thresh = numpy.zeros_like(cropped_image_1, dtype=bool)
     try:
         tff = (thr / 100) * numpy.max(cropped_image_1)
         tss = (thr / 100) * numpy.max(cropped_image_2)
@@ -346,25 +355,28 @@ def measure_3D_colocalization(
     # Calculate the overlap coefficient
     ################################################################################################
 
-    fpsq = scipy.ndimage.sum(
-        cropped_image_1[combined_thresh] ** 2,
-    )
-    spsq = scipy.ndimage.sum(
-        cropped_image_2[combined_thresh] ** 2,
-    )
-    pdt = numpy.sqrt(numpy.array(fpsq) * numpy.array(spsq))
-    overlap = (
-        scipy.ndimage.sum(
-            cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+    if numpy.any(combined_thresh):
+        fpsq = scipy.ndimage.sum(
+            cropped_image_1[combined_thresh] ** 2,
         )
-        / pdt
-    )
-    K1 = scipy.ndimage.sum(
-        cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
-    ) / (numpy.array(fpsq))
-    K2 = scipy.ndimage.sum(
-        cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
-    ) / (numpy.array(spsq))
+        spsq = scipy.ndimage.sum(
+            cropped_image_2[combined_thresh] ** 2,
+        )
+        pdt = numpy.sqrt(numpy.array(fpsq) * numpy.array(spsq))
+        overlap = (
+            scipy.ndimage.sum(
+                cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+            )
+            / pdt
+        )
+        K1 = scipy.ndimage.sum(
+            cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+        ) / (numpy.array(fpsq))
+        K2 = scipy.ndimage.sum(
+            cropped_image_1[combined_thresh] * cropped_image_2[combined_thresh],
+        ) / (numpy.array(spsq))
+    else:
+        overlap, K1, K2 = 0.0, 0.0, 0.0
 
     # first_pixels, second_pixels = flattened image arrays
     # combined_thresh = boolean mask of pixels above threshold in both channels
@@ -424,12 +436,24 @@ def measure_3D_colocalization(
         scale = 255
 
     if fast_costes == "Accurate":
-        thr_first_image_c, thr_second_image_c = bisection_costes_threshold_calculation(
-            cropped_image_1, cropped_image_2, scale
-        )
-    else:
         thr_first_image_c, thr_second_image_c = linear_costes_threshold_calculation(
-            cropped_image_1, cropped_image_2, scale, fast_costes
+            first_image=cropped_image_1,
+            second_image=cropped_image_2,
+            scale_max=scale,
+            fast_costes="Accurate",
+        )
+    elif fast_costes == "Fast":
+        thr_first_image_c, thr_second_image_c = linear_costes_threshold_calculation(
+            first_image=cropped_image_1,
+            second_image=cropped_image_2,
+            scale_max=scale,
+            fast_costes="Fast",
+        )
+    else:  # "Faster"
+        thr_first_image_c, thr_second_image_c = bisection_costes_threshold_calculation(
+            first_image=cropped_image_1,
+            second_image=cropped_image_2,
+            scale_max=scale,
         )
 
     # Costes' thershold for entire image is applied to each object

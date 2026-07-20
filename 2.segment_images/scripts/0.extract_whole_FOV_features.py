@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # This notebook extracts whole volume and whole (middle slice) image deep learning metrics.
-# These metrics are SAMMed3D and CHAMMI-75 extracted features.
+# These metrics are SAMMed3D and morphem extracted features.
 
 # In[ ]:
 
@@ -137,7 +137,7 @@ class PerImageNormalize(nn.Module):
         return x
 
 
-def featurize_2D_image_w_chammi75(
+def featurize_2D_image_w_morphem(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device
 ):
     # Bag of Channels (BoC) - process each channel independently
@@ -181,8 +181,8 @@ warnings.filterwarnings(
 warnings.filterwarnings(
     "ignore", category=UserWarning, module="torch.nn.modules.instancenorm"
 )
-chammi75_model = AutoModel.from_pretrained("CaicedoLab/MorphEm", trust_remote_code=True)
-chammi75_model.to(device).eval()
+morphem_model = AutoModel.from_pretrained("CaicedoLab/MorphEm", trust_remote_code=True)
+morphem_model.to(device).eval()
 # Define transforms
 transform = v2.Compose(
     [
@@ -270,7 +270,7 @@ class PerImageNormalize(nn.Module):
         return x
 
 
-def featurize_2D_image_w_chammi75_worker(
+def featurize_2D_image_w_morphem_worker(
     image_tensor: torch.Tensor, model: torch.nn.Module, device: torch.device, transform
 ):
     with torch.no_grad():
@@ -425,11 +425,11 @@ for patient_id in tqdm.tqdm(patients, desc="Processing patients", leave=True):
 
             for image_index in range(images.shape[0]):
                 image_2D = images[image_index]
-                batch_feat = featurize_2D_image_w_chammi75_worker(
-                    image_2D.unsqueeze(0), chammi75_model, device, transform
+                batch_feat = featurize_2D_image_w_morphem_worker(
+                    image_2D.unsqueeze(0), morphem_model, device, transform
                 )
                 for f_idx, feature_value in enumerate(batch_feat[0]):
-                    feature_name = f"{channel_id}_CHAMMI-7575_feature_{f_idx}"
+                    feature_name = f"{channel_id}_morphem75_feature_{f_idx}"
                     feature_dict["patient"].extend([f"{patient_id}"])
                     feature_dict["well_fov"].extend([f"{well_fov}"])
                     feature_dict["feature_name"].append(feature_name)
@@ -536,10 +536,10 @@ merged_df.head()
 
 
 # save the dfs
-chammi_features_save_path = pathlib.Path(
-    f"../results/chammi_features.parquet"
+morphem_features_save_path = pathlib.Path(
+    f"../results/morphem_features.parquet"
 ).resolve()
-chammi_features_save_path.parent.mkdir(exist_ok=True, parents=True)
+morphem_features_save_path.parent.mkdir(exist_ok=True, parents=True)
 sammed_features_save_path = pathlib.Path(
     f"../results/sammed_features.parquet"
 ).resolve()
@@ -550,21 +550,21 @@ all_features_save_path = pathlib.Path(f"../results/all_features.parquet").resolv
 
 
 if (
-    chammi_features_save_path.exists()
+    morphem_features_save_path.exists()
     and sammed_features_save_path.exists()
     and all_features_save_path.exists()
 ):
     df = pd.read_parquet(all_features_save_path)
-    chammi_df = pd.read_parquet(chammi_features_save_path)
+    morphem_df = pd.read_parquet(morphem_features_save_path)
     sammed_df = pd.read_parquet(sammed_features_save_path)
 else:
     metadata_df = merged_df[["patient", "well_fov"]]
-    chammi_df = merged_df[[x for x in merged_df.columns if "chammi" in x.lower()]]
-    chammi_df = pd.concat([metadata_df, chammi_df], axis=1)
+    morphem_df = merged_df[[x for x in merged_df.columns if "chammi" in x.lower()]]
+    morphem_df = pd.concat([metadata_df, morphem_df], axis=1)
     sammed_df = merged_df[[x for x in merged_df.columns if "sammed" in x.lower()]]
     sammed_df = pd.concat([metadata_df, sammed_df], axis=1)
 
-    chammi_df.to_parquet(chammi_features_save_path)
+    morphem_df.to_parquet(morphem_features_save_path)
     sammed_df.to_parquet(sammed_features_save_path)
     merged_df.to_parquet(all_features_save_path)
 
@@ -579,7 +579,7 @@ merged_df.head()
 merged_df = merged_df.sample(frac=1, random_state=0).reset_index(drop=True)
 metadata_df = merged_df[["patient", "well_fov"]]
 sammed_features = merged_df[[x for x in merged_df.columns if "sammed" in x.lower()]]
-chammi_features = merged_df[[x for x in merged_df.columns if "chammi" in x.lower()]]
+morphem_features = merged_df[[x for x in merged_df.columns if "chammi" in x.lower()]]
 
 
 all_features_projection_df = generate_umap_and_pca(
@@ -588,8 +588,8 @@ all_features_projection_df = generate_umap_and_pca(
 sammed_features_projection_df = generate_umap_and_pca(
     sammed_features, metadata_df.copy()
 )
-chammi_features_projection_df = generate_umap_and_pca(
-    chammi_features, metadata_df.copy()
+morphem_features_projection_df = generate_umap_and_pca(
+    morphem_features, metadata_df.copy()
 )
 
 
@@ -604,12 +604,12 @@ all_features_projection_df["patient"] = pd.Categorical(
 sammed_features_projection_df["patient"] = pd.Categorical(
     sammed_features_projection_df["patient"], categories=patient_order, ordered=True
 )
-chammi_features_projection_df["patient"] = pd.Categorical(
-    chammi_features_projection_df["patient"], categories=patient_order, ordered=True
+morphem_features_projection_df["patient"] = pd.Categorical(
+    morphem_features_projection_df["patient"], categories=patient_order, ordered=True
 )
 # plot PCA and UMAP for both features
 # row 1: PCA, row 2: UMAP
-# column 1: all features, column 2: sammed features, column 3: CHAMMI-75 features
+# column 1: all features, column 2: sammed features, column 3: morphem features
 fig, axes = plt.subplots(2, 3, figsize=(18, 12))
 sns.scatterplot(
     data=all_features_projection_df,
@@ -631,14 +631,14 @@ sns.scatterplot(
 )
 axes[0, 1].set_title("PCA - SAMMed3D Features")
 sns.scatterplot(
-    data=chammi_features_projection_df,
+    data=morphem_features_projection_df,
     x="pca_1",
     y="pca_2",
     hue="patient",
     ax=axes[0, 2],
     palette="tab10",
 )
-axes[0, 2].set_title("PCA - CHAMMI-75 Features")
+axes[0, 2].set_title("PCA - morphem Features")
 sns.scatterplot(
     data=all_features_projection_df,
     x="umap_1",
@@ -658,14 +658,14 @@ sns.scatterplot(
 )
 axes[1, 1].set_title("UMAP - SAMMed3D Features")
 sns.scatterplot(
-    data=chammi_features_projection_df,
+    data=morphem_features_projection_df,
     x="umap_1",
     y="umap_2",
     hue="patient",
     ax=axes[1, 2],
     palette="tab10",
 )
-axes[1, 2].set_title("UMAP - CHAMMI-75 Features")
+axes[1, 2].set_title("UMAP - morphem Features")
 # remove all subplot legends
 for ax in axes.flatten():
     ax.get_legend().remove()
@@ -692,15 +692,15 @@ df = merged_df.loc[merged_df["patient"] != "NF0037_T1_CQ1"].copy()
 feature_df = df.drop(columns=["patient", "well_fov"])
 metadata_df = df[["patient", "well_fov"]]
 sammed_features = df[[x for x in df.columns if "sammed" in x.lower()]]
-chammi_features = df[[x for x in df.columns if "chammi" in x.lower()]]
+morphem_features = df[[x for x in df.columns if "chammi" in x.lower()]]
 
 
 all_features_projection_df = generate_umap_and_pca(feature_df, metadata_df.copy())
 sammed_features_projection_df = generate_umap_and_pca(
     sammed_features, metadata_df.copy()
 )
-chammi_features_projection_df = generate_umap_and_pca(
-    chammi_features, metadata_df.copy()
+morphem_features_projection_df = generate_umap_and_pca(
+    morphem_features, metadata_df.copy()
 )
 
 
@@ -715,12 +715,12 @@ all_features_projection_df["patient"] = pd.Categorical(
 sammed_features_projection_df["patient"] = pd.Categorical(
     sammed_features_projection_df["patient"], categories=patient_order, ordered=True
 )
-chammi_features_projection_df["patient"] = pd.Categorical(
-    chammi_features_projection_df["patient"], categories=patient_order, ordered=True
+morphem_features_projection_df["patient"] = pd.Categorical(
+    morphem_features_projection_df["patient"], categories=patient_order, ordered=True
 )
 # plot PCA and UMAP for both features
 # row 1: PCA, row 2: UMAP
-# column 1: all features, column 2: sammed features, column 3: CHAMMI-75 features
+# column 1: all features, column 2: sammed features, column 3: morphem features
 fig, axes = plt.subplots(2, 3, figsize=(18, 12))
 sns.scatterplot(
     data=all_features_projection_df,
@@ -741,14 +741,14 @@ sns.scatterplot(
 )
 axes[0, 1].set_title("PCA - SAMMed3D Features")
 sns.scatterplot(
-    data=chammi_features_projection_df,
+    data=morphem_features_projection_df,
     x="pca_1",
     y="pca_2",
     hue="patient",
     ax=axes[0, 2],
     palette="tab10",
 )
-axes[0, 2].set_title("PCA - CHAMMI-75 Features")
+axes[0, 2].set_title("PCA - morphem Features")
 sns.scatterplot(
     data=all_features_projection_df,
     x="umap_1",
@@ -768,14 +768,14 @@ sns.scatterplot(
 )
 axes[1, 1].set_title("UMAP - SAMMed3D Features")
 sns.scatterplot(
-    data=chammi_features_projection_df,
+    data=morphem_features_projection_df,
     x="umap_1",
     y="umap_2",
     hue="patient",
     ax=axes[1, 2],
     palette="tab10",
 )
-axes[1, 2].set_title("UMAP - CHAMMI-75 Features")
+axes[1, 2].set_title("UMAP - morphem Features")
 # remove all subplot legends
 for ax in axes.flatten():
     ax.get_legend().remove()

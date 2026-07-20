@@ -2,6 +2,17 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv]
+environments = [
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+index-url = "https://download.pytorch.org/whl/cu118"
+extra-index-url = ["https://pypi.org/simple"]
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }
+
 [project]
 name = "nf1-3d-organoid-profiling-pipeline"
 version = "0.1.0"
@@ -15,33 +26,28 @@ dependencies = [
     "basicpy>=1.1.0",
     "imageio-ffmpeg>=0.6.0",
     "ipykernel>=6.31.0",
-    "matplotlib>=3.10.8",
     "moviepy>=2.2.1",
     "napari-animation>=0.0.9",
-    "napari[pyside6,qt]>=0.6.5",
+    "napari[pyside6]>=0.6.5; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "matplotlib>=3.10.8",
     "numpy>=2.4.2",
+    "cupy-cuda11x<14; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "cucim; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "pandas>=3.0.1",
     "pip>=26.0.1",
     "pyarrow>=23.0.0",
-    "pyside6<6.10",
-    "scikit-image>=0.26.0",
-    "pycytominer>=1.4.0",
-    "scikit-image>=0.26.0",
+    "pyside6<6.10; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "pycytominer>=1.6.1",
     "tabulate>=0.10.0",
-    "pyside6<6.10",
     "scikit-image>=0.26.0",
     "seaborn>=0.13.2",
     "tomli>=2.4.0",
     "transformers<5.0",
+    "certifi>=2026.5.20",
+    "scipy>=1.17.1",
 ]
 
-[tool.uv]
-environments = [
-  "sys_platform == 'linux' and platform_machine == 'x86_64'"
-]
-index-url = "https://download.pytorch.org/whl/cu118"
-extra-index-url = ["https://pypi.org/simple"]
+
 [tool.pycln]
 all = true
 

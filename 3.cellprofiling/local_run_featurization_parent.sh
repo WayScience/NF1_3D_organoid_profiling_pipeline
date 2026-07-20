@@ -2,9 +2,9 @@
 
 patient=$1
 well_fov=$2
-compartment=$3
-channel=$4
-feature=$5
+feature=$3
+compartment=$4
+channel=$5
 processor_type=$6
 input_subparent_name=$7
 mask_subparent_name=$8
@@ -144,29 +144,30 @@ if [ "$feature" == "Intensity" ] ; then
     fi
 fi
 
-if [ "$feature" == "SAMMed3D" ] ; then
-    if [ "$compartment" == "Nucleocentric" ] ; then
-        source "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
-            "$patient" \
-            "$well_fov" \
-            "$compartment" \
-            "$channel"  \
-            "$input_subparent_name" \
-            "$mask_subparent_name" \
-            "$output_features_subparent_name"
-    else
-        echo "Running SAMMed3D feature extraction"
-        # shellcheck disable=SC1091
-        source "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
-            "$patient" \
-            "$well_fov" \
-            "$compartment" \
-            "$channel"  \
-            "$input_subparent_name" \
-            "$mask_subparent_name" \
-            "$output_features_subparent_name"
-    fi
-fi
+# if [ "$feature" == "SAMMed3D" ] ; then
+#     if [ "$compartment" == "Nucleocentric" ] ; then
+#         # shellcheck disable=SC1091
+#         source "$git_root"/3.cellprofiling/slurm_scripts/run_nucleocentric_child.sh \
+#             "$patient" \
+#             "$well_fov" \
+#             "$compartment" \
+#             "$channel"  \
+#             "$input_subparent_name" \
+#             "$mask_subparent_name" \
+#             "$output_features_subparent_name"
+#     else
+#         echo "Running SAMMed3D feature extraction"
+#         # shellcheck disable=SC1091
+#         source "$git_root"/3.cellprofiling/slurm_scripts/run_sammed3D_child.sh \
+#             "$patient" \
+#             "$well_fov" \
+#             "$compartment" \
+#             "$channel"  \
+#             "$input_subparent_name" \
+#             "$mask_subparent_name" \
+#             "$output_features_subparent_name"
+#     fi
+# fi
 
 
 

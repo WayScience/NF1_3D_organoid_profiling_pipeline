@@ -26,7 +26,7 @@ features/intensity
 features/neighbors
 features/texture
 features/sammed3d
-features/chammi75
+features/morphem
 ```
 
 ```{toctree}
