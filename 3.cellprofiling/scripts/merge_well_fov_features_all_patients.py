@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[1]:
+
+
 # # Merge & Validate Well-FOV Feature Parquets — All Patients
 #
 # ## Purpose
@@ -79,7 +82,8 @@
 # consistency check on its own.
 #
 
-# In[1]:
+
+# In[2]:
 
 
 import json
@@ -114,7 +118,7 @@ segmentation_masks_base_dir = profile_base_dir
 profile_base_dir = root_dir  # default to root_dir instead of NAS
 
 
-# In[2]:
+# In[3]:
 
 
 output_features_subparent_name = "extracted_features"
@@ -159,7 +163,8 @@ PATIENTS
 # The corresponding `segmentation_masks` directory (on the NAS mount) is recorded per
 # patient too, for the source-mask consistency check later on.
 
-# In[3]:
+
+# In[4]:
 
 
 well_fov_dirs_by_patient = {}
@@ -188,7 +193,8 @@ print(f"{len(well_fov_dirs_by_patient)} patients, {n_well_fovs_total} well-FOVs 
 # data read, then projects to just the two key columns. Errors (corrupt/zero-byte files,
 # missing keys) are captured per file rather than raising.
 
-# In[4]:
+
+# In[5]:
 
 
 def parse_feature_filename(path: pathlib.Path) -> dict:
@@ -202,7 +208,7 @@ def parse_feature_filename(path: pathlib.Path) -> dict:
     }
 
 
-# In[5]:
+# In[6]:
 
 
 def read_key_columns(task: tuple) -> dict:
@@ -243,7 +249,8 @@ def read_key_columns(task: tuple) -> dict:
 # well-FOV/compartment combinations implicated in a merge-related issue — reading every
 # mask TIFF for every well-FOV upfront would be far more I/O than this notebook needs.
 
-# In[6]:
+
+# In[7]:
 
 
 def get_mask_object_ids(mask_path: pathlib.Path) -> set | None:
@@ -258,7 +265,7 @@ def get_mask_object_ids(mask_path: pathlib.Path) -> set | None:
     return set(np.unique(mask).tolist()) - {0}
 
 
-# In[ ]:
+# In[8]:
 
 
 all_tasks = [
@@ -285,7 +292,8 @@ with ThreadPoolExecutor(max_workers=N_READ_WORKERS) as pool:
 # different channel/feature-type combination, so a single hardcoded expected count
 # (as used in the single-patient notebook) doesn't generalize.
 
-# In[ ]:
+
+# In[9]:
 
 
 files_by_well_fov = defaultdict(list)
@@ -333,7 +341,8 @@ pd.Series(expected_n_files_by_patient, name="expected_n_files").sort_index()
 #    the extracted feature files. A mismatch traces the discrepancy back to the
 #    segmentation mask on disk rather than to a bug in the merge/extraction code.
 
-# In[ ]:
+
+# In[10]:
 
 
 def process_well_fov(
@@ -376,6 +385,7 @@ def process_well_fov(
                 "n_duplicate_object_id_files": 0,
                 "n_object_id_exceeds_threshold": 0,
                 "object_ids_aligned_across_compartments": None,
+                "misalignment_root_cause": None,
                 "organoid_profiles_empty": None,
                 "organoid_object_ids_empty": None,
                 "n_organoid_empty_profile_merge_errors": 0,
@@ -505,6 +515,7 @@ def process_well_fov(
         if per_compartment_dfs[c]
     }
     aligned = None
+    misaligned_compartments = set()
     if len(id_sets) > 1:
         reference_compartment, reference_ids = next(iter(id_sets.items()))
         aligned = True
@@ -519,11 +530,16 @@ def process_well_fov(
                     compartment=compartment,
                 )
                 implicated_compartments.add(reference_compartment)
+                misaligned_compartments.add(compartment)
+                misaligned_compartments.add(reference_compartment)
 
-    # For every compartment implicated in a merge-related issue above, check whether
-    # the segmentation mask on disk actually matches the extracted feature object IDs.
-    # A mismatch here means the mask itself is stale/corrupted relative to the
+    # For every compartment implicated in a merge-related issue above, read its
+    # segmentation mask TIFF directly once (cached in mask_ids_by_compartment so the
+    # image-level root-cause check below doesn't re-read the same file), then check
+    # whether the mask's object IDs match the extracted feature object IDs. A
+    # mismatch here means the mask itself is stale/corrupted relative to the
     # features (or vice versa) — not a bug in this merge/QC logic.
+    mask_ids_by_compartment = {}
     for compartment in sorted(implicated_compartments):
         mask_path = (
             segmentation_masks_dir / well_fov / COMPARTMENT_MASK_FILENAME[compartment]
@@ -535,6 +551,7 @@ def process_well_fov(
                 f"{compartment}: expected mask at {mask_path}",
             )
             continue
+        mask_ids_by_compartment[compartment] = mask_ids
         feature_ids = (
             set().union(
                 *(set(d["object_id"]) for _, d, _ in per_compartment_dfs[compartment])
@@ -556,6 +573,56 @@ def process_well_fov(
                 f"extracted) rather than a merge/extraction bug",
             )
 
+    # Root-cause the cross-compartment object_id_misalignment above: is it already
+    # present in the segmentation masks themselves (image-level — e.g. the Nuclei
+    # and Cell masks were built from different object-ID assignments for the same
+    # image), or do the masks actually agree with each other and the discrepancy
+    # only shows up in the extracted feature tables (feature-extraction-level — a
+    # bug in how object_id was written out per compartment during featurization)?
+    # Every misaligned compartment's mask was already read into
+    # mask_ids_by_compartment by the source-mask check above, since misaligned
+    # compartments are always added to implicated_compartments.
+    misalignment_root_cause = None
+    if misaligned_compartments:
+        available_mask_ids = {
+            c: mask_ids_by_compartment[c]
+            for c in misaligned_compartments
+            if c in mask_ids_by_compartment
+        }
+        if len(available_mask_ids) < len(misaligned_compartments):
+            misalignment_root_cause = "unknown_mask_missing"
+        else:
+            ref_compartment, ref_mask_ids = next(iter(available_mask_ids.items()))
+            masks_agree = all(
+                ids == ref_mask_ids for ids in available_mask_ids.values()
+            )
+            if not masks_agree:
+                misalignment_root_cause = "image_level"
+                for compartment, ids in available_mask_ids.items():
+                    if ids != ref_mask_ids:
+                        log_issue(
+                            "object_id_misalignment_traced_to_image",
+                            f"{compartment} vs {ref_compartment}: the segmentation "
+                            f"masks themselves disagree on object IDs — "
+                            f"only-in-{compartment}-mask="
+                            f"{sorted(ids - ref_mask_ids)[:10]}, "
+                            f"only-in-{ref_compartment}-mask="
+                            f"{sorted(ref_mask_ids - ids)[:10]} — this well-FOV's "
+                            f"object_id misalignment originates in the source "
+                            f"masks/images, not in feature extraction or merging",
+                            compartment=compartment,
+                        )
+            else:
+                misalignment_root_cause = "feature_extraction_level"
+                log_issue(
+                    "object_id_misalignment_traced_to_features",
+                    f"segmentation masks for {sorted(available_mask_ids)} agree "
+                    f"with each other on object IDs, but the extracted feature "
+                    f"tables for these compartments disagree — the misalignment "
+                    f"was introduced during feature extraction or merging, not in "
+                    f"the source masks/images",
+                )
+
     summary = {
         "patient": patient,
         "well_fov": well_fov,
@@ -576,6 +643,7 @@ def process_well_fov(
             i["issue_type"] == "object_id_exceeds_threshold" for i in issues
         ),
         "object_ids_aligned_across_compartments": aligned,
+        "misalignment_root_cause": misalignment_root_cause,
         "organoid_profiles_empty": any(
             i["issue_type"]
             in (
@@ -603,7 +671,7 @@ def process_well_fov(
     return summary, issues
 
 
-# In[ ]:
+# In[11]:
 
 
 summaries = []
@@ -637,7 +705,8 @@ print(
 
 # ## Save the flattened per-well-FOV summary and the long-format issue log
 
-# In[ ]:
+
+# In[12]:
 
 
 summary_out_path = logs_dir / "well_fov_feature_merge_summary_all_patients.csv"
@@ -655,7 +724,8 @@ print(f"Wrote {issues_out_path}")
 
 # ## Summarize findings, overall and per patient
 
-# In[ ]:
+
+# In[13]:
 
 
 n_well_fovs = len(summary_df)
@@ -664,6 +734,15 @@ n_file_count_mismatch = int(summary_df["file_count_mismatch"].sum())
 n_with_issues = int((summary_df["n_issues"] > 0).sum())
 n_misaligned = int(
     (summary_df["object_ids_aligned_across_compartments"] == False).sum()
+)
+n_misaligned_image_level = int(
+    (summary_df["misalignment_root_cause"] == "image_level").sum()
+)
+n_misaligned_feature_level = int(
+    (summary_df["misalignment_root_cause"] == "feature_extraction_level").sum()
+)
+n_misaligned_unknown = int(
+    (summary_df["misalignment_root_cause"] == "unknown_mask_missing").sum()
 )
 n_read_errors = int(summary_df["n_read_errors"].sum())
 n_merge_errors = int(summary_df["n_merge_errors"].sum())
@@ -692,6 +771,12 @@ print(f"Well-FOVs with zero files found:    {n_no_files}")
 print(f"Well-FOVs with >=1 issue:           {n_with_issues}")
 print(f"Well-FOVs with file count mismatch: {n_file_count_mismatch}")
 print(f"Well-FOVs with object-ID misalignment across compartments: {n_misaligned}")
+print(f"  - traced to the source masks/images themselves: {n_misaligned_image_level}")
+print(
+    "  - traced to feature extraction/merging (masks agree, features don't): "
+    f"{n_misaligned_feature_level}"
+)
+print(f"  - root cause unknown (a mask was missing): {n_misaligned_unknown}")
 print(
     "Well-FOVs with empty Organoid profiles (informational only, NOT counted as an "
     f"issue): {n_organoid_profiles_empty}"
@@ -723,7 +808,7 @@ print("Issue counts by type:")
 issue_type_counts
 
 
-# In[ ]:
+# In[14]:
 
 
 per_patient_summary = (
@@ -750,13 +835,64 @@ per_patient_summary["expected_n_files"] = per_patient_summary["patient"].map(
 per_patient_summary
 
 
-# In[ ]:
+# In[15]:
 
 
 summary_df.loc[
     summary_df["object_ids_aligned_across_compartments"] == False,
-    ["patient", "well_fov", "compartments_present", "compartment_row_counts"],
+    [
+        "patient",
+        "well_fov",
+        "misalignment_root_cause",
+        "compartments_present",
+        "compartment_row_counts",
+    ],
 ]
+
+
+# ## Root-causing the object-ID misalignment: image vs. feature extraction
+#
+# For every well-FOV flagged with `object_id_misalignment` above, the Nuclei/Cell/
+# Cytoplasm/Nucleocentric segmentation mask TIFFs implicated in that misalignment were
+# read directly and compared to **each other** (not just to their own extracted
+# features, as in the source-mask consistency check below). This distinguishes two
+# root causes that look identical from the merged feature tables alone:
+# - `image_level`: the masks themselves already disagree on object IDs — the
+#   misalignment originates upstream, in segmentation, not in this pipeline's
+#   feature extraction or merge code.
+# - `feature_extraction_level`: the masks agree with each other, but the extracted
+#   feature tables for those compartments don't — the misalignment was introduced
+#   while extracting or writing out `object_id` per compartment.
+# - `unknown_mask_missing`: at least one implicated compartment's mask file was
+#   missing on disk, so the comparison couldn't be made.
+
+
+# In[16]:
+
+
+issues_df.loc[
+    issues_df["issue_type"].isin(
+        [
+            "object_id_misalignment_traced_to_image",
+            "object_id_misalignment_traced_to_features",
+        ]
+    )
+].sort_values(["patient", "well_fov"]).reset_index(drop=True)
+
+
+# In[17]:
+
+
+misalignment_root_cause_counts = (
+    summary_df.loc[
+        summary_df["object_ids_aligned_across_compartments"] == False,
+        "misalignment_root_cause",
+    ]
+    .value_counts(dropna=False)
+    .rename_axis("misalignment_root_cause")
+    .reset_index(name="n_well_fovs")
+)
+misalignment_root_cause_counts
 
 
 # ## Well-FOVs/compartments with an object_id exceeding 255
@@ -766,7 +902,8 @@ summary_df.loc[
 # instead — worth a closer look, and one of the triggers for the source-mask consistency
 # check below.
 
-# In[ ]:
+
+# In[18]:
 
 
 issues_df.loc[issues_df["issue_type"] == "object_id_exceeds_threshold"].sort_values(
@@ -784,7 +921,8 @@ issues_df.loc[issues_df["issue_type"] == "object_id_exceeds_threshold"].sort_val
 # (dtype-clash symptom, reclassified from a generic `merge_error`), which **is** still
 # counted as an issue.
 
-# In[ ]:
+
+# In[19]:
 
 
 issues_df.loc[
@@ -808,7 +946,8 @@ issues_df.loc[
 # — most likely it was re-segmented or overwritten after featurization last ran — as
 # opposed to a bug in the merge/extraction code.
 
-# In[ ]:
+
+# In[20]:
 
 
 issues_df.loc[
@@ -820,7 +959,8 @@ issues_df.loc[
 
 # ## Generate the markdown report
 
-# In[ ]:
+
+# In[21]:
 
 
 worst_offenders = summary_df.sort_values("n_issues", ascending=False).loc[
@@ -831,11 +971,31 @@ worst_offenders = summary_df.sort_values("n_issues", ascending=False).loc[
         "n_issues",
         "file_count_mismatch",
         "object_ids_aligned_across_compartments",
+        "misalignment_root_cause",
         "organoid_profiles_empty",
         "n_source_mask_mismatches",
         "n_object_id_exceeds_threshold",
     ],
 ]
+
+misalignment_root_cause_issues_df = issues_df.loc[
+    issues_df["issue_type"].isin(
+        [
+            "object_id_misalignment_traced_to_image",
+            "object_id_misalignment_traced_to_features",
+        ]
+    )
+].sort_values(["patient", "well_fov"])
+misalignment_root_cause_section_lines = (
+    misalignment_root_cause_issues_df.to_markdown(index=False)
+    if len(misalignment_root_cause_issues_df)
+    else "_None._"
+)
+misalignment_root_cause_counts_lines = (
+    misalignment_root_cause_counts.to_markdown(index=False)
+    if len(misalignment_root_cause_counts)
+    else "_None._"
+)
 
 organoid_issues_df = issues_df.loc[
     issues_df["issue_type"].isin(
@@ -886,6 +1046,10 @@ report_lines = [
     f"- Well-FOVs with a file-count mismatch (vs. that patient's own expected count): "
     f"**{n_file_count_mismatch}**",
     f"- Well-FOVs with object-ID misalignment across compartments: **{n_misaligned}**",
+    f"  - traced to the source masks/images themselves: **{n_misaligned_image_level}**",
+    "  - traced to feature extraction/merging (masks agree, features don't): "
+    f"**{n_misaligned_feature_level}**",
+    f"  - root cause unknown (a mask was missing): **{n_misaligned_unknown}**",
     f"- Well-FOVs with empty Organoid profiles (*informational, not counted as an issue*): **{n_organoid_profiles_empty}**",
     f"- Well-FOVs with Organoid files present but zero object IDs (*informational, not counted as an issue*): **{n_organoid_object_ids_empty}**",
     f"- Organoid merges that failed due to an empty (0-row) profile file (a real merge bug, reclassified from a generic merge error — still counted as an issue): **{n_organoid_empty_profile_merge_errors}**",
@@ -900,7 +1064,6 @@ report_lines = [
     f"- Total merge blow-ups: **{n_merge_blowups}**",
     "",
     "## Per-patient breakdown",
-    "",
     per_patient_summary.to_markdown(index=False),
     "",
     "## Issue counts by type",
@@ -935,6 +1098,22 @@ report_lines = [
     "",
     object_id_threshold_section_lines,
     "",
+    "## Root-causing the object-ID misalignment: image vs. feature extraction",
+    "",
+    "For every well-FOV flagged with `object_id_misalignment`, the Nuclei/Cell/",
+    "Cytoplasm/Nucleocentric masks implicated in that misalignment were read directly ",
+    "and compared to **each other** — not just to their own extracted features (that's ",
+    "the source-mask consistency check below). `image_level` means the masks ",
+    "themselves already disagree, so the root cause is upstream in segmentation, not ",
+    "in this pipeline. `feature_extraction_level` means the masks agree with each ",
+    "other but the extracted feature tables don't, so the root cause is in how ",
+    "`object_id` was extracted/written per compartment. `unknown_mask_missing` means a ",
+    "mask file needed for the comparison wasn't found on disk.",
+    "",
+    misalignment_root_cause_counts_lines,
+    "",
+    misalignment_root_cause_section_lines,
+    "",
     "## Source mask consistency check",
     "",
     "For every well-FOV/compartment implicated in a merge-related issue (blow-up, ",
@@ -964,6 +1143,11 @@ report_lines = [
     "- The source mask consistency check reads segmentation mask TIFFs directly (not ",
     "  through the extracted features) to determine whether an object-ID discrepancy ",
     "  originates from the mask itself vs. from feature extraction/merging.",
+    "- The root-cause check goes one step further for `object_id_misalignment` cases",
+    "  specifically: it compares the implicated compartments' masks directly against",
+    "  EACH OTHER (not just each mask against its own features), which is the only way",
+    "  to tell an image-level misalignment (masks disagree with each other) apart from",
+    "  a feature-extraction-level one (masks agree, but the feature tables don't).",
     "- `Organoid` is excluded from the cross-compartment object-ID alignment check; it's",
     "  a distinct feature space (one row per whole organoid) with its own object-ID",
     "  space that isn't expected to match the single-cell compartments.",
@@ -979,7 +1163,7 @@ report_out_path.write_text(report_text)
 print(f"Wrote {report_out_path}")
 
 
-# In[ ]:
+# In[22]:
 
 
 from IPython.display import Markdown, display

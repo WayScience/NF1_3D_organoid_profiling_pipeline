@@ -64,7 +64,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0030_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 

@@ -103,7 +103,7 @@ profile_base_dir = root_dir  # default to root_dir instead of NAS
 # In[2]:
 
 
-patient = "NF0014_T1"
+patient = "NF0014_T2"
 output_features_subparent_name = "extracted_features"
 mask_subparent_name = "segmentation_masks"
 
@@ -807,20 +807,18 @@ display(Markdown(report_text))
 # In[21]:
 
 
-well_fov = "G9-1"
+well_fov = "C7-4"
 # investigate the X well fov
 files = list(
     pathlib.Path(
-        f"/home/lippincm/Documents/NF1_3D_organoid_profiling_pipeline/data/NF0014_T1/extracted_features/{well_fov}"
+        f"/home/lippincm/Documents/NF1_3D_organoid_profiling_pipeline/data/NF0014_T2/extracted_features/{well_fov}"
     ).glob("*.parquet")
 )
 files = [f for f in files if not "Organoid" in f.name]
 new_df = pd.DataFrame()
 for f in files:
     df = pd.read_parquet(f)
-    new_df = (
-        pd.merge(new_df, df, on=MERGE_KEYS, how="outer") if not new_df.empty else df
-    )
+    new_df = pd.merge(new_df, df, on=MERGE_KEYS, how="left") if not new_df.empty else df
 new_df
 
 
@@ -846,24 +844,25 @@ tmp_df["compartment_channel_feature"] = (
 [print(f"rm {col}*") for col in tmp_df["compartment_channel_feature"].unique()]
 
 
-# In[20]:
+# In[29]:
 
 
 cell_unique = get_mask_object_ids(segmentation_masks_dir / well_fov / "cell_mask.tiff")
+cytoplasm_unique = get_mask_object_ids(
+    segmentation_masks_dir / well_fov / "cytoplasm_mask.tiff"
+)
 nuclei_unique = get_mask_object_ids(
     segmentation_masks_dir / well_fov / "nuclei_mask.tiff"
 )
 organoid_unique = get_mask_object_ids(
     segmentation_masks_dir / well_fov / "organoid_mask.tiff"
 )
-print(cell_unique - nuclei_unique)
+
 if len(cell_unique - nuclei_unique) > 0:
     print(
         f"Warning: {len(cell_unique - nuclei_unique)} cell IDs are not present in nuclei mask"
     )
-print(len(nuclei_unique), len(cell_unique))
-print(cell_unique)
+print(len(nuclei_unique), len(cell_unique), len(cytoplasm_unique))
+print(nuclei_unique - cell_unique)
+print(nuclei_unique - cytoplasm_unique)
 print(organoid_unique)
-
-
-# In[ ]:

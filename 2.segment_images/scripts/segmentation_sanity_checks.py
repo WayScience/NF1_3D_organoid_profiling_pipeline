@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
+# In[1]:
 
 
 import itertools
@@ -30,7 +30,7 @@ bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[7]:
+# In[2]:
 
 
 def normalize_mask_labels(val):
@@ -44,13 +44,14 @@ def normalize_mask_labels(val):
     return [val]
 
 
-# In[8]:
+def safe_image_read(path: pathlib.Path):
+    try:
+        return tifffile.imread(path)
+    except Exception as e:
+        return None
 
 
-OVERWRITE = True
-
-
-# In[9]:
+# In[3]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -68,6 +69,9 @@ load_combinations_path.parent.mkdir(parents=True, exist_ok=True)
 sanity_df_save_path = pathlib.Path(
     f"{root_dir}/2.segment_images/results/segmentation_sanity_checks_df.parquet"
 ).resolve()
+sanity_df_save_path_id_checks = pathlib.Path(
+    f"{root_dir}/2.segment_images/results/segmentation_sanity_checks_df_id_checks.parquet"
+).resolve()
 sanity_df_save_path.parent.mkdir(parents=True, exist_ok=True)
 
 channel_mapping_file_path = pathlib.Path(
@@ -81,206 +85,160 @@ channels = ["DNA", "ER", "Mito", "AGP"]
 compartments = ["Organoid", "Nuclei", "Cytoplasm", "Cell"]
 
 
+# In[4]:
+
+
+final_dict = {
+    "patient": [],
+    "well_fov": [],
+    "nuclei_mask_path": [],
+    "cytoplasm_mask_path": [],
+    "cell_mask_path": [],
+    "organoid_mask_path": [],
+}
+for patient in tqdm.tqdm(patients, desc="Patients", unit="patient", leave=True):
+    patient_well_fovs = sorted(
+        [
+            path.name
+            for path in (
+                bandicoot_mount_path / "data" / patient / "zstack_images"
+            ).glob("*")
+            if path.is_dir()
+        ]
+    )
+    for well_fov in tqdm.tqdm(
+        patient_well_fovs, desc="Well/FOV", unit="well_fov", leave=False
+    ):
+        mask_path = (
+            bandicoot_mount_path / "data" / patient / "segmentation_masks" / well_fov
+        )
+        final_dict["patient"].append(patient)
+        final_dict["well_fov"].append(well_fov)
+        final_dict["nuclei_mask_path"].append(mask_path / "nuclei_mask.tiff")
+        final_dict["cytoplasm_mask_path"].append(mask_path / "cytoplasm_mask.tiff")
+        final_dict["cell_mask_path"].append(mask_path / "cell_mask.tiff")
+        final_dict["organoid_mask_path"].append(mask_path / "organoid_mask.tiff")
+
+df = pd.DataFrame.from_dict(final_dict)
+df["nuclei_mask_path"] = df["nuclei_mask_path"].astype(str)
+df["cytoplasm_mask_path"] = df["cytoplasm_mask_path"].astype(str)
+df["cell_mask_path"] = df["cell_mask_path"].astype(str)
+df["organoid_mask_path"] = df["organoid_mask_path"].astype(str)
+df.to_parquet(sanity_df_save_path, index=False)
+
+
+# In[5]:
+
+
+OVERWRITE = True  # Set to True to overwrite the sanity check dataframe for ID checks
+if sanity_df_save_path_id_checks.exists() and not OVERWRITE:
+    print(
+        f"Sanity check dataframe for ID checks already exists at {sanity_df_save_path_id_checks}. Set OVERWRITE = True to overwrite."
+    )
+    df = pd.read_parquet(sanity_df_save_path_id_checks)
+else:
+    from tqdm.auto import tqdm
+
+    tqdm.pandas()
+
+    df["nuclei_labels"] = df["nuclei_mask_path"].progress_apply(
+        lambda x: np.unique(safe_image_read(x))
+    )
+    df["cell_labels"] = df["cell_mask_path"].progress_apply(
+        lambda x: np.unique(safe_image_read(x))
+    )
+    df["cytoplasm_labels"] = df["cytoplasm_mask_path"].progress_apply(
+        lambda x: np.unique(safe_image_read(x))
+    )
+    df["organoid_labels"] = df["organoid_mask_path"].progress_apply(
+        lambda x: np.unique(safe_image_read(x))
+    )
+    # idientify well fovs where the number of unique labels in nuclei, cytoplasm, cell do not match.
+    # This is a sanity check to ensure that the segmentation masks are consistent across compartments.
+    df["nuclei_cell_mismatch"] = df.apply(
+        lambda row: (set(row["nuclei_labels"]) - set(row["cell_labels"])) != set(),
+        axis=1,
+    )
+    df["nuclei_cytoplasm_mismatch"] = df.apply(
+        lambda row: (set(row["nuclei_labels"]) - set(row["cytoplasm_labels"])) != set(),
+        axis=1,
+    )
+    df["cell_cytoplasm_mismatch"] = df.apply(
+        lambda row: (set(row["cell_labels"]) - set(row["cytoplasm_labels"])) != set(),
+        axis=1,
+    )
+    df["mistmatch_present_across_compartments"] = df.apply(
+        lambda row: (
+            row["nuclei_cell_mismatch"]
+            or row["nuclei_cytoplasm_mismatch"]
+            or row["cell_cytoplasm_mismatch"]
+        ),
+        axis=1,
+    )
+    mismatch_present = df.pop("mistmatch_present_across_compartments")
+    df.insert(0, "mistmatch_present_across_compartments", mismatch_present)
+    for col in ["nuclei_labels", "cell_labels", "cytoplasm_labels", "organoid_labels"]:
+        df[col] = df[col].apply(lambda arr: np.asarray(arr).astype(np.int32))
+
+    df.to_parquet(sanity_df_save_path_id_checks, index=False)
+    df.head()
+
+
 # In[10]:
 
 
-if sanity_df_save_path.exists() and not OVERWRITE:
-    print(
-        f"Sanity check dataframe already exists at {sanity_df_save_path}. Set OVERWRITE = True to overwrite."
-    )
-    df = pd.read_parquet(sanity_df_save_path)
+for col in ["nuclei_labels", "cell_labels", "cytoplasm_labels", "organoid_labels"]:
 
-else:
-    list_of_dicts = []
+    def has_none_element(arr):
+        if arr is None:
+            return False
+        arr = np.asarray(arr, dtype=object)
+        return any(v is None for v in arr.ravel())
 
-    for patient in tqdm.tqdm(patients, desc="Patients", unit="patient", leave=True):
-        final_dict = {
-            "patient": [],
-            "well_fov": [],
-            "image_path": [],
-            # "image_shape": [],
-        }
-        patient_well_fovs = sorted(
-            [
-                path.name
-                for path in (
-                    bandicoot_mount_path / "data" / patient / "zstack_images"
-                ).glob("*")
-                if path.is_dir()
-            ]
-        )
-        for well_fov in tqdm.tqdm(
-            patient_well_fovs, desc="Well/FOV", unit="well_fov", leave=False
-        ):
-            images = sorted(
-                (
-                    bandicoot_mount_path / "data" / patient / "zstack_images" / well_fov
-                ).glob("*.tif*")
-            )
-            masks = sorted(
-                (
-                    bandicoot_mount_path
-                    / "data"
-                    / patient
-                    / "segmentation_masks"
-                    / well_fov
-                ).glob("*.tif*")
-            )
-            for image in images:
-                final_dict["patient"].append(patient)
-                final_dict["well_fov"].append(well_fov)
-                final_dict["image_path"].append(image)
-            for mask in masks:
-                final_dict["patient"].append(patient)
-                final_dict["well_fov"].append(well_fov)
-                final_dict["image_path"].append(mask)
-        list_of_dicts.append(final_dict)
-
-#     df = pd.DataFrame(
-#         {
-#             "patient": [],
-#             "well_fov": [],
-#             "image_path": [],
-#             # "image_shape": [],
-#         }
-#     )
-
-#     # concatenate all the dictionaries into a single dataframe
-#     for d in list_of_dicts:
-#         df = pd.concat([df, pd.DataFrame(d)], ignore_index=True)
-#     # add another column to capture the image shape
-#     shapes = []
-#     for image_path in tqdm.tqdm(
-#         df["image_path"], desc="Loading image shapes", unit="image"
-#     ):
-#         try:
-#             with tifffile.TiffFile(image_path) as tif:
-#                 shape = tif.series[0].shape
-#         except Exception as e:
-#             print(f"Error loading {image_path}: {e}")
-#             shape = None
-#         shapes.append(shape)
-#     df["image_shape"] = shapes
-#     # convert the posix path to string for parquet compatibility
-#     df["image_path"] = df["image_path"].astype(str)
-
-#     df.to_parquet(sanity_df_save_path, index=False)
-
-# print(f"Sanity check df shape: {df.shape}")
-# df["z_shape"] = df["image_shape"].apply(lambda x: x[0] if x is not None else None)
-# df["y_shape"] = df["image_shape"].apply(lambda x: x[1] if x is not None else None)
-# df["x_shape"] = df["image_shape"].apply(lambda x: x[2] if x is not None else None)
-# df["unique_shape_string"] = (
-#     f"{df['z_shape'].astype(str)}_{df['y_shape'].astype(str)}_{df['x_shape'].astype(str)}"
-# )
-# df.head()
-
-
-# In[11]:
-
-
-df["unique_shape_string"] = (
-    df["z_shape"].astype(str)
-    + "_"
-    + df["y_shape"].astype(str)
-    + "_"
-    + df["x_shape"].astype(str)
-)
-df
+    bad = df[df[col].apply(has_none_element)]
+    if len(bad):
+        print(f"{col}: {len(bad)} rows with None *inside* the array")
+        print(bad[col].head())
 
 
 # In[12]:
 
 
-# check that there area total of 8 unique shapes (5 channels and 4 masks)
-df.groupby(["patient", "well_fov"]).size().reset_index(name="count").loc[
-    lambda x: x["count"] != 9
-]
+def safe_cast(arr):
+    if arr is None:
+        return np.array([0, 0, 0, 0], dtype=np.int32)
+    arr = np.asarray(arr, dtype=object)
+    # Replace any None elements with 0 (or filter them out — see note below)
+    cleaned = np.array([0 if v is None else v for v in arr.ravel()], dtype=np.int32)
+    return cleaned
 
 
-# In[ ]:
+for col in ["nuclei_labels", "cell_labels", "cytoplasm_labels", "organoid_labels"]:
+    df[col] = df[col].apply(safe_cast)
+
+df.to_parquet(sanity_df_save_path_id_checks, index=False)
 
 
-mismatched_shapes = 0
-mismatched_shapes_list = []
-
-# verify shapes for each patient/well_fov combination are the same
-for (patient, well_fov), group in df.groupby(["patient", "well_fov"]):
-    image_shapes = group["unique_shape_string"].unique()
-    if len(image_shapes) > 1:
-        mismatched_shapes += 1
-        mismatched_shapes_list.append((patient, well_fov))
-print(
-    f"Number of patient/well_fov combinations with mismatched shapes: {mismatched_shapes}"
-)
-mismatched_shapes_list
+# In[13]:
 
 
-# In[ ]:
+df.groupby("mistmatch_present_across_compartments").size().reset_index(name="count")
 
 
-OVERWRITE = True
+# In[14]:
 
 
-# In[ ]:
+df.loc[df["mistmatch_present_across_compartments"]]
 
 
-# df = df.loc[df["patient"] == "NF0014_T1"]
+# In[15]:
 
 
-# In[ ]:
-
-
-if sanity_df_save_path.exists() and not OVERWRITE:
-    print(
-        f"Sanity check dataframe already exists at {sanity_df_save_path}. Set OVERWRITE = True to overwrite."
-    )
-    df = pd.read_parquet(sanity_df_save_path)
-else:
-    from tqdm.auto import tqdm
-
-    df["is_mask"] = df["image_path"].str.contains("mask")
-    # drop rows that are not masks
-    df = df[df["is_mask"]]
-    df["mask_labels"] = None
-    for patient in tqdm(df["patient"].unique(), desc="Patients", unit="patient"):
-        patient_save_path = pathlib.Path(f"../results/sanity_check_{patient}.parquet")
-        if patient_save_path.exists():
-            print(
-                f"Sanity check dataframe for patient {patient} already exists at {patient_save_path}. Skipping."
-            )
-            continue
-        patient_df = df[df["patient"] == patient]
-        mask_idx = patient_df["is_mask"]
-        for idx in tqdm(
-            patient_df.index[mask_idx], desc=f"Reading masks for patient {patient}"
-        ):
-            patient_df.at[idx, "mask_labels"] = np.unique(
-                tifffile.imread(patient_df.at[idx, "image_path"])
-            )
-        # patient_df["mask_labels"] = patient_df["mask_labels"].apply(
-        #     lambda x: x.astype(np.int32) if isinstance(x, np.ndarray) else x
-        # )
-        patient_df["mask_labels"] = patient_df["mask_labels"].apply(
-            normalize_mask_labels
-        )
-        # checkpoint and save after each patient to avoid losing progress in case of errors
-        patient_df.to_parquet(patient_save_path, index=False)
-
-    dfs = []
-    for patient in df["patient"].unique():
-        patient_df = pd.read_parquet(
-            pathlib.Path(f"../results/sanity_check_{patient}.parquet")
-        )
-        dfs.append(patient_df)
-    df = pd.concat(dfs, ignore_index=True)
-    df.to_parquet(patient_save_path, index=False)
-
-
-# In[ ]:
-
-
-patient_df
+rerun_df = df.loc[df["mistmatch_present_across_compartments"]]
+for row in rerun_df.itertuples(index=False):
+    patient = row.patient
+    well_fov = row.well_fov
+    print(f"cd ../../{patient}/segmentation_masks/ ; rm -r {well_fov}")
 
 
 # In[ ]:

@@ -307,29 +307,23 @@ print(
 # In[7]:
 
 
-# df = df.loc[df["feature"] == "AreaSizeShape"]
+df.to_csv(load_combinations_path, sep="\t", index=False)
+df.head()
 
 
 # In[8]:
 
 
-df.to_csv(load_combinations_path, sep="\t", index=False)
-df.head()
+df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
 # In[9]:
 
 
-df.groupby(["feature"]).size().to_frame(name="count").reset_index()
-
-
-# In[10]:
-
-
 df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
 
 
-# In[11]:
+# In[10]:
 
 
 # Find patient well_fovs with complete feature-file coverage
@@ -351,19 +345,19 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
 complete_feature_count
 
 
-# In[12]:
+# In[11]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[13]:
+# In[12]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]
 
 
-# In[14]:
+# In[13]:
 
 
 # get the per patient total expected feature count and the number of missing features

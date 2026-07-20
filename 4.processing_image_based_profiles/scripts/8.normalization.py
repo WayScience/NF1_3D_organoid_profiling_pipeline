@@ -176,12 +176,6 @@ nucleocentric_morphem_annotated_profiles = pd.read_parquet(
 )
 
 
-# In[6]:
-
-
-nucleocentric_morphem_annotated_profiles
-
-
 # In[7]:
 
 

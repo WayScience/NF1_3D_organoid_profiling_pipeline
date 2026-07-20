@@ -63,7 +63,8 @@ for patient in "${patient_array[@]}"; do
 
 done
 
-# "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/11.combine_patients.py --image_based_profiles_subparent_name "image_based_profiles"
+"$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/11.combine_patients.py --image_based_profiles_subparent_name "image_based_profiles"
+"$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/12.validate_profiles.py
 # "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/0a.get_profiling_stats.py --image_based_profiles_subparent_name "image_based_profiles"
 # Rscript "$git_root"/4.processing_image_based_profiles/scripts/0b.plot_profiling_stats.r
 
