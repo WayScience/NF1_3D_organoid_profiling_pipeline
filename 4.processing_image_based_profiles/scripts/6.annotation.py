@@ -67,7 +67,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -525,7 +525,7 @@ nucleocentric_sammed_columns = [
     x for x in nucleocentric_merged.columns if "sammed" in x.lower()
 ]
 nucleocentric_morphem_columns = [
-    x for x in nucleocentric_merged.columns if "morphem" in x.lower()
+    x for x in nucleocentric_merged.columns if "chammi" in x.lower()
 ]
 
 # split the profiles
@@ -573,3 +573,9 @@ sc_annotated.head()
 
 
 organoid_annotated.head()
+
+
+# In[17]:
+
+
+nucleocentric_morphem_annotated

@@ -84,8 +84,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T1"
-    well_fov = "E10-1"
+    patient = "NF0014_T2"
+    well_fov = "C5-6"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -160,7 +160,7 @@ cell_mask = perform_morphology_dependent_segmentation(
     organoid_label=morphology_class,  # use morphology label instead of generic label
     cyto_signal=cyto2,  # use the clipped and equalized cyto signal for segmentation
     nuclei_mask=nuclei_mask,  # use the nuclei mask for segmentation
-    min_size=1_000,  # set a minimum size for cell segments to remove small objects
+    min_size=100,  # set a minimum size for cell segments to remove small objects
     max_size=10_000_000,  # set a maximum size for cell segments to remove large objects
 )
 
@@ -171,15 +171,15 @@ cell_mask = perform_morphology_dependent_segmentation(
 if in_notebook:
     plt.figure(figsize=(20, 20))
     plt.subplot(131)
-    plt.imshow(cyto2[cyto2.shape[0] // 2], cmap="inferno")
+    plt.imshow(cyto2[cyto2.shape[0] // 4], cmap="inferno")
     plt.title("Cytoplasm Signal (Cyto2)")
     plt.axis("off")
     plt.subplot(132)
-    plt.imshow(cell_mask[cell_mask.shape[0] // 2], cmap="nipy_spectral")
+    plt.imshow(cell_mask[cell_mask.shape[0] // 4], cmap="nipy_spectral")
     plt.title(f"Segmented Cell Mask - Morphology: {morphology_class}")
     plt.axis("off")
     plt.subplot(133)
-    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 2], cmap="nipy_spectral")
+    plt.imshow(nuclei_mask[nuclei_mask.shape[0] // 4], cmap="nipy_spectral")
     plt.title("Nuclei Mask")
     plt.axis("off")
     plt.show()
@@ -241,7 +241,18 @@ cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
 # check if there are any singletons and remove those labels
 unique_nuclei_labels = np.unique(nuclei_mask)
 unique_cell_labels = np.unique(cell_mask)
-unmatched_labels_to_remove = list(set(unique_nuclei_labels) - set(unique_cell_labels))
+unique_cytoplasm_labels = np.unique(cytoplasm_mask)
+unmatched_labels_nuc_cell = list(set(unique_nuclei_labels) - set(unique_cell_labels))
+unmatched_labels_cell_cyto = list(
+    set(unique_cell_labels) - set(unique_cytoplasm_labels)
+)
+# print(unique_nuclei_labels, unique_cell_labels, unique_cytoplasm_labels)
+# print(unmatched_labels_nuc_cell,unmatched_labels_cell_cyto)
+unmatched_labels_to_remove = unmatched_labels_cell_cyto + unmatched_labels_nuc_cell
+unmatched_labels_to_remove = list(set(unmatched_labels_to_remove))
+
+
+# In[14]:
 
 
 for label_id in unmatched_labels_to_remove:
@@ -250,7 +261,7 @@ for label_id in unmatched_labels_to_remove:
     cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
 
 
-# In[14]:
+# In[15]:
 
 
 if in_notebook:
@@ -273,7 +284,7 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[15]:
+# In[16]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -284,7 +295,7 @@ tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 
 
-# In[16]:
+# In[17]:
 
 
 stop_profiling(
@@ -305,7 +316,7 @@ stop_profiling(
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
 
-# In[17]:
+# In[18]:
 
 
 print(np.unique(nuclei_mask))
@@ -313,7 +324,7 @@ print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))
 
 
-# In[18]:
+# In[19]:
 
 
 nuclei_mask = tifffile.imread(

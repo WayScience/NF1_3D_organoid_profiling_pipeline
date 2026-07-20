@@ -48,7 +48,7 @@ patients = pd.read_csv(
     header=None,
     names=["patient_id"],
 ).patient_id.tolist()
-patients = ["NF0014_T1"]  # --- IGNORE ---
+# patients = ["NF0014_T1"]  # --- IGNORE ---
 load_file_path = pathlib.Path(
     f"{root_dir}/4.processing_image_based_profiles/load_data/load_file.txt"
 ).resolve()
@@ -148,7 +148,7 @@ df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
 print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
-# In[11]:
+# In[9]:
 
 
 df.loc[df["duckdb_exists"] == False]
@@ -166,7 +166,7 @@ summary_df = (
 summary_df.reset_index()
 
 
-# In[23]:
+# In[11]:
 
 
 # send to df
@@ -185,22 +185,19 @@ df["FeatureType"] = df["file_name"].apply(lambda s: s.split("_")[2])
 df.head()
 
 
-# In[24]:
+# In[12]:
 
 
 df["Compatment"].value_counts()
 
 
-# In[25]:
+# In[13]:
 
 
 df["Channel"].value_counts()
 
 
-# In[26]:
+# In[14]:
 
 
 df["FeatureType"].value_counts()
-
-
-# In[ ]:

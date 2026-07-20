@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[8]:
+# In[1]:
 
 
 import os
@@ -46,7 +46,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -61,7 +61,7 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "G8-1"
+    well_fov = "F6-1"
     patient = "NF0014_T1"
     channel = "AGP"
     compartment = "Cell"
@@ -85,7 +85,7 @@ channel_mapping_file_path = pathlib.Path(
 ).resolve(strict=True)
 
 
-# In[10]:
+# In[3]:
 
 
 # read in channel mapping
@@ -94,13 +94,13 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[11]:
+# In[4]:
 
 
 start_time, start_mem = start_profiling()
 
 
-# In[12]:
+# In[5]:
 
 
 image_set_loader = ImageSetLoader(
@@ -114,7 +114,7 @@ image_set_loader = ImageSetLoader(
 )
 
 
-# In[13]:
+# In[6]:
 
 
 object_loader = ObjectLoader(
@@ -176,7 +176,7 @@ save_path = save_features_as_parquet(
 final_df.head()
 
 
-# In[14]:
+# In[7]:
 
 
 stop_profiling(

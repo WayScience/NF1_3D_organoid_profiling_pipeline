@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -52,7 +52,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -67,7 +67,7 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-1"
+    well_fov = "C10-1"
     patient = "NF0014_T1"
     channel = "DNA-AGP"
     compartment = "Cell"
@@ -104,7 +104,7 @@ with open(channel_mapping_file_path, "rb") as f:
 channel_n_compartment_mapping = channel_mapping_dict["channel_mapping"]
 
 
-# In[ ]:
+# In[4]:
 
 
 channels_to_load = channel.split("-")
@@ -161,7 +161,7 @@ for object_id in coloc_loader.object_ids:
             cropped_image_1=cropped_image1,
             cropped_image_2=cropped_image2,
             thr=15,
-            fast_costes="Accurate",
+            fast_costes="Faster",
         )
     elif processor_type == "GPU":
         cropped_image1, cropped_image2 = prepare_two_images_for_colocalization_gpu(
@@ -176,7 +176,7 @@ for object_id in coloc_loader.object_ids:
             cropped_image_1=cropped_image1,
             cropped_image_2=cropped_image2,
             thr=15,
-            fast_costes="Accurate",
+            fast_costes="Faster",
         )
     else:
         raise ValueError(

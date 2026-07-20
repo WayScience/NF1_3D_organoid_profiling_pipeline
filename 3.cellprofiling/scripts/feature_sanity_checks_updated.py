@@ -75,7 +75,11 @@ for patient in tqdm.tqdm(patients, desc="Processing patients", leave=True):
             # out_dict["df_shape"].append(pd.read_parquet(feature).shape)
 df = pd.DataFrame(out_dict)
 # df = df.loc[df["patient_id"] == "NF0014_T1"]
-df = df.loc[(df["feature_type"] == "Granularity") & (df["compartment"] != "Organoid")]
+
+# NOTE: previously this also filtered to feature_type == "Granularity", which
+# silently dropped every other feature type from `df`. Removed so that `df`
+# contains every feature-type file per compartment/well_fov -- needed for the
+# "alignment across feature types within a compartment" check below.
 df = df.loc[(df["compartment"] != "Organoid")]
 
 df.head()
@@ -187,30 +191,61 @@ for row in tqdm(
 labels_df = pd.DataFrame(labels_dict)
 
 
-# In[9]:
+# In[12]:
 
 
 labels_df["labels_match"] = labels_df.apply(
-    lambda row: row["Cell_labels"] == row["Nuclei_labels"],
+    lambda row: set(row["Cell_labels"]) == set(row["Nuclei_labels"]),
     axis=1,
 )
 labels_df["same_number_of_labels"] = labels_df.apply(
     lambda row: len(row["Cell_labels"]) == len(row["Nuclei_labels"]),
     axis=1,
 )
-labels_df["unique_labels_across_compartments"] = labels_df.apply(
-    lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
+
+# Full pairwise, set-based (order no longer matters) object_id differences
+# across all three compartments -- previously only three of the six possible
+# one-directional differences were computed, and two of those were duplicates
+# of each other, so a mismatch could exist without ever showing up.
+labels_df["cell_only"] = labels_df.apply(
+    lambda row: (
+        set(row["Cell_labels"])
+        - set(row["Cytoplasm_labels"])
+        - set(row["Nuclei_labels"])
+    ),
+    axis=1,
 )
-labels_df["nuc_cyto_unique"] = labels_df.apply(
-    lambda row: set(row["Nuclei_labels"]) - set(row["Cytoplasm_labels"]), axis=1
+labels_df["cytoplasm_only"] = labels_df.apply(
+    lambda row: (
+        set(row["Cytoplasm_labels"])
+        - set(row["Cell_labels"])
+        - set(row["Nuclei_labels"])
+    ),
+    axis=1,
 )
-labels_df["nuc_cell_unique"] = labels_df.apply(
-    lambda row: set(row["Nuclei_labels"]) - set(row["Cell_labels"]), axis=1
+labels_df["nuclei_only"] = labels_df.apply(
+    lambda row: (
+        set(row["Nuclei_labels"])
+        - set(row["Cell_labels"])
+        - set(row["Cytoplasm_labels"])
+    ),
+    axis=1,
 )
-labels_df["cyto_cell_unique"] = labels_df.apply(
-    lambda row: set(row["Cytoplasm_labels"]) - set(row["Cell_labels"]), axis=1
+
+# Single well_fov-level flag: do Cell, Cytoplasm, and Nuclei all agree on the
+# exact same set of object_ids? This is the authoritative "aligned across
+# compartments" answer -- use this instead of `labels_match`, which only ever
+# compared Cell to Nuclei and ignored Cytoplasm entirely.
+labels_df["compartments_object_ids_aligned"] = labels_df.apply(
+    lambda row: (
+        set(row["Cell_labels"])
+        == set(row["Cytoplasm_labels"])
+        == set(row["Nuclei_labels"])
+    ),
+    axis=1,
 )
-labels_df.loc[labels_df["labels_match"] == False].head(20)
+print(labels_df.loc[labels_df["compartments_object_ids_aligned"] == False].shape)
+labels_df.loc[labels_df["compartments_object_ids_aligned"] == False].head(20)
 
 
 # In[ ]:
@@ -219,9 +254,10 @@ labels_df.loc[labels_df["labels_match"] == False].head(20)
 # In[10]:
 
 
-# get the patient_id and well_fov for the rows where the labels do not match and check the corresponding feature files for those rows
+# get the patient_id and well_fov for the rows where the compartments'
+# object_ids do not align, and print the corresponding cleanup commands
 mismatched_labels = labels_df.loc[
-    labels_df["labels_match"] == False, ["patient_id", "well_fov"]
+    labels_df["compartments_object_ids_aligned"] == False, ["patient_id", "well_fov"]
 ]
 mismatched_labels
 for row in tqdm(
@@ -238,10 +274,115 @@ for row in tqdm(
     continue
 
 
-# In[ ]:
+# In[11]:
 
 
 labels_df.loc[labels_df["same_number_of_labels"] == False].value_counts("patient_id")
+
+
+# ## Object-id alignment across feature-type files within the same compartment
+#
+# The checks above only ever look at **one** feature file per compartment (whichever one the earlier pivot happened to keep). A compartment can have several feature-type files (`Cell_AreaShape.parquet`, `Cell_Texture.parquet`, `Cell_Granularity.parquet`, ...) that are all supposed to describe the exact same set of objects for a given well_fov. If one of those feature-extraction steps drops or gains objects relative to the others, none of the checks above would ever catch it. This section checks that directly.
+
+# In[ ]:
+
+
+# --- Object-level alignment WITHIN a compartment, across its different
+# feature-type files (e.g. Cell_AreaShape vs Cell_Texture vs Cell_Granularity
+# for the same patient_id/well_fov should all report the same object_ids) ---
+feature_type_alignment_records = []
+import tqdm.notebook as tqdm
+
+for (patient_id, well_fov, compartment), group in tqdm.tqdm(
+    df.groupby(["patient_id", "well_fov", "compartment"]),
+    desc="Checking object_id alignment across feature types",
+):
+    object_id_sets = {}
+    for row in group.itertuples():
+        try:
+            obj_ids = set(
+                pd.read_parquet(row.file_path, columns=["object_id"])["object_id"]
+            )
+            object_id_sets[row.feature_type] = obj_ids
+        except Exception as e:
+            print(f"Error reading {row.file_path}: {e}")
+            object_id_sets[row.feature_type] = None
+
+    valid = {ft: s for ft, s in object_id_sets.items() if s is not None}
+    unique_sets = {frozenset(s) for s in valid.values()}
+    aligned = len(unique_sets) <= 1
+
+    mismatched_feature_types = []
+    if not aligned:
+        # treat the most common object_id set as the reference; anything
+        # that differs from it is flagged as the odd one out
+        counts = pd.Series([frozenset(s) for s in valid.values()]).value_counts()
+        reference = counts.index[0]
+        mismatched_feature_types = [
+            ft for ft, s in valid.items() if frozenset(s) != reference
+        ]
+
+    feature_type_alignment_records.append(
+        {
+            "patient_id": patient_id,
+            "well_fov": well_fov,
+            "compartment": compartment,
+            "n_feature_types_checked": len(valid),
+            "object_ids_aligned": aligned,
+            "mismatched_feature_types": mismatched_feature_types,
+        }
+    )
+
+feature_type_alignment_df = pd.DataFrame(feature_type_alignment_records)
+feature_type_alignment_df.loc[feature_type_alignment_df["object_ids_aligned"] == False]
+
+
+# In[ ]:
+
+
+# Roll up to one row per well_fov (per your request, well_fov level is
+# enough -- no need to list individual file paths): flagged if ANY
+# compartment's feature-type files disagree with each other for that well_fov
+def _summarize(group):
+    misaligned = group.loc[~group["object_ids_aligned"], "compartment"].tolist()
+    return pd.Series(
+        {
+            "any_feature_type_misaligned": len(misaligned) > 0,
+            "misaligned_compartments": misaligned,
+        }
+    )
+
+
+feature_type_alignment_by_well_fov = (
+    feature_type_alignment_df.groupby(["patient_id", "well_fov"])
+    .apply(_summarize)
+    .reset_index()
+)
+feature_type_alignment_by_well_fov.loc[
+    feature_type_alignment_by_well_fov["any_feature_type_misaligned"]
+]
+
+
+# ## Combined well_fov-level summary
+#
+# One table, one row per well_fov, flagged `True` if it fails **either** check: the three compartments disagree with each other (`compartments_object_ids_aligned`), or a compartment's own feature-type files disagree with each other (`any_feature_type_misaligned`).
+
+# In[ ]:
+
+
+combined_alignment = labels_df[
+    ["patient_id", "well_fov", "compartments_object_ids_aligned"]
+].merge(
+    feature_type_alignment_by_well_fov[
+        ["patient_id", "well_fov", "any_feature_type_misaligned"]
+    ],
+    on=["patient_id", "well_fov"],
+    how="outer",
+)
+combined_alignment["needs_review"] = (
+    combined_alignment["compartments_object_ids_aligned"] == False
+) | (combined_alignment["any_feature_type_misaligned"] == True)
+combined_alignment.loc[combined_alignment["needs_review"]]
 
 
 # In[ ]:

@@ -42,7 +42,7 @@
 # - Consensus profiles collapse treatment replicates to a single row per treatment,
 #   making them the primary input for treatment-level comparisons.
 
-# In[19]:
+# In[1]:
 
 
 import os
@@ -65,7 +65,7 @@ profile_base_dir = bandicoot_check(
 profile_base_dir = root_dir
 
 
-# In[20]:
+# In[2]:
 
 
 if not in_notebook:
@@ -74,11 +74,11 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# In[21]:
+# In[3]:
 
 
 ## Pathing
@@ -149,7 +149,7 @@ nucleocentric_morphem_agg_well_output_path.parent.mkdir(parents=True, exist_ok=T
 nucleocentric_morphem_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[22]:
+# In[4]:
 
 
 # read in the data
@@ -172,7 +172,7 @@ print(
 )
 
 
-# In[23]:
+# In[5]:
 
 
 run_dict = {
@@ -218,7 +218,7 @@ run_dict = {
 #    grouped by `PatientTumor x Treatment`. Collapses replicates for treatment-level
 #    comparisons.
 
-# In[27]:
+# In[6]:
 
 
 # Well-level strata: one row per (patient, well) combination
@@ -231,7 +231,7 @@ consensus_strata = [
 ]
 
 
-# In[28]:
+# In[7]:
 
 
 for profile_name in run_dict.keys():

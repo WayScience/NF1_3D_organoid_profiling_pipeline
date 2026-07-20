@@ -89,7 +89,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 morphem_model = get_morphem_model(device)
 
 
-# In[ ]:
+# In[3]:
 
 
 if not in_notebook:
@@ -104,8 +104,8 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "G3-5"
-    patient = "NF0055_T1"
+    well_fov = "D9-1"
+    patient = "NF0014_T2"
     channel = "Mito"
     compartment = "Nuclei"
     processor_type = "GPU"
@@ -283,7 +283,7 @@ else:
     final_df = None
 
 
-# In[ ]:
+# In[10]:
 
 
 if final_df is not None:
@@ -292,23 +292,40 @@ if final_df is not None:
     morphem_feature_cols = [col for col in final_df.columns if "CHAMMI75" in col]
     sammed_3d_df = final_df[["object_id", "image_set"] + sammed3d_feature_cols]
     morphem_df = final_df[["object_id", "image_set"] + morphem_feature_cols]
-# save the features as parquet files
-save_path = save_features_as_parquet(
-    parent_path=output_parent_path,
-    df=sammed_3d_df,
-    feature_type="SAMMed3D",
-    channel=channel,
-    compartment="Nucleocentric",
-    cpu_or_gpu=processor_type,
-)
-save_path = save_features_as_parquet(
-    parent_path=output_parent_path,
-    df=morphem_df,
-    feature_type="CHAMMI75",
-    channel=channel,
-    compartment="Nucleocentric",
-    cpu_or_gpu=processor_type,
-)
+    # save the features as parquet files
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=sammed_3d_df,
+        feature_type="SAMMed3D",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=morphem_df,
+        feature_type="CHAMMI75",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
+else:
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=sammed_3d_df,
+        feature_type="SAMMed3D",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
+    save_path = save_features_as_parquet(
+        parent_path=output_parent_path,
+        df=morphem_df,
+        feature_type="CHAMMI75",
+        channel=channel,
+        compartment="Nucleocentric",
+        cpu_or_gpu=processor_type,
+    )
 
 
 # In[11]:

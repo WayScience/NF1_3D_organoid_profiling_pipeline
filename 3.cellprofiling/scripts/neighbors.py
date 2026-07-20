@@ -50,7 +50,7 @@ image_base_dir = bandicoot_check(
 )
 
 
-# In[ ]:
+# In[2]:
 
 
 if not in_notebook:
@@ -65,7 +65,7 @@ if not in_notebook:
     output_features_subparent_name = arguments_dict["output_features_subparent_name"]
 
 else:
-    well_fov = "C4-2"
+    well_fov = "F11-1"
     patient = "NF0014_T1"
     channel = "NoChannel"
     compartment = "Nuclei"

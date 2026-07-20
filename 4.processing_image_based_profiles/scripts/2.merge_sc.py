@@ -37,8 +37,11 @@
 
 import os
 import pathlib
+import sys
 
 import duckdb
+import numpy as np
+import pandas as pd
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -64,8 +67,10 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
+    # patient = "NF0055_T1"
+    # well_fov = "D5-1"
     patient = "NF0014_T1"
-    well_fov = "C6-2"
+    well_fov = "C4-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -86,19 +91,94 @@ destination_nucleocentric_parquet_file = pathlib.Path(
 ).resolve()
 destination_sc_parquet_file.parent.mkdir(parents=True, exist_ok=True)
 
+# for empty tables:
+merged_example_df_path = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/data/DB_structures/single_cell_profile_structure.parquet"
+).resolve()
+nucleocentric_example_df_path = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/data/DB_structures/nucleocentric_profile_structure.parquet"
+).resolve()
+organoid_example_df_path = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/data/DB_structures/organoid_profile_structure.parquet"
+).resolve()
+organoid_example_df_path.parent.mkdir(parents=True, exist_ok=True)
+
 
 # In[4]:
 
 
-# Load all five compartment tables from the DuckDB produced by notebook 1.
-with duckdb.connect(input_sqlite_file) as con:
-    tables = con.execute("SHOW TABLES").fetchdf()
-    print(tables)
-    nuclei_table = con.sql("SELECT * FROM Nuclei").df()
-    cells_table = con.sql("SELECT * FROM Cell").df()
-    cytoplasm_table = con.sql("SELECT * FROM Cytoplasm").df()
-    organoid_table = con.sql("SELECT * FROM Organoid").df()
-    nucleocentric_table = con.sql("SELECT * FROM Nucleocentric").df()
+try:
+    # Load all five compartment tables from the DuckDB produced by notebook 1.
+    with duckdb.connect(input_sqlite_file) as con:
+        tables = con.execute("SHOW TABLES").fetchdf()
+        print(tables)
+        nuclei_table = con.sql("SELECT * FROM Nuclei").df()
+        cells_table = con.sql("SELECT * FROM Cell").df()
+        cytoplasm_table = con.sql("SELECT * FROM Cytoplasm").df()
+        organoid_table = con.sql("SELECT * FROM Organoid").df()
+        nucleocentric_table = con.sql("SELECT * FROM Nucleocentric").df()
+except Exception as e:
+    if "Catalog" in str(e):
+        print(
+            f"Error: DuckDB file {input_sqlite_file} does not contain expected tables."
+        )
+        print("Writing empty DataFrames to output parquet files.")
+        merged_df = pd.read_parquet(merged_example_df_path)
+        nucleocentric_df = pd.read_parquet(nucleocentric_example_df_path)
+        organoid_df = pd.read_parquet(organoid_example_df_path)
+
+        # add the well_fov and objects
+        merged_df = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "well_fov": [well_fov],
+                        "object_id": [-1],
+                        **{
+                            col: [np.nan]
+                            for col in merged_df.columns
+                            if col not in ["well_fov", "object_id"]
+                        },
+                    }
+                ),
+            ]
+        )
+        nucleocentric_df = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "well_fov": [well_fov],
+                        "object_id": [-1],
+                        **{
+                            col: [np.nan]
+                            for col in nucleocentric_df.columns
+                            if col not in ["well_fov", "object_id"]
+                        },
+                    }
+                ),
+            ]
+        )
+        organoid_df = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "well_fov": [well_fov],
+                        "object_id": [-1],
+                        **{
+                            col: [np.nan]
+                            for col in organoid_df.columns
+                            if col not in ["well_fov", "object_id"]
+                        },
+                    }
+                ),
+            ]
+        )
+
+        merged_df.to_parquet(destination_sc_parquet_file, index=False)
+        nucleocentric_df.to_parquet(destination_nucleocentric_parquet_file, index=False)
+        organoid_df.to_parquet(destination_organoid_parquet_file, index=False)
+    # exit the script after writing the empty DataFrames
+    sys.exit(0)
 
 
 # In[5]:
@@ -164,3 +244,16 @@ print(f"Final nucleocentric dataframe shape: {nucleocentric_table.shape}")
 # save the nucleocentric data as parquet
 nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
 nucleocentric_table.head()
+
+
+# In[10]:
+
+
+# if patient=NF0014_T1 and well_fov=C4-1, then output zero's out dfs to DB_structures
+if patient == "NF0014_T1" and well_fov == "C4-1":
+    merged_df = pd.DataFrame(columns=merged_df.columns)
+    nucleocentric_df = pd.DataFrame(columns=nucleocentric_table.columns)
+    organoid_df = pd.DataFrame(columns=organoid_table.columns)
+    merged_df.to_parquet(merged_example_df_path, index=False)
+    nucleocentric_df.to_parquet(nucleocentric_example_df_path, index=False)
+    organoid_df.to_parquet(organoid_example_df_path, index=False)

@@ -37,8 +37,6 @@ rm -rf .venv
 
 uv venv
 uv sync
-# shellcheck disable=SC1091
-source .venv/bin/activate
 
 # shellcheck disable=SC1091
 source .venv/bin/activate

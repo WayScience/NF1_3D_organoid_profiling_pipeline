@@ -5,7 +5,7 @@
 #
 # This notebook keeps the original behavior while reducing repetitive row-building code via a small helper function.
 
-# In[14]:
+# In[1]:
 
 
 import itertools
@@ -29,7 +29,7 @@ bandicoot_mount_path = pathlib.Path(os.path.expanduser("~/mnt/bandicoot"))
 bandicoot_mount_path = bandicoot_check(bandicoot_mount_path, root_dir)
 
 
-# In[15]:
+# In[2]:
 
 
 patient_id_file = pathlib.Path(f"{bandicoot_mount_path}/data/patient_IDs.txt").resolve(
@@ -71,7 +71,7 @@ channel_combinations = list(itertools.combinations(channels, 2))
 input_subdir_name = "zstack_images"
 
 
-# In[16]:
+# In[3]:
 
 
 rows = []
@@ -130,7 +130,7 @@ def add_row(
     )
 
 
-# In[17]:
+# In[4]:
 
 
 for patient in patients:
@@ -216,7 +216,7 @@ df = pd.DataFrame(rows)
 print(f"Total combinations: {df.shape[0]}")
 
 
-# In[18]:
+# In[5]:
 
 
 # Build paths with vectorized string ops
@@ -257,7 +257,7 @@ for patient, subdir_output, well_fov in tqdm.tqdm(
 df["feature_file_path_exists"] = df["feature_file_path"].isin(existing_feature_files)
 
 
-# In[19]:
+# In[6]:
 
 
 # If Nucleocentric has both CHAMMI75 and SAMMed3D, keep only CHAMMI75 entry
@@ -304,32 +304,26 @@ print(
 )
 
 
-# In[20]:
-
-
-df = df.loc[df["feature"] == "AreaSizeShape"]
-
-
-# In[21]:
+# In[7]:
 
 
 df.to_csv(load_combinations_path, sep="\t", index=False)
 df.head()
 
 
-# In[22]:
+# In[8]:
 
 
 df.groupby(["feature"]).size().to_frame(name="count").reset_index()
 
 
-# In[23]:
+# In[9]:
 
 
 df.groupby(["patient", "feature"]).size().to_frame(name="count").reset_index().head(50)
 
 
-# In[24]:
+# In[10]:
 
 
 # Find patient well_fovs with complete feature-file coverage
@@ -351,13 +345,28 @@ complete_feature_count.groupby(["patient", "completion_status"]).size().to_frame
 complete_feature_count
 
 
-# In[25]:
+# In[11]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Complete"]
 
 
-# In[26]:
+# In[12]:
 
 
 complete_feature_count.loc[complete_feature_count["completion_status"] == "Incomplete"]
+
+
+# In[13]:
+
+
+# get the per patient total expected feature count and the number of missing features
+df = complete_feature_count.groupby(["patient"]).agg(
+    total_expected_feature_count=("expected_feature_count", "sum"),
+    total_missing_feature_count=("feature_file_path_exists_count", "sum"),
+)
+df["percent_completed"] = (
+    df["total_missing_feature_count"] / df["total_expected_feature_count"]
+) * 100
+df["percent_completed"] = df["percent_completed"].round(2)
+df
