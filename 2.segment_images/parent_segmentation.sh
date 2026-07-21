@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --partition=amilan
+#SBATCH --partition=acpu
 #SBATCH --qos=cpu-long
 #SBATCH --account=amc-general
 #SBATCH --time=7-00:00
