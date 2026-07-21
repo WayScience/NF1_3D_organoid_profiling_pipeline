@@ -2,9 +2,9 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=amilan
-#SBATCH --qos=long
+#SBATCH --qos=cpu-long
 #SBATCH --account=amc-general
-#SBATCH --time=2-00:00
+#SBATCH --time=7-00:00
 #SBATCH --output=logs/parent/segmentation_parent-%j.out
 
 
@@ -25,9 +25,9 @@ else
 fi
 
 
-# PYTHON_BIN="$ENV_PATH/bin/python3"
+PYTHON_BIN="$ENV_PATH/bin/python3"
 echo "$ENV_PATH"
-# "$PYTHON_BIN" "$git_root"/2.segment_images/scripts/get_run_combinations.py
+"$PYTHON_BIN" "$git_root"/2.segment_images/scripts/get_run_combinations.py
 
 txt_file="${git_root}/2.segment_images/load_data/load_combinations.txt"
 
