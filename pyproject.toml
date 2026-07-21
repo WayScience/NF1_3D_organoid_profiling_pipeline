@@ -45,6 +45,7 @@ dependencies = [
     "transformers<5.0",
     "certifi>=2026.5.20",
     "scipy>=1.17.1",
+    "zedprofiler>=0.1.1",
 ]
 
 
