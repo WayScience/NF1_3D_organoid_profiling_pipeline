@@ -69,10 +69,14 @@ flowchart LR
     nextflow_controller -->|sbatch| segmentation_jobs
     nextflow_controller -->|sbatch| featurization_jobs
     nextflow_controller -->|sbatch| profile_jobs
+    segmentation_jobs -->|masks ready| featurization_jobs
     qc_jobs --> image_qc
     segmentation_jobs --> image_assets
     segmentation_jobs --> object_profiles
     featurization_jobs --> object_profiles
+    object_profiles -->|features ready| profile_jobs
+    image_qc -->|QC flags| profile_jobs
+    treatment_annotations -->|annotations| profile_jobs
     profile_jobs --> derived_profiles
     image_assets --> warehouse_manifest
     image_qc --> warehouse_manifest
