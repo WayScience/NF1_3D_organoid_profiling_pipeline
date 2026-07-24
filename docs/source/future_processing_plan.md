@@ -117,6 +117,16 @@ The trace table captures process name, patient, well/FOV shard, status, attempt,
 SLURM job IDs are retained so failed or slow tasks can be inspected with `sacct`, `squeue`, `seff`, and the process `.command.out` and `.command.err` files.
 A single DuckDB validation script combines these run artifacts with the warehouse manifest to check manifest conformance, join-key uniqueness, feature-name validity, orphaned profiles, QC filtering rates, failed tasks, retry counts, and resource outliers.
 
+## ZedProfiler integration
+
+The main implementation work is the **featurization to image-based profiling** handoff.
+ZedProfiler replaces the current local featurization modules as the production feature extractor for object-level 3D morphology profiles.
+Its inputs are the registered image assets, segmentation masks, channel metadata, object identifiers, and parent-object relationships produced upstream.
+Its outputs are per-compartment feature tables for nuclei, cells, cytoplasm, organoids, and nucleocentric objects, written with ZedProfiler-compatible feature names and `Metadata_*` identifiers.
+Those outputs publish directly into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
+[CytoTable][cytotable] is not the execution engine for this path.
+CytoTable remains a compatibility bridge if ZedProfiler outputs need conversion into pycytominer-oriented table shapes or if CellProfiler-style outputs remain in part of the workflow.
+
 ## Implementation sequence
 
 1. **Pilot subset selection:** choose two representative patients with a few well/FOVs from each to cover normal images, QC failures, segmentation edge cases, one treatment/control contrast, image-size variation, and object-count variation.
@@ -159,6 +169,7 @@ Two small project specifications precede implementation:
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
 [iceberg-warehouse]: https://github.com/WayScience/iceberg-bioimage/blob/main/docs/src/warehouse-spec.md
+[cytotable]: https://github.com/cytomining/CytoTable
 [curc-persistence1]: https://curc.readthedocs.io/en/latest/clusters/alpine/quick-start.html
 [nextflow-slurm]: https://docs.seqera.io/nextflow/executor
 [ome-arrow]: https://github.com/WayScience/ome-arrow
