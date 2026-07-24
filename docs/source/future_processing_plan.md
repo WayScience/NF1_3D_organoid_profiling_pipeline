@@ -129,7 +129,7 @@ A single DuckDB validation script combines these run artifacts with the warehous
 ## Implementation scope
 
 The first milestone runs the small-data pilot through the workflow layer and publishes the resulting outputs to the active pilot warehouse location.
-The next milestone applies the proven workflow and warehouse writer to the production dataset.
+The next milestone applies the pilot-validated workflow and warehouse writer to the production dataset.
 A later milestone backfills prior patients, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes QC decision policy.
 Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
 Combined-patient analyses can still concatenate selected profiles for pycytominer feature selection, aggregation, and related cytomining workflows.
