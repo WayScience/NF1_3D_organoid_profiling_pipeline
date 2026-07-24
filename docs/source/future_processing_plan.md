@@ -91,8 +91,8 @@ flowchart LR
 
 ### Workflow manager
 
-The workflow layer treats **SLURM as a first-class execution backend**, because the current shell-plus-SLURM pattern is practical but too hard to audit, resume, and parameterize across patients.
-**Nextflow is the workflow manager for this pipeline** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, caching, resumable runs, and selective job arrays for homogeneous high-cardinality tasks.
+The workflow layer treats **SLURM as a first-class execution backend**, because the current shell-plus-SLURM pattern is practical but too hard to audit, restart, and parameterize across patients.
+**Nextflow is the workflow manager for this pipeline** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, task caching, `-resume`-based workflow continuation, and selective job arrays for homogeneous high-cardinality tasks.
 **SLURM job arrays** are used selectively for uniform per-well/FOV shards such as QC, segmentation, and featurization when resource requirements are consistent.
 Tasks with variable memory, GPU, walltime, or container needs remain ordinary SLURM jobs.
 
@@ -102,6 +102,8 @@ On University of Colorado Research Computing infrastructure, the deployment mode
 The controller does not perform substantial image processing itself.
 Instead, it submits each pipeline process to Alpine as an independent SLURM job through `sbatch`, monitors task state, and launches downstream work when dependencies are satisfied.
 This gives the pipeline a persistent orchestration layer while allowing segmentation, ZedProfiler feature extraction, QC, normalization, and aggregation jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
+Scratch space is used only for ephemeral Nextflow work directories and temporary task files.
+Durable workflow outputs, warehouse tables, manifests, reports, and logs are published to Isilon or to the active gitignored `data/` warehouse target before scratch cleanup.
 
 ### Run records
 
@@ -117,18 +119,21 @@ A single DuckDB validation script combines these run artifacts with the warehous
 
 ## Implementation sequence
 
-1. **Pilot subset selection:** choose one representative patient with a few wells and FOVs that cover normal images, QC failures, segmentation edge cases, and one treatment/control contrast.
-2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using the existing stage commands and publishing all Nextflow and SLURM observability artifacts.
+1. **Pilot subset selection:** choose two representative patients with a few well/FOVs from each to cover normal images, QC failures, segmentation edge cases, one treatment/control contrast, image-size variation, and object-count variation.
+2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing all Nextflow and SLURM observability artifacts.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
 4. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
-5. **Cross-patient queries:** replace ad hoc patient concatenation with manifest-aware DuckDB queries over the production warehouse tables.
+5. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, and QC flag propagation.
 6. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, and a one-command validation report for collaborators, maintainers, and release checkpoints.
 
 ## Implementation scope
 
 The first milestone runs the small-data pilot through the workflow layer and publishes the resulting outputs to the active pilot warehouse location.
 The next milestone applies the proven workflow and warehouse writer to the production dataset.
-A later milestone backfills prior patients, moves cross-patient profile generation onto manifest-aware queries, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes QC decision policy.
+A later milestone backfills prior patients, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes QC decision policy.
+Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
+Combined-patient analyses can still concatenate selected profiles for pycytominer feature selection, aggregation, and related cytomining workflows.
+pycytominer-style operations are expected to be compatible with iceberg-bioimage warehouse tables because the profile outputs remain tabular, metadata-prefixed, and feature-column oriented.
 The highest-risk work is not the Parquet writing itself; it is making stable identifiers, patient/well/FOV metadata, object-parent links, and QC decisions consistent across batches.
 
 ## Alternatives considered
