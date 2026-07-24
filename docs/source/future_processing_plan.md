@@ -19,15 +19,16 @@ The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: rep
 
 Required namespaces and tables:
 
-- `images.image_assets`: one row per image asset with `dataset_id`, `patient_id`, `plate_id`, `well_id`, `field_id`, `image_id`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
-- `quality_control.image_qc`: blur, saturation, corruption, and exclusion flags keyed by `image_id`, with patient, well, and field metadata repeated only when useful for reading.
-- `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `dataset_id`, `image_id`, `object_id`, and, when relevant, `parent_organoid_id` or `parent_cell_id`.
+- `images.image_assets`: one row per image asset with `Metadata_Experiment_DatasetID`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
+- `quality_control.image_qc`: blur, saturation, corruption, and exclusion flags keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
+- `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `Metadata_Experiment_DatasetID`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and, when relevant, `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID`.
 - `profiles.normalized_profiles`, `profiles.selected_profiles`, and `profiles.consensus_profiles`: derived analytical tables that preserve the same stable identifiers and declare their parent tables in the manifest.
 - `profiles.patient_treatment_annotations`: patient, tumor, plate map, treatment, dose, unit, target, class, and therapeutic category keyed by patient and well.
 
 **Column naming is enforced before writing shared outputs.**
 Feature columns use **`{Compartment}_{Channel}_{FeatureType}_{Measurement}`**; metadata columns use **`Metadata_{Category}_{Name}`**.
-The current `image_set` and `WellFOV` concepts become explicit **`well_id`** and **`field_id`** values, with **`image_id`** as the durable join key across image assets, segmentation masks, QC, and profiles.
+The current `image_set` and `WellFOV` concepts become explicit **`Metadata_Experiment_WellID`** and **`Metadata_Imaging_FieldID`** values, with **`Metadata_Imaging_ImageID`** as the durable join key across image assets, segmentation masks, QC, and profiles.
+Plain names such as `dataset_id` and `image_id` remain logical shorthand in implementation discussions, not profile-table column names.
 
 ```mermaid
 flowchart LR
