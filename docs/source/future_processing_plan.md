@@ -10,9 +10,10 @@ ZedProfiler's [feature naming convention][zedprofiler-features] is the column st
 
 ## Target data contract
 
-The warehouse lives on **Isilon storage**, not directly in the Git repository.
-The repository stores workflow code, schema definitions, validation code, configuration, and small reference manifests that point to the Isilon warehouse location.
-Each Isilon warehouse root contains Parquet-first tables plus **`warehouse_manifest.json`**.
+The shared warehouse lives on **Isilon storage** when that storage is available to the compute environment.
+For Alpine or other HPC environments without Isilon access, the warehouse can live under the repository's gitignored **`data/`** directory as a local execution target.
+The repository tracks workflow code, schema definitions, validation code, configuration, and small reference manifests that point to the active warehouse location.
+Each warehouse root contains Parquet-first tables plus **`warehouse_manifest.json`**.
 **OME-TIFF** or **OME-Zarr** remain the source image assets when that is sufficient; **OME-Arrow** is reserved for derived crops, chunk indexes, or image tensors that need to be joined and filtered with profiles in DuckDB.
 The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: reported results include faster bulk image reads and writes for Arrow-backed layouts, a roughly millisecond-scale NF1 feature-to-image join, and faster metadata scans than converted OME-Zarr metadata.
 
@@ -113,14 +114,14 @@ A single DuckDB validation script combines these run artifacts with the warehous
 
 1. **Pilot subset selection:** choose one representative patient with a few wells and FOVs that cover normal images, QC failures, segmentation edge cases, and one treatment/control contrast.
 2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using the existing stage commands and publishing all Nextflow and SLURM observability artifacts.
-3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the pilot Isilon warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
+3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
 4. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
 5. **Cross-patient queries:** replace ad hoc patient concatenation with manifest-aware DuckDB queries over the production warehouse tables.
 6. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, and a one-command validation report for collaborators, maintainers, and release checkpoints.
 
 ## Implementation scope
 
-The first milestone runs the small-data pilot through the workflow layer and publishes the resulting outputs to the pilot Isilon warehouse.
+The first milestone runs the small-data pilot through the workflow layer and publishes the resulting outputs to the active pilot warehouse location.
 The next milestone applies the proven workflow and warehouse writer to the production dataset.
 A later milestone backfills prior patients, moves cross-patient profile generation onto manifest-aware queries, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes QC decision policy.
 The highest-risk work is not the Parquet writing itself; it is making stable identifiers, patient/well/FOV metadata, object-parent links, and QC decisions consistent across batches.
