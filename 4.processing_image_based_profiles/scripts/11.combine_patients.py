@@ -138,8 +138,12 @@ for profile_type, files in levels_to_merge_dict.items():
     df = pd.concat(list_of_dfs, ignore_index=True)
 
     print(f"Concatenated DataFrame for {profile_type} has the shape: {df.shape}")
+    normalized_profiles_path = pathlib.Path(
+        f"{all_patients_output_path}/0.normalized_profiles/{profile_type}_norm_profile.parquet"
+    )
+    normalized_profiles_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_norm_profile.parquet",
+        normalized_profiles_path,
         index=False,
     )
     ###############################################
@@ -167,8 +171,12 @@ for profile_type, files in levels_to_merge_dict.items():
     fs_profiles = all_trt_df[
         [col for col in all_trt_df.columns if col in fs_profiles.columns]
     ]
+    fs_profile_path = pathlib.Path(
+        f"{all_patients_output_path}/1.feature_selected_profiles/{profile_type}_fs_profiles.parquet"
+    )
+    fs_profile_path.parent.mkdir(parents=True, exist_ok=True)
     fs_profiles.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_fs_profiles.parquet",
+        fs_profile_path,
         index=False,
     )
     ###############################################
@@ -185,8 +193,12 @@ for profile_type, files in levels_to_merge_dict.items():
         features=feature_columns,
         operation="median",
     )
+    agg_df_path = pathlib.Path(
+        f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet"
+    )
+    agg_df_path.parent.mkdir(parents=True, exist_ok=True)
     agg_df.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_sc_agg_profiles.parquet",
+        agg_df_path,
         index=False,
     )
     ###############################################
@@ -198,8 +210,12 @@ for profile_type, files in levels_to_merge_dict.items():
         features=feature_columns,
         operation="median",
     )
+    consensus_df_path = pathlib.Path(
+        f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet"
+    )
+    consensus_df_path.parent.mkdir(parents=True, exist_ok=True)
     consensus_df.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_sc_consensus_profiles.parquet",
+        consensus_df_path,
         index=False,
     )
     print("The number features before feature selection:", df.shape[1])
