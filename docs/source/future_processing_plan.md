@@ -150,7 +150,7 @@ The post-featurization QC tool is [coSMicQC][cosmicqc], using a CytoTable-compat
 Its flags are written to `profiles.cqc_flags` before normalization, feature selection, aggregation, or consensus profiling.
 The warehouse keeps the `Metadata_*` schema as the source of truth while the compatibility view maps those tables into the current coSMicQC input shape.
 [CytoTable][cytotable] is not the execution engine for this path.
-CytoTable remains a compatibility bridge for coSMicQC and pycytominer-oriented table shapes, not the scheduler or canonical storage layer.
+CytoTable remains a compatibility bridge for coSMicQC and single-cell or object-profile table shapes, not the scheduler or canonical storage layer.
 
 ## Implementation sequence
 
@@ -166,7 +166,7 @@ The validation report tracks each well/FOV from segmentation through ZedProfiler
 ## Implementation scope
 
 The first milestone runs the small-data pilot through the workflow layer and publishes the resulting outputs to the active pilot warehouse location.
-The next milestone assesses whole-image QC before segmentation scale-up and single-cell/object QC after pilot featurization, then sets the initial pass/fail fields used during production rollout.
+The next milestone assesses single-cell/object QC behavior after pilot featurization and sets the initial post-featurization pass/fail fields used during production rollout.
 The following milestone applies the pilot-validated workflow and warehouse writer to the production dataset.
 A later milestone backfills prior patients, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes the full QC decision policy across image-level and object-level decisions.
 Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
