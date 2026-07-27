@@ -120,10 +120,13 @@ A single DuckDB validation script combines these run artifacts with the warehous
 ## ZedProfiler integration
 
 The main implementation work is the **featurization to image-based profiling** handoff.
-ZedProfiler replaces the current local featurization modules as the production feature extractor for object-level 3D morphology profiles.
+ZedProfiler replaces the current local handcrafted featurization modules as the production feature extractor for supported object-level 3D morphology profiles.
 Its inputs are the registered image assets, segmentation masks, channel metadata, object identifiers, and parent-object relationships produced upstream.
-Its outputs are per-compartment feature tables for nuclei, cells, cytoplasm, organoids, and nucleocentric objects, written with ZedProfiler-compatible feature names and `Metadata_*` identifiers.
-Those outputs publish directly into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
+Its supported feature classes are Colocalization, Granularity, Intensity, Neighbors, Texture, and VolumeSizeShape.
+Its outputs are per-compartment handcrafted feature tables for nuclei, cells, cytoplasm, and organoids, written with ZedProfiler-compatible feature names and `Metadata_*` identifiers.
+Bespoke deep-learning featurization remains in the workflow for masked 3D features across nuclei, cells, cytoplasm, and organoids.
+Bespoke deep-learning featurization also remains for nucleocentric non-masked 3D crops from the nuclei mask and nucleocentric non-masked 2D z-maximum projections.
+All handcrafted and deep-learning feature outputs publish into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
 [CytoTable][cytotable] is not the execution engine for this path.
 CytoTable remains a compatibility bridge if ZedProfiler outputs need conversion into pycytominer-oriented table shapes or if CellProfiler-style outputs remain in part of the workflow.
 
