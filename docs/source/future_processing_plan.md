@@ -21,7 +21,7 @@ Required namespaces and tables:
 
 - `images.image_assets`: one row per image asset with `Metadata_Biology_PatientTumor`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
 - `quality_control.image_qc`: candidate whole-image blur, saturation, corruption, and exclusion flags generated before segmentation and featurization, keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
-- `quality_control.object_qc`: post-featurization single-cell and object-level QC flags keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and object compartment.
+- `quality_control.object_qc`: post-featurization single-cell and object-level QC flags from [coSMicQC][cosmicqc], keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and object compartment.
 - `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and, when relevant, `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID`.
 - `profiles.normalized_profiles`, `profiles.selected_profiles`, and `profiles.consensus_profiles`: derived analytical tables that preserve the same stable identifiers and declare their parent tables in the manifest.
 - `profiles.patient_treatment_annotations`: patient, tumor, plate map, treatment, dose, unit, target, class, and therapeutic category keyed by patient and well.
@@ -50,7 +50,8 @@ flowchart LR
         image_qc_jobs["whole-image QC jobs"]
         segmentation_jobs["segmentation jobs"]
         featurization_jobs["ZedProfiler feature extraction jobs"]
-        object_qc_jobs["single-cell / object QC jobs"]
+        cytotable_view_jobs["CytoTable-compatible QC view jobs"]
+        object_qc_jobs["coSMicQC single-cell / object QC jobs"]
         profile_jobs["normalization / aggregation jobs"]
     end
 
@@ -72,6 +73,7 @@ flowchart LR
     nextflow_controller -->|sbatch| image_qc_jobs
     nextflow_controller -->|sbatch| segmentation_jobs
     nextflow_controller -->|sbatch| featurization_jobs
+    nextflow_controller -->|sbatch| cytotable_view_jobs
     nextflow_controller -->|sbatch| object_qc_jobs
     nextflow_controller -->|sbatch| profile_jobs
     image_qc_jobs --> image_qc
@@ -80,7 +82,8 @@ flowchart LR
     segmentation_jobs --> image_assets
     segmentation_jobs --> object_profiles
     featurization_jobs --> object_profiles
-    object_profiles -->|features ready| object_qc_jobs
+    object_profiles -->|warehouse profiles| cytotable_view_jobs
+    cytotable_view_jobs -->|CytoTable-shaped input| object_qc_jobs
     object_qc_jobs --> object_qc
     object_profiles -->|features ready| profile_jobs
     object_qc -->|single-cell / object filters| profile_jobs
@@ -139,15 +142,17 @@ Bespoke deep-learning featurization also remains for nucleocentric non-masked 3D
 All handcrafted and deep-learning feature outputs publish into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
 Whole-image QC runs before segmentation and featurization so failed image assets can be excluded or flagged before expensive downstream work.
 Single-cell and object-level QC runs after ZedProfiler and bespoke deep-learning featurization so feature missingness, object outliers, failed crops, and late-stage profiling errors can be tracked separately from image acquisition failures.
+The post-featurization QC tool is [coSMicQC][cosmicqc], using a CytoTable-compatible view or export generated from the warehouse profile tables.
+The warehouse keeps the `Metadata_*` schema as the source of truth while the compatibility view maps those tables into the current coSMicQC input shape.
 [CytoTable][cytotable] is not the execution engine for this path.
-CytoTable remains a compatibility bridge if ZedProfiler outputs need conversion into pycytominer-oriented table shapes or if CellProfiler-style outputs remain in part of the workflow.
+CytoTable remains a compatibility bridge for coSMicQC and pycytominer-oriented table shapes, not the scheduler or canonical storage layer.
 
 ## Implementation sequence
 
 1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, candidate whole-image QC cases, segmentation edge cases, image-size variation, and object-count variation.
 2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-4. **Pre-production QC assessment:** define the initial 3D whole-image QC fields and review pilot whole-image QC flags before segmentation scale-up, then review post-featurization single-cell/object QC flags, exclusion rates, object counts, failed crops, segmentation failures, and downstream profile failures before expanding to the production dataset.
+4. **Pre-production QC assessment:** define the initial 3D whole-image QC fields and review pilot whole-image QC flags before segmentation scale-up, then run coSMicQC through the CytoTable-compatible profile view to review post-featurization single-cell/object QC flags, exclusion rates, object counts, failed crops, segmentation failures, and downstream profile failures before expanding to the production dataset.
 5. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, whole-image QC, single-cell/object QC, and job-array checks.
 6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, image-level flags, and object-level flags.
 7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
@@ -180,11 +185,12 @@ Two small project specifications precede implementation:
 
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
-- **QC stage spec:** required whole-image QC fields before segmentation and required single-cell/object QC fields after featurization, including whether each field gates execution, flags records, or filters downstream profiles.
+- **QC stage spec:** required whole-image QC fields before segmentation, required coSMicQC fields after featurization, the CytoTable-compatible view schema used by coSMicQC, and whether each field gates execution, flags records, or filters downstream profiles.
 
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
 [iceberg-warehouse]: https://github.com/WayScience/iceberg-bioimage/blob/main/docs/src/warehouse-spec.md
+[cosmicqc]: https://github.com/WayScience/cosmicqc
 [cytotable]: https://github.com/cytomining/CytoTable
 [curc-persistence1]: https://curc.readthedocs.io/en/latest/clusters/alpine/quick-start.html
 [nextflow-slurm]: https://docs.seqera.io/nextflow/executor
