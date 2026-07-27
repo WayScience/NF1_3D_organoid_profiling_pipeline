@@ -116,7 +116,7 @@ Tasks with variable memory, GPU, walltime, or container needs remain ordinary SL
 On University of Colorado Research Computing infrastructure, the deployment model runs the **Nextflow controller** on [Persistence1][curc-persistence1], which CURC documents as the place for workflow managers.
 The controller does not perform substantial image processing itself.
 Instead, it submits each pipeline process to Alpine as an independent SLURM job through `sbatch`, monitors task state, and launches downstream work when dependencies are satisfied.
-This gives the pipeline a persistent orchestration layer while allowing CellProfiler whole-image QC, 3D segmentation, ZedProfiler feature extraction, coSMicQC single-cell/object QC, and pycytominer preprocessing jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
+This gives the pipeline a persistent orchestration layer while allowing CellProfiler whole-image QC, 3D segmentation, ZedProfiler feature extraction, coSMicQC single-cell/object QC, and [pycytominer][pycytominer] preprocessing jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
 Scratch space is used only for ephemeral Nextflow work directories and temporary task files.
 Durable workflow outputs, warehouse tables, manifests, reports, and logs are published to Isilon or to the active gitignored `data/` warehouse target before scratch cleanup.
 
@@ -170,9 +170,10 @@ The next milestone assesses single-cell/object QC behavior after pilot featuriza
 The following milestone applies the pilot-validated workflow and warehouse writer to the production dataset.
 A later milestone backfills prior patients, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes the full QC decision policy across image-level and object-level decisions.
 Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
-Combined-patient analyses can still concatenate selected profiles for pycytominer feature selection, aggregation, and related cytomining workflows.
-pycytominer-style operations are expected to be compatible with iceberg-bioimage warehouse tables because the profile outputs remain tabular, metadata-prefixed, and feature-column oriented.
-The highest-risk work is not the Parquet writing itself; it is making stable identifiers, patient/well/FOV metadata, object-parent links, whole-image QC gates, and post-featurization object QC behavior consistent across batches before scaling.
+Combined-patient analyses can still concatenate selected profiles for [pycytominer][pycytominer] feature selection, aggregation, and related cytomining workflows.
+[pycytominer][pycytominer] operations are expected to be compatible with iceberg-bioimage warehouse tables because the profile outputs remain tabular, metadata-prefixed, and feature-column oriented.
+The highest-risk work is not the Parquet writing itself; it is making stable identifiers, patient/well/FOV metadata, object-parent links, whole-image QC gates, and post-featurization single-cell/object QC thresholds consistent across batches before scaling.
+Those QC thresholds must remove imaging failures, segmentation artifacts, failed crops, and unusable objects without systematically removing biologically meaningful treatment or patient phenotypes.
 
 ## Alternatives considered
 
@@ -201,5 +202,6 @@ This plan keeps the current pipeline scientifically intact while making the data
 [nextflow-slurm]: https://docs.seqera.io/nextflow/executor
 [ome-arrow]: https://github.com/WayScience/ome-arrow
 [ome-arrow-benchmarks]: https://github.com/WayScience/ome-arrow-benchmarks
+[pycytominer]: https://github.com/cytomining/pycytominer
 [zedprofiler]: https://github.com/WayScience/ZedProfiler
 [zedprofiler-features]: https://github.com/WayScience/ZedProfiler/blob/main/docs/src/features/Feature_Naming_Convention.md
