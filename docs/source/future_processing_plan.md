@@ -20,7 +20,7 @@ The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: rep
 Required namespaces and tables:
 
 - `images.image_assets`: one row per image asset with `Metadata_Biology_PatientTumor`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
-- `quality_control.image_qc`: whole-image blur, saturation, corruption, and exclusion flags generated before segmentation and featurization, keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
+- `quality_control.image_qc`: candidate whole-image blur, saturation, corruption, and exclusion flags generated before segmentation and featurization, keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
 - `quality_control.object_qc`: post-featurization single-cell and object-level QC flags keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and object compartment.
 - `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and, when relevant, `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID`.
 - `profiles.normalized_profiles`, `profiles.selected_profiles`, and `profiles.consensus_profiles`: derived analytical tables that preserve the same stable identifiers and declare their parent tables in the manifest.
@@ -144,10 +144,10 @@ CytoTable remains a compatibility bridge if ZedProfiler outputs need conversion 
 
 ## Implementation sequence
 
-1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, whole-image QC failures, segmentation edge cases, image-size variation, and object-count variation.
+1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, candidate whole-image QC cases, segmentation edge cases, image-size variation, and object-count variation.
 2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-4. **Pre-production QC assessment:** review pilot whole-image QC flags before segmentation scale-up, then review post-featurization single-cell/object QC flags, exclusion rates, object counts, failed crops, segmentation failures, and downstream profile failures before expanding to the production dataset.
+4. **Pre-production QC assessment:** define the initial 3D whole-image QC fields and review pilot whole-image QC flags before segmentation scale-up, then review post-featurization single-cell/object QC flags, exclusion rates, object counts, failed crops, segmentation failures, and downstream profile failures before expanding to the production dataset.
 5. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, whole-image QC, single-cell/object QC, and job-array checks.
 6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, image-level flags, and object-level flags.
 7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
