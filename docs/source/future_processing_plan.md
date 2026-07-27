@@ -133,7 +133,7 @@ CytoTable remains a compatibility bridge if ZedProfiler outputs need conversion 
 ## Implementation sequence
 
 1. **Pilot subset selection:** choose two representative patients with a few well/FOVs from each to cover normal images, QC failures, segmentation edge cases, one treatment/control contrast, image-size variation, and object-count variation.
-2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing all Nextflow and SLURM observability artifacts.
+2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
 4. **Pre-production QC assessment:** review pilot QC flags, exclusion rates, object counts, segmentation failures, and downstream profile failures before expanding to the production dataset.
 5. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, QC, and job-array checks.
