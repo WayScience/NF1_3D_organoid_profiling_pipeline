@@ -116,7 +116,7 @@ Tasks with variable memory, GPU, walltime, or container needs remain ordinary SL
 On University of Colorado Research Computing infrastructure, the deployment model runs the **Nextflow controller** on [Persistence1][curc-persistence1], which CURC documents as the place for workflow managers.
 The controller does not perform substantial image processing itself.
 Instead, it submits each pipeline process to Alpine as an independent SLURM job through `sbatch`, monitors task state, and launches downstream work when dependencies are satisfied.
-This gives the pipeline a persistent orchestration layer while allowing whole-image QC, segmentation, ZedProfiler feature extraction, single-cell QC, normalization, and aggregation jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
+This gives the pipeline a persistent orchestration layer while allowing CellProfiler whole-image QC, 3D segmentation, ZedProfiler feature extraction, coSMicQC single-cell/object QC, and pycytominer preprocessing jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
 Scratch space is used only for ephemeral Nextflow work directories and temporary task files.
 Durable workflow outputs, warehouse tables, manifests, reports, and logs are published to Isilon or to the active gitignored `data/` warehouse target before scratch cleanup.
 
