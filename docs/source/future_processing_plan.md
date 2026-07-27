@@ -22,6 +22,7 @@ Required namespaces and tables:
 - `images.image_assets`: one row per image asset with `Metadata_Biology_PatientTumor`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
 - `quality_control.image_qc`: candidate whole-image blur, saturation, module-error, and exclusion flags generated before segmentation and featurization, keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
   Initial records are derived from the existing CellProfiler `MeasureImageQuality` outputs where available, and the pilot hardens this into a reproducible 3D whole-image QC stage with canonical metrics and thresholds.
+- `quality_control.segmentation_qc`: mask existence, object counts, object geometry, parent-child consistency, and crop-readiness flags generated after 3D segmentation and before feature extraction, keyed by `Metadata_Imaging_ImageID`, object compartment, and, when relevant, `Metadata_Object_ObjectID`.
 - `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and, when relevant, `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID`.
 - `profiles.cqc_flags`: post-featurization single-cell and object-level QC flags from [coSMicQC][cosmicqc], keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and object compartment.
   This table is the middle layer between raw object profiles and normalized, selected, or consensus profiles.
@@ -51,6 +52,7 @@ flowchart LR
     subgraph alpine_slurm["Alpine SLURM"]
         image_qc_jobs["CellProfiler whole-image QC jobs"]
         segmentation_jobs["segmentation jobs"]
+        segmentation_qc_jobs["segmentation QC jobs"]
         featurization_jobs["ZedProfiler feature extraction jobs"]
         cytotable_view_jobs["CytoTable-compatible QC view jobs"]
         object_qc_jobs["coSMicQC single-cell / object QC jobs"]
@@ -61,6 +63,7 @@ flowchart LR
         warehouse_manifest["warehouse_manifest.json"]
         image_assets["images.image_assets"]
         image_qc["quality_control.image_qc"]
+        segmentation_qc["quality_control.segmentation_qc"]
         object_profiles["profiles.object_tables"]
         cqc_flags["profiles.cqc_flags"]
         derived_profiles["profiles.derived_profiles"]
@@ -74,13 +77,16 @@ flowchart LR
     warehouse_references -.-> warehouse_manifest
     nextflow_controller -->|sbatch| image_qc_jobs
     nextflow_controller -->|sbatch| segmentation_jobs
+    nextflow_controller -->|sbatch| segmentation_qc_jobs
     nextflow_controller -->|sbatch| featurization_jobs
     nextflow_controller -->|sbatch| cytotable_view_jobs
     nextflow_controller -->|sbatch| object_qc_jobs
     nextflow_controller -->|sbatch| profile_jobs
     image_qc_jobs --> image_qc
     image_qc -->|image-level gates| segmentation_jobs
-    segmentation_jobs -->|masks ready| featurization_jobs
+    segmentation_jobs --> segmentation_qc_jobs
+    segmentation_qc_jobs --> segmentation_qc
+    segmentation_qc -->|mask gates| featurization_jobs
     segmentation_jobs --> image_assets
     segmentation_jobs --> object_profiles
     featurization_jobs --> object_profiles
@@ -94,6 +100,7 @@ flowchart LR
     profile_jobs --> derived_profiles
     image_assets --> warehouse_manifest
     image_qc --> warehouse_manifest
+    segmentation_qc --> warehouse_manifest
     object_profiles --> warehouse_manifest
     cqc_flags --> warehouse_manifest
     derived_profiles --> warehouse_manifest
@@ -116,7 +123,7 @@ Tasks with variable memory, GPU, walltime, or container needs remain ordinary SL
 On University of Colorado Research Computing infrastructure, the deployment model runs the **Nextflow controller** on [Persistence1][curc-persistence1], which CURC documents as the place for workflow managers.
 The controller does not perform substantial image processing itself.
 Instead, it submits each pipeline process to Alpine as an independent SLURM job through `sbatch`, monitors task state, and launches downstream work when dependencies are satisfied.
-This gives the pipeline a persistent orchestration layer while allowing CellProfiler whole-image QC, 3D segmentation, ZedProfiler feature extraction, coSMicQC single-cell/object QC, and [pycytominer][pycytominer] preprocessing jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
+This gives the pipeline a persistent orchestration layer while allowing CellProfiler whole-image QC, 3D segmentation, segmentation QC, ZedProfiler feature extraction, coSMicQC single-cell/object QC, and [pycytominer][pycytominer] preprocessing jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
 Scratch space is used only for ephemeral Nextflow work directories and temporary task files.
 Durable workflow outputs, warehouse tables, manifests, reports, and logs are published to Isilon or to the active gitignored `data/` warehouse target before scratch cleanup.
 
@@ -130,7 +137,7 @@ Each step writes a small run record next to its outputs: command, git commit, co
 Nextflow emits a trace table, timeline report, DAG, execution report, `.nextflow.log`, and per-process logs under a stable run directory.
 The trace table captures process name, patient, well/FOV shard, status, attempt, runtime, CPU, memory, exit code, work directory, and published outputs.
 SLURM job IDs are retained so failed or slow tasks can be inspected with `sacct`, `squeue`, `seff`, and the process `.command.out` and `.command.err` files.
-A single DuckDB validation script combines these run artifacts with the warehouse manifest to check manifest conformance, join-key uniqueness, feature-name validity, orphaned profiles, whole-image exclusion rates, single-cell/object filtering rates, failed tasks, retry counts, and resource outliers.
+A single DuckDB validation script combines these run artifacts with the warehouse manifest to check manifest conformance, join-key uniqueness, feature-name validity, orphaned profiles, whole-image exclusion rates, segmentation QC failures, single-cell/object filtering rates, failed tasks, retry counts, and resource outliers.
 
 ## ZedProfiler integration
 
@@ -145,6 +152,8 @@ All handcrafted and deep-learning feature outputs publish into `profiles.object_
 Whole-image QC runs before segmentation and featurization so failed image assets can be excluded or flagged before expensive downstream work.
 The starting implementation hardens the existing CellProfiler `MeasureImageQuality` pipeline rather than assuming it is already production-ready for 3D.
 The pilot formalizes the 3D whole-image QC fields, thresholds, output paths, and pass/fail semantics.
+Segmentation QC runs after 3D segmentation and before feature extraction to check mask completeness, object counts, parent-child links, and crop readiness.
+Its flags are written to `quality_control.segmentation_qc` so segmentation failures are not conflated with image acquisition failures or post-featurization single-cell/object outliers.
 Single-cell and object-level QC runs after ZedProfiler and bespoke deep-learning featurization so feature missingness, object outliers, failed crops, and late-stage profiling errors can be tracked separately from image acquisition failures.
 The post-featurization QC tool is [coSMicQC][cosmicqc], using a CytoTable-compatible view or export generated from the warehouse profile tables.
 Its flags are written to `profiles.cqc_flags` before normalization, feature selection, aggregation, or consensus profiling.
@@ -157,9 +166,9 @@ CytoTable remains a compatibility bridge for coSMicQC and single-cell or object-
 1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, candidate whole-image QC cases, segmentation edge cases, image-size variation, and object-count variation.
 2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-4. **Pre-production QC assessment:** harden and rerun the CellProfiler whole-image QC workflow on the pilot subset, map its outputs into initial 3D whole-image QC fields, and review pilot whole-image QC flags before segmentation scale-up, then run coSMicQC through the CytoTable-compatible profile view to review post-featurization single-cell/object QC flags, exclusion rates, object counts, failed crops, segmentation failures, and downstream profile failures before expanding to the production dataset.
-5. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, whole-image QC, single-cell/object QC, and job-array checks.
-6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, image-level flags, and `profiles.cqc_flags`.
+4. **Pre-production QC assessment:** harden and rerun the CellProfiler whole-image QC workflow on the pilot subset, map its outputs into initial 3D whole-image QC fields, review segmentation QC flags after mask generation, then run coSMicQC through the CytoTable-compatible profile view to review post-featurization single-cell/object QC flags before expanding to the production dataset.
+5. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, whole-image QC, segmentation QC, single-cell/object QC, and job-array checks.
+6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, image-level flags, segmentation flags, and `profiles.cqc_flags`.
 7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
 The validation report tracks each well/FOV from segmentation through ZedProfiler feature extraction and downstream image-based profiling so late-stage profile errors are visible even when earlier stages succeed.
 
@@ -191,7 +200,7 @@ Two small project specifications precede implementation:
 
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
-- **QC stage spec:** required CellProfiler-derived whole-image QC fields before segmentation, required coSMicQC fields after featurization, the CytoTable-compatible view schema used by coSMicQC, and whether each field gates execution, flags records, or filters downstream profiles.
+- **QC stage spec:** required CellProfiler-derived whole-image QC fields before segmentation, required segmentation QC fields before feature extraction, required coSMicQC fields after featurization, the CytoTable-compatible view schema used by coSMicQC, and whether each field gates execution, flags records, or filters downstream profiles.
 
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
