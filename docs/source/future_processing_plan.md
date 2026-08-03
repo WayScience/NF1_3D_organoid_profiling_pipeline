@@ -5,7 +5,10 @@ title: Future processing plan
 # Future processing plan
 
 This repository defines the NF1 3D organoid image-processing workflow, including segmentation, feature extraction, QC, profile preparation, and warehouse validation.
-The future workflow will write a **bioimage profiling warehouse with a small manifest file** so every image, object, whole-image QC result, single-cell/object QC result, feature table, and patient annotation can be joined by stable identifiers without a bespoke database service.
+This plan covers both the **current-data reprocessing exercise** and the **future processing pattern for new data**.
+Short term, the work pilots the new workflow and warehouse structure on representative current data before expanding to the current production dataset.
+Mid term, the same workflow shape becomes the default for new patients, new plates, and later backfills.
+The workflow will write a **bioimage profiling warehouse with a small manifest file** so every image, object, whole-image QC result, single-cell/object QC result, feature table, and patient annotation can be joined by stable identifiers without a bespoke database service.
 The manifest is a JSON index that records the active warehouse location, table paths, schemas, source assets, and run provenance.
 The design follows the [iceberg-bioimage warehouse specification][iceberg-warehouse], uses [OME-Arrow][ome-arrow] where image payloads or chunk metadata need tabular access, and uses [**ZedProfiler**][zedprofiler] as the feature extractor for morphology profiles.
 ZedProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
@@ -176,12 +179,12 @@ CytoTable remains a compatibility bridge for coSMicQC and single-cell or object-
 7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
 The validation report tracks each well/FOV from segmentation through ZedProfiler feature extraction and downstream image-based profiling so late-stage profile errors are visible even when earlier stages succeed.
 
-## Implementation scope
+## Short- and mid-term goals
 
-The first milestone runs the small-data pilot through the workflow layer and publishes the resulting outputs to the active pilot warehouse location.
-The next milestone assesses single-cell/object QC behavior after pilot featurization and sets the initial post-featurization pass/fail fields used during production rollout.
-The following milestone applies the pilot-validated workflow and warehouse writer to the production dataset.
-A later milestone backfills prior patients, decides whether OME-Arrow is needed for image crops or chunk-level access, and formalizes the full QC decision policy across image-level and object-level decisions.
+The **short-term goal** is the reprocessing path for current data.
+It starts with the small-data pilot, assesses whole-image QC, segmentation QC, ZedProfiler output shape, coSMicQC compatibility, and warehouse validation, then expands to the current production dataset.
+The **mid-term goal** is to make this the standard processing pattern for new patients, new plates, and later backfills.
+That work decides whether OME-Arrow is needed for image crops or chunk-level access and formalizes the full QC decision policy across image-level and object-level decisions.
 Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
 Combined-patient analyses can still concatenate selected profiles for [pycytominer][pycytominer] feature selection, aggregation, and related cytomining workflows.
 [pycytominer][pycytominer] operations are expected to be compatible with iceberg-bioimage warehouse tables because the profile outputs remain tabular, metadata-prefixed, and feature-column oriented.
