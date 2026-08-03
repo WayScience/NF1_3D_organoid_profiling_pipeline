@@ -4,7 +4,9 @@ title: Future processing plan
 
 # Future processing plan
 
-This pipeline will become a **manifest-driven bioimage profiling warehouse**: every image, object, whole-image QC result, single-cell/object QC result, feature table, and patient annotation is joinable by stable identifiers, without requiring a bespoke database service.
+This repository defines the NF1 3D organoid image-processing workflow, including segmentation, feature extraction, QC, profile preparation, and warehouse validation.
+The future workflow will write a **bioimage profiling warehouse with a small manifest file** so every image, object, whole-image QC result, single-cell/object QC result, feature table, and patient annotation can be joined by stable identifiers without a bespoke database service.
+The manifest is a JSON index that records the active warehouse location, table paths, schemas, source assets, and run provenance.
 The design follows the [iceberg-bioimage warehouse specification][iceberg-warehouse], uses [OME-Arrow][ome-arrow] where image payloads or chunk metadata need tabular access, and uses [**ZedProfiler**][zedprofiler] as the feature extractor for morphology profiles.
 ZedProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
 
@@ -114,7 +116,7 @@ flowchart LR
 ### Workflow manager
 
 The workflow layer treats **SLURM as a first-class execution backend**, because the current shell-plus-SLURM pattern is practical but too hard to audit, restart, and parameterize across patients.
-**Nextflow is the workflow manager for this pipeline** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, task caching, `-resume`-based workflow continuation, and selective job arrays for homogeneous high-cardinality tasks.
+**Nextflow is the workflow manager for this repository's processing workflow** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, task caching, `-resume`-based workflow continuation, and selective job arrays for homogeneous high-cardinality tasks.
 **SLURM job arrays** are used selectively for uniform per-well/FOV shards such as whole-image QC, segmentation, and featurization when resource requirements are consistent.
 Tasks with variable memory, GPU, walltime, or container needs remain ordinary SLURM jobs.
 
