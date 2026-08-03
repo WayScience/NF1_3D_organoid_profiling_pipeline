@@ -21,6 +21,7 @@ The shared warehouse lives on **Isilon** (also known as Dell PowerScale), a shar
 For Alpine or other HPC environments without Isilon access, the warehouse can live under the repository's gitignored **`data/`** directory as a local execution target.
 The repository tracks workflow code, schema definitions, validation code, configuration, and small reference manifests that point to the active warehouse location.
 Each warehouse root contains Parquet-first tables plus **`warehouse_manifest.json`**.
+That file lists the warehouse root, table names, table paths or URI prefixes, schema versions, required join keys, source image roots, run IDs, git commit or container metadata, row counts, and validation status.
 **OME-TIFF** or **OME-Zarr** remain the source image assets when that is sufficient; **OME-Arrow** is reserved for derived crops, chunk indexes, or image tensors that need to be joined and filtered with profiles in DuckDB.
 The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: reported results include faster bulk image reads and writes for Arrow-backed layouts, a roughly millisecond-scale NF1 feature-to-image join, and faster metadata scans than converted OME-Zarr metadata.
 
