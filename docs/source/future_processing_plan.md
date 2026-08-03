@@ -14,6 +14,19 @@ The design follows the [iceberg-bioimage warehouse specification][iceberg-wareho
 ZedProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
 ZedProfiler outputs are written as warehouse profile tables whose `Metadata_*` join keys connect features back to images, masks, and patients.
 
+## Guiding principles
+
+The primary goal is to upgrade this repository around **ZedProfiler** feature extraction while keeping runtime, parallelism, and practical delivery constraints central.
+Publication-worthiness is the decision frame: outputs should be reproducible, interpretable, performant, and easy to audit across patients.
+The near-term focus is **features and refactoring for parallel execution**, not broad QC policy design.
+QC remains future specification work until the project has clearer evidence about which decisions improve reproducibility without masking biology.
+Deep-learning features remain in their current bespoke path, while DeepProfiler-style expansion is deprioritized for this project.
+The key technical handoff is from **featurization** to **image-based profiling**, including stable identifiers, object-parent links, table shape, and downstream compatibility.
+Workflow execution should support chunked, restartable jobs that can create subsets of expected outputs without requiring every file to exist at once.
+The workflow plan should prioritize fast ZedProfiler outputs without hiding the complexity of Alpine, Persistence1, scratch storage, and SLURM orchestration.
+Ownership boundaries should stay explicit: Dave's deliverable is feature extraction, image-based profiling ownership is a decision point, and orchestration is joint work with Mike and Dave.
+Regular working meetings should be used to resolve handoff details, resource behavior, and schema decisions before they become large refactors.
+
 ## Target warehouse structure
 
 This section defines where shared outputs live, which tables are required, and which identifiers must be present so images, features, and patient annotations can be joined.
@@ -75,12 +88,8 @@ flowchart LR
     end
 
     subgraph future_qc["Future QC prospects"]
-        image_qc_jobs["whole-image QC evaluation"]
-        segmentation_qc_jobs["segmentation QC evaluation"]
-        object_qc_jobs["coSMicQC compatibility pilot"]
-        image_qc["candidate quality_control.image_qc"]
-        segmentation_qc["candidate quality_control.segmentation_qc"]
-        cqc_flags["candidate profiles.cqc_flags"]
+        future_qc_spec["future QC specification"]
+        future_qc_outputs["candidate QC tables / flags"]
     end
 
     nextflow_pipeline --> nextflow_controller
@@ -102,15 +111,10 @@ flowchart LR
     treatment_annotations --> warehouse_manifest
     ome_arrow_assets --> warehouse_manifest
     run_reports --> warehouse_manifest
-    nextflow_controller -.->|future sbatch| image_qc_jobs
-    nextflow_controller -.->|future sbatch| segmentation_qc_jobs
-    object_profiles -.-> object_qc_jobs
-    image_qc_jobs -.-> image_qc
-    segmentation_qc_jobs -.-> segmentation_qc
-    object_qc_jobs -.-> cqc_flags
-    image_qc -.-> warehouse_manifest
-    segmentation_qc -.-> warehouse_manifest
-    cqc_flags -.-> warehouse_manifest
+    nextflow_controller -.-> future_qc_spec
+    object_profiles -.-> future_qc_spec
+    future_qc_spec -.-> future_qc_outputs
+    future_qc_outputs -.-> warehouse_manifest
 ```
 
 ## Workflow and observability
@@ -130,7 +134,7 @@ Tasks with variable memory, GPU, walltime, or container needs remain ordinary SL
 On University of Colorado Research Computing infrastructure, the deployment model runs the **Nextflow controller** on [Persistence1][curc-persistence1], which CURC documents as the place for workflow managers.
 The controller does not perform substantial image processing itself.
 Instead, it submits each pipeline process to Alpine as an independent SLURM job through `sbatch`, monitors task state, and launches downstream work when dependencies are satisfied.
-This gives the pipeline a persistent orchestration layer while allowing 3D segmentation, ZedProfiler feature extraction, [pycytominer][pycytominer] preprocessing, and future QC jobs to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
+This gives the pipeline a persistent orchestration layer while allowing 3D segmentation, ZedProfiler feature extraction, [pycytominer][pycytominer] preprocessing, and later QC work to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
 Scratch space is used only for ephemeral Nextflow work directories and temporary task files.
 Durable workflow outputs, warehouse tables, manifests, reports, and logs are published to Isilon or to the active gitignored `data/` warehouse target before scratch cleanup.
 
@@ -160,10 +164,9 @@ All handcrafted and deep-learning feature outputs publish into `profiles.object_
 ## Future QC prospects
 
 QC-related tables are future extensions to the warehouse, not required outputs for the core reprocessing plan.
-Whole-image QC would record candidate CellProfiler `MeasureImageQuality` outputs in `quality_control.image_qc` before segmentation, but robust 3D whole-image QC metrics, thresholds, and pass/fail semantics require a separate future specification.
-Segmentation QC would record mask existence, object counts, object geometry, parent-child consistency, and crop-readiness fields in `quality_control.segmentation_qc` after segmentation and before feature extraction.
-coSMicQC is especially uncharted for this workflow because the warehouse profile tables would need an explicit input compatibility specification before integration.
-That future work should harden the input shape, `profiles.cqc_flags` schema, and flag semantics before single-cell/object QC is used to filter normalization, feature selection, aggregation, or consensus profiles.
+Future QC work should decide which whole-image and post-featurization object-level checks belong in this project, which fields are stored, and whether any fields gate execution or only annotate records.
+Potential coSMicQC integration remains uncharted because the warehouse profile tables would need an explicit input compatibility specification before integration.
+That future work should harden the input shape, candidate QC table schemas, and flag semantics before QC is used to filter normalization, feature selection, aggregation, or consensus profiles.
 
 ## Implementation sequence
 
@@ -202,7 +205,7 @@ Two small project specifications precede implementation:
 
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
-- **Future QC spec:** candidate CellProfiler-derived whole-image QC fields, segmentation QC fields, coSMicQC input shape and output fields, and whether each field gates execution, flags records, or filters downstream profiles.
+- **Future QC spec:** candidate whole-image and object-level QC fields, optional coSMicQC input shape and output fields, and whether each field gates execution, flags records, or filters downstream profiles.
 
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
