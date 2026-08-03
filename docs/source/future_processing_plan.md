@@ -14,7 +14,7 @@ ZedProfiler outputs are written as warehouse profile tables whose `Metadata_*` j
 ## Target warehouse structure
 
 This section defines where shared outputs live, which tables are required, and which identifiers must be present so images, QC, features, and patient annotations can be joined.
-The shared warehouse lives on **Isilon storage** when that storage is available to the compute environment.
+The shared warehouse lives on **Isilon** (also known as Dell PowerScale), a shared network storage used for durable project data, when that storage is available to the compute environment.
 For Alpine or other HPC environments without Isilon access, the warehouse can live under the repository's gitignored **`data/`** directory as a local execution target.
 The repository tracks workflow code, schema definitions, validation code, configuration, and small reference manifests that point to the active warehouse location.
 Each warehouse root contains Parquet-first tables plus **`warehouse_manifest.json`**.
