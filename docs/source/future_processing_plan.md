@@ -30,6 +30,9 @@ The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: rep
 
 Required namespaces and tables:
 
+The items below are warehouse table namespaces, not fields inside `warehouse_manifest.json`.
+The manifest records these tables, their paths, schemas, join keys, source assets, and validation status.
+
 - `images.image_assets`: one row per image asset with `Metadata_Biology_PatientTumor`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
 - `quality_control.image_qc`: candidate whole-image blur, saturation, module-error, and exclusion flags generated before segmentation and featurization, keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
   Initial records are derived from the existing CellProfiler `MeasureImageQuality` outputs where available, and the pilot hardens this into a reproducible 3D whole-image QC stage with canonical metrics and thresholds.
