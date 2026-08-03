@@ -36,7 +36,8 @@ The manifest records these tables, their paths, schemas, join keys, source asset
 - `images.image_assets`: one row per image asset with `Metadata_Biology_PatientTumor`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
 - `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and, when relevant, `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID`.
 - `profiles.normalized_profiles`, `profiles.selected_profiles`, and `profiles.consensus_profiles`: derived analytical tables that preserve the same stable identifiers and declare their parent tables in the manifest.
-- `profiles.patient_treatment_annotations`: patient, tumor, plate map, treatment, dose, unit, target, class, and therapeutic category keyed by patient and well.
+- `profiles.plate_map_annotations`: the normalized warehouse form of the plate maps.
+  It includes patient, tumor, plate, well, treatment, dose, unit, target, class, and therapeutic category keyed by `Metadata_Biology_PatientTumor`, `Metadata_Experiment_PlateID`, and `Metadata_Experiment_WellID`.
 
 **Column naming is enforced before writing shared outputs.**
 Feature columns use **`{Compartment}_{Channel}_{FeatureType}_{Measurement}`**; metadata columns use **`Metadata_{Category}_{Name}`**.
@@ -69,7 +70,7 @@ flowchart LR
         image_assets["images.image_assets"]
         object_profiles["profiles.object_tables"]
         derived_profiles["profiles.derived_profiles"]
-        treatment_annotations["profiles.patient_treatment_annotations"]
+        treatment_annotations["profiles.plate_map_annotations"]
         ome_arrow_assets["OME-Arrow crops / chunk index"]
     end
 
@@ -116,8 +117,10 @@ flowchart LR
 
 ### Workflow manager
 
-The workflow layer treats **SLURM as a first-class execution backend**, because the current shell-plus-SLURM pattern is practical but too hard to audit, restart, and parameterize across patients.
-**Nextflow is the workflow manager for this repository's processing workflow** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, task caching, `-resume`-based workflow continuation, and selective job arrays for homogeneous high-cardinality tasks.
+The workflow layer should keep **SLURM as a first-class execution backend**, because the current shell-plus-SLURM pattern is practical but too hard to audit, restart, and parameterize across patients.
+**Nextflow is the target workflow manager for this repository's processing workflow** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, task caching, `-resume`-based workflow continuation, and selective job arrays for homogeneous high-cardinality tasks.
+This is a substantial workflow-engineering change, so the short-term scope is a pilot wrapper around existing stage commands and warehouse publishing rather than a full pipeline rewrite.
+After the pilot validates orchestration, outputs, and observability, the same workflow shape can expand to production reprocessing and then become the mid-term default for new data.
 **SLURM job arrays** are used selectively for uniform per-well/FOV shards such as segmentation and featurization when resource requirements are consistent.
 Tasks with variable memory, GPU, walltime, or container needs remain ordinary SLURM jobs.
 
@@ -164,9 +167,10 @@ That future work should harden the input shape, `profiles.cqc_flags` schema, and
 ## Implementation sequence
 
 1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, segmentation edge cases, image-size variation, and object-count variation.
-2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
+2. **Pilot workflow orchestration:** create a minimal Nextflow `slurm` profile that wraps the existing stage commands for the pilot subset on CURC Persistence1 and Alpine.
+   Use scratch only for temporary work and publish durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-4. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
+4. **Production workflow rollout:** expand the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
 5. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, and profile outputs.
 6. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
 The validation report tracks each well/FOV from segmentation through ZedProfiler feature extraction and downstream image-based profiling so late-stage profile errors are visible even when earlier stages succeed.
