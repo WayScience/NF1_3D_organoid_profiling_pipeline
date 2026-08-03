@@ -10,20 +10,20 @@ Short term, the work pilots the new workflow and warehouse structure on represen
 Mid term, the same workflow shape becomes the default for new patients, new plates, and later backfills.
 The workflow will write a **bioimage profiling warehouse with a small manifest file** so every image, object, feature table, and patient annotation can be joined by stable identifiers without a bespoke database service.
 The manifest is a JSON index that records the active warehouse location, table paths, schemas, source assets, and run provenance.
-The design follows the [iceberg-bioimage warehouse specification][iceberg-warehouse], uses [OME-Arrow][ome-arrow] where image payloads or chunk metadata need tabular access, and uses [**ZedProfiler**][zedprofiler] as the feature extractor for morphology profiles.
-ZedProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
-ZedProfiler outputs are written as warehouse profile tables whose `Metadata_*` join keys connect features back to images, masks, and patients.
+The design follows the [iceberg-bioimage warehouse specification][iceberg-warehouse], uses [OME-Arrow][ome-arrow] where image payloads or chunk metadata need tabular access, and uses [**ZEDProfiler**][zedprofiler] as the feature extractor for morphology profiles.
+ZEDProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
+ZEDProfiler outputs are written as warehouse profile tables whose `Metadata_*` join keys connect features back to images, masks, and patients.
 
 ## Guiding principles
 
-The primary goal is to upgrade this repository around **ZedProfiler** feature extraction while keeping runtime, parallelism, and practical delivery constraints central.
+The primary goal is to upgrade this repository around **ZEDProfiler** feature extraction while keeping runtime, parallelism, and practical delivery constraints central.
 Publication-worthiness is the decision frame: outputs should be reproducible, interpretable, performant, and easy to audit across patients.
 The near-term focus is **features and refactoring for parallel execution**, not broad QC policy design.
-QC remains future specification work until the project has clearer evidence about which decisions improve reproducibility without masking biology.
+QC remains outside the core implementation until a separate effort can decide which checks improve reproducibility without masking biology.
 Deep-learning features remain in their current bespoke path, while DeepProfiler-style expansion is deprioritized for this project.
 The key technical handoff is from **featurization** to **image-based profiling**, including stable identifiers, object-parent links, table shape, and downstream compatibility.
 Workflow execution should support chunked, restartable jobs that can create subsets of expected outputs without requiring every file to exist at once.
-The workflow plan should prioritize fast ZedProfiler outputs without hiding the complexity of Alpine, Persistence1, scratch storage, and SLURM orchestration.
+The workflow plan should prioritize fast ZEDProfiler outputs without hiding the complexity of Alpine, Persistence1, scratch storage, and SLURM orchestration.
 Ownership boundaries should stay explicit: Dave's deliverable is feature extraction, image-based profiling ownership is a decision point, and orchestration is joint work with Mike and Dave.
 Regular working meetings should be used to resolve handoff details, resource behavior, and schema decisions before they become large refactors.
 
@@ -36,9 +36,9 @@ The repository tracks workflow code, schema definitions, validation code, config
 Each warehouse root contains Parquet-first tables plus **`warehouse_manifest.json`**.
 That file lists the warehouse root, table names, table paths or URI prefixes, schema versions, required join keys, source image roots, run IDs, git commit or container metadata, row counts, and validation status.
 In practice, collaborator images enter as source assets, including custom TIFF layouts, and are converted to whole-image **OME-Zarr** for canonical image storage.
-ZedProfiler features, annotations, derived profiles, and any future QC outputs are not written as OME-Arrow; they are Parquet warehouse tables keyed by `Metadata_*` identifiers.
+ZEDProfiler features, annotations, and derived profiles are not written as OME-Arrow; they are Parquet warehouse tables keyed by `Metadata_*` identifiers.
 **OME-Arrow** is reserved for derived crops, chunk indexes, or image tensors that need to be joined and filtered with profiles in DuckDB or other table-oriented analysis tools.
-For example, OME-Arrow would fit nucleocentric 3D crops and 2D z-maximum projections when downstream review needs to select cells by object features, treatment metadata, or future single-cell/object QC flags and then load only the matching image crops.
+For example, OME-Arrow would fit nucleocentric 3D crops and 2D z-maximum projections when downstream review needs to select cells by object features or treatment metadata and then load only the matching image crops.
 The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: reported results include faster bulk image reads and writes for Arrow-backed layouts, a roughly millisecond-scale NF1 feature-to-image join, and faster metadata scans than converted OME-Zarr metadata.
 
 Required namespaces and tables:
@@ -74,7 +74,7 @@ flowchart LR
 
     subgraph alpine_slurm["Alpine SLURM"]
         segmentation_jobs["segmentation jobs"]
-        featurization_jobs["ZedProfiler feature extraction jobs"]
+        featurization_jobs["ZEDProfiler feature extraction jobs"]
         profile_jobs["normalization / aggregation jobs"]
     end
 
@@ -87,9 +87,9 @@ flowchart LR
         ome_arrow_assets["OME-Arrow crops / chunk index"]
     end
 
-    subgraph future_qc["Future QC prospects"]
-        future_qc_spec["future QC specification"]
-        future_qc_outputs["candidate QC tables / flags"]
+    subgraph future_qc["Future QC outside this project"]
+        qc_assessment_notes["limited QC assessment notes"]
+        future_qc_spec["separate future QC specification"]
     end
 
     nextflow_pipeline --> nextflow_controller
@@ -111,10 +111,8 @@ flowchart LR
     treatment_annotations --> warehouse_manifest
     ome_arrow_assets --> warehouse_manifest
     run_reports --> warehouse_manifest
-    nextflow_controller -.-> future_qc_spec
-    object_profiles -.-> future_qc_spec
-    future_qc_spec -.-> future_qc_outputs
-    future_qc_outputs -.-> warehouse_manifest
+    object_profiles -.-> qc_assessment_notes
+    qc_assessment_notes -.-> future_qc_spec
 ```
 
 ## Workflow and observability
@@ -134,7 +132,7 @@ Tasks with variable memory, GPU, walltime, or container needs remain ordinary SL
 On University of Colorado Research Computing infrastructure, the deployment model runs the **Nextflow controller** on [Persistence1][curc-persistence1], which CURC documents as the place for workflow managers.
 The controller does not perform substantial image processing itself.
 Instead, it submits each pipeline process to Alpine as an independent SLURM job through `sbatch`, monitors task state, and launches downstream work when dependencies are satisfied.
-This gives the pipeline a persistent orchestration layer while allowing 3D segmentation, ZedProfiler feature extraction, [pycytominer][pycytominer] preprocessing, and later QC work to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
+This gives the pipeline a persistent orchestration layer while allowing 3D segmentation, ZEDProfiler feature extraction, and [pycytominer][pycytominer] preprocessing to use SLURM scheduling, resource allocation, retries, and fault isolation independently.
 Scratch space is used only for ephemeral Nextflow work directories and temporary task files.
 Durable workflow outputs, warehouse tables, manifests, reports, and logs are published to Isilon or to the active gitignored `data/` warehouse target before scratch cleanup.
 
@@ -150,41 +148,49 @@ The trace table captures process name, patient, well/FOV shard, status, attempt,
 SLURM job IDs are retained so failed or slow tasks can be inspected with `sacct`, `squeue`, `seff`, and the process `.command.out` and `.command.err` files.
 A repository-owned DuckDB validation script combines these run artifacts with the warehouse manifest to check manifest conformance, join-key uniqueness, feature-name validity, orphaned profiles, failed tasks, retry counts, and resource outliers.
 
-## ZedProfiler integration
+## ZEDProfiler integration
 
-The main implementation work is the **featurization to image-based profiling** handoff.
-ZedProfiler replaces the current local handcrafted featurization modules as the production feature extractor for supported object-level 3D morphology profiles.
+The highest-priority short-term implementation work is the **featurization to image-based profiling** handoff.
+
+### Handcrafted features
+
+[ZEDProfiler][zedprofiler] replaces the current local handcrafted featurization modules as the production feature extractor for supported object-level 3D morphology profiles.
+ZEDProfiler and the current local handcrafted modules are identical for the supported handcrafted features today, but future handcrafted feature development should occur in ZEDProfiler and local copies should be expected to drift if they remain.
 Its inputs are the registered image assets, segmentation masks, channel metadata, object identifiers, and parent-object relationships produced upstream.
 Its supported feature classes are Colocalization, Granularity, Intensity, Neighbors, Texture, and VolumeSizeShape.
-Its outputs are per-compartment handcrafted feature tables for nuclei, cells, cytoplasm, and organoids, written with ZedProfiler-compatible feature names and `Metadata_*` identifiers.
+Its outputs are per-compartment handcrafted feature tables for nuclei, cells, cytoplasm, and organoids, written with ZEDProfiler-compatible feature names and `Metadata_*` identifiers.
+
+### Deep-learning features
+
 Bespoke deep-learning featurization remains in the workflow for masked 3D features across nuclei, cells, cytoplasm, and organoids.
 Bespoke deep-learning featurization also remains for nucleocentric non-masked 3D crops from the nuclei mask and nucleocentric non-masked 2D z-maximum projections.
 All handcrafted and deep-learning feature outputs publish into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
 
-## Future QC prospects
+## Future QC assessment
 
-QC-related tables are future extensions to the warehouse, not required outputs for the core reprocessing plan.
-Future QC work should decide which whole-image and post-featurization object-level checks belong in this project, which fields are stored, and whether any fields gate execution or only annotate records.
-Potential coSMicQC integration remains uncharted because the warehouse profile tables would need an explicit input compatibility specification before integration.
-That future work should harden the input shape, candidate QC table schemas, and flag semantics before QC is used to filter normalization, feature selection, aggregation, or consensus profiles.
+QC implementation is intentionally out of scope for the core reprocessing plan.
+This project may perform a limited QC assessment to identify available whole-image and post-featurization object-level signals, document risks, and decide whether separate future QC work is warranted.
+The assessment should not define production thresholds, pass/fail semantics, execution gates, or required QC tables.
+Potential [coSMicQC][cosmicqc] integration remains separate future work because the warehouse profile tables would need an explicit input compatibility specification before integration.
 
 ## Implementation sequence
 
-1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, segmentation edge cases, image-size variation, and object-count variation.
-2. **Pilot workflow orchestration:** create a minimal Nextflow SLURM workflow with a CURC profile that wraps the existing stage commands for the pilot subset on Persistence1 and Alpine.
+1. **Pre-pilot readiness:** confirm the segmentation inputs, masks, and expected downstream handoff with Mike, then pin the ZEDProfiler release version after required bug fixes are confirmed.
+2. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, segmentation edge cases, image-size variation, and object-count variation.
+3. **Pilot workflow orchestration:** create a minimal Nextflow SLURM workflow with a CURC profile that wraps the existing stage commands for the pilot subset on Persistence1 and Alpine.
    Use scratch only for temporary work and publish durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
-3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-4. **Production workflow rollout:** expand the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
-5. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, and profile outputs.
-6. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
-The validation report tracks each well/FOV from segmentation through ZedProfiler feature extraction and downstream image-based profiling so late-stage profile errors are visible even when earlier stages succeed.
+4. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZEDProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
+5. **Production workflow rollout:** expand the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
+6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, and profile outputs.
+7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
+The validation report tracks each well/FOV from segmentation through ZEDProfiler feature extraction and downstream image-based profiling so late-stage profile errors are visible even when earlier stages succeed.
 
 ## Short- and mid-term goals
 
 The **short-term goal** is the reprocessing path for current data.
-It starts with the small-data pilot, assesses ZedProfiler output shape, warehouse validation, and workflow observability, then expands to the current production dataset.
+It starts with the ZEDProfiler-to-image-based-profiling handoff, runs the small-data pilot, assesses ZEDProfiler output shape, warehouse validation, and workflow observability, then expands to the current production dataset.
 The **mid-term goal** is to make this the standard processing pattern for new patients, new plates, and later backfills.
-That work decides whether OME-Arrow is needed for image crops or chunk-level access and can incorporate future QC prospects after their specifications are ready.
+That work decides whether OME-Arrow is needed for image crops or chunk-level access and can revisit QC after a separate specification is ready.
 Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
 Combined-patient analyses can still concatenate selected profiles for [pycytominer][pycytominer] feature selection, aggregation, and related cytomining workflows.
 [pycytominer][pycytominer] operations are expected to be compatible with iceberg-bioimage warehouse tables because the profile outputs remain tabular, metadata-prefixed, and feature-column oriented.
@@ -196,8 +202,8 @@ The highest-risk work is not the Parquet writing itself; it is making stable ide
 - **AWS or GCP processing:** remains possible through future Nextflow profiles, but CURC keeps data close to the existing compute environment and avoids premature cloud cost, transfer, credential, and governance complexity.
 - **More minimal architecture:** the proposed plan is already the minimum viable structure for this dataset because it includes only stable IDs, a manifest, Parquet tables, Nextflow-on-SLURM execution, and lightweight validation.
 - **Simpler data storage:** loose Parquet files, CSVs, and one-off DuckDB files are easy to write, but they do not define stable identifiers, table lineage, required schemas, or image-to-profile joins.
-- **CellProfiler:** remains useful for established image QC and feature extraction modules, but it is not the warehouse, scheduler, provenance system, or cross-patient profile query layer.
-- **scverse:** might be useful downstream for selected single-cell matrices, but it is not the primary data model for multi-compartment 3D image assets, masks, future QC tables, patient annotations, and parent-object relationships.
+- **CellProfiler:** remains useful for established image-processing and feature extraction modules, but it is not the warehouse, scheduler, provenance system, or cross-patient profile query layer.
+- **scverse:** might be useful downstream for selected single-cell matrices, but it is not the primary data model for multi-compartment 3D image assets, masks, patient annotations, and parent-object relationships.
 
 ## Required specifications
 
@@ -205,7 +211,10 @@ Two small project specifications precede implementation:
 
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
-- **Future QC spec:** candidate whole-image and object-level QC fields, optional coSMicQC input shape and output fields, and whether each field gates execution, flags records, or filters downstream profiles.
+- **ZEDProfiler release spec:** the exact ZEDProfiler version, required bug-fix status, feature classes enabled, and compatibility expectations for the image-based profiling handoff.
+- **Segmentation handoff spec:** the segmentation outputs, mask locations, object identifiers, and parent-child relationships confirmed with Mike before pilot execution.
+
+A QC specification is not required for the short-term implementation.
 
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
