@@ -35,7 +35,7 @@ The manifest records these tables, their paths, schemas, join keys, source asset
 
 - `images.image_assets`: one row per image asset with `Metadata_Biology_PatientTumor`, `Metadata_Biology_PatientID`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, `Metadata_Imaging_FieldID`, `Metadata_Imaging_ImageID`, channel, z/t/c/y/x shape, dtype, source URI, and processing provenance.
 - `quality_control.image_qc`: candidate whole-image blur, saturation, module-error, and exclusion flags generated before segmentation and featurization, keyed by `Metadata_Imaging_ImageID`, with patient, well, and field metadata repeated only when useful for reading.
-  Initial records are derived from the existing CellProfiler `MeasureImageQuality` outputs where available, and the pilot hardens this into a reproducible 3D whole-image QC stage with canonical metrics and thresholds.
+  Initial records are derived from existing CellProfiler `MeasureImageQuality` outputs where available, and the pilot treats these as candidate fields rather than a final 3D whole-image QC policy.
 - `quality_control.segmentation_qc`: mask existence, object counts, object geometry, parent-child consistency, and crop-readiness flags generated after 3D segmentation and before feature extraction, keyed by `Metadata_Imaging_ImageID`, object compartment, and, when relevant, `Metadata_Object_ObjectID`.
 - `profiles.organoid_profiles`, `profiles.cell_profiles`, `profiles.nuclei_profiles`, `profiles.cytoplasm_profiles`, and `profiles.nucleocentric_profiles`: one biological object type per table, each keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and, when relevant, `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID`.
 - `profiles.cqc_flags`: post-featurization single-cell and object-level QC flags from [coSMicQC][cosmicqc], keyed by `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and object compartment.
@@ -164,8 +164,8 @@ Bespoke deep-learning featurization remains in the workflow for masked 3D featur
 Bespoke deep-learning featurization also remains for nucleocentric non-masked 3D crops from the nuclei mask and nucleocentric non-masked 2D z-maximum projections.
 All handcrafted and deep-learning feature outputs publish into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
 Whole-image QC runs before segmentation and featurization so failed image assets can be excluded or flagged before expensive downstream work.
-The starting implementation hardens the existing CellProfiler `MeasureImageQuality` pipeline rather than assuming it is already production-ready for 3D.
-The pilot formalizes the 3D whole-image QC fields, thresholds, output paths, and pass/fail semantics.
+The starting implementation records existing CellProfiler `MeasureImageQuality` outputs where available and evaluates whether those measurements are useful for 3D whole-image QC.
+The pilot records candidate whole-image QC fields and output paths, while robust 3D whole-image QC metrics, thresholds, and pass/fail semantics remain future QC specification work.
 Segmentation QC runs after 3D segmentation and before feature extraction to check mask completeness, object counts, parent-child links, and crop readiness.
 Its flags are written to `quality_control.segmentation_qc` so segmentation failures are not conflated with image acquisition failures or post-featurization single-cell/object outliers.
 Single-cell and object-level QC runs after ZedProfiler and bespoke deep-learning featurization so feature missingness, object outliers, failed crops, and late-stage profiling errors can be tracked separately from image acquisition failures.
@@ -180,7 +180,7 @@ CytoTable remains a compatibility bridge for coSMicQC and single-cell or object-
 1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, candidate whole-image QC cases, segmentation edge cases, image-size variation, and object-count variation.
 2. **Pilot workflow orchestration:** run the pilot subset through the Nextflow `slurm` profile on CURC Persistence1 and Alpine, using scratch only for temporary work and publishing durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-4. **Pre-production QC assessment:** harden and rerun the CellProfiler whole-image QC workflow on the pilot subset, map its outputs into initial 3D whole-image QC fields, review segmentation QC flags after mask generation, then run coSMicQC through the CytoTable-compatible profile view to review post-featurization single-cell/object QC flags before expanding to the production dataset.
+4. **Pre-production QC assessment:** review available CellProfiler whole-image QC outputs on the pilot subset, map useful outputs into candidate image-level QC fields, review segmentation QC flags after mask generation, then run coSMicQC through the CytoTable-compatible profile view to review post-featurization single-cell/object QC flags before expanding to the production dataset.
 5. **Production workflow rollout:** apply the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, whole-image QC, segmentation QC, single-cell/object QC, and job-array checks.
 6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, image-level flags, segmentation flags, and `profiles.cqc_flags`.
 7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
@@ -189,13 +189,13 @@ The validation report tracks each well/FOV from segmentation through ZedProfiler
 ## Short- and mid-term goals
 
 The **short-term goal** is the reprocessing path for current data.
-It starts with the small-data pilot, assesses whole-image QC, segmentation QC, ZedProfiler output shape, coSMicQC compatibility, and warehouse validation, then expands to the current production dataset.
+It starts with the small-data pilot, assesses candidate whole-image QC fields, segmentation QC, ZedProfiler output shape, coSMicQC compatibility, and warehouse validation, then expands to the current production dataset.
 The **mid-term goal** is to make this the standard processing pattern for new patients, new plates, and later backfills.
 That work decides whether OME-Arrow is needed for image crops or chunk-level access and formalizes the full QC decision policy across image-level and object-level decisions.
 Patient profile analysis supports both individually processed patient profiles and combined-patient profile tables.
 Combined-patient analyses can still concatenate selected profiles for [pycytominer][pycytominer] feature selection, aggregation, and related cytomining workflows.
 [pycytominer][pycytominer] operations are expected to be compatible with iceberg-bioimage warehouse tables because the profile outputs remain tabular, metadata-prefixed, and feature-column oriented.
-The highest-risk work is not the Parquet writing itself; it is making stable identifiers, patient/well/FOV metadata, object-parent links, whole-image QC gates, and post-featurization single-cell/object QC thresholds consistent across batches before scaling.
+The highest-risk work is not the Parquet writing itself; it is making stable identifiers, patient/well/FOV metadata, object-parent links, candidate whole-image QC fields, and post-featurization single-cell/object QC thresholds consistent across batches before scaling.
 Those QC thresholds must remove imaging failures, segmentation artifacts, failed crops, and unusable objects without systematically removing biologically meaningful treatment or patient phenotypes.
 
 ## Alternatives considered
@@ -214,7 +214,8 @@ Two small project specifications precede implementation:
 
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
-- **QC stage spec:** required CellProfiler-derived whole-image QC fields before segmentation, required segmentation QC fields before feature extraction, required coSMicQC fields after featurization, the CytoTable-compatible view schema used by coSMicQC, and whether each field gates execution, flags records, or filters downstream profiles.
+- **QC stage spec:** candidate CellProfiler-derived whole-image QC fields before segmentation, required segmentation QC fields before feature extraction, required coSMicQC fields after featurization, the CytoTable-compatible view schema used by coSMicQC, and whether each field gates execution, flags records, or filters downstream profiles.
+  A final 3D whole-image QC policy is future scope after pilot review.
 
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
