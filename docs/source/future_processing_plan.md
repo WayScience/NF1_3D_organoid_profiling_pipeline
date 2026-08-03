@@ -76,7 +76,6 @@ flowchart LR
     subgraph future_qc["Future QC prospects"]
         image_qc_jobs["whole-image QC evaluation"]
         segmentation_qc_jobs["segmentation QC evaluation"]
-        cytotable_view_jobs["CytoTable-compatible QC view"]
         object_qc_jobs["coSMicQC compatibility pilot"]
         image_qc["candidate quality_control.image_qc"]
         segmentation_qc["candidate quality_control.segmentation_qc"]
@@ -104,8 +103,7 @@ flowchart LR
     run_reports --> warehouse_manifest
     nextflow_controller -.->|future sbatch| image_qc_jobs
     nextflow_controller -.->|future sbatch| segmentation_qc_jobs
-    object_profiles -.-> cytotable_view_jobs
-    cytotable_view_jobs -.-> object_qc_jobs
+    object_profiles -.-> object_qc_jobs
     image_qc_jobs -.-> image_qc
     segmentation_qc_jobs -.-> segmentation_qc
     object_qc_jobs -.-> cqc_flags
@@ -154,16 +152,14 @@ Its outputs are per-compartment handcrafted feature tables for nuclei, cells, cy
 Bespoke deep-learning featurization remains in the workflow for masked 3D features across nuclei, cells, cytoplasm, and organoids.
 Bespoke deep-learning featurization also remains for nucleocentric non-masked 3D crops from the nuclei mask and nucleocentric non-masked 2D z-maximum projections.
 All handcrafted and deep-learning feature outputs publish into `profiles.object_tables`, then flow into existing normalization, feature selection, aggregation, and consensus-profile logic.
-[CytoTable][cytotable] is not the execution engine for this path.
-CytoTable remains a future compatibility bridge for coSMicQC and single-cell or object-profile table shapes, not the scheduler or canonical storage layer.
 
 ## Future QC prospects
 
 QC-related tables are future extensions to the warehouse, not required outputs for the core reprocessing plan.
 Whole-image QC would record candidate CellProfiler `MeasureImageQuality` outputs in `quality_control.image_qc` before segmentation, but robust 3D whole-image QC metrics, thresholds, and pass/fail semantics require a separate future specification.
 Segmentation QC would record mask existence, object counts, object geometry, parent-child consistency, and crop-readiness fields in `quality_control.segmentation_qc` after segmentation and before feature extraction.
-coSMicQC is especially uncharted for this workflow because it would consume a CytoTable-compatible view generated from warehouse profile tables rather than the current expected input shape.
-That future work should harden the compatibility view, `profiles.cqc_flags` schema, and flag semantics before single-cell/object QC is used to filter normalization, feature selection, aggregation, or consensus profiles.
+coSMicQC is especially uncharted for this workflow because the warehouse profile tables would need an explicit input compatibility specification before integration.
+That future work should harden the input shape, `profiles.cqc_flags` schema, and flag semantics before single-cell/object QC is used to filter normalization, feature selection, aggregation, or consensus profiles.
 
 ## Implementation sequence
 
@@ -193,7 +189,6 @@ The highest-risk work is not the Parquet writing itself; it is making stable ide
 - **More minimal architecture:** the proposed plan is already the minimum viable structure for this dataset because it includes only stable IDs, a manifest, Parquet tables, Nextflow-on-SLURM execution, and lightweight validation.
 - **Simpler data storage:** loose Parquet files, CSVs, and one-off DuckDB files are easy to write, but they do not define stable identifiers, table lineage, required schemas, or image-to-profile joins.
 - **CellProfiler:** remains useful for established image QC and feature extraction modules, but it is not the warehouse, scheduler, provenance system, or cross-patient profile query layer.
-- **CytoTable as execution engine:** remains useful for converting and joining CellProfiler-style tables, but it is not an orchestrator for SLURM jobs, long-running workflow state, retries, run observability, or warehouse-level contracts.
 - **scverse:** might be useful downstream for selected single-cell matrices, but it is not the primary data model for multi-compartment 3D image assets, masks, future QC tables, patient annotations, and parent-object relationships.
 
 ## Required specifications
@@ -202,13 +197,12 @@ Two small project specifications precede implementation:
 
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
-- **Future QC spec:** candidate CellProfiler-derived whole-image QC fields, segmentation QC fields, coSMicQC fields, the CytoTable-compatible view schema used by coSMicQC, and whether each field gates execution, flags records, or filters downstream profiles.
+- **Future QC spec:** candidate CellProfiler-derived whole-image QC fields, segmentation QC fields, coSMicQC input shape and output fields, and whether each field gates execution, flags records, or filters downstream profiles.
 
 This plan keeps the current pipeline scientifically intact while making the data FAIRer, easier to audit, and easier to extend to new patients, microscopes, features, and image-backed machine learning analyses.
 
 [iceberg-warehouse]: https://github.com/WayScience/iceberg-bioimage/blob/main/docs/src/warehouse-spec.md
 [cosmicqc]: https://github.com/WayScience/cosmicqc
-[cytotable]: https://github.com/cytomining/CytoTable
 [curc-persistence1]: https://curc.readthedocs.io/en/latest/clusters/alpine/quick-start.html
 [nextflow-slurm]: https://docs.seqera.io/nextflow/executor
 [ome-arrow]: https://github.com/WayScience/ome-arrow
