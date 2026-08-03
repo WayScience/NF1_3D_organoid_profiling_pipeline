@@ -22,7 +22,9 @@ For Alpine or other HPC environments without Isilon access, the warehouse can li
 The repository tracks workflow code, schema definitions, validation code, configuration, and small reference manifests that point to the active warehouse location.
 Each warehouse root contains Parquet-first tables plus **`warehouse_manifest.json`**.
 That file lists the warehouse root, table names, table paths or URI prefixes, schema versions, required join keys, source image roots, run IDs, git commit or container metadata, row counts, and validation status.
-**OME-TIFF** or **OME-Zarr** remain the source image assets when that is sufficient; **OME-Arrow** is reserved for derived crops, chunk indexes, or image tensors that need to be joined and filtered with profiles in DuckDB.
+In practice, collaborator images enter as source assets, including custom TIFF layouts, and are converted to whole-image **OME-Zarr** for canonical image storage.
+ZedProfiler features, QC outputs, annotations, and derived profiles are not written as OME-Arrow; they are Parquet warehouse tables keyed by `Metadata_*` identifiers.
+**OME-Arrow** is reserved for derived crops, chunk indexes, or image tensors that need to be joined and filtered with profiles in DuckDB or other table-oriented analysis tools.
 For example, OME-Arrow would fit nucleocentric 3D crops and 2D z-maximum projections when downstream review needs to select cells by `profiles.cqc_flags`, object features, or treatment metadata and then load only the matching image crops.
 The [OME-Arrow benchmarks][ome-arrow-benchmarks] justify this selective use: reported results include faster bulk image reads and writes for Arrow-backed layouts, a roughly millisecond-scale NF1 feature-to-image join, and faster metadata scans than converted OME-Zarr metadata.
 
