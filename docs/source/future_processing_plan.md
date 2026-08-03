@@ -119,12 +119,13 @@ flowchart LR
 
 The workflow layer should keep **SLURM as a first-class execution backend**, because the current shell-plus-SLURM pattern is practical but too hard to audit, restart, and parameterize across patients.
 **Nextflow is the target workflow manager for this repository's processing workflow** because its [SLURM executor][nextflow-slurm] submits each process as a separate SLURM job and supports queue controls, local execution, containers, task caching, `-resume`-based workflow continuation, and selective job arrays for homogeneous high-cardinality tasks.
+The abstraction layer is **SLURM-compatible HPC execution**, while CURC-specific paths, queues, partitions, modules, containers, and storage locations belong in a named CURC profile.
 This is a substantial workflow-engineering change, so the short-term scope is a pilot wrapper around existing stage commands and warehouse publishing rather than a full pipeline rewrite.
 After the pilot validates orchestration, outputs, and observability, the same workflow shape can expand to production reprocessing and then become the mid-term default for new data.
 **SLURM job arrays** are used selectively for uniform per-well/FOV shards such as segmentation and featurization when resource requirements are consistent.
 Tasks with variable memory, GPU, walltime, or container needs remain ordinary SLURM jobs.
 
-### CURC deployment
+### CURC deployment profile
 
 On University of Colorado Research Computing infrastructure, the deployment model runs the **Nextflow controller** on [Persistence1][curc-persistence1], which CURC documents as the place for workflow managers.
 The controller does not perform substantial image processing itself.
@@ -143,7 +144,7 @@ Each step writes a small run record next to its outputs: command, git commit, co
 Nextflow emits a trace table, timeline report, DAG, execution report, `.nextflow.log`, and per-process logs under a stable run directory.
 The trace table captures process name, patient, well/FOV shard, status, attempt, runtime, CPU, memory, exit code, work directory, and published outputs.
 SLURM job IDs are retained so failed or slow tasks can be inspected with `sacct`, `squeue`, `seff`, and the process `.command.out` and `.command.err` files.
-A single DuckDB validation script combines these run artifacts with the warehouse manifest to check manifest conformance, join-key uniqueness, feature-name validity, orphaned profiles, failed tasks, retry counts, and resource outliers.
+A repository-owned DuckDB validation script combines these run artifacts with the warehouse manifest to check manifest conformance, join-key uniqueness, feature-name validity, orphaned profiles, failed tasks, retry counts, and resource outliers.
 
 ## ZedProfiler integration
 
@@ -167,7 +168,7 @@ That future work should harden the input shape, `profiles.cqc_flags` schema, and
 ## Implementation sequence
 
 1. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, segmentation edge cases, image-size variation, and object-count variation.
-2. **Pilot workflow orchestration:** create a minimal Nextflow `slurm` profile that wraps the existing stage commands for the pilot subset on CURC Persistence1 and Alpine.
+2. **Pilot workflow orchestration:** create a minimal Nextflow SLURM workflow with a CURC profile that wraps the existing stage commands for the pilot subset on Persistence1 and Alpine.
    Use scratch only for temporary work and publish durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 3. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZedProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
 4. **Production workflow rollout:** expand the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
