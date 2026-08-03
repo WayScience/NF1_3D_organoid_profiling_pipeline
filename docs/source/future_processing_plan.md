@@ -9,6 +9,7 @@ The future workflow will write a **bioimage profiling warehouse with a small man
 The manifest is a JSON index that records the active warehouse location, table paths, schemas, source assets, and run provenance.
 The design follows the [iceberg-bioimage warehouse specification][iceberg-warehouse], uses [OME-Arrow][ome-arrow] where image payloads or chunk metadata need tabular access, and uses [**ZedProfiler**][zedprofiler] as the feature extractor for morphology profiles.
 ZedProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
+ZedProfiler outputs are written as warehouse profile tables whose `Metadata_*` join keys connect features back to images, masks, QC records, and patients.
 
 ## Target data contract
 
