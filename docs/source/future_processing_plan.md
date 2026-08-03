@@ -11,8 +11,9 @@ The design follows the [iceberg-bioimage warehouse specification][iceberg-wareho
 ZedProfiler's [feature naming convention][zedprofiler-features] is the column standard for profile outputs.
 ZedProfiler outputs are written as warehouse profile tables whose `Metadata_*` join keys connect features back to images, masks, QC records, and patients.
 
-## Target data contract
+## Target warehouse structure
 
+This section defines where shared outputs live, which tables are required, and which identifiers must be present so images, QC, features, and patient annotations can be joined.
 The shared warehouse lives on **Isilon storage** when that storage is available to the compute environment.
 For Alpine or other HPC environments without Isilon access, the warehouse can live under the repository's gitignored **`data/`** directory as a local execution target.
 The repository tracks workflow code, schema definitions, validation code, configuration, and small reference manifests that point to the active warehouse location.
