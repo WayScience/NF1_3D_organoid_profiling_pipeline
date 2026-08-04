@@ -170,6 +170,7 @@ All handcrafted and deep-learning feature outputs publish into `profiles.object_
 
 QC implementation is intentionally out of scope for the core reprocessing plan.
 This project may perform a limited QC assessment to identify available whole-image and post-featurization object-level signals, document risks, and decide whether separate future QC work is warranted.
+The near-term output should be a short note sufficient for Jenna and future MIICE planning, not workflow code, thresholds, or warehouse tables.
 The assessment should not define production thresholds, pass/fail semantics, execution gates, or required QC tables.
 Potential [coSMicQC][cosmicqc] integration remains separate future work because the warehouse profile tables would need an explicit input compatibility specification before integration.
 
