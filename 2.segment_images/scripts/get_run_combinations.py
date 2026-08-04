@@ -91,7 +91,7 @@ def add_row(
     )
 
 
-# In[4]:
+# In[ ]:
 
 
 for patient in tqdm(patients, desc="Patients"):
@@ -109,20 +109,20 @@ for patient in tqdm(patients, desc="Patients"):
         add_row(patient, well_fov)
 
         # --- NF0014_T1 / C4-2: convolution iterations + deconvolved images ---
-        if patient == "NF0014_T1" and well_fov == "C4-2":
-            # for conv_iter in convolution_iters:
-            #     add_row(
-            #         patient,
-            #         well_fov,
-            #         input_subparent_name=f"convolution_{conv_iter}",
-            #         mask_subparent_name=f"convolution_{conv_iter}_segmentation_masks",
-            #     )
-            add_row(
-                patient,
-                well_fov,
-                input_subparent_name="deconvolved_images",
-                mask_subparent_name="deconvolved_segmentation_masks",
-            )
+        # if patient == "NF0014_T1" and well_fov == "C4-2":
+        # for conv_iter in convolution_iters:
+        #     add_row(
+        #         patient,
+        #         well_fov,
+        #         input_subparent_name=f"convolution_{conv_iter}",
+        #         mask_subparent_name=f"convolution_{conv_iter}_segmentation_masks",
+        #     )
+        # add_row(
+        #     patient,
+        #     well_fov,
+        #     input_subparent_name="deconvolved_images",
+        #     mask_subparent_name="deconvolved_segmentation_masks",
+        # )
 
         # --- z-stack spacing test patients: extra mask variant ---
         # elif patient in z_stack_testing_patients:

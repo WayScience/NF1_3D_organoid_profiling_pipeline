@@ -85,7 +85,7 @@ if not in_notebook:
 else:
     print("Running in a notebook")
     patient = "NF0014_T2"
-    well_fov = "C5-6"
+    well_fov = "D8-4"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -237,33 +237,6 @@ cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
 # In[13]:
 
 
-# since the nuclei - cell masks should be 1:1
-# check if there are any singletons and remove those labels
-unique_nuclei_labels = np.unique(nuclei_mask)
-unique_cell_labels = np.unique(cell_mask)
-unique_cytoplasm_labels = np.unique(cytoplasm_mask)
-unmatched_labels_nuc_cell = list(set(unique_nuclei_labels) - set(unique_cell_labels))
-unmatched_labels_cell_cyto = list(
-    set(unique_cell_labels) - set(unique_cytoplasm_labels)
-)
-# print(unique_nuclei_labels, unique_cell_labels, unique_cytoplasm_labels)
-# print(unmatched_labels_nuc_cell,unmatched_labels_cell_cyto)
-unmatched_labels_to_remove = unmatched_labels_cell_cyto + unmatched_labels_nuc_cell
-unmatched_labels_to_remove = list(set(unmatched_labels_to_remove))
-
-
-# In[14]:
-
-
-for label_id in unmatched_labels_to_remove:
-    nuclei_mask = remove_label_id(nuclei_mask, label_id)
-    cell_mask = remove_label_id(cell_mask, label_id)
-    cytoplasm_mask = remove_label_id(cytoplasm_mask, label_id)
-
-
-# In[15]:
-
-
 if in_notebook:
     z = cell_mask.shape[0] // 2
     plt.figure(figsize=(10, 10))
@@ -284,7 +257,7 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[16]:
+# In[14]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -295,7 +268,7 @@ tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 
 
-# In[17]:
+# In[15]:
 
 
 stop_profiling(
@@ -316,7 +289,7 @@ stop_profiling(
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
 
-# In[18]:
+# In[16]:
 
 
 print(np.unique(nuclei_mask))
@@ -324,7 +297,7 @@ print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))
 
 
-# In[19]:
+# In[17]:
 
 
 nuclei_mask = tifffile.imread(
