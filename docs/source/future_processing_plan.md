@@ -102,11 +102,6 @@ flowchart LR
         ome_arrow_assets["OME-Arrow crops / chunk index"]
     end
 
-    subgraph future_qc["Future QC outside this project"]
-        qc_assessment_notes["limited QC assessment notes"]
-        future_qc_spec["separate future QC specification"]
-    end
-
     nextflow_pipeline --> nextflow_controller
     schema_specs --> nextflow_controller
     validation_code --> nextflow_controller
@@ -126,8 +121,6 @@ flowchart LR
     treatment_annotations --> warehouse_manifest
     ome_arrow_assets --> warehouse_manifest
     run_reports --> warehouse_manifest
-    object_profiles -.-> qc_assessment_notes
-    qc_assessment_notes -.-> future_qc_spec
 ```
 
 ## Workflow and observability
