@@ -13,6 +13,7 @@ title: 3D organoid image-based profiling
 
 readme
 libraries
+future_processing_plan
 ```
 
 ```{toctree}
