@@ -176,7 +176,7 @@ Potential [coSMicQC][cosmicqc] integration remains separate future work because 
 
 ## Implementation sequence
 
-1. **Pre-pilot readiness:** confirm the segmentation inputs, masks, and expected downstream handoff with Mike, then pin the ZEDProfiler release version after required bug fixes are confirmed.
+1. **Pre-pilot readiness:** confirm the segmentation inputs, masks, accurate object ID assignment, and expected downstream handoff with Mike, then pin the ZEDProfiler release version after required bug fixes are confirmed.
 2. **Pilot subset selection:** use `NF0014_T1` and `NF0055_T1`, selecting a few DMSO and treated well/FOVs from each to cover normal images, segmentation edge cases, image-size variation, and object-count variation.
 3. **Pilot workflow orchestration:** create a minimal Nextflow SLURM workflow with a CURC profile that wraps the existing stage commands for the pilot subset on Persistence1 and Alpine.
    Use scratch only for temporary work and publish durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
@@ -213,7 +213,7 @@ Two small project specifications precede implementation:
 - **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
 - **ZEDProfiler release spec:** the exact ZEDProfiler version, required bug-fix status, feature classes enabled, and compatibility expectations for the image-based profiling handoff.
-- **Segmentation handoff spec:** the segmentation outputs, mask locations, object identifiers, and parent-child relationships confirmed with Mike before pilot execution.
+- **Segmentation handoff spec:** the segmentation outputs, mask locations, accurate object ID assignment, and parent-child relationships confirmed with Mike before pilot execution.
 
 A QC specification is not required for the short-term implementation.
 
