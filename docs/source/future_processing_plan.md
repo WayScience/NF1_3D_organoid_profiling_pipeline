@@ -58,6 +58,21 @@ The current `image_set` and `WellFOV` concepts become explicit **`Metadata_Exper
 Plain names such as `dataset_id` and `image_id` remain logical shorthand in implementation discussions, not profile-table column names.
 For this dataset, `dataset_id` maps to the plate-level `Metadata_Biology_PatientTumor` value.
 
+**Initial identifier rules are part of this plan.**
+These rules should be confirmed during pre-pilot readiness and then enforced before pilot warehouse outputs are written.
+
+| Identifier role | Warehouse column | Rule |
+| --- | --- | --- |
+| Dataset / plate namespace | `Metadata_Biology_PatientTumor` | Use the patient-tumor plate value, such as `NF0014_T1`, as the dataset-level namespace for joins and grouping. |
+| Patient | `Metadata_Biology_PatientID` | Preserve the patient identifier parsed from source metadata or plate maps, without treatment or field information. |
+| Plate | `Metadata_Experiment_PlateID` | Preserve the acquisition or plate-map plate identifier used to locate wells and treatments. |
+| Well | `Metadata_Experiment_WellID` | Normalize well names to a stable plate-map value such as `A01`, and use that value across images, features, and annotations. |
+| Field / FOV | `Metadata_Imaging_FieldID` | Normalize the current `WellFOV` field component into a field identifier that is stable within each well. |
+| Image | `Metadata_Imaging_ImageID` | Build deterministically from `Metadata_Biology_PatientTumor`, `Metadata_Experiment_PlateID`, `Metadata_Experiment_WellID`, and `Metadata_Imaging_FieldID`; keep channel and source URI as separate image-asset fields. |
+| Object | `Metadata_Object_ObjectID` | Use the segmentation label value or a deterministic label remap that is unique within each image and object compartment. |
+| Parent object | `Metadata_Object_ParentOrganoidID` or `Metadata_Object_ParentCellID` | Store the assigned parent object ID from the same image when parent-child relationships are biologically meaningful. |
+| Reprocessing provenance | manifest run fields | Treat changed segmentation labels, object assignments, or source assets as a new run recorded in `warehouse_manifest.json`, not as silent identifier mutation. |
+
 ```mermaid
 flowchart LR
     subgraph git_repo["Git repository"]
@@ -200,8 +215,10 @@ The highest-risk work is not the Parquet writing itself; it is making stable ide
 
 ## Alternatives considered
 
-- **Current data layout and orchestration:** produces results, but limits cross-patient joins, resumable execution, provenance, and validation.
-- **AWS or GCP processing:** remains possible through future Nextflow profiles, but CURC keeps data close to the existing compute environment and avoids premature cloud cost, transfer, credential, and governance complexity.
+These options are not the short-term path for the current reprocessing effort, but several can be revisited as future data, infrastructure, or analysis requirements change.
+
+- **Current data layout and orchestration:** produces results, but limits cross-patient joins, resumable execution, provenance, and validation for this reprocessing effort.
+- **AWS or GCP processing:** can be revisited through future Nextflow profiles, but CURC keeps data close to the existing compute environment and avoids premature cloud cost, transfer, credential, and governance complexity.
 - **More minimal architecture:** the proposed plan is already the minimum viable structure for this dataset because it includes only stable IDs, a manifest, Parquet tables, Nextflow-on-SLURM execution, and lightweight validation.
 - **Simpler data storage:** loose Parquet files, CSVs, and one-off DuckDB files are easy to write, but they do not define stable identifiers, table lineage, required schemas, or image-to-profile joins.
 - **CellProfiler:** remains useful for established image-processing and feature extraction modules, but it is not the warehouse, scheduler, provenance system, or cross-patient profile query layer.
@@ -209,9 +226,9 @@ The highest-risk work is not the Parquet writing itself; it is making stable ide
 
 ## Required specifications
 
-Two small project specifications precede implementation:
+Four small project specifications precede implementation:
 
-- **Identifier spec:** deterministic `Metadata_Biology_PatientTumor`, `Metadata_Imaging_ImageID`, `Metadata_Object_ObjectID`, and parent object rules, including how IDs survive reprocessing.
+- **Identifier spec:** the initial table above is the starting rule set and should be confirmed during pre-pilot readiness.
 - **Column schema spec:** required columns, types, nullability, and join keys for each canonical table.
 - **ZEDProfiler release spec:** the exact ZEDProfiler version, required bug-fix status, feature classes enabled, and compatibility expectations for the image-based profiling handoff.
 - **Segmentation handoff spec:** the segmentation outputs, mask locations, accurate object ID assignment, and parent-child relationships confirmed with Mike before pilot execution.
