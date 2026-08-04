@@ -181,9 +181,10 @@ Potential [coSMicQC][cosmicqc] integration remains separate future work because 
 3. **Pilot workflow orchestration:** create a minimal Nextflow SLURM workflow with a CURC profile that wraps the existing stage commands for the pilot subset on Persistence1 and Alpine.
    Use scratch only for temporary work and publish durable Nextflow and SLURM observability artifacts to the active pilot warehouse run-artifacts path on Isilon or the gitignored `data/` fallback.
 4. **Pilot warehouse conversion:** publish the pilot workflow outputs to the active pilot warehouse path to finalize identifier rules, canonical table schemas, ZEDProfiler feature-name validation, `warehouse_manifest.json`, and DuckDB validation.
-5. **Production workflow rollout:** expand the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
-6. **DuckDB validation view:** use DuckDB to inspect pilot and production warehouse tables for expected joins, row counts, metadata completeness, feature columns, and profile outputs.
-7. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
+5. **Pilot DuckDB validation view:** use DuckDB to inspect pilot warehouse tables for expected joins, row counts, metadata completeness, feature columns, and profile outputs.
+6. **Pre-operational validation:** review the pilot warehouse, Nextflow/SLURM artifacts, accurate object ID assignment, ZEDProfiler output completeness, and well/FOV-level image-based profiling status before production rollout.
+7. **Production workflow rollout:** expand the same Nextflow profile and warehouse writer to the production dataset after the pilot passes orchestration, output, validation, and job-array checks.
+8. **Operational validation:** emit run records, Nextflow/SLURM observability artifacts, well/FOV-level profiling status, and a one-command validation report for collaborators, maintainers, and release checkpoints.
 The validation report tracks each well/FOV from segmentation through ZEDProfiler feature extraction and downstream image-based profiling so late-stage profile errors are visible even when earlier stages succeed.
 
 ## Short- and mid-term goals
