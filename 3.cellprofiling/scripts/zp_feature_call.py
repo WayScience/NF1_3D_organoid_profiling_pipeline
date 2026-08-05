@@ -24,7 +24,6 @@ from image_analysis_3D.featurization_utils.feature_writing_utils import (
 )
 
 # bug in the cucim module but we are using CPU so it does not matter for now
-# from image_analysis_3D.featurization_utils.area_size_shape_utils_gpu import measure_3D_area_size_shape_gpu
 from image_analysis_3D.featurization_utils.loading_classes import (
     ImageSetLoader,
     ObjectLoader,
@@ -117,7 +116,7 @@ er_image = tifffile.imread(er_image_path)
 mito_image = tifffile.imread(mito_image_path)
 
 
-# In[11]:
+# In[6]:
 
 
 # for testing purposes, slice the images to a smaller size
@@ -132,7 +131,7 @@ er_image = er_image[:6, :, :]
 mito_image = mito_image[:6, :, :]
 
 
-# In[24]:
+# In[7]:
 
 
 # set channel combinatorics
@@ -158,7 +157,7 @@ channel_and_compartment_combinations += [
 ]
 
 
-# In[13]:
+# In[8]:
 
 
 dict_of_images = {
@@ -174,7 +173,7 @@ dict_of_images = {
 }
 
 
-# In[14]:
+# In[9]:
 
 
 isc = loading_classes.ImageSetConfig(
@@ -184,7 +183,7 @@ isc = loading_classes.ImageSetConfig(
 )
 
 
-# In[34]:
+# In[ ]:
 
 
 list_of_sc_dfs = []
@@ -197,8 +196,6 @@ for channel, compartment in tqdm.tqdm(channel_and_compartment_combinations):
         label_set_array=dict_of_images[compartment],
         image_set_path=None,
         label_set_path=None,
-        # image_set_path=image_set_path,
-        # label_set_path=mask_set_path,
         config=isc,
     )
     ol = loading_classes.ObjectLoader(
@@ -222,11 +219,11 @@ for channel, compartment in tqdm.tqdm(channel_and_compartment_combinations):
             object_loader=ol,
         )
 
-        # texture_features = zedprofiler.texture.compute_texture(
-        #     object_loader=ol,
-        #     distance=3,
-        #     grayscale=256,
-        # )
+        texture_features = zedprofiler.texture.compute_texture(
+            object_loader=ol,
+            distance=3,
+            grayscale=256,
+        )
         if compartment == "Organoid":
             list_of_organoid_dfs.append(granularity_features)
             list_of_organoid_dfs.append(intensity_features)
@@ -263,7 +260,7 @@ for channel, compartment in tqdm.tqdm(channel_and_compartment_combinations):
                 list_of_sc_dfs.append(neighbors_features)
 
 
-# In[35]:
+# In[ ]:
 
 
 for channel1, channel2, compartment in tqdm.tqdm(
@@ -322,9 +319,6 @@ stop_profiling(
 # In[ ]:
 
 
-# In[36]:
-
-
 sc_df = pd.DataFrame()
 for df in list_of_sc_dfs:
     if sc_df.empty:
@@ -339,7 +333,7 @@ print(sc_df.shape)
 sc_df.head()
 
 
-# In[37]:
+# In[ ]:
 
 
 organoid_df = pd.DataFrame()
