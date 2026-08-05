@@ -120,7 +120,7 @@ mito_image = tifffile.imread(mito_image_path)
 # In[11]:
 
 
-# for testing purposed, slice the images to a smaller size
+# for testing purposes, slice the images to a smaller size
 # get the first 6 slices of the images
 nuclei_mask = nuclei_mask[:6, :, :]
 cell_mask = cell_mask[:6, :, :]
