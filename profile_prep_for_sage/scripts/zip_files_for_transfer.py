@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -29,10 +29,10 @@ profile_base_dir = bandicoot_check(
 
 
 DEL_DIR_AFTER_ZIP = False
-OVERWRITE = False
+OVERWRITE = True
 
 
-# In[ ]:
+# In[3]:
 
 
 output_dir_3D = pathlib.Path(f"{root_dir}/data/shippable_dir/profiles_3D/").resolve()
@@ -60,22 +60,29 @@ all_patient_profiles_dir = pathlib.Path(
     f"{profile_base_dir}/data/all_patient_profiles"
 ).resolve()
 # copy over the parquet files for all patients
-all_patient_profiles_files = list(all_patient_profiles_dir.glob("*.parquet"))
 # copy over the max_projection and middle_slice directories for all patients
 all_patient_profiles_dirs = list(
     [d for d in all_patient_profiles_dir.glob("*") if d.is_dir()]
 )
-for file in tqdm.tqdm(
-    all_patient_profiles_files,
-    desc="Copying all patient profiles parquet files",
-    total=len(all_patient_profiles_files),
-):
-    if OVERWRITE or not (output_dir_3D_all_patients / file.name).exists():
-        shutil.copy(file, output_dir_3D_all_patients)
+dirs_2D = [
+    d for d in all_patient_profiles_dirs if "max" in d.name or "middle" in d.name
+]
+dirs_3D = [
+    d
+    for d in all_patient_profiles_dirs
+    if "max" not in d.name and "middle" not in d.name
+]
 for dir in tqdm.tqdm(
-    all_patient_profiles_dirs,
+    dirs_3D,
+    desc="Copying all patient profiles parquet files",
+    total=len(dirs_3D),
+):
+    if OVERWRITE or not (output_dir_3D_all_patients / dir.name).exists():
+        shutil.copytree(dir, output_dir_3D_all_patients / dir.name, dirs_exist_ok=True)
+for dir in tqdm.tqdm(
+    dirs_2D,
     desc="Copying all patient profiles directories",
-    total=len(all_patient_profiles_dirs),
+    total=len(dirs_2D),
 ):
     if OVERWRITE or not (output_dir_2D_all_patients / dir.name).exists():
         shutil.copytree(dir, output_dir_2D_all_patients / dir.name, dirs_exist_ok=True)
@@ -119,7 +126,6 @@ for patient in patient_ids:
             f"{patient_profile_3D_dir}/{subfolder_output}"
         ).resolve()
         dest_dir.mkdir(exist_ok=True, parents=True)
-        print(f"Copying from {src_dir} to {dest_dir}")
         # copy the folder and its contents over
         shutil.copytree(src_dir, dest_dir, dirs_exist_ok=True)
 
@@ -132,7 +138,6 @@ for patient in patient_ids:
             f"{patient_profile_2D_dir}/{subfolder_output}"
         ).resolve()
         dest_dir.mkdir(exist_ok=True, parents=True)
-        print(f"Copying from {src_dir} to {dest_dir}")
         # copy the folder and its contents over
         shutil.copytree(src_dir, dest_dir, dirs_exist_ok=True)
 
@@ -143,9 +148,9 @@ for patient in patient_ids:
 # zip the shippable_dir for transfer
 shippable_dir = pathlib.Path(f"{root_dir}/data/shippable_dir").resolve()
 shippable_dir_zip = shippable_dir.with_suffix(".zip")
-if shippable_dir_zip.exists():
+if shippable_dir_zip.exists() and OVERWRITE:
     shippable_dir_zip.unlink()  # Remove the existing zip file
-shutil.make_archive(str(shippable_dir), "zip", str(shippable_dir))
+    shutil.make_archive(str(shippable_dir), "zip", str(shippable_dir))
 # then delete the copy of the data in the shippable_dir to save space
 if DEL_DIR_AFTER_ZIP:
     shutil.rmtree(shippable_dir)
