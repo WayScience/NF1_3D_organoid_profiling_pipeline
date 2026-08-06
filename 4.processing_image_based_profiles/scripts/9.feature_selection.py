@@ -216,7 +216,7 @@ unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 # 2. The retained feature set is applied back to the **full dataset** (all treatments),
 #    so no treatment rows are dropped from the output.
 
-# In[7]:
+# In[ ]:
 
 
 for profile_name in run_dict.keys():
@@ -228,11 +228,22 @@ for profile_name in run_dict.keys():
     metadata_columns = [x for x in df.columns if x.startswith("Metadata_")]
     # grab feature columns
     features_columns = [col for col in df.columns if col not in metadata_columns]
+    df[features_columns] = df[features_columns].replace([np.inf, -np.inf], np.nan)
     # Phase 1: fit feature selection on reference treatments only.
     # all_trt_df retains the full dataset; df is narrowed to the reference subset.
     all_trt_df = df.copy()
-    df = df.loc[df["Metadata_Experiment_Treatment"].isin(["DMSO", "Staurosporine"])]
-
+    # select DMSO 1% and Staurosporine 10 nM conditions for feature selection
+    df = df.loc[
+        (
+            (df["Metadata_Experiment_Treatment"] == "DMSO")
+            & (df["Metadata_Experiment_Dose"].astype(str) == "1")
+        )
+        | (
+            # your staurosporine 10 nM condition here, same pattern
+            (df["Metadata_Experiment_Treatment"] == "Staurosporine")
+            & (df["Metadata_Experiment_Dose"].astype(str) == "10")
+        )
+    ]
     # run feature selection
     fs_profiles = feature_select(
         df,

@@ -46,6 +46,7 @@ dependencies = [
     "certifi>=2026.5.20",
     "scipy>=1.17.1",
     "zedprofiler>=0.1.1",
+    "synapseclient>=4.13.0",
 ]
 
 

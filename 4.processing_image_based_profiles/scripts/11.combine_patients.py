@@ -34,6 +34,7 @@
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -117,7 +118,12 @@ unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 
 
 # Well-level strata: one row per (patient, well) combination
-aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
+aggregate_strata = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_Well",
+    "Metadata_Experiment_Treatment",
+    "Metadata_Experiment_Dose",
+]
 # Consensus strata: one row per (patient, treatment) combination
 consensus_strata = [
     "Metadata_Biology_PatientTumor",
@@ -154,10 +160,20 @@ for profile_type, files in levels_to_merge_dict.items():
     # all_trt_df retains the full dataset; df is narrowed to the reference subset.
     all_trt_df = df.copy()
     df = df.loc[
-        df["Metadata_Experiment_Treatment"].isin(["DMSO 1%", "Staurosporine 10 nM"])
+        (
+            (df["Metadata_Experiment_Treatment"] == "DMSO")
+            & (df["Metadata_Experiment_Dose"].astype(str) == "1")
+        )
+        | (
+            # your staurosporine 10 nM condition here, same pattern
+            (df["Metadata_Experiment_Treatment"] == "Staurosporine")
+            & (df["Metadata_Experiment_Dose"].astype(str) == "10")
+        )
     ]
     # feature selection
     feature_columns = [col for col in df.columns if col not in metadata_cols]
+    df[feature_columns] = df[feature_columns].replace([np.inf, -np.inf], np.nan)
+
     fs_profiles = feature_select(
         df,
         operation=feature_select_ops,
@@ -186,12 +202,24 @@ for profile_type, files in levels_to_merge_dict.items():
     feature_columns = [
         col for col in fs_profiles.columns if not col.startswith("Metadata_")
     ]
+    metadata_df = fs_profiles[
+        [col for col in fs_profiles.columns if col.startswith("Metadata_")]
+    ]
+    # drop metadata duplicates to avoid aggregation errors
+    metadata_df = metadata_df.drop_duplicates()
     # aggregate the profiles
     agg_df = aggregate(
         population_df=fs_profiles,
         strata=aggregate_strata,
         features=feature_columns,
         operation="median",
+    )
+    # add back the metadata columns to the aggregated DataFrame
+    agg_df = pd.merge(
+        agg_df,
+        metadata_df,
+        on=aggregate_strata,
+        how="left",
     )
     agg_df_path = pathlib.Path(
         f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet"
@@ -210,6 +238,12 @@ for profile_type, files in levels_to_merge_dict.items():
         features=feature_columns,
         operation="median",
     )
+    consensus_df = pd.merge(
+        consensus_df,
+        metadata_df,
+        on=consensus_strata,
+        how="left",
+    )
     consensus_df_path = pathlib.Path(
         f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet"
     )
@@ -218,10 +252,10 @@ for profile_type, files in levels_to_merge_dict.items():
         consensus_df_path,
         index=False,
     )
-    print("The number features before feature selection:", df.shape[1])
-    print("The number features after feature selection:", fs_profiles.shape[1])
-    print("The number of profiles after aggregation:", agg_df.shape[0])
+    print("The number features before feature selection:", df.shape)
+    print("The number features after feature selection:", fs_profiles.shape)
+    print("The number of profiles after aggregation:", agg_df.shape)
     print(
         "The number of profiles after consensus profile generation:",
-        consensus_df.shape[0],
+        consensus_df.shape,
     )

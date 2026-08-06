@@ -231,7 +231,7 @@ consensus_strata = [
 ]
 
 
-# In[7]:
+# In[ ]:
 
 
 for profile_name in run_dict.keys():
@@ -242,13 +242,22 @@ for profile_name in run_dict.keys():
 
     metadata_columns = [x for x in df.columns if x.startswith("Metadata_")]
     features_columns = [col for col in df.columns if col not in metadata_columns]
-
+    metadata_df = fs_profiles[metadata_columns]
+    # drop metadata duplicates to avoid aggregation errors
+    metadata_df = metadata_df.drop_duplicates()
+    # aggregate the profiles
     # aggregate by well
     agg_well_df = aggregate(
         population_df=df,
         strata=aggregate_strata,
         features=features_columns,
         operation="median",
+    )
+    agg_well_df = pd.merge(
+        agg_well_df,
+        metadata_df,
+        on=aggregate_strata,
+        how="left",
     )
     agg_well_df.to_parquet(agg_well_output_path, index=False)
     print(f"  Well-level aggregated. Shape: {agg_well_df.shape}")
@@ -259,6 +268,12 @@ for profile_name in run_dict.keys():
         strata=consensus_strata,
         features=features_columns,
         operation="median",
+    )
+    consensus_df = pd.merge(
+        consensus_df,
+        metadata_df,
+        on=consensus_strata,
+        how="left",
     )
     consensus_df.to_parquet(consensus_output_path, index=False)
     print(f"  Consensus aggregated. Shape: {consensus_df.shape}")

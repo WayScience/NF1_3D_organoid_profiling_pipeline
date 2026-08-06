@@ -24,11 +24,21 @@ This format allows for efficient storage and retrieval of large datasets, making
 
 Prior to describing the files, it is important to note that the files are named according to the type of profile they contain.
 
+#### Compartments
+
 - Organoid profiles are those that contain features extracted from organoids.
 - Single cell (sc) profiles contain features extracted from single cells.
   The single cell profiles contain features extracted from the nuclear, cell, and cytoplasmic compartments of the cells.
+- Nulceocentric profiles are profiles extracted from crops around the nuclei of the cells.
 
 Both the organoid and single cell profiles are further divided into different types of profiles based on the type of feature extraction performed.
+
+#### Feature extraction types
+
+- Handcrafted profiles are the handcrafted profiles. these are the features extracted from the images using the custom computer vision pipeline.
+- SAMMed3D profiles are the SAM-segmentation-derived profiles. these are the features extracted from the images using SAM.
+  - SAMMed3d gets used in two ways: 1) masked featurizationand 2) cropped featurization.
+- Moprhem profiles are the nucleocentric/MorphEM-derived profiles. these are the features extracted from the images using MorphEM.
 
 - Normalized profiles are normalized to the negative control (DMSO) wells on a per-plate basis using robust z-scoring.
 - Feature selected profiles are the feature selected profiles. we use pycytominer to feature select our profiles. if you would like non-feature selected profiles, please request.
@@ -41,7 +51,18 @@ The profile processing order will probably change in the future to have a more r
 The reason for feature selection being performed on all patients is so that the same features are selected across all patients, allowing for easier comparison.
 Of course depending on the down stream task this might not actually matter.
 
+Profiles are also generated separately for each z-projection strategy used to flatten the 3D image stacks:
+
+- `middle slice` - profiles extracted from a single slice around the middle of the z-stack.
+- `middle_n_slice` - profiles extracted from a small number of slices around the middle of the z-stack.
+- `max_projection` - profiles extracted from a maximum-intensity projection of the z-stack.
+
 ## File metadata in the name
 
-`Profile_type/{patient}_{Tumor_number}_{treatment}_{concentration}_{Concentration_unit}.parquet`
-Where any replicates for the same patient, tumor number, treatment, and concentration are all stored in one file.
+Each profile type is stored as a directory named `{profile_type}.parquet/`, which contains one parquet file per patient/tumor, treatment, and dose combination:
+
+`{profile_type}.parquet/{PatientTumor}_{Treatment}_{Dose}_{Unit}.parquet`
+
+Where any replicates for the same patient/tumor, treatment, and dose (with its unit) are all stored in one file.
+
+`profile_type` reflects the object type (`organoid` or `sc` for single-cell) and the processing step (e.g. `profiles`, `fs` for feature selected, `agg` for aggregated, `consensus`, `norm_fs` for normalized + feature selected). Feature selected profiles under `1.feature_selected_profiles/` may additionally be prefixed with `sammed_` (SAM-segmentation-derived) or contain `nucleocentric_morphem` to indicate the nucleocentric/MorphEM feature set they were derived from.
