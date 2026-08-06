@@ -108,7 +108,7 @@ subpatient_2D_folders_to_copy = [
 ]
 
 
-# In[ ]:
+# In[6]:
 
 
 for patient in patient_ids:
@@ -150,6 +150,7 @@ shippable_dir = pathlib.Path(f"{root_dir}/data/shippable_dir").resolve()
 shippable_dir_zip = shippable_dir.with_suffix(".zip")
 if shippable_dir_zip.exists() and OVERWRITE:
     shippable_dir_zip.unlink()  # Remove the existing zip file
+elif not shippable_dir_zip.exists() or OVERWRITE:
     shutil.make_archive(str(shippable_dir), "zip", str(shippable_dir))
 # then delete the copy of the data in the shippable_dir to save space
 if DEL_DIR_AFTER_ZIP:
