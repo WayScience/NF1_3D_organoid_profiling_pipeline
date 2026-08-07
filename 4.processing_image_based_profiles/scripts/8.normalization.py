@@ -176,7 +176,7 @@ nucleocentric_morphem_annotated_profiles = pd.read_parquet(
 )
 
 
-# In[7]:
+# In[6]:
 
 
 # Metadata columns start with "Metadata_". Use startswith for precision
@@ -245,7 +245,7 @@ nucleocentric_morphem_feature_cols = [
 # For deep-learning profiles, the reference is all DMSO-treated samples (no QC
 # filter exists for these profiles).
 
-# In[8]:
+# In[7]:
 
 
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
@@ -292,7 +292,7 @@ print(
 # incomplete observations do not influence the normalization reference distribution.
 # The pre-filter row counts are logged for traceability.
 
-# In[9]:
+# In[8]:
 
 
 ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
@@ -345,7 +345,7 @@ print(
 )
 
 
-# In[10]:
+# In[9]:
 
 
 sc_normalized_df = normalize(
