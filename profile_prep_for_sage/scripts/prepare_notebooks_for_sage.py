@@ -113,18 +113,9 @@ for profile_file_path in tqdm.tqdm(profile_dirs):
         )
 
 
-# In[6]:
+# In[ ]:
 
 
-# output_dirs = [d for d in sage_profiles_dir.glob("**/*") if d.is_dir()]
-# # get a list of all output files and dirs
-# output_dirs = sorted(
-#     [d for d in list(sage_profiles_dir.glob("**/*")) if d.is_dir()],
-#     key=lambda x: len(x.parts),
-#     reverse=True,
-# )
-# # get a list of all output files and dirs
-# output_dirs = [d for d in sage_profiles_dir.glob("**/*") if d.is_dir()]
 list_of_replacement_strings = [
     ("=", "_"),
     ("%", "percent"),
