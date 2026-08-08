@@ -17,8 +17,11 @@ Explicitly **not** in this plan, but architecturally reserved:
 - Multi-well/multi-patient pilot subset — that is the roadmap's own step 2
   ("Pilot subset selection"). Premature until single-image-set mechanics are
   proven.
-- Warehouse manifest, Isilon publishing, DuckDB validation, production
-  rollout — roadmap steps 4-8.
+- The roadmap's production warehouse — Isilon publishing, the full namespaced
+  table set, DuckDB validation, production rollout (roadmap steps 4-8). This
+  pilot borrows the roadmap's naming/identifier conventions and writes a
+  minimal single-table manifest stub (see Phase B) so the shape is proven
+  early, but it does not stand up the warehouse itself.
 
 All pilot output stays entirely inside this directory
 (`3a.nextflow_pilot/results/`) — nothing is written under the repository's
@@ -151,7 +154,7 @@ numbers.
 │   └── zedprofiler-uv.md           # uv env build recipe, pinned to ZedProfiler 0.1.2
 ├── manifest/
 │   └── smoke_test_image_set.yaml   # one hardcoded row, filled in from Phase A's chosen well_fov
-└── results/                        # gitignored; trace.tsv, timeline.html, report.html, dag.html, run_record.json
+└── results/                        # gitignored; trace.tsv, timeline.html, report.html, dag.html, run_record.json, warehouse_manifest.json
 ```
 
 Manifest row shape (`Metadata_*` naming per the roadmap, used from the start
@@ -179,6 +182,41 @@ feature-naming-convention columns
 Run record (`results/<run_id>/run_record.json`): command line, git commit of
 this repo, ZedProfiler version + `uv` env hash, manifest row, output row/column
 counts, elapsed time, exit status, pass/fail.
+
+**Minimal manifest stub (`results/<run_id>/warehouse_manifest.json`):** not
+the roadmap's production manifest — a single-table stub, scoped to this
+pilot's one output, written to prove the manifest *shape* early rather than
+retrofit it later (same reasoning as adopting `Metadata_*` naming now).
+Points at this pilot's own `results/` directory, not Isilon:
+
+```json
+{
+  "warehouse_root": "3a.nextflow_pilot/results/<run_id>/",
+  "tables": [
+    {
+      "name": "profiles.nuclei_profiles",
+      "path": "results/<run_id>/nuclei_profiles.parquet",
+      "schema_version": "0.1.0-pilot",
+      "join_keys": [
+        "Metadata_Biology_PatientTumor",
+        "Metadata_Imaging_ImageID",
+        "Metadata_Object_ObjectID"
+      ],
+      "source_image_root": "<PetaLibrary path from the manual prep step>",
+      "run_id": "<run_id>",
+      "git_commit": "<sha>",
+      "row_count": null,
+      "validation_status": "pending"
+    }
+  ]
+}
+```
+
+`row_count` and `validation_status` are filled in once the validation checks
+below run. This stub is deliberately small: one table, one source asset, no
+attempt at the roadmap's full namespace (`images.image_assets`,
+`profiles.plate_map_annotations`, etc.) or at Isilon publishing — those stay
+deferred to the roadmap's real step-2 pilot.
 
 Observability: collect Nextflow's `trace.tsv`, `timeline.html`,
 `report.html`, `dag.html`, `.nextflow.log`, plus `sacct` output for the one
@@ -219,7 +257,9 @@ Gates moving to the roadmap's actual step-2 pilot subset
   exit `0`, using resource directives derived from Phase A (not formascute's
   tutorial-scale numbers).
 - Output passes all validation checks above.
-- Run record + full observability artifact set present and reviewed.
+- Run record + minimal manifest stub + full observability artifact set
+  present and reviewed; manifest stub's `row_count`/`validation_status`
+  filled in and correct.
 - Output columns pass a manual spot check against the roadmap's identifier
   and feature-naming tables.
 
@@ -228,7 +268,10 @@ Gates moving to the roadmap's actual step-2 pilot subset
 - Manifest generation/discovery tooling.
 - Multi-compartment (Cell, Cytoplasm, Organoid), multi-channel fan-out.
 - Multi-well/multi-patient pilot subset.
-- `warehouse_manifest.json` / Isilon publishing.
+- The roadmap's full production `warehouse_manifest.json` (namespaced
+  `images.image_assets` / `profiles.*` tables) and Isilon publishing — this
+  pilot writes only a single-table stub manifest inside its own `results/`
+  directory (see Phase B), not the production warehouse.
 - DuckDB validation views.
 - Job arrays for homogeneous shards.
 - Any GPU/deep-learning execution.
