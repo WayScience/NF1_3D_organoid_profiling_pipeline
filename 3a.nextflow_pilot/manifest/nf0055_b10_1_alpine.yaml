@@ -1,5 +1,3 @@
-# Legacy filename kept for compatibility. The default pilot manifest is
-# manifest/nf0055_b10_1_alpine.yaml.
 schema_version: 0.1.0-pilot
 source_image_root: /pl/active/koala/nf1-3d-pilot-workflow-db
 Metadata_Biology_PatientTumor: NF0055_T1

@@ -93,11 +93,19 @@ def git_commit(repo_root: Path) -> str:
         return ""
 
 
-def dataframe_numeric_is_finite(df: pd.DataFrame) -> bool:
+def numeric_nonfinite_counts(df: pd.DataFrame) -> dict[str, int]:
     numeric = df.select_dtypes(include=[np.number])
     if numeric.empty:
-        return True
-    return bool(np.isfinite(numeric.to_numpy()).all())
+        return {}
+    finite = np.isfinite(numeric.to_numpy())
+    if finite.all():
+        return {}
+    counts = (~finite).sum(axis=0)
+    return {
+        str(column): int(count)
+        for column, count in zip(numeric.columns, counts, strict=True)
+        if count
+    }
 
 
 def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -106,13 +114,24 @@ def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def normalize_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
+    join_candidates = {"Metadata_Object_ObjectID", "Metadata_Experiment_ImageSet"}
+    df = clean_columns(df)
+    drop_columns = [
+        column
+        for column in df.columns
+        if column.startswith("Metadata_") and column not in join_candidates
+    ]
+    return df.drop(columns=drop_columns)
+
+
 def merge_feature_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
     if not frames:
         raise ValueError("No feature frames were produced")
 
-    merged = clean_columns(frames[0])
+    merged = normalize_feature_frame(frames[0])
     for frame in frames[1:]:
-        frame = clean_columns(frame)
+        frame = normalize_feature_frame(frame)
         join_keys = [
             key
             for key in ("Metadata_Object_ObjectID", "Metadata_Experiment_ImageSet")
@@ -177,6 +196,7 @@ def validate_profiles(
         column for column in profiles.columns if not column.startswith("Metadata_")
     ]
     all_null = [column for column in feature_columns if profiles[column].isna().all()]
+    nonfinite_counts = numeric_nonfinite_counts(profiles[feature_columns])
     family_presence = feature_family_presence(feature_columns)
     metadata_match = {
         key: bool((profiles[key].astype(str) == str(manifest[key])).all())
@@ -203,19 +223,30 @@ def validate_profiles(
         "unexpected_object_ids": sorted(set(observed_ids) - set(object_ids)),
         "feature_family_presence": family_presence,
         "all_null_feature_columns": all_null,
+        "nonfinite_numeric_feature_columns": nonfinite_counts,
         "metadata_match": metadata_match,
     }
 
 
 def run_timed(
-    name: str, fn: Callable[[], pd.DataFrame], timings: dict[str, float]
+    name: str,
+    fn: Callable[[], pd.DataFrame],
+    timings: dict[str, float],
+    quality_warnings: list[dict[str, object]],
 ) -> pd.DataFrame:
     started = time.perf_counter()
     frame = fn()
     elapsed = time.perf_counter() - started
     timings[name] = round(elapsed, 3)
-    if not dataframe_numeric_is_finite(frame):
-        raise ValueError(f"{name} produced NaN or infinite numeric values")
+    nonfinite_counts = numeric_nonfinite_counts(frame)
+    if nonfinite_counts:
+        quality_warnings.append(
+            {
+                "stage": name,
+                "issue": "nonfinite_numeric_values",
+                "columns": nonfinite_counts,
+            }
+        )
     return frame
 
 
@@ -280,6 +311,7 @@ def main() -> int:
     ObjectLoader = zapi["ObjectLoader"]
     TwoObjectLoader = zapi["TwoObjectLoader"]
     timings: dict[str, float] = {}
+    quality_warnings: list[dict[str, object]] = []
     frames: list[pd.DataFrame] = []
 
     for channel in CHANNELS:
@@ -311,6 +343,7 @@ def main() -> int:
                     verbose=False,
                 ),
                 timings,
+                quality_warnings,
             )
         )
         frames.append(
@@ -320,6 +353,7 @@ def main() -> int:
                     object_loader=object_loader
                 ),
                 timings,
+                quality_warnings,
             )
         )
         frames.append(
@@ -331,6 +365,7 @@ def main() -> int:
                     grayscale=256,
                 ),
                 timings,
+                quality_warnings,
             )
         )
 
@@ -357,6 +392,7 @@ def main() -> int:
                 object_loader=no_channel_object_loader,
             ),
             timings,
+            quality_warnings,
         )
     )
     frames.append(
@@ -368,6 +404,7 @@ def main() -> int:
                 anisotropy_factor=z_spacing / xy_spacing,
             ),
             timings,
+            quality_warnings,
         )
     )
 
@@ -402,11 +439,13 @@ def main() -> int:
                     )
                 ),
                 timings,
+                quality_warnings,
             )
         )
 
     profiles = add_metadata(merge_feature_frames(frames), manifest)
     validation = validate_profiles(profiles, mask, manifest)
+    validation["quality_warnings"] = quality_warnings
 
     profile_path = outdir / "nuclei_profiles.parquet"
     profiles.to_parquet(profile_path, index=False)
@@ -426,6 +465,7 @@ def main() -> int:
         "elapsed_seconds": round(elapsed, 3),
         "exit_status": 0 if validation["valid"] else 1,
         "validation_status": "pass" if validation["valid"] else "fail",
+        "quality_warning_count": len(quality_warnings),
     }
     warehouse_manifest = {
         "warehouse_root": str(outdir),

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 import sys
 from pathlib import Path
@@ -42,9 +43,12 @@ def image_id(patient: str, plate: str, well: str, field: str) -> str:
 
 
 def find_one(patterns: list[str], directory: Path) -> Path | None:
+    entries = [path for path in directory.iterdir() if path.is_file()]
     candidates: list[Path] = []
     for pattern in patterns:
-        candidates.extend(directory.glob(pattern))
+        candidates.extend(
+            path for path in entries if fnmatch.fnmatchcase(path.name, pattern)
+        )
     return sorted(set(candidates))[0] if candidates else None
 
 
@@ -153,10 +157,10 @@ def build_manifest(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path)
-    parser.add_argument("--patient", default="NF0014_T1")
+    parser.add_argument("--patient", default="NF0055_T1")
     parser.add_argument("--well-fov")
     parser.add_argument(
-        "--output", type=Path, default=Path("manifest/smoke_test_image_set.yaml")
+        "--output", type=Path, default=Path("manifest/nf0055_b10_1_alpine.yaml")
     )
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()

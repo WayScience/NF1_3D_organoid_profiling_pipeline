@@ -2,15 +2,9 @@
 
 nextflow.enable.dsl = 2
 
-def outdir = params.outdir ?: "results/${params.run_id ?: 'manual'}"
-
-if (!params.manifest) {
-  error "params.manifest is required"
-}
-
 process FEATURIZE_IMAGE_SET {
   label 'zedprofiler_cpu'
-  publishDir outdir, mode: 'copy', overwrite: true
+  publishDir params.outdir, mode: 'copy', overwrite: true
 
   input:
   path manifest_file
@@ -27,21 +21,29 @@ process FEATURIZE_IMAGE_SET {
   set -euo pipefail
 
   if command -v uv >/dev/null 2>&1; then
-    PYTHON_RUNNER=(uv run --project "$baseDir/environments" python)
+    PYTHON_RUNNER=(uv run --project "${params.pilot_root}/environments" python)
   else
     PYTHON_RUNNER=(python3)
   fi
 
   /usr/bin/time -v -o resource_usage.txt "\${PYTHON_RUNNER[@]}" \\
-    "$baseDir/scripts/run_zedprofiler_image_set.py" \\
+    "${params.pilot_root}/scripts/run_zedprofiler_image_set.py" \\
     --manifest "${manifest_file}" \\
     --outdir . \\
     --run-id "${params.run_id ?: 'manual'}" \\
-    --repo-root "$baseDir/.."
+    --repo-root "${params.pilot_root}/.."
   """
 }
 
 workflow {
+  if (!params.manifest) {
+    error "params.manifest is required"
+  }
+  if (!params.outdir) {
+    error "params.outdir is required"
+  }
+  if (!params.pilot_root) {
+    error "params.pilot_root is required"
+  }
   FEATURIZE_IMAGE_SET(file(params.manifest))
 }
-

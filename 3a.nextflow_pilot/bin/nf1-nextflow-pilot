@@ -2,6 +2,19 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYENV_VERSION="${PYENV_VERSION:-system}"
+
+PILOT_DB_ROOT=""
+if PILOT_DB_ROOT="$(cd "$ROOT_DIR/../.." 2>/dev/null && pwd)"; then
+  :
+fi
+if [[ -z "${JAVA_HOME:-}" && -n "$PILOT_DB_ROOT" && -x "$PILOT_DB_ROOT/tools/jdk-21/bin/java" ]]; then
+  export JAVA_HOME="$PILOT_DB_ROOT/tools/jdk-21"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+if ! command -v uv >/dev/null 2>&1 && [[ -x "/projects/${USER:-}/software/uv/bin/uv" ]]; then
+  export PATH="/projects/${USER}/software/uv/bin:$PATH"
+fi
 
 usage() {
   cat <<'USAGE'
@@ -10,22 +23,24 @@ nf1-nextflow-pilot
 Usage:
   bin/nf1-nextflow-pilot check
   bin/nf1-nextflow-pilot doctor
-  bin/nf1-nextflow-pilot preflight [--run-id ID] [--account NAME] [--partition NAME] [--qos NAME]
+  bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
   bin/nf1-nextflow-pilot smoke [--run-id ID]
-  bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
-  bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+  bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--results-root PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
+  bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
 
 Common Make targets:
   make check
   make doctor
-  make build-manifest SOURCE_ROOT=/pl/active/<group>/NF1_organoid_data
-  make run MANIFEST=manifest/smoke_test_image_set.yaml PROFILE=local
-  make submit-dry-run MANIFEST=manifest/smoke_test_image_set.yaml ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
-  make submit MANIFEST=manifest/smoke_test_image_set.yaml ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+  make build-manifest
+  make run PROFILE=curc_alpine
+  make submit-dry-run ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+  make submit ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
 
 Environment:
-  NF1_PILOT_NEXTFLOW_MODULE   Module loaded in coordinator jobs. Default: nextflow/25.10.2.
+  NF1_PILOT_NEXTFLOW_MODULE   Optional module loaded in coordinator jobs. Default: none.
+  NF1_PILOT_NEXTFLOW_BIN      Nextflow executable. Default: nextflow or .nextflow/nextflow.
   NF1_PILOT_ENV_PROJECT       uv project used inside feature tasks. Default: 3a.nextflow_pilot/environments.
+  NF1_PILOT_RESULTS_ROOT      Run artifact root. Default: /pl/active/koala/nf1-3d-pilot-workflow-db/results.
   NF1_PILOT_SCRATCH           Shared scratch root. Default: /scratch/alpine/$USER.
   NF1_PILOT_PROJECT           Project/cache root. Default: /projects/$USER.
 USAGE
@@ -37,6 +52,16 @@ run_id() {
 
 have() {
   command -v "$1" >/dev/null 2>&1
+}
+
+nextflow_cmd() {
+  if [[ -n "${NF1_PILOT_NEXTFLOW_BIN:-}" ]]; then
+    printf '%s\n' "$NF1_PILOT_NEXTFLOW_BIN"
+  elif [[ -x "$ROOT_DIR/.nextflow/nextflow" ]]; then
+    printf '%s\n' "$ROOT_DIR/.nextflow/nextflow"
+  else
+    printf '%s\n' "nextflow"
+  fi
 }
 
 validate_name() {
@@ -84,6 +109,8 @@ check_repo() {
     "conf/curc_alpine.config"
     "environments/pyproject.toml"
     "environments/zedprofiler-uv.md"
+    "README.md"
+    "manifest/nf0055_b10_1_alpine.yaml"
     "manifest/smoke_test_image_set.yaml"
     "scripts/build_manifest.py"
     "scripts/manifest_io.py"
@@ -120,12 +147,17 @@ check_repo() {
   return "$failed"
 }
 
+default_results_root() {
+  printf '%s\n' "${NF1_PILOT_RESULTS_ROOT:-/pl/active/koala/nf1-3d-pilot-workflow-db/results}"
+}
+
 preflight() {
   local id="$1"
   local account="$2"
   local partition="$3"
   local qos="$4"
-  local outdir="$ROOT_DIR/results/$id/preflight"
+  local results_root="$5"
+  local outdir="$results_root/$id/preflight"
 
   validate_name "run-id" "$id"
   validate_name "account" "$account"
@@ -148,7 +180,7 @@ preflight() {
 
   env | sort > "$outdir/environment.txt"
   run_capture "$outdir/python-version.txt" python3 --version
-  run_capture "$outdir/nextflow-version.txt" nextflow -version
+  run_capture "$outdir/nextflow-version.txt" "$(nextflow_cmd)" -version
   run_capture "$outdir/uv-version.txt" uv --version
 
   if have sinfo; then
@@ -212,8 +244,10 @@ doctor() {
   echo "NF1 Nextflow pilot doctor"
   echo "repo: $ROOT_DIR"
 
-  if have nextflow; then
-    nextflow -version 2>&1 | sed -n '1,6p' || true
+  local nextflow
+  nextflow="$(nextflow_cmd)"
+  if [[ -x "$nextflow" ]] || have "$nextflow"; then
+    "$nextflow" -version 2>&1 | sed -n '1,6p' || true
   else
     echo "nextflow: missing"
   fi
@@ -247,7 +281,9 @@ run_nextflow() {
   local account="$7"
   local partition="$8"
   local qos="$9"
-  local outdir="$ROOT_DIR/results/$id"
+  local results_root="${10}"
+  local outdir="$results_root/$id"
+  local nextflow
 
   validate_name "run-id" "$id"
   validate_name "profile" "$profile"
@@ -261,13 +297,14 @@ run_nextflow() {
     manifest="$ROOT_DIR/$manifest"
   fi
 
-  if ! have nextflow; then
+  nextflow="$(nextflow_cmd)"
+  if [[ ! -x "$nextflow" ]] && ! have "$nextflow"; then
     echo "nextflow is required for runs" >&2
     exit 127
   fi
 
   mkdir -p "$outdir"
-  preflight "$id" "$account" "$partition" "$qos"
+  preflight "$id" "$account" "$partition" "$qos" "$results_root"
 
   {
     echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir --manifest $manifest"
@@ -275,11 +312,12 @@ run_nextflow() {
 
   set +e
   NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \
-    nextflow run "$ROOT_DIR/workflows/featurize_image_set.nf" \
+    "$nextflow" run "$ROOT_DIR/workflows/featurize_image_set.nf" \
       -profile "$profile" \
       -c "$ROOT_DIR/nextflow.config" \
       --run_id "$id" \
       --outdir "$outdir" \
+      --pilot_root "$ROOT_DIR" \
       --manifest "$manifest" \
       --feature_cpus "$feature_cpus" \
       --feature_memory "$feature_memory" \
@@ -310,8 +348,10 @@ submit_slurm() {
   local qos="$8"
   local dry_run="$9"
   local submit_host="${10}"
-  local outdir="$ROOT_DIR/results/$id"
+  local results_root="${11}"
+  local outdir="$results_root/$id"
   local script="$outdir/coordinator.sbatch"
+  local tools_root
   local account_directive=""
   local qos_directive=""
 
@@ -346,15 +386,16 @@ submit_slurm() {
     qos_directive="#SBATCH --qos=$qos"
   fi
 
+  tools_root="$(dirname "$results_root")/tools"
   mkdir -p "$outdir"
-  preflight "$id" "$account" "$partition" "$qos"
+  preflight "$id" "$account" "$partition" "$qos" "$results_root"
   cat > "$script" <<EOF
 #!/usr/bin/env bash
 #SBATCH --job-name=nf1-zp-pilot
 #SBATCH --partition=$partition
 $account_directive
 $qos_directive
-#SBATCH --time=01:00:00
+#SBATCH --time=03:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
@@ -365,16 +406,18 @@ $qos_directive
 set -euo pipefail
 
 cd "$ROOT_DIR"
+mkdir -p "$tools_root/nextflow-home" "$tools_root/uv-cache"
+export NXF_HOME="\${NXF_HOME:-$tools_root/nextflow-home}"
+export NF1_PILOT_PROJECT="\${NF1_PILOT_PROJECT:-$tools_root}"
+export UV_CACHE_DIR="\${UV_CACHE_DIR:-$tools_root/uv-cache}"
 
-if type module >/dev/null 2>&1; then
+if type module >/dev/null 2>&1 && [[ -n "\${NF1_PILOT_NEXTFLOW_MODULE:-}" && "\${NF1_PILOT_NEXTFLOW_MODULE:-}" != "none" ]]; then
   module purge
-  if [[ -n "\${NF1_PILOT_NEXTFLOW_MODULE:-nextflow/25.10.2}" && "\${NF1_PILOT_NEXTFLOW_MODULE:-nextflow/25.10.2}" != "none" ]]; then
-    module load "\${NF1_PILOT_NEXTFLOW_MODULE:-nextflow/25.10.2}"
-  fi
+  module load "\${NF1_PILOT_NEXTFLOW_MODULE}"
 fi
 
 NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \\
-  bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" --manifest "$manifest" \\
+  bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" --manifest "$manifest" --results-root "$results_root" \\
     --feature-cpus "$feature_cpus" --feature-memory "$feature_memory" --feature-time "$feature_time" \\
     --account "$account" --partition "$partition" --qos "$qos"
 EOF
@@ -405,9 +448,11 @@ case "$cmd" in
     account="${NF1_PILOT_ACCOUNT:-}"
     partition="${NF1_PILOT_PARTITION:-acpu}"
     qos="${NF1_PILOT_QOS:-cpu-normal}"
+    results_root="$(default_results_root)"
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --run-id) id="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
         --account) account="$2"; shift 2 ;;
         --partition) partition="$2"; shift 2 ;;
         --qos) qos="$2"; shift 2 ;;
@@ -415,7 +460,7 @@ case "$cmd" in
         *) echo "Unknown option: $1" >&2; exit 2 ;;
       esac
     done
-    preflight "$id" "$account" "$partition" "$qos"
+    preflight "$id" "$account" "$partition" "$qos" "$results_root"
     ;;
   smoke)
     id="$(run_id)"
@@ -438,11 +483,13 @@ case "$cmd" in
     account="${NF1_PILOT_ACCOUNT:-}"
     partition="${NF1_PILOT_PARTITION:-acpu}"
     qos="${NF1_PILOT_QOS:-cpu-normal}"
+    results_root="$(default_results_root)"
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --run-id) id="$2"; shift 2 ;;
         --manifest) manifest="$2"; shift 2 ;;
         --profile) profile="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
@@ -457,7 +504,7 @@ case "$cmd" in
       echo "--manifest is required" >&2
       exit 2
     fi
-    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos"
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos" "$results_root"
     ;;
   submit)
     id="$(run_id)"
@@ -470,10 +517,12 @@ case "$cmd" in
     qos="${NF1_PILOT_QOS:-cpu-normal}"
     dry_run="false"
     submit_host="${NF1_PILOT_SUBMIT_HOST:-}"
+    results_root="$(default_results_root)"
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --run-id) id="$2"; shift 2 ;;
         --manifest) manifest="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
@@ -490,7 +539,7 @@ case "$cmd" in
       echo "--manifest is required" >&2
       exit 2
     fi
-    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos" "$dry_run" "$submit_host"
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root"
     ;;
   -h|--help|"")
     usage

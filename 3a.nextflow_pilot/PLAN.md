@@ -23,10 +23,10 @@ Explicitly **not** in this plan, but architecturally reserved:
   minimal single-table manifest stub (see Phase B) so the shape is proven
   early, but it does not stand up the warehouse itself.
 
-All pilot output stays entirely inside this directory
-(`3a.nextflow_pilot/results/`) — nothing is written under the repository's
-`data/` tree. This keeps the pilot fully reversible and impossible to confuse
-with production Stage 3/4 output.
+Pilot data and run artifacts stay under
+`/pl/active/koala/nf1-3d-pilot-workflow-db/`. This keeps the pilot fully
+reversible and impossible to confuse with production Stage 3/4 output while
+making inputs and benchmark outputs visible from Alpine.
 
 ## Relationship to formascute's findings
 
@@ -58,17 +58,15 @@ raw images:         ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/zstack_imag
 segmentation masks: ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks/{well_fov}/
 ```
 
-Available patients (`patient_IDs.txt`): `NF0014_T1`, `NF0014_T2`,
-`NF0016_T1`, `NF0018_T6`, `NF0021_T1`, `NF0030_T1`.
+Available patients include `NF0055_T1`, which is the current single-image-set
+pilot target.
 
-**Patient for this pilot: `NF0014_T1`** (arbitrary choice, confirmed fine —
-no need to hunt for a "representative" patient at n=1).
+**Patient for this pilot: `NF0055_T1`**.
 
-**Working copy: PetaLibrary, not bandicoot directly.** bandicoot is not
-assumed reachable from Alpine compute nodes, so it is not used directly by
-either pilot phase. Both Phase A and Phase B read from a PetaLibrary copy,
-so the data source stays identical across both phases instead of switching
-mid-pilot.
+**Working copy: PetaLibrary, not bandicoot directly.** The selected image set
+has been staged under `/pl/active/koala/nf1-3d-pilot-workflow-db`, so both
+Phase A and Phase B read from Alpine-visible paths instead of the local
+bandicoot mount.
 
 **Well/FOV for this pilot:** exactly one, chosen during the manual prep step
 below — not the first of several candidates, since only one is being copied
@@ -81,23 +79,18 @@ below, once we get there.)
 
 ## Manual prep step (human, before Phase A)
 
-**Action item, not automatable from here:** copy exactly **one** well_fov's
-data for `NF0014_T1` from bandicoot to PetaLibrary before Phase A starts —
-its complete `zstack_images/{well_fov}/` channel set and matching
-`segmentation_masks/{well_fov}/` masks. Even though this patient has many
-well_fovs available, the pilot starts with one and only extends to more once
-the single-image-set path is proven end to end (see Success criteria).
+**Completed for the current pilot:** `NF0055_T1/B10-1` was copied from
+bandicoot into PetaLibrary:
 
-- Which well_fov: pick any one with a complete channel set and a complete
-  matching mask set — arbitrary is fine, same as the patient choice above.
-- Exact PetaLibrary destination path is TBD — confirm the project's
-  PetaLibrary allocation/group path and record it here once known (commonly
-  mounted on Alpine under `/pl/active/<group>/...`, but do not assume that
-  without confirming for this project's allocation).
-- Once this copy exists, treat PetaLibrary (not bandicoot) as this pilot's
-  data source for both phases below. Extending to more well_fovs or patients
-  later means repeating this same manual bandicoot → PetaLibrary prep step
-  for the additional image-sets, not changing how Phase A/B consume data.
+```text
+/pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/zstack_images/B10-1/
+/pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/
+```
+
+This staged folder contains five z-stack TIFFs (`405`, `488`, `555`, `640`,
+`TRANS`) and four masks (`nuclei`, `cell`, `cytoplasm`, `organoid`). The
+checked-in Nextflow pilot manifest uses the four fluorescence channels plus
+`nuclei_mask.tiff`.
 
 ## ZedProfiler version
 
@@ -125,8 +118,8 @@ any Nextflow/Slurm variable is introduced. Mirrors formascute's own
 NF1 data instead of ZedProfiler's tutorial dataset.
 
 1. Build/refresh the `uv` ZedProfiler `0.1.2` environment.
-2. Enumerate `NF0014_T1/zstack_images/` and `segmentation_masks/`, pick the
-   first well_fov with a complete Nuclei mask and full channel set.
+2. Use the staged `NF0055_T1/B10-1` manifest under
+   `manifest/nf0055_b10_1_alpine.yaml`.
 3. Run the ZedProfiler CLI directly (no Nextflow) against that one
    image-set's Nuclei compartment, DNA (405) channel as the primary mask
    channel, all channels the CLI needs for Colocalization.
@@ -160,13 +153,14 @@ numbers.
 │   ├── pyproject.toml              # isolated uv project, pinned to ZEDProfiler 0.1.2
 │   └── zedprofiler-uv.md           # uv env build recipe, pinned to ZedProfiler 0.1.2
 ├── manifest/
-│   └── smoke_test_image_set.yaml   # one hardcoded row, filled in from Phase A's chosen well_fov
+│   ├── nf0055_b10_1_alpine.yaml    # default single-image-set manifest with /pl/active paths
+│   └── smoke_test_image_set.yaml   # legacy placeholder manifest
 ├── scripts/
 │   ├── build_manifest.py           # scan PetaLibrary copy and write one manifest row
 │   ├── manifest_io.py              # minimal manifest reader/writer
 │   ├── run_zedprofiler_image_set.py # temporary API adapter + run record + validation
 │   └── smoke_synthetic.py          # data-free artifact smoke check
-└── results/                        # gitignored; trace.tsv, timeline.html, report.html, dag.html, run_record.json, warehouse_manifest.json
+└── results/                        # local smoke-only output; real benchmark outputs go to /pl/active/koala/nf1-3d-pilot-workflow-db/results/
 ```
 
 Manifest row shape (`Metadata_*` naming per the roadmap, used from the start
@@ -174,9 +168,9 @@ since retrofitting it later is expensive):
 
 | field                           | value                                                                                        |
 | ------------------------------- | -------------------------------------------------------------------------------------------- |
-| `Metadata_Biology_PatientTumor` | `NF0014_T1`                                                                                  |
-| `Metadata_Experiment_WellID`    | _(from Phase A directory listing)_                                                           |
-| `Metadata_Imaging_FieldID`      | _(from Phase A directory listing)_                                                           |
+| `Metadata_Biology_PatientTumor` | `NF0055_T1`                                                                                  |
+| `Metadata_Experiment_WellID`    | `B10`                                                                                        |
+| `Metadata_Imaging_FieldID`      | `1`                                                                                          |
 | `Metadata_Imaging_ImageID`      | deterministic build from the three fields above                                              |
 | channel paths                   | all channels under the chosen `zstack_images/{well_fov}/`                                    |
 | mask path                       | `segmentation_masks/{well_fov}/Nuclei_mask.tif`                                              |
@@ -189,7 +183,7 @@ Execution: use the folder-local `Makefile`. The intended sequence is:
 cd 3a.nextflow_pilot
 make check
 uv sync --project environments
-make build-manifest SOURCE_ROOT=/pl/active/<group>/NF1_organoid_data PATIENT=NF0014_T1
+make validate-manifest
 make submit-dry-run ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
 make submit ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
 ```
@@ -203,23 +197,23 @@ Output columns: `Metadata_*` identifiers above, plus ZEDProfiler's own
 feature-naming-convention columns
 (`{Compartment}_{Channel}_{FeatureType}_{Measurement}`).
 
-Run record (`results/<run_id>/run_record.json`): command line, git commit of
-this repo, ZedProfiler version + `uv` env hash, manifest row, output row/column
-counts, elapsed time, exit status, pass/fail.
+Run record (`/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/run_record.json`):
+command line, git commit of this repo, ZedProfiler version + `uv` env hash,
+manifest row, output row/column counts, elapsed time, exit status, pass/fail.
 
-**Minimal manifest stub (`results/<run_id>/warehouse_manifest.json`):** not
-the roadmap's production manifest — a single-table stub, scoped to this
+**Minimal manifest stub (`/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/warehouse_manifest.json`):**
+not the roadmap's production manifest — a single-table stub, scoped to this
 pilot's one output, written to prove the manifest _shape_ early rather than
 retrofit it later (same reasoning as adopting `Metadata_*` naming now).
-Points at this pilot's own `results/` directory, not Isilon:
+Points at this pilot's own benchmark results directory, not Isilon:
 
 ```json
 {
-  "warehouse_root": "3a.nextflow_pilot/results/<run_id>/",
+  "warehouse_root": "/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/",
   "tables": [
     {
       "name": "profiles.nuclei_profiles",
-      "path": "results/<run_id>/nuclei_profiles.parquet",
+      "path": "/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/nuclei_profiles.parquet",
       "schema_version": "0.1.0-pilot",
       "join_keys": [
         "Metadata_Biology_PatientTumor",
@@ -289,13 +283,13 @@ Gates moving to the roadmap's actual step-2 pilot subset
 
 ## Explicitly deferred
 
-- Manifest generation/discovery tooling.
+- Generalized multi-row manifest generation/discovery tooling.
 - Multi-compartment (Cell, Cytoplasm, Organoid), multi-channel fan-out.
 - Multi-well/multi-patient pilot subset.
 - The roadmap's full production `warehouse_manifest.json` (namespaced
   `images.image_assets` / `profiles.*` tables) and Isilon publishing — this
-  pilot writes only a single-table stub manifest inside its own `results/`
-  directory (see Phase B), not the production warehouse.
+  pilot writes only a single-table stub manifest inside its own benchmark
+  results directory (see Phase B), not the production warehouse.
 - DuckDB validation views.
 - Job arrays for homogeneous shards.
 - Any GPU/deep-learning execution.
@@ -308,4 +302,5 @@ Gates moving to the roadmap's actual step-2 pilot subset
 - Whether the ZedProfiler 0.1.2 CLI alone is sufficient, or whether
   Colocalization/Granularity need extra parameters not exposed by the CLI
   yet (resolve in Phase A).
-- Exact well_fov choice (resolve by directory listing in Phase A).
+- Whether to replace the temporary Python API adapter with a direct
+  ZEDProfiler 0.1.2 CLI invocation after the first benchmark run.

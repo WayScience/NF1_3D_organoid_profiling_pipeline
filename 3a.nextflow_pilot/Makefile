@@ -1,10 +1,12 @@
 SHELL := /usr/bin/env bash
+export PYENV_VERSION ?= system
 
 RUN_ID ?=
-MANIFEST ?= manifest/smoke_test_image_set.yaml
-SOURCE_ROOT ?=
-PATIENT ?= NF0014_T1
-WELL_FOV ?=
+MANIFEST ?= manifest/nf0055_b10_1_alpine.yaml
+SOURCE_ROOT ?= /pl/active/koala/nf1-3d-pilot-workflow-db
+RESULTS_ROOT ?= /pl/active/koala/nf1-3d-pilot-workflow-db/results
+PATIENT ?= NF0055_T1
+WELL_FOV ?= B10-1
 PROFILE ?= local
 ACCOUNT ?=
 PARTITION ?= acpu
@@ -30,6 +32,7 @@ ifneq ($(strip $(RUN_ID)),)
 RUN_ARGS += --run-id "$(RUN_ID)"
 endif
 RUN_ARGS += --manifest "$(MANIFEST)"
+RUN_ARGS += --results-root "$(RESULTS_ROOT)"
 RUN_ARGS += --feature-cpus "$(FEATURE_CPUS)"
 RUN_ARGS += --feature-memory "$(FEATURE_MEMORY)"
 RUN_ARGS += --feature-time "$(FEATURE_TIME)"
@@ -46,7 +49,7 @@ doctor:
 	@bash bin/nf1-nextflow-pilot doctor
 
 preflight:
-	@bash bin/nf1-nextflow-pilot preflight $(if $(RUN_ID),--run-id "$(RUN_ID)") --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)"
+	@bash bin/nf1-nextflow-pilot preflight $(if $(RUN_ID),--run-id "$(RUN_ID)") --results-root "$(RESULTS_ROOT)" --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)"
 
 build-manifest:
 	@python3 scripts/build_manifest.py $(MANIFEST_ARGS) --output "$(MANIFEST)"
@@ -68,5 +71,4 @@ smoke:
 	@bash bin/nf1-nextflow-pilot smoke $(if $(RUN_ID),--run-id "$(RUN_ID)")
 
 clean:
-	@printf 'Generated pilot artifacts live under 3a.nextflow_pilot/results/ and are gitignored.\n'
-
+	@printf 'Generated pilot artifacts default to $(RESULTS_ROOT).\n'
