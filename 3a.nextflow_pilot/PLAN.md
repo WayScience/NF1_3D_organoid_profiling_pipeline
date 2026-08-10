@@ -43,7 +43,7 @@ with production Stage 3/4 output.
 **That last number does not transfer directly to this pilot.** The tutorial
 volumes are far smaller than real NF1 acquisitions (per the pipeline
 README: ~30-50 z-slices, ~1500×1500 XY pixels). Treat formascute's
-23s/1GB figures as a *floor*, not a planning number, until this pilot
+23s/1GB figures as a _floor_, not a planning number, until this pilot
 measures real NF1-scale timing and memory directly. This is the single most
 important correction to carry forward — resource directives sized off the
 tutorial-scale number risk OOM or silent truncation on real data.
@@ -74,7 +74,7 @@ mid-pilot.
 below — not the first of several candidates, since only one is being copied
 to PetaLibrary at this stage. No need to specifically seek out a DMSO/control
 well for a mechanics-only smoke test; treatment identity only matters once
-profile *values* are being interpreted, not while proving the fan-out
+profile _values_ are being interpreted, not while proving the fan-out
 plumbing works. (The shared platemap — `WellRow, WellCol, WellPosition,
 Treatment, Dose, Unit` — is available for the annotation join described
 below, once we get there.)
@@ -106,14 +106,16 @@ up from formascute's validated `0.1.1` — re-validate the `uv` environment
 build against `0.1.2` rather than assuming the prior install recipe carries
 over unchanged.
 
-Because 0.1.2 has a real CLI, **prefer invoking it directly as the Nextflow
-task payload** over writing a custom Python glue script
-(`3.cellprofiling/scripts/zp_feature_call.py`-style). Fewer lines of
-pipeline-owned code, and it stays in sync with upstream automatically.
-Confirm during Phase A whether the CLI's supported inputs/outputs cover what
-this pilot needs (per-compartment mask input, multi-channel intensity input,
-all 6 feature classes, Parquet output); fall back to the existing Python
-wrapper only if the CLI has a real gap.
+Because 0.1.2 is expected to have a functional CLI, **prefer invoking it
+directly once the CLI's exact contract is confirmed on the copied image-set**.
+The executable pilot added here uses a thin Python API adapter
+(`scripts/run_zedprofiler_image_set.py`) for the first real run because this
+repository already has a known ZEDProfiler API integration pattern and the data
+is not yet available to verify the 0.1.2 CLI arguments. Treat that adapter as a
+compatibility bridge, not a new feature library: keep it small, keep output
+validation around it, and replace its task payload with the upstream CLI as soon
+as Phase A proves the CLI covers per-compartment mask input, multi-channel
+intensity input, all 6 feature classes, and Parquet output.
 
 ## Phase A — real data, no orchestration
 
@@ -145,35 +147,57 @@ numbers.
 ```
 3a.nextflow_pilot/
 ├── PLAN.md                        # this document
+├── Makefile                       # isolated pilot entrypoint, patterned after formascute
+├── bin/
+│   └── nf1-nextflow-pilot         # check/doctor/preflight/run/submit wrapper
+├── nextflow.config                # local and CURC profile selection + observability
 ├── workflows/
 │   └── featurize_image_set.nf     # one process, wraps the ZedProfiler 0.1.2 CLI call proven in Phase A
 ├── conf/
 │   ├── base.config                 # generic SLURM-compatible resources, no CURC specifics
 │   └── curc_alpine.config          # Persistence1 / acpu / cpu-normal / module names — the named CURC profile
 ├── environments/
+│   ├── pyproject.toml              # isolated uv project, pinned to ZEDProfiler 0.1.2
 │   └── zedprofiler-uv.md           # uv env build recipe, pinned to ZedProfiler 0.1.2
 ├── manifest/
 │   └── smoke_test_image_set.yaml   # one hardcoded row, filled in from Phase A's chosen well_fov
+├── scripts/
+│   ├── build_manifest.py           # scan PetaLibrary copy and write one manifest row
+│   ├── manifest_io.py              # minimal manifest reader/writer
+│   ├── run_zedprofiler_image_set.py # temporary API adapter + run record + validation
+│   └── smoke_synthetic.py          # data-free artifact smoke check
 └── results/                        # gitignored; trace.tsv, timeline.html, report.html, dag.html, run_record.json, warehouse_manifest.json
 ```
 
 Manifest row shape (`Metadata_*` naming per the roadmap, used from the start
 since retrofitting it later is expensive):
 
-| field | value |
-|---|---|
-| `Metadata_Biology_PatientTumor` | `NF0014_T1` |
-| `Metadata_Experiment_WellID` | *(from Phase A directory listing)* |
-| `Metadata_Imaging_FieldID` | *(from Phase A directory listing)* |
-| `Metadata_Imaging_ImageID` | deterministic build from the three fields above |
-| channel paths | all channels under the chosen `zstack_images/{well_fov}/` |
-| mask path | `segmentation_masks/{well_fov}/Nuclei_mask.tif` |
-| feature families | `[VolumeSizeShape, Intensity, Texture, Colocalization, Neighbors, Granularity]` |
-| resources | set from Phase A's measured numbers, with headroom — not formascute's tutorial-scale figures |
+| field                           | value                                                                                        |
+| ------------------------------- | -------------------------------------------------------------------------------------------- |
+| `Metadata_Biology_PatientTumor` | `NF0014_T1`                                                                                  |
+| `Metadata_Experiment_WellID`    | _(from Phase A directory listing)_                                                           |
+| `Metadata_Imaging_FieldID`      | _(from Phase A directory listing)_                                                           |
+| `Metadata_Imaging_ImageID`      | deterministic build from the three fields above                                              |
+| channel paths                   | all channels under the chosen `zstack_images/{well_fov}/`                                    |
+| mask path                       | `segmentation_masks/{well_fov}/Nuclei_mask.tif`                                              |
+| feature families                | `[VolumeSizeShape, Intensity, Texture, Colocalization, Neighbors, Granularity]`              |
+| resources                       | set from Phase A's measured numbers, with headroom — not formascute's tutorial-scale figures |
 
-Execution: `curc_alpine.config` profile, `Persistence1` submission, `acpu`,
-`cpu-normal`, `nextflow/25.10.2` loaded in the coordinator job, `uv`
-ZedProfiler `0.1.2` env activated for the task.
+Execution: use the folder-local `Makefile`. The intended sequence is:
+
+```bash
+cd 3a.nextflow_pilot
+make check
+uv sync --project environments
+make build-manifest SOURCE_ROOT=/pl/active/<group>/NF1_organoid_data PATIENT=NF0014_T1
+make submit-dry-run ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+make submit ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+```
+
+The `curc_alpine` profile submits the one feature task to Slurm on `acpu` /
+`cpu-normal`, while the generated coordinator job loads `nextflow/25.10.2` on
+`Persistence1`. The task runs Python through the isolated `uv` project in
+`3a.nextflow_pilot/environments`.
 
 Output columns: `Metadata_*` identifiers above, plus ZEDProfiler's own
 feature-naming-convention columns
@@ -185,7 +209,7 @@ counts, elapsed time, exit status, pass/fail.
 
 **Minimal manifest stub (`results/<run_id>/warehouse_manifest.json`):** not
 the roadmap's production manifest — a single-table stub, scoped to this
-pilot's one output, written to prove the manifest *shape* early rather than
+pilot's one output, written to prove the manifest _shape_ early rather than
 retrofit it later (same reasoning as adopting `Metadata_*` naming now).
 Points at this pilot's own `results/` directory, not Isilon:
 

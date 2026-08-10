@@ -1,0 +1,503 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  cat <<'USAGE'
+nf1-nextflow-pilot
+
+Usage:
+  bin/nf1-nextflow-pilot check
+  bin/nf1-nextflow-pilot doctor
+  bin/nf1-nextflow-pilot preflight [--run-id ID] [--account NAME] [--partition NAME] [--qos NAME]
+  bin/nf1-nextflow-pilot smoke [--run-id ID]
+  bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
+  bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+
+Common Make targets:
+  make check
+  make doctor
+  make build-manifest SOURCE_ROOT=/pl/active/<group>/NF1_organoid_data
+  make run MANIFEST=manifest/smoke_test_image_set.yaml PROFILE=local
+  make submit-dry-run MANIFEST=manifest/smoke_test_image_set.yaml ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+  make submit MANIFEST=manifest/smoke_test_image_set.yaml ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+
+Environment:
+  NF1_PILOT_NEXTFLOW_MODULE   Module loaded in coordinator jobs. Default: nextflow/25.10.2.
+  NF1_PILOT_ENV_PROJECT       uv project used inside feature tasks. Default: 3a.nextflow_pilot/environments.
+  NF1_PILOT_SCRATCH           Shared scratch root. Default: /scratch/alpine/$USER.
+  NF1_PILOT_PROJECT           Project/cache root. Default: /projects/$USER.
+USAGE
+}
+
+run_id() {
+  date -u +"%Y%m%dT%H%M%SZ"
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+validate_name() {
+  local label="$1"
+  local value="$2"
+  if [[ -n "$value" && ! "$value" =~ ^[A-Za-z0-9_.@:+-]+$ ]]; then
+    echo "$label contains unsupported characters: $value" >&2
+    exit 2
+  fi
+}
+
+validate_positive_int() {
+  local label="$1"
+  local value="$2"
+  local max="$3"
+  if [[ ! "$value" =~ ^[0-9]+$ || "$value" -lt 1 || "$value" -gt "$max" ]]; then
+    echo "$label must be an integer from 1 to $max" >&2
+    exit 2
+  fi
+}
+
+run_capture() {
+  local output="$1"
+  shift
+  {
+    printf '$'
+    printf ' %q' "$@"
+    printf '\n'
+    "$@"
+  } > "$output" 2>&1 || {
+    local status=$?
+    printf '\nexit_status: %s\n' "$status" >> "$output"
+    return 0
+  }
+}
+
+check_repo() {
+  local failed=0
+  local required=(
+    "Makefile"
+    "PLAN.md"
+    "nextflow.config"
+    "bin/nf1-nextflow-pilot"
+    "conf/base.config"
+    "conf/curc_alpine.config"
+    "environments/pyproject.toml"
+    "environments/zedprofiler-uv.md"
+    "manifest/smoke_test_image_set.yaml"
+    "scripts/build_manifest.py"
+    "scripts/manifest_io.py"
+    "scripts/run_zedprofiler_image_set.py"
+    "scripts/smoke_synthetic.py"
+    "workflows/featurize_image_set.nf"
+  )
+
+  echo "NF1 Nextflow pilot check"
+  for path in "${required[@]}"; do
+    if [[ -e "$ROOT_DIR/$path" ]]; then
+      echo "ok: $path"
+    else
+      echo "missing: $path" >&2
+      failed=1
+    fi
+  done
+
+  bash -n "$ROOT_DIR/bin/nf1-nextflow-pilot" || failed=1
+  python3 -m py_compile \
+    "$ROOT_DIR/scripts/build_manifest.py" \
+    "$ROOT_DIR/scripts/manifest_io.py" \
+    "$ROOT_DIR/scripts/run_zedprofiler_image_set.py" \
+    "$ROOT_DIR/scripts/smoke_synthetic.py" || failed=1
+
+  mkdir -p "$ROOT_DIR/results"
+  if [[ -w "$ROOT_DIR/results" ]]; then
+    echo "ok: results directory writable"
+  else
+    echo "not writable: results" >&2
+    failed=1
+  fi
+
+  return "$failed"
+}
+
+preflight() {
+  local id="$1"
+  local account="$2"
+  local partition="$3"
+  local qos="$4"
+  local outdir="$ROOT_DIR/results/$id/preflight"
+
+  validate_name "run-id" "$id"
+  validate_name "account" "$account"
+  validate_name "partition" "$partition"
+  validate_name "qos" "$qos"
+
+  mkdir -p "$outdir"
+  {
+    echo "run_id: $id"
+    echo "created_utc: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "repo: $ROOT_DIR"
+    echo "host: $(hostname 2>/dev/null || true)"
+    echo "user: ${USER:-}"
+    echo "pwd: $(pwd)"
+    echo "account: $account"
+    echo "partition: $partition"
+    echo "qos: $qos"
+    echo "git_commit: $(git -C "$ROOT_DIR/.." rev-parse --short HEAD 2>/dev/null || true)"
+  } > "$outdir/summary.txt"
+
+  env | sort > "$outdir/environment.txt"
+  run_capture "$outdir/python-version.txt" python3 --version
+  run_capture "$outdir/nextflow-version.txt" nextflow -version
+  run_capture "$outdir/uv-version.txt" uv --version
+
+  if have sinfo; then
+    run_capture "$outdir/sinfo-target-partition.txt" sinfo -p "$partition" -o "%P|%a|%l|%D|%t|%c|%m|%f|%G"
+  fi
+  if have squeue; then
+    run_capture "$outdir/squeue-user.txt" squeue -u "${USER:-}" -o "%.18i %.9P %.30j %.8u %.2t %.10M %.10l %.6D %R"
+  fi
+  if have sbatch; then
+    run_capture "$outdir/sbatch-version.txt" sbatch --version
+  fi
+  if have sacct; then
+    run_capture "$outdir/sacct-version.txt" sacct --version
+  fi
+  if type module >/dev/null 2>&1; then
+    module -t list > "$outdir/modules-loaded.txt" 2>&1 || true
+    module -t avail nextflow > "$outdir/modules-nextflow.txt" 2>&1 || true
+  fi
+
+  echo "Preflight written to $outdir"
+}
+
+collect_slurm_accounting() {
+  local outdir="$1"
+  local trace="$outdir/trace.tsv"
+  local slurm="$outdir/slurm.tsv"
+
+  if ! have sacct || [[ ! -f "$trace" ]]; then
+    return 0
+  fi
+
+  python3 - "$trace" "$slurm.jobs" <<'PY'
+import csv
+import sys
+
+trace_path, jobs_path = sys.argv[1:3]
+jobs = []
+with open(trace_path, newline="") as handle:
+    reader = csv.DictReader(handle, delimiter="\t")
+    if "native_id" not in (reader.fieldnames or []):
+        raise SystemExit(0)
+    for row in reader:
+        native_id = (row.get("native_id") or "").strip()
+        if native_id and native_id not in jobs:
+            jobs.append(native_id)
+
+with open(jobs_path, "w") as handle:
+    for job in jobs:
+        handle.write(job + "\n")
+PY
+
+  if [[ -s "$slurm.jobs" ]]; then
+    sacct -j "$(paste -sd, "$slurm.jobs")" --parsable2 \
+      --format=JobID,JobName%40,Partition,Account,AllocCPUS,State,ExitCode,Submit,Start,End,Elapsed,ReqMem,MaxRSS,NTasks,NNodes \
+      > "$slurm" || true
+  fi
+  rm -f "$slurm.jobs"
+}
+
+doctor() {
+  echo "NF1 Nextflow pilot doctor"
+  echo "repo: $ROOT_DIR"
+
+  if have nextflow; then
+    nextflow -version 2>&1 | sed -n '1,6p' || true
+  else
+    echo "nextflow: missing"
+  fi
+
+  if have uv; then
+    uv --version
+  else
+    echo "uv: missing"
+  fi
+
+  if have sbatch; then
+    echo "sbatch: $(command -v sbatch)"
+  else
+    echo "sbatch: missing"
+  fi
+
+  if have sacct; then
+    echo "sacct: $(command -v sacct)"
+  else
+    echo "sacct: missing"
+  fi
+}
+
+run_nextflow() {
+  local id="$1"
+  local manifest="$2"
+  local profile="$3"
+  local feature_cpus="$4"
+  local feature_memory="$5"
+  local feature_time="$6"
+  local account="$7"
+  local partition="$8"
+  local qos="$9"
+  local outdir="$ROOT_DIR/results/$id"
+
+  validate_name "run-id" "$id"
+  validate_name "profile" "$profile"
+  validate_positive_int "feature-cpus" "$feature_cpus" 48
+
+  if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
+    echo "Manifest not found: $manifest" >&2
+    exit 2
+  fi
+  if [[ ! -f "$manifest" ]]; then
+    manifest="$ROOT_DIR/$manifest"
+  fi
+
+  if ! have nextflow; then
+    echo "nextflow is required for runs" >&2
+    exit 127
+  fi
+
+  mkdir -p "$outdir"
+  preflight "$id" "$account" "$partition" "$qos"
+
+  {
+    echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir --manifest $manifest"
+  } > "$outdir/run-command.txt"
+
+  set +e
+  NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \
+    nextflow run "$ROOT_DIR/workflows/featurize_image_set.nf" \
+      -profile "$profile" \
+      -c "$ROOT_DIR/nextflow.config" \
+      --run_id "$id" \
+      --outdir "$outdir" \
+      --manifest "$manifest" \
+      --feature_cpus "$feature_cpus" \
+      --feature_memory "$feature_memory" \
+      --feature_time "$feature_time" \
+      2>&1 | tee "$outdir/nextflow.log"
+  local nextflow_status="${PIPESTATUS[0]}"
+  set -e
+
+  collect_slurm_accounting "$outdir"
+  echo "nextflow_exit_status: $nextflow_status" > "$outdir/completion_status.txt"
+
+  if [[ "$nextflow_status" -ne 0 ]]; then
+    echo "Run failed; artifacts written to $outdir" >&2
+    exit "$nextflow_status"
+  fi
+
+  echo "Run written to $outdir"
+}
+
+submit_slurm() {
+  local id="$1"
+  local manifest="$2"
+  local feature_cpus="$3"
+  local feature_memory="$4"
+  local feature_time="$5"
+  local account="$6"
+  local partition="$7"
+  local qos="$8"
+  local dry_run="$9"
+  local submit_host="${10}"
+  local outdir="$ROOT_DIR/results/$id"
+  local script="$outdir/coordinator.sbatch"
+  local account_directive=""
+  local qos_directive=""
+
+  validate_name "run-id" "$id"
+  validate_name "account" "$account"
+  validate_name "partition" "$partition"
+  validate_name "qos" "$qos"
+  validate_name "submit-host" "$submit_host"
+  validate_positive_int "feature-cpus" "$feature_cpus" 48
+
+  if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
+    echo "Manifest not found: $manifest" >&2
+    exit 2
+  fi
+  if [[ ! -f "$manifest" ]]; then
+    manifest="$ROOT_DIR/$manifest"
+  fi
+
+  if [[ "$dry_run" != "true" && -z "$submit_host" ]] && ! have sbatch; then
+    echo "sbatch is required for submit" >&2
+    exit 127
+  fi
+  if [[ "$dry_run" != "true" && -n "$submit_host" ]] && ! have ssh; then
+    echo "ssh is required when --submit-host is used" >&2
+    exit 127
+  fi
+
+  if [[ -n "$account" ]]; then
+    account_directive="#SBATCH --account=$account"
+  fi
+  if [[ -n "$qos" ]]; then
+    qos_directive="#SBATCH --qos=$qos"
+  fi
+
+  mkdir -p "$outdir"
+  preflight "$id" "$account" "$partition" "$qos"
+  cat > "$script" <<EOF
+#!/usr/bin/env bash
+#SBATCH --job-name=nf1-zp-pilot
+#SBATCH --partition=$partition
+$account_directive
+$qos_directive
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+#SBATCH --output=$outdir/coordinator_%j.out
+#SBATCH --error=$outdir/coordinator_%j.err
+
+set -euo pipefail
+
+cd "$ROOT_DIR"
+
+if type module >/dev/null 2>&1; then
+  module purge
+  if [[ -n "\${NF1_PILOT_NEXTFLOW_MODULE:-nextflow/25.10.2}" && "\${NF1_PILOT_NEXTFLOW_MODULE:-nextflow/25.10.2}" != "none" ]]; then
+    module load "\${NF1_PILOT_NEXTFLOW_MODULE:-nextflow/25.10.2}"
+  fi
+fi
+
+NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \\
+  bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" --manifest "$manifest" \\
+    --feature-cpus "$feature_cpus" --feature-memory "$feature_memory" --feature-time "$feature_time" \\
+    --account "$account" --partition "$partition" --qos "$qos"
+EOF
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo "Dry run: not submitting to Slurm" | tee "$outdir/slurm-submit.txt"
+  elif [[ -n "$submit_host" ]]; then
+    # shellcheck disable=SC2029
+    ssh "$submit_host" "cd '$ROOT_DIR' && sbatch '$script'" | tee "$outdir/slurm-submit.txt"
+  else
+    sbatch "$script" | tee "$outdir/slurm-submit.txt"
+  fi
+  echo "Coordinator script written to $script"
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  check)
+    check_repo
+    ;;
+  doctor)
+    doctor
+    ;;
+  preflight)
+    id="$(run_id)"
+    account="${NF1_PILOT_ACCOUNT:-}"
+    partition="${NF1_PILOT_PARTITION:-acpu}"
+    qos="${NF1_PILOT_QOS:-cpu-normal}"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --account) account="$2"; shift 2 ;;
+        --partition) partition="$2"; shift 2 ;;
+        --qos) qos="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    preflight "$id" "$account" "$partition" "$qos"
+    ;;
+  smoke)
+    id="$(run_id)"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    python3 "$ROOT_DIR/scripts/smoke_synthetic.py" --outdir "$ROOT_DIR/results/$id/smoke" --run-id "$id"
+    ;;
+  run)
+    id="$(run_id)"
+    manifest=""
+    profile="local"
+    feature_cpus=2
+    feature_memory="32 GB"
+    feature_time="2h"
+    account="${NF1_PILOT_ACCOUNT:-}"
+    partition="${NF1_PILOT_PARTITION:-acpu}"
+    qos="${NF1_PILOT_QOS:-cpu-normal}"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --manifest) manifest="$2"; shift 2 ;;
+        --profile) profile="$2"; shift 2 ;;
+        --feature-cpus) feature_cpus="$2"; shift 2 ;;
+        --feature-memory) feature_memory="$2"; shift 2 ;;
+        --feature-time) feature_time="$2"; shift 2 ;;
+        --account) account="$2"; shift 2 ;;
+        --partition) partition="$2"; shift 2 ;;
+        --qos) qos="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    if [[ -z "$manifest" ]]; then
+      echo "--manifest is required" >&2
+      exit 2
+    fi
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos"
+    ;;
+  submit)
+    id="$(run_id)"
+    manifest=""
+    feature_cpus=2
+    feature_memory="32 GB"
+    feature_time="2h"
+    account="${NF1_PILOT_ACCOUNT:-}"
+    partition="${NF1_PILOT_PARTITION:-acpu}"
+    qos="${NF1_PILOT_QOS:-cpu-normal}"
+    dry_run="false"
+    submit_host="${NF1_PILOT_SUBMIT_HOST:-}"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --manifest) manifest="$2"; shift 2 ;;
+        --feature-cpus) feature_cpus="$2"; shift 2 ;;
+        --feature-memory) feature_memory="$2"; shift 2 ;;
+        --feature-time) feature_time="$2"; shift 2 ;;
+        --account) account="$2"; shift 2 ;;
+        --partition) partition="$2"; shift 2 ;;
+        --qos) qos="$2"; shift 2 ;;
+        --submit-host) submit_host="$2"; shift 2 ;;
+        --dry-run) dry_run="true"; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    if [[ -z "$manifest" ]]; then
+      echo "--manifest is required" >&2
+      exit 2
+    fi
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos" "$dry_run" "$submit_host"
+    ;;
+  -h|--help|"")
+    usage
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage
+    exit 2
+    ;;
+esac

@@ -1,0 +1,27 @@
+# Placeholder manifest. Replace with:
+#   make build-manifest SOURCE_ROOT=/pl/active/<group>/NF1_organoid_data PATIENT=NF0014_T1
+schema_version: 0.1.0-pilot
+source_image_root: ""
+Metadata_Biology_PatientTumor: NF0014_T1
+Metadata_Biology_PatientID: NF0014
+Metadata_Experiment_PlateID: NF0014_T1
+Metadata_Experiment_WellID: TBD
+Metadata_Imaging_FieldID: TBD
+Metadata_Imaging_ImageID: NF0014_T1__TBD__TBD
+compartment: Nuclei
+z_spacing: 1.0
+xy_spacing: 0.1
+mask_path: ""
+channel_paths:
+  DNA: ""
+  ER: ""
+  AGP: ""
+  Mito: ""
+feature_families:
+  - VolumeSizeShape
+  - Intensity
+  - Texture
+  - Colocalization
+  - Neighbors
+  - Granularity
+
