@@ -97,6 +97,11 @@ formats, join keys, columns, row counts, table locations, and current Iceberg
 metadata locations. A compatibility copy is written at the run root as
 `warehouse_manifest.json`, but the canonical manifest lives under `warehouse/`.
 
+The workflow writes the warehouse directly into the final results directory.
+Iceberg metadata contains absolute table, manifest, and data-file paths, so the
+warehouse should not be created in a Nextflow scratch directory and copied into
+place afterward.
+
 ## Channel and Compartment Roles
 
 The pilot follows the repository channel mapping in `config/channel_mapping.toml`.
@@ -198,3 +203,110 @@ The four quality warnings are non-finite texture features in the DNA, ER, AGP,
 and Mito texture stages. The merged profile still passed structural validation:
 all expected feature families were present, all 11 nuclei objects were present,
 metadata matched the manifest, and no feature column was entirely null.
+
+## Alpine notes from 2026-08-11
+
+The all-compartment single image-set run completed successfully:
+
+```text
+run_id: nf0055-b10-1-all-compartments-iceberg-20260811T141040Z
+repo_commit: a45e9db
+coordinator_job: 31102701
+feature_job: 31102710
+workflow_slurm_jobs: 2
+nextflow_duration: 1h 29m 20s
+feature_walltime_trace: 1h 29m 3s
+script_elapsed_seconds: 5307.541
+resource_usage_walltime: 1:29:02
+resource_usage_cpu: 119%
+max_rss_resource_usage: 19,803,960 KB
+max_rss_slurm_batch: 24,190,828 KB
+validation_status: pass
+quality_warning_count: 4
+```
+
+The workflow job count above includes the scheduler-owned Nextflow coordinator
+job plus the one Slurm task submitted by Nextflow for `FEATURIZE_IMAGE_SET`.
+It does not include the short `srun` process snapshot used during manual
+monitoring.
+
+Profile outputs:
+
+```text
+profiles.nuclei_profiles: 11 rows x 903 columns
+profiles.cell_profiles: 9 rows x 903 columns
+profiles.cytoplasm_profiles: 9 rows x 903 columns
+profiles.organoid_profiles: 2 rows x 903 columns
+```
+
+Alignment validation passed for all four channels and all four masks at shape
+`[105, 1527, 1528]`.
+
+Warehouse validation inside the run passed and produced `images` and `profiles`
+namespaces. A follow-up check found that this commit's published warehouse was
+not directly loadable from the results directory because the PyIceberg catalog
+metadata still pointed at Nextflow scratch paths under `/tmp/nxf...`. The
+workflow now writes directly to `params.outdir` to avoid relocating an Iceberg
+warehouse after metadata creation.
+
+The 2026-08-11 run output was repaired in place after the benchmark: the
+scratch-copied warehouse was archived as `warehouse_scratch_copy_broken`, and a
+new loadable warehouse was rebuilt at:
+
+```text
+/pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-all-compartments-iceberg-20260811T141040Z/warehouse
+```
+
+PyIceberg scans against the repaired catalog returned matching row counts for
+`images.image_assets`, `profiles.nuclei_profiles`, `profiles.cell_profiles`,
+`profiles.cytoplasm_profiles`, and `profiles.organoid_profiles`.
+
+### Per-compartment fan-out benchmark
+
+The workflow was also modeled as one Slurm task per compartment followed by one
+single-writer warehouse task. This avoids concurrent writes to the same Iceberg
+SQLite catalog while letting the ZEDProfiler feature work run in parallel.
+
+Successful run:
+
+```text
+run_id: nf0055-b10-1-fanout-compartments-iceberg-20260811T1635Z
+mode: per_compartment_fanout
+coordinator_job: 31105893
+feature_jobs: 31105895, 31105896, 31105897, 31105898
+warehouse_job: 31107020
+workflow_slurm_jobs: 6
+nextflow_exit_status: 0
+coordinator_walltime: 26m 20s
+feature_critical_path: 25m 26s
+warehouse_duration_trace: 34.9s
+warehouse_walltime_resource_usage: 0:09.07
+validation_status: pass
+quality_warning_count: 4
+```
+
+Trace durations:
+
+```text
+FEATURIZE_COMPARTMENT (2): 22m 27s, 17.6 GB peak RSS
+FEATURIZE_COMPARTMENT (3): 22m 30s, 17.6 GB peak RSS
+FEATURIZE_COMPARTMENT (1): 24m 29s, 17.6 GB peak RSS
+FEATURIZE_COMPARTMENT (4): 25m 26s, 17.6 GB peak RSS
+BUILD_WAREHOUSE: 34.9s, 326.7 MB peak RSS
+```
+
+Slurm accounting reported the coordinator at `00:26:20`, feature jobs from
+`00:21:44` to `00:24:43`, and the warehouse job at `00:00:10`. The run used
+more Slurm jobs than the sequential workflow (`6` vs. `2`) but reduced
+end-to-end wall time from `01:29:32` to `00:26:20` for the same single image
+set, a roughly 3.4x improvement.
+
+The final warehouse loaded successfully through PyIceberg:
+
+```text
+images.image_assets: 8 rows
+profiles.nuclei_profiles: 11 rows
+profiles.cell_profiles: 9 rows
+profiles.cytoplasm_profiles: 9 rows
+profiles.organoid_profiles: 2 rows
+```
