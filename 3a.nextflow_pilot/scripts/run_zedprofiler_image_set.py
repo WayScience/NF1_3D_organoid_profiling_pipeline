@@ -16,9 +16,43 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 import tifffile
+from iceberg_warehouse import publish_iceberg_warehouse
 from manifest_io import load_manifest, require_manifest_paths
 
 CHANNELS = ("DNA", "ER", "AGP", "Mito")
+COMPARTMENTS = ("Nuclei", "Cell", "Cytoplasm", "Organoid")
+CHANNEL_CODES = {
+    "DNA": "405",
+    "ER": "488",
+    "AGP": "555",
+    "Mito": "640",
+}
+COMPARTMENT_PRIMARY_CHANNELS = {
+    "Nuclei": "DNA",
+    "Cell": "AGP",
+    "Cytoplasm": "AGP",
+    "Organoid": "AGP",
+}
+COMPARTMENT_SEED_CHANNELS = {
+    "Nuclei": "",
+    "Cell": "DNA",
+    "Cytoplasm": "DNA",
+    "Organoid": "",
+}
+COMPARTMENT_SEGMENTATION_METHODS = {
+    "Nuclei": "segmented_from_dna",
+    "Cell": "agp_watershed_seeded_by_nuclei",
+    "Cytoplasm": "cell_mask_minus_nuclei_mask",
+    "Organoid": "segmented_from_agp",
+}
+COMPARTMENT_PRIMARY_CHANNEL_CODES = {
+    compartment: CHANNEL_CODES[channel]
+    for compartment, channel in COMPARTMENT_PRIMARY_CHANNELS.items()
+}
+COMPARTMENT_SEED_CHANNEL_CODES = {
+    compartment: CHANNEL_CODES[channel] if channel else ""
+    for compartment, channel in COMPARTMENT_SEED_CHANNELS.items()
+}
 FEATURE_FAMILIES = (
     "VolumeSizeShape",
     "Intensity",
@@ -27,7 +61,14 @@ FEATURE_FAMILIES = (
     "Neighbors",
     "Granularity",
 )
-PROFILE_TABLE = "profiles.nuclei_profiles"
+
+
+def compartment_slug(compartment: str) -> str:
+    return compartment.lower()
+
+
+def profile_table(compartment: str) -> str:
+    return f"profiles.{compartment_slug(compartment)}_profiles"
 
 
 def import_zedprofiler() -> dict[str, object]:
@@ -91,6 +132,33 @@ def git_commit(repo_root: Path) -> str:
         ).strip()
     except Exception:
         return ""
+
+
+def array_shape_summary(
+    images: dict[str, np.ndarray], masks: dict[str, np.ndarray]
+) -> dict[str, dict[str, list[int]]]:
+    return {
+        "channels": {channel: list(array.shape) for channel, array in images.items()},
+        "masks": {
+            compartment: list(array.shape) for compartment, array in masks.items()
+        },
+    }
+
+
+def validate_aligned_shapes(
+    images: dict[str, np.ndarray], masks: dict[str, np.ndarray]
+) -> dict[str, object]:
+    shapes = array_shape_summary(images, masks)
+    unique_shapes = {
+        tuple(shape) for group in shapes.values() for shape in group.values()
+    }
+    return {
+        "valid": len(unique_shapes) == 1,
+        "reference_shape": list(next(iter(unique_shapes)))
+        if len(unique_shapes) == 1
+        else None,
+        "shapes": shapes,
+    }
 
 
 def numeric_nonfinite_counts(df: pd.DataFrame) -> dict[str, int]:
@@ -161,6 +229,58 @@ def add_metadata(df: pd.DataFrame, manifest: dict[str, object]) -> pd.DataFrame:
     if "Metadata_Object_ObjectID" not in df.columns and "object_id" in df.columns:
         df = df.rename(columns={"object_id": "Metadata_Object_ObjectID"})
     return df
+
+
+def manifest_mapping(
+    manifest: dict[str, object], key: str, default: dict[str, str]
+) -> dict[str, str]:
+    value = manifest.get(key)
+    if not isinstance(value, dict):
+        return default
+    return {str(k): str(v) for k, v in value.items()}
+
+
+def add_segmentation_metadata(
+    profiles: pd.DataFrame, manifest: dict[str, object], compartment: str
+) -> pd.DataFrame:
+    profiles = profiles.copy()
+    primary_channels = manifest_mapping(
+        manifest, "compartment_primary_channels", COMPARTMENT_PRIMARY_CHANNELS
+    )
+    primary_codes = manifest_mapping(
+        manifest,
+        "compartment_primary_channel_codes",
+        COMPARTMENT_PRIMARY_CHANNEL_CODES,
+    )
+    seed_channels = manifest_mapping(
+        manifest, "compartment_seed_channels", COMPARTMENT_SEED_CHANNELS
+    )
+    seed_codes = manifest_mapping(
+        manifest, "compartment_seed_channel_codes", COMPARTMENT_SEED_CHANNEL_CODES
+    )
+    methods = manifest_mapping(
+        manifest, "compartment_segmentation_methods", COMPARTMENT_SEGMENTATION_METHODS
+    )
+    metadata = [
+        (
+            "Metadata_Segmentation_PrimaryChannel",
+            primary_channels.get(compartment, ""),
+        ),
+        (
+            "Metadata_Segmentation_PrimaryChannelCode",
+            primary_codes.get(compartment, ""),
+        ),
+        ("Metadata_Segmentation_SeedChannel", seed_channels.get(compartment, "")),
+        ("Metadata_Segmentation_SeedChannelCode", seed_codes.get(compartment, "")),
+        ("Metadata_Segmentation_Method", methods.get(compartment, "")),
+    ]
+    insert_at = 1 if "Metadata_Compartment" in profiles.columns else 0
+    for offset, (column, value) in enumerate(metadata):
+        if column in profiles.columns:
+            profiles[column] = value
+        else:
+            profiles.insert(insert_at + offset, column, value)
+    return profiles
 
 
 def feature_family_presence(columns: list[str]) -> dict[str, bool]:
@@ -278,35 +398,16 @@ def make_image_set_loader(
     )
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", required=True, type=Path)
-    parser.add_argument("--outdir", required=True, type=Path)
-    parser.add_argument("--run-id", required=True)
-    parser.add_argument("--repo-root", required=True, type=Path)
-    args = parser.parse_args()
-
-    started = time.perf_counter()
-    manifest = load_manifest(args.manifest)
-    path_errors = require_manifest_paths(manifest)
-    if path_errors:
-        raise SystemExit("\n".join(path_errors))
-
-    outdir = args.outdir
-    outdir.mkdir(parents=True, exist_ok=True)
-
-    zapi = import_zedprofiler()
-    compartment = str(manifest.get("compartment") or "Nuclei")
+def extract_compartment_profile(
+    zapi: dict[str, object],
+    compartment: str,
+    mask: np.ndarray,
+    images: dict[str, np.ndarray],
+    manifest: dict[str, object],
+) -> tuple[pd.DataFrame, dict[str, object], dict[str, float]]:
     image_set_name = str(manifest["Metadata_Imaging_ImageID"])
     z_spacing = float(manifest.get("z_spacing") or 1.0)
     xy_spacing = float(manifest.get("xy_spacing") or 0.1)
-    channel_paths = manifest["channel_paths"]
-
-    mask = tifffile.imread(str(manifest["mask_path"]))
-    images = {
-        channel: tifffile.imread(str(channel_paths[channel])) for channel in CHANNELS
-    }
-    no_channel = np.zeros_like(mask)
 
     ObjectLoader = zapi["ObjectLoader"]
     TwoObjectLoader = zapi["TwoObjectLoader"]
@@ -332,7 +433,7 @@ def main() -> int:
         )
         frames.append(
             run_timed(
-                f"{channel}_Granularity",
+                f"{compartment}_{channel}_Granularity",
                 lambda object_loader=object_loader: zapi["compute_granularity"](
                     object_loader=object_loader,
                     radius=10,
@@ -348,7 +449,7 @@ def main() -> int:
         )
         frames.append(
             run_timed(
-                f"{channel}_Intensity",
+                f"{compartment}_{channel}_Intensity",
                 lambda object_loader=object_loader: zapi["compute_intensity"](
                     object_loader=object_loader
                 ),
@@ -358,7 +459,7 @@ def main() -> int:
         )
         frames.append(
             run_timed(
-                f"{channel}_Texture",
+                f"{compartment}_{channel}_Texture",
                 lambda object_loader=object_loader: zapi["compute_texture"](
                     object_loader=object_loader,
                     distance=3,
@@ -369,6 +470,7 @@ def main() -> int:
             )
         )
 
+    no_channel = np.zeros_like(mask)
     no_channel_loader = make_image_set_loader(
         zapi,
         image_set_name,
@@ -386,7 +488,7 @@ def main() -> int:
     )
     frames.append(
         run_timed(
-            "NoChannel_VolumeSizeShape",
+            f"{compartment}_NoChannel_VolumeSizeShape",
             lambda: zapi["compute_volume_size_shape"](
                 image_set_loader=no_channel_loader,
                 object_loader=no_channel_object_loader,
@@ -397,7 +499,7 @@ def main() -> int:
     )
     frames.append(
         run_timed(
-            "NoChannel_Neighbors",
+            f"{compartment}_NoChannel_Neighbors",
             lambda: zapi["compute_neighbors"](
                 object_loader=no_channel_object_loader,
                 distance_threshold=10,
@@ -428,7 +530,7 @@ def main() -> int:
         )
         frames.append(
             run_timed(
-                f"{channel1}_{channel2}_Colocalization",
+                f"{compartment}_{channel1}_{channel2}_Colocalization",
                 lambda two_object_loader=two_object_loader, channel1=channel1, channel2=channel2: (
                     zapi["compute_colocalization"](
                         two_object_loader=two_object_loader,
@@ -444,61 +546,153 @@ def main() -> int:
         )
 
     profiles = add_metadata(merge_feature_frames(frames), manifest)
+    profiles.insert(0, "Metadata_Compartment", compartment)
+    profiles = add_segmentation_metadata(profiles, manifest, compartment)
     validation = validate_profiles(profiles, mask, manifest)
+    validation["compartment"] = compartment
     validation["quality_warnings"] = quality_warnings
+    return profiles, validation, timings
 
-    profile_path = outdir / "nuclei_profiles.parquet"
-    profiles.to_parquet(profile_path, index=False)
 
-    elapsed = time.perf_counter() - started
-    run_record = {
-        "run_id": args.run_id,
-        "command": " ".join(sys.argv),
-        "git_commit": git_commit(args.repo_root),
-        "zedprofiler_version": zapi["version"],
-        "python_version": platform.python_version(),
-        "manifest": manifest,
-        "output": str(profile_path),
-        "row_count": validation["row_count"],
-        "column_count": validation["column_count"],
-        "timings_seconds": timings,
-        "elapsed_seconds": round(elapsed, 3),
-        "exit_status": 0 if validation["valid"] else 1,
-        "validation_status": "pass" if validation["valid"] else "fail",
-        "quality_warning_count": len(quality_warnings),
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument("--outdir", required=True, type=Path)
+    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--repo-root", required=True, type=Path)
+    args = parser.parse_args()
+
+    started = time.perf_counter()
+    manifest = load_manifest(args.manifest)
+    path_errors = require_manifest_paths(manifest)
+    if path_errors:
+        raise SystemExit("\n".join(path_errors))
+
+    outdir = args.outdir
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    zapi = import_zedprofiler()
+    channel_paths = manifest["channel_paths"]
+    compartments = [
+        str(compartment)
+        for compartment in (manifest.get("compartments") or [manifest["compartment"]])
+    ]
+    mask_paths = manifest.get("mask_paths") or {
+        manifest["compartment"]: manifest["mask_path"]
     }
-    warehouse_manifest = {
-        "warehouse_root": str(outdir),
-        "tables": [
+
+    images = {
+        channel: tifffile.imread(str(channel_paths[channel])) for channel in CHANNELS
+    }
+    masks = {
+        compartment: tifffile.imread(str(mask_paths[compartment]))
+        for compartment in compartments
+    }
+    alignment = validate_aligned_shapes(images, masks)
+    if not alignment["valid"]:
+        (outdir / "alignment_validation.json").write_text(
+            json.dumps(alignment, indent=2)
+        )
+        raise SystemExit(
+            "Channel and mask arrays are not aligned by shape; see "
+            f"{outdir / 'alignment_validation.json'}"
+        )
+
+    validations: dict[str, dict[str, object]] = {}
+    profile_frames: dict[str, pd.DataFrame] = {}
+    output_tables = []
+    all_timings: dict[str, float] = {}
+    total_quality_warnings = 0
+    git_revision = git_commit(args.repo_root)
+
+    for compartment in compartments:
+        profiles, validation, timings = extract_compartment_profile(
+            zapi=zapi,
+            compartment=compartment,
+            mask=masks[compartment],
+            images=images,
+            manifest=manifest,
+        )
+        profile_path = outdir / f"{compartment_slug(compartment)}_profiles.parquet"
+        profiles.to_parquet(profile_path, index=False)
+        validations[compartment] = validation
+        profile_frames[profile_table(compartment)] = profiles
+        all_timings.update(timings)
+        total_quality_warnings += len(validation["quality_warnings"])
+        output_tables.append(
             {
-                "name": PROFILE_TABLE,
+                "name": profile_table(compartment),
                 "path": str(profile_path),
                 "schema_version": "0.1.0-pilot",
                 "join_keys": [
                     "Metadata_Biology_PatientTumor",
                     "Metadata_Imaging_ImageID",
+                    "Metadata_Compartment",
                     "Metadata_Object_ObjectID",
                 ],
                 "source_image_root": manifest.get("source_image_root", ""),
                 "run_id": args.run_id,
-                "git_commit": run_record["git_commit"],
+                "git_commit": git_revision,
                 "row_count": validation["row_count"],
-                "validation_status": run_record["validation_status"],
+                "column_count": validation["column_count"],
+                "validation_status": "pass" if validation["valid"] else "fail",
             }
-        ],
+        )
+
+    elapsed = time.perf_counter() - started
+    all_valid = all(validation["valid"] for validation in validations.values())
+    warehouse_manifest = publish_iceberg_warehouse(
+        outdir=outdir,
+        run_id=args.run_id,
+        git_commit=git_revision,
+        manifest=manifest,
+        profile_frames=profile_frames,
+        images=images,
+        masks=masks,
+        validations=validations,
+        alignment=alignment,
+        zedprofiler_version=str(zapi["version"]),
+    )
+    run_record = {
+        "run_id": args.run_id,
+        "command": " ".join(sys.argv),
+        "git_commit": git_revision,
+        "zedprofiler_version": zapi["version"],
+        "python_version": platform.python_version(),
+        "manifest": manifest,
+        "alignment": alignment,
+        "outputs": {table["name"]: table["path"] for table in output_tables},
+        "tables": output_tables,
+        "warehouse_root": warehouse_manifest["warehouse_root"],
+        "warehouse_manifest": str(outdir / "warehouse" / "warehouse_manifest.json"),
+        "timings_seconds": all_timings,
+        "elapsed_seconds": round(elapsed, 3),
+        "exit_status": 0 if all_valid else 1,
+        "validation_status": "pass" if all_valid else "fail",
+        "quality_warning_count": total_quality_warnings,
+    }
+    validation_report = {
+        "valid": all_valid,
+        "alignment": alignment,
+        "compartments": validations,
+        "warehouse": {
+            "valid": warehouse_manifest["validation_status"] == "pass",
+            "manifest": str(outdir / "warehouse" / "warehouse_manifest.json"),
+            "namespaces": warehouse_manifest["namespaces"],
+            "tables": [table["table_name"] for table in warehouse_manifest["tables"]],
+        },
     }
 
     (outdir / "run_record.json").write_text(json.dumps(run_record, indent=2))
-    (outdir / "warehouse_manifest.json").write_text(
-        json.dumps(warehouse_manifest, indent=2)
-    )
-    (outdir / "validation.json").write_text(json.dumps(validation, indent=2))
+    (outdir / "validation.json").write_text(json.dumps(validation_report, indent=2))
+    (outdir / "alignment_validation.json").write_text(json.dumps(alignment, indent=2))
 
-    if not validation["valid"]:
-        print(json.dumps(validation, indent=2), file=sys.stderr)
+    if not all_valid:
+        print(json.dumps(validation_report, indent=2), file=sys.stderr)
         return 1
     print(
-        f"NF1_ZEDPROFILER_PILOT_OK {profile_path} rows={validation['row_count']} cols={validation['column_count']}"
+        "NF1_ZEDPROFILER_PILOT_OK "
+        f"tables={len(output_tables)} elapsed={run_record['elapsed_seconds']}"
     )
     return 0
 

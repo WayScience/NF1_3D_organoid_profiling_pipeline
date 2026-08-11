@@ -9,14 +9,54 @@ Metadata_Experiment_WellID: B10
 Metadata_Imaging_FieldID: 1
 Metadata_Imaging_ImageID: NF0055_T1__NF0055_T1__B10__F1
 compartment: Nuclei
+compartments:
+  - Nuclei
+  - Cell
+  - Cytoplasm
+  - Organoid
 z_spacing: 1.0
 xy_spacing: 0.1
 mask_path: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/nuclei_mask.tiff
+mask_paths:
+  Nuclei: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/nuclei_mask.tiff
+  Cell: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/cell_mask.tiff
+  Cytoplasm: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/cytoplasm_mask.tiff
+  Organoid: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/organoid_mask.tiff
 channel_paths:
   DNA: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/zstack_images/B10-1/B10-1_405.tif
   ER: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/zstack_images/B10-1/B10-1_488.tif
   AGP: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/zstack_images/B10-1/B10-1_555.tif
   Mito: /pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/zstack_images/B10-1/B10-1_640.tif
+channel_codes:
+  DNA: '405'
+  ER: '488'
+  AGP: '555'
+  Mito: '640'
+compartment_primary_channels:
+  Nuclei: DNA
+  Cell: AGP
+  Cytoplasm: AGP
+  Organoid: AGP
+compartment_primary_channel_codes:
+  Nuclei: '405'
+  Cell: '555'
+  Cytoplasm: '555'
+  Organoid: '555'
+compartment_seed_channels:
+  Nuclei: ''
+  Cell: DNA
+  Cytoplasm: DNA
+  Organoid: ''
+compartment_seed_channel_codes:
+  Nuclei: ''
+  Cell: '405'
+  Cytoplasm: '405'
+  Organoid: ''
+compartment_segmentation_methods:
+  Nuclei: segmented_from_dna
+  Cell: agp_watershed_seeded_by_nuclei
+  Cytoplasm: cell_mask_minus_nuclei_mask
+  Organoid: segmented_from_agp
 feature_families:
   - VolumeSizeShape
   - Intensity

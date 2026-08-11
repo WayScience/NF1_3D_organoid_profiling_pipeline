@@ -37,7 +37,7 @@ RUN_ARGS += --feature-cpus "$(FEATURE_CPUS)"
 RUN_ARGS += --feature-memory "$(FEATURE_MEMORY)"
 RUN_ARGS += --feature-time "$(FEATURE_TIME)"
 
-.PHONY: help check doctor preflight build-manifest validate-manifest run submit submit-dry-run smoke clean
+.PHONY: help check doctor preflight clear-output clear-output-dry-run build-manifest validate-manifest run submit submit-dry-run smoke clean
 
 help:
 	@bash bin/nf1-nextflow-pilot --help
@@ -50,6 +50,12 @@ doctor:
 
 preflight:
 	@bash bin/nf1-nextflow-pilot preflight $(if $(RUN_ID),--run-id "$(RUN_ID)") --results-root "$(RESULTS_ROOT)" --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)"
+
+clear-output:
+	@bash bin/nf1-nextflow-pilot clear-output $(if $(RUN_ID),--run-id "$(RUN_ID)") --results-root "$(RESULTS_ROOT)"
+
+clear-output-dry-run:
+	@bash bin/nf1-nextflow-pilot clear-output $(if $(RUN_ID),--run-id "$(RUN_ID)") --results-root "$(RESULTS_ROOT)" --dry-run
 
 build-manifest:
 	@python3 scripts/build_manifest.py $(MANIFEST_ARGS) --output "$(MANIFEST)"

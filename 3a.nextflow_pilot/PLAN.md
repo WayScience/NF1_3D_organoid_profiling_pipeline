@@ -17,11 +17,10 @@ Explicitly **not** in this plan, but architecturally reserved:
 - Multi-well/multi-patient pilot subset — that is the roadmap's own step 2
   ("Pilot subset selection"). Premature until single-image-set mechanics are
   proven.
-- The roadmap's production warehouse — Isilon publishing, the full namespaced
-  table set, DuckDB validation, production rollout (roadmap steps 4-8). This
-  pilot borrows the roadmap's naming/identifier conventions and writes a
-  minimal single-table manifest stub (see Phase B) so the shape is proven
-  early, but it does not stand up the warehouse itself.
+- The roadmap's production warehouse — Isilon publishing, DuckDB validation,
+  and production rollout (roadmap steps 4-8). This pilot now stands up a local
+  run-scoped Iceberg warehouse with `images` and `profiles` namespaces, but it
+  does not publish to the production warehouse.
 
 Pilot data and run artifacts stay under
 `/pl/active/koala/nf1-3d-pilot-workflow-db/`. This keeps the pilot fully
@@ -201,25 +200,37 @@ Run record (`/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/run_reco
 command line, git commit of this repo, ZedProfiler version + `uv` env hash,
 manifest row, output row/column counts, elapsed time, exit status, pass/fail.
 
-**Minimal manifest stub (`/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/warehouse_manifest.json`):**
-not the roadmap's production manifest — a single-table stub, scoped to this
-pilot's one output, written to prove the manifest _shape_ early rather than
-retrofit it later (same reasoning as adopting `Metadata_*` naming now).
-Points at this pilot's own benchmark results directory, not Isilon:
+**Local Iceberg warehouse (`/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/warehouse/`):**
+not the roadmap's production Isilon warehouse, but a real run-scoped Apache
+Iceberg warehouse with a SQLite catalog, namespace directories, Iceberg table
+metadata, and a warehouse manifest. It points at this pilot's own benchmark
+results directory, not Isilon:
 
 ```json
 {
-  "warehouse_root": "/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/",
+  "warehouse_spec_version": "0.1.0",
+  "warehouse_root": "/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/warehouse",
+  "catalog": {
+    "name": "nf1_pilot",
+    "type": "sql",
+    "uri": "sqlite:////pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/warehouse/catalog.db"
+  },
+  "namespaces": ["images", "profiles"],
   "tables": [
     {
-      "name": "profiles.nuclei_profiles",
-      "path": "/pl/active/koala/nf1-3d-pilot-workflow-db/results/<run_id>/nuclei_profiles.parquet",
+      "table_name": "profiles.nuclei_profiles",
+      "role": "profiles",
+      "format": "iceberg",
+      "location": "file:///.../warehouse/profiles/nuclei_profiles",
+      "metadata_location": "file:///.../metadata/00001-...metadata.json",
       "schema_version": "0.1.0-pilot",
       "join_keys": [
         "Metadata_Biology_PatientTumor",
         "Metadata_Imaging_ImageID",
+        "Metadata_Compartment",
         "Metadata_Object_ObjectID"
       ],
+      "columns": [],
       "source_image_root": "<PetaLibrary path from the manual prep step>",
       "run_id": "<run_id>",
       "git_commit": "<sha>",
@@ -230,11 +241,11 @@ Points at this pilot's own benchmark results directory, not Isilon:
 }
 ```
 
-`row_count` and `validation_status` are filled in once the validation checks
-below run. This stub is deliberately small: one table, one source asset, no
-attempt at the roadmap's full namespace (`images.image_assets`,
-`profiles.plate_map_annotations`, etc.) or at Isilon publishing — those stay
-deferred to the roadmap's real step-2 pilot.
+`row_count`, `columns`, `metadata_location`, and `validation_status` are filled
+in by the runner. The pilot writes `images.image_assets` plus
+`profiles.nuclei_profiles`, `profiles.cell_profiles`,
+`profiles.cytoplasm_profiles`, and `profiles.organoid_profiles`.
+Production Isilon publishing and derived analytical tables stay deferred.
 
 Observability: collect Nextflow's `trace.tsv`, `timeline.html`,
 `report.html`, `dag.html`, `.nextflow.log`, plus `sacct` output for the one
@@ -286,10 +297,9 @@ Gates moving to the roadmap's actual step-2 pilot subset
 - Generalized multi-row manifest generation/discovery tooling.
 - Multi-compartment (Cell, Cytoplasm, Organoid), multi-channel fan-out.
 - Multi-well/multi-patient pilot subset.
-- The roadmap's full production `warehouse_manifest.json` (namespaced
-  `images.image_assets` / `profiles.*` tables) and Isilon publishing — this
-  pilot writes only a single-table stub manifest inside its own benchmark
-  results directory (see Phase B), not the production warehouse.
+- Isilon publishing and the production warehouse manifest.
+- Derived analytical tables beyond `images.image_assets` and the four
+  `profiles.*` object tables.
 - DuckDB validation views.
 - Job arrays for homogeneous shards.
 - Any GPU/deep-learning execution.

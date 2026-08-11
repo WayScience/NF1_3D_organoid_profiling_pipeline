@@ -24,6 +24,7 @@ Usage:
   bin/nf1-nextflow-pilot check
   bin/nf1-nextflow-pilot doctor
   bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
+  bin/nf1-nextflow-pilot clear-output --run-id ID [--results-root PATH] [--dry-run]
   bin/nf1-nextflow-pilot smoke [--run-id ID]
   bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--results-root PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
   bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
@@ -31,6 +32,7 @@ Usage:
 Common Make targets:
   make check
   make doctor
+  make clear-output RUN_ID=<experiment-id>
   make build-manifest
   make run PROFILE=curc_alpine
   make submit-dry-run ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
@@ -113,6 +115,7 @@ check_repo() {
     "manifest/nf0055_b10_1_alpine.yaml"
     "manifest/smoke_test_image_set.yaml"
     "scripts/build_manifest.py"
+    "scripts/iceberg_warehouse.py"
     "scripts/manifest_io.py"
     "scripts/run_zedprofiler_image_set.py"
     "scripts/smoke_synthetic.py"
@@ -132,6 +135,7 @@ check_repo() {
   bash -n "$ROOT_DIR/bin/nf1-nextflow-pilot" || failed=1
   python3 -m py_compile \
     "$ROOT_DIR/scripts/build_manifest.py" \
+    "$ROOT_DIR/scripts/iceberg_warehouse.py" \
     "$ROOT_DIR/scripts/manifest_io.py" \
     "$ROOT_DIR/scripts/run_zedprofiler_image_set.py" \
     "$ROOT_DIR/scripts/smoke_synthetic.py" || failed=1
@@ -149,6 +153,37 @@ check_repo() {
 
 default_results_root() {
   printf '%s\n' "${NF1_PILOT_RESULTS_ROOT:-/pl/active/koala/nf1-3d-pilot-workflow-db/results}"
+}
+
+clear_output() {
+  local id="$1"
+  local results_root="$2"
+  local dry_run="$3"
+  local outdir="$results_root/$id"
+
+  validate_name "run-id" "$id"
+
+  if [[ -z "$results_root" || "$results_root" == "/" ]]; then
+    echo "results-root is too broad: ${results_root:-<empty>}" >&2
+    exit 2
+  fi
+  if [[ -z "$id" ]]; then
+    echo "--run-id is required for clear-output" >&2
+    exit 2
+  fi
+  if [[ "$outdir" == "$results_root" || "$outdir" == "/" ]]; then
+    echo "refusing to clear unsafe output path: $outdir" >&2
+    exit 2
+  fi
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo "Dry run: would remove $outdir"
+    return 0
+  fi
+
+  rm -rf -- "$outdir"
+  mkdir -p "$results_root"
+  echo "Cleared run output: $outdir"
 }
 
 preflight() {
@@ -462,6 +497,21 @@ case "$cmd" in
     done
     preflight "$id" "$account" "$partition" "$qos" "$results_root"
     ;;
+  clear-output)
+    id=""
+    results_root="$(default_results_root)"
+    dry_run="false"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
+        --dry-run) dry_run="true"; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    clear_output "$id" "$results_root" "$dry_run"
+    ;;
   smoke)
     id="$(run_id)"
     while [[ $# -gt 0 ]]; do
@@ -471,7 +521,11 @@ case "$cmd" in
         *) echo "Unknown option: $1" >&2; exit 2 ;;
       esac
     done
-    python3 "$ROOT_DIR/scripts/smoke_synthetic.py" --outdir "$ROOT_DIR/results/$id/smoke" --run-id "$id"
+    if have uv; then
+      uv run --project "$ROOT_DIR/environments" python "$ROOT_DIR/scripts/smoke_synthetic.py" --outdir "$ROOT_DIR/results/$id/smoke" --run-id "$id"
+    else
+      python3 "$ROOT_DIR/scripts/smoke_synthetic.py" --outdir "$ROOT_DIR/results/$id/smoke" --run-id "$id"
+    fi
     ;;
   run)
     id="$(run_id)"

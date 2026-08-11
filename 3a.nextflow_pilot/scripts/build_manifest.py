@@ -17,6 +17,25 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
 from manifest_io import dump_manifest, load_manifest, require_manifest_paths
 
 CHANNELS = ("DNA", "ER", "AGP", "Mito")
+COMPARTMENTS = ("Nuclei", "Cell", "Cytoplasm", "Organoid")
+COMPARTMENT_PRIMARY_CHANNELS = {
+    "Nuclei": "DNA",
+    "Cell": "AGP",
+    "Cytoplasm": "AGP",
+    "Organoid": "AGP",
+}
+COMPARTMENT_SEED_CHANNELS = {
+    "Nuclei": "",
+    "Cell": "DNA",
+    "Cytoplasm": "DNA",
+    "Organoid": "",
+}
+COMPARTMENT_SEGMENTATION_METHODS = {
+    "Nuclei": "segmented_from_dna",
+    "Cell": "agp_watershed_seeded_by_nuclei",
+    "Cytoplasm": "cell_mask_minus_nuclei_mask",
+    "Organoid": "segmented_from_agp",
+}
 FEATURE_FAMILIES = (
     "VolumeSizeShape",
     "Intensity",
@@ -81,7 +100,7 @@ def load_channel_mapping(path: Path) -> dict[str, str]:
 
 def complete_well_fovs(
     source_root: Path, patient: str, mapping: dict[str, str], requested: str | None
-) -> list[tuple[str, Path, Path, dict[str, Path], Path]]:
+) -> list[tuple[str, Path, Path, dict[str, Path], dict[str, Path]]]:
     image_root = source_root / "data" / patient / "zstack_images"
     mask_root = source_root / "data" / patient / "segmentation_masks"
     if not image_root.is_dir():
@@ -107,15 +126,19 @@ def complete_well_fovs(
             found = find_one(channel_patterns(well_fov, mapping[channel]), image_dir)
             if found is not None:
                 channel_paths[channel] = found.resolve()
-        mask_path = find_one(mask_patterns("nuclei"), mask_dir)
-        if len(channel_paths) == len(CHANNELS) and mask_path is not None:
+        mask_paths: dict[str, Path] = {}
+        for compartment in COMPARTMENTS:
+            found = find_one(mask_patterns(compartment), mask_dir)
+            if found is not None:
+                mask_paths[compartment] = found.resolve()
+        if len(channel_paths) == len(CHANNELS) and len(mask_paths) == len(COMPARTMENTS):
             complete.append(
                 (
                     well_fov,
                     image_dir.resolve(),
                     mask_dir.resolve(),
                     channel_paths,
-                    mask_path.resolve(),
+                    mask_paths,
                 )
             )
     return complete
@@ -132,7 +155,7 @@ def build_manifest(
             f"No complete image set found{requested} under {source_root}"
         )
 
-    selected_well_fov, _image_dir, _mask_dir, channel_paths, mask_path = complete[0]
+    selected_well_fov, _image_dir, _mask_dir, channel_paths, mask_paths = complete[0]
     well, field = parse_well_fov(selected_well_fov)
     patient_id = patient.split("_", maxsplit=1)[0]
 
@@ -146,10 +169,26 @@ def build_manifest(
         "Metadata_Imaging_FieldID": field,
         "Metadata_Imaging_ImageID": image_id(patient, patient, well, field),
         "compartment": "Nuclei",
+        "compartments": list(COMPARTMENTS),
         "z_spacing": 1.0,
         "xy_spacing": 0.1,
-        "mask_path": str(mask_path),
+        "mask_path": str(mask_paths["Nuclei"]),
+        "mask_paths": {
+            compartment: str(mask_paths[compartment]) for compartment in COMPARTMENTS
+        },
         "channel_paths": {channel: str(channel_paths[channel]) for channel in CHANNELS},
+        "channel_codes": {channel: str(mapping[channel]) for channel in CHANNELS},
+        "compartment_primary_channels": dict(COMPARTMENT_PRIMARY_CHANNELS),
+        "compartment_primary_channel_codes": {
+            compartment: str(mapping[channel])
+            for compartment, channel in COMPARTMENT_PRIMARY_CHANNELS.items()
+        },
+        "compartment_seed_channels": dict(COMPARTMENT_SEED_CHANNELS),
+        "compartment_seed_channel_codes": {
+            compartment: str(mapping[channel]) if channel else ""
+            for compartment, channel in COMPARTMENT_SEED_CHANNELS.items()
+        },
+        "compartment_segmentation_methods": dict(COMPARTMENT_SEGMENTATION_METHODS),
         "feature_families": list(FEATURE_FAMILIES),
     }
 

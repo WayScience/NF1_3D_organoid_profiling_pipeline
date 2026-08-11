@@ -10,10 +10,12 @@ process FEATURIZE_IMAGE_SET {
   path manifest_file
 
   output:
-  path 'nuclei_profiles.parquet'
+  path '*_profiles.parquet'
+  path 'warehouse'
   path 'run_record.json'
   path 'warehouse_manifest.json'
   path 'validation.json'
+  path 'alignment_validation.json'
   path 'resource_usage.txt'
 
   script:

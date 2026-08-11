@@ -13,5 +13,6 @@ dependencies = [
   "tifffile>=2024.2.12",
   "tomli>=2.0; python_version < '3.11'",
   "zedprofiler==0.1.2",
+  "pyiceberg[pyarrow,sql-sqlite]>=0.10",
 ]
 

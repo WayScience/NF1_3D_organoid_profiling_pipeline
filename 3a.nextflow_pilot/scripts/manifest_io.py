@@ -114,9 +114,16 @@ def dump_manifest(data: dict[str, Any], path: str | Path) -> None:
 def require_manifest_paths(manifest: dict[str, Any]) -> list[str]:
     """Return missing path validation messages for one pilot manifest row."""
     errors: list[str] = []
-    mask_path = Path(str(manifest.get("mask_path") or ""))
-    if not mask_path.is_file():
-        errors.append(f"mask_path is not a file: {mask_path}")
+    mask_paths = manifest.get("mask_paths") or {}
+    if isinstance(mask_paths, dict) and mask_paths:
+        for compartment, path in mask_paths.items():
+            mask_path = Path(str(path or ""))
+            if not mask_path.is_file():
+                errors.append(f"mask_paths.{compartment} is not a file: {mask_path}")
+    else:
+        mask_path = Path(str(manifest.get("mask_path") or ""))
+        if not mask_path.is_file():
+            errors.append(f"mask_path is not a file: {mask_path}")
     channel_paths = manifest.get("channel_paths") or {}
     if not isinstance(channel_paths, dict) or not channel_paths:
         errors.append("channel_paths must be a non-empty mapping")

@@ -32,6 +32,16 @@ Use `make submit` for benchmark runs instead of a foreground `make run` over
 SSH. The coordinator job owns the Nextflow process and survives local SSH
 disconnects.
 
+Before reusing an experiment `RUN_ID`, clear only that run's output directory:
+
+```bash
+make clear-output-dry-run RUN_ID=nf0055-b10-1-all-compartments-20260811
+make clear-output RUN_ID=nf0055-b10-1-all-compartments-20260811
+```
+
+This removes `${RESULTS_ROOT}/${RUN_ID}` and refuses to run without an explicit
+`RUN_ID`.
+
 If already inside a durable scheduler session with `nextflow` available:
 
 ```bash
@@ -47,6 +57,7 @@ After the run finishes, check:
 
 ```text
 /pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/run_record.json
+/pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/warehouse/warehouse_manifest.json
 /pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/resource_usage.txt
 /pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/trace.tsv
 ```
@@ -55,6 +66,86 @@ Use `run_record.json` for total elapsed seconds and per-feature timing.
 Use `resource_usage.txt` for `/usr/bin/time -v` wall time and peak RSS.
 Use `trace.tsv` for the Nextflow task runtime, status, work directory, and
 Slurm native job ID.
+
+The full image-set manifest now includes all four compartments. A full run
+writes one profile parquet per compartment:
+
+```text
+nuclei_profiles.parquet
+cell_profiles.parquet
+cytoplasm_profiles.parquet
+organoid_profiles.parquet
+```
+
+The analysis output is also published as a local Apache Iceberg warehouse:
+
+```text
+warehouse/
+  catalog.db
+  warehouse_manifest.json
+  images/
+    image_assets/
+  profiles/
+    nuclei_profiles/
+    cell_profiles/
+    cytoplasm_profiles/
+    organoid_profiles/
+```
+
+`warehouse_manifest.json` records namespace-qualified table names, roles,
+formats, join keys, columns, row counts, table locations, and current Iceberg
+metadata locations. A compatibility copy is written at the run root as
+`warehouse_manifest.json`, but the canonical manifest lives under `warehouse/`.
+
+## Channel and Compartment Roles
+
+The pilot follows the repository channel mapping in `config/channel_mapping.toml`.
+Raw image filenames use wavelength tokens, while ZEDProfiler feature columns use
+the biological channel names:
+
+| Filename token | Channel name | Segmentation role                                                                                   |
+| -------------- | ------------ | --------------------------------------------------------------------------------------------------- |
+| `405`          | `DNA`        | Primary source for the `Nuclei` mask. Also seeds `Cell` segmentation.                               |
+| `488`          | `ER`         | Measured inside each compartment mask.                                                              |
+| `555`          | `AGP`        | Primary source for `Cell` and `Organoid` segmentation. `Cytoplasm` is derived from `Cell - Nuclei`. |
+| `640`          | `Mito`       | Measured inside each compartment mask.                                                              |
+| `TRANS`        | `BF`         | Present in source data, but not used by the current ZEDProfiler pilot.                              |
+
+The manifest records these relationships with `channel_codes`,
+`compartment_primary_channels`, `compartment_primary_channel_codes`,
+`compartment_seed_channels`, `compartment_seed_channel_codes`, and
+`compartment_segmentation_methods`. Each output profile row also includes
+`Metadata_Segmentation_PrimaryChannel`,
+`Metadata_Segmentation_PrimaryChannelCode`,
+`Metadata_Segmentation_SeedChannel`,
+`Metadata_Segmentation_SeedChannelCode`, and
+`Metadata_Segmentation_Method`.
+
+## Alignment Contract
+
+ZEDProfiler does not register, resample, or otherwise align channels to masks.
+The source code loads arrays into `ImageSetLoader.image_set_dict`, and
+`ObjectLoader` / `TwoObjectLoader` retrieve the image and label arrays directly
+by key. Pixel/voxel correspondence is therefore assumed.
+
+For this pilot, alignment means all channel z-stacks and all compartment masks
+must already be in the same `(z, y, x)` coordinate space. The runner records
+`alignment_validation.json` and fails before feature extraction if any shape
+differs.
+
+For `NF0055_T1 / B10-1`, metadata-only TIFF inspection on Alpine showed all
+arrays have the same shape:
+
+```text
+DNA       [105, 1527, 1528]
+ER        [105, 1527, 1528]
+AGP       [105, 1527, 1528]
+Mito      [105, 1527, 1528]
+Nuclei    [105, 1527, 1528]
+Cell      [105, 1527, 1528]
+Cytoplasm [105, 1527, 1528]
+Organoid  [105, 1527, 1528]
+```
 
 ## Alpine notes from 2026-08-10
 
