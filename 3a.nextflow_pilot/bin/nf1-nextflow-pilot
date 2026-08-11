@@ -26,8 +26,8 @@ Usage:
   bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
   bin/nf1-nextflow-pilot clear-output --run-id ID [--results-root PATH] [--dry-run]
   bin/nf1-nextflow-pilot smoke [--run-id ID]
-  bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--results-root PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
-  bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+  bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION]
+  bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
 
 Common Make targets:
   make check
@@ -42,6 +42,7 @@ Environment:
   NF1_PILOT_NEXTFLOW_MODULE   Optional module loaded in coordinator jobs. Default: none.
   NF1_PILOT_NEXTFLOW_BIN      Nextflow executable. Default: nextflow or .nextflow/nextflow.
   NF1_PILOT_ENV_PROJECT       uv project used inside feature tasks. Default: 3a.nextflow_pilot/environments.
+  NF1_PILOT_UV_ENVIRONMENT    Shared uv virtualenv for worker tasks. submit default: <results-parent>/tools/zedprofiler-uv-env.
   NF1_PILOT_RESULTS_ROOT      Run artifact root. Default: /pl/active/koala/nf1-3d-pilot-workflow-db/results.
   NF1_PILOT_SCRATCH           Shared scratch root. Default: /scratch/alpine/$USER.
   NF1_PILOT_PROJECT           Project/cache root. Default: /projects/$USER.
@@ -315,16 +316,25 @@ run_nextflow() {
   local feature_cpus="$4"
   local feature_memory="$5"
   local feature_time="$6"
-  local account="$7"
-  local partition="$8"
-  local qos="$9"
-  local results_root="${10}"
+  local granularity_cpus="$7"
+  local granularity_memory="$8"
+  local granularity_time="$9"
+  local nongranularity_cpus="${10}"
+  local nongranularity_memory="${11}"
+  local nongranularity_time="${12}"
+  local uv_project_environment="${13}"
+  local account="${14}"
+  local partition="${15}"
+  local qos="${16}"
+  local results_root="${17}"
   local outdir="$results_root/$id"
   local nextflow
 
   validate_name "run-id" "$id"
   validate_name "profile" "$profile"
   validate_positive_int "feature-cpus" "$feature_cpus" 48
+  validate_positive_int "granularity-cpus" "$granularity_cpus" 48
+  validate_positive_int "nongranularity-cpus" "$nongranularity_cpus" 48
 
   if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
     echo "Manifest not found: $manifest" >&2
@@ -344,8 +354,13 @@ run_nextflow() {
   preflight "$id" "$account" "$partition" "$qos" "$results_root"
 
   {
-    echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir --manifest $manifest"
+    echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir --manifest $manifest --uv_project_environment ${uv_project_environment:-<task-local>}"
   } > "$outdir/run-command.txt"
+
+  if [[ -n "$uv_project_environment" ]] && have uv; then
+    UV_PROJECT_ENVIRONMENT="$uv_project_environment" UV_LINK_MODE=copy \
+      uv sync --project "$ROOT_DIR/environments" 2>&1 | tee "$outdir/uv-sync.log"
+  fi
 
   set +e
   NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \
@@ -359,6 +374,13 @@ run_nextflow() {
       --feature_cpus "$feature_cpus" \
       --feature_memory "$feature_memory" \
       --feature_time "$feature_time" \
+      --granularity_cpus "$granularity_cpus" \
+      --granularity_memory "$granularity_memory" \
+      --granularity_time "$granularity_time" \
+      --nongranularity_cpus "$nongranularity_cpus" \
+      --nongranularity_memory "$nongranularity_memory" \
+      --nongranularity_time "$nongranularity_time" \
+      --uv_project_environment "$uv_project_environment" \
       2>&1 | tee "$outdir/nextflow.log"
   local nextflow_status="${PIPESTATUS[0]}"
   set -e
@@ -380,12 +402,19 @@ submit_slurm() {
   local feature_cpus="$3"
   local feature_memory="$4"
   local feature_time="$5"
-  local account="$6"
-  local partition="$7"
-  local qos="$8"
-  local dry_run="$9"
-  local submit_host="${10}"
-  local results_root="${11}"
+  local granularity_cpus="$6"
+  local granularity_memory="$7"
+  local granularity_time="$8"
+  local nongranularity_cpus="$9"
+  local nongranularity_memory="${10}"
+  local nongranularity_time="${11}"
+  local uv_project_environment="${12}"
+  local account="${13}"
+  local partition="${14}"
+  local qos="${15}"
+  local dry_run="${16}"
+  local submit_host="${17}"
+  local results_root="${18}"
   local outdir="$results_root/$id"
   local script="$outdir/coordinator.sbatch"
   local tools_root
@@ -398,6 +427,8 @@ submit_slurm() {
   validate_name "qos" "$qos"
   validate_name "submit-host" "$submit_host"
   validate_positive_int "feature-cpus" "$feature_cpus" 48
+  validate_positive_int "granularity-cpus" "$granularity_cpus" 48
+  validate_positive_int "nongranularity-cpus" "$nongranularity_cpus" 48
 
   if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
     echo "Manifest not found: $manifest" >&2
@@ -424,6 +455,9 @@ submit_slurm() {
   fi
 
   tools_root="$(dirname "$results_root")/tools"
+  if [[ -z "$uv_project_environment" ]]; then
+    uv_project_environment="$tools_root/zedprofiler-uv-env"
+  fi
   mkdir -p "$outdir"
   preflight "$id" "$account" "$partition" "$qos" "$results_root"
   cat > "$script" <<EOF
@@ -446,7 +480,9 @@ cd "$ROOT_DIR"
 mkdir -p "$tools_root/nextflow-home" "$tools_root/uv-cache"
 export NXF_HOME="\${NXF_HOME:-$tools_root/nextflow-home}"
 export NF1_PILOT_PROJECT="\${NF1_PILOT_PROJECT:-$tools_root}"
+export NF1_PILOT_UV_ENVIRONMENT="\${NF1_PILOT_UV_ENVIRONMENT:-$uv_project_environment}"
 export UV_CACHE_DIR="\${UV_CACHE_DIR:-$tools_root/uv-cache}"
+export UV_LINK_MODE=copy
 
 if type module >/dev/null 2>&1 && [[ -n "\${NF1_PILOT_NEXTFLOW_MODULE:-}" && "\${NF1_PILOT_NEXTFLOW_MODULE:-}" != "none" ]]; then
   module purge
@@ -455,7 +491,10 @@ fi
 
 NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \\
   bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" --manifest "$manifest" --results-root "$results_root" \\
+    --uv-project-environment "\$NF1_PILOT_UV_ENVIRONMENT" \\
     --feature-cpus "$feature_cpus" --feature-memory "$feature_memory" --feature-time "$feature_time" \\
+    --granularity-cpus "$granularity_cpus" --granularity-memory "$granularity_memory" --granularity-time "$granularity_time" \\
+    --nongranularity-cpus "$nongranularity_cpus" --nongranularity-memory "$nongranularity_memory" --nongranularity-time "$nongranularity_time" \\
     --account "$account" --partition "$partition" --qos "$qos"
 EOF
 
@@ -536,6 +575,13 @@ case "$cmd" in
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
+    granularity_cpus=2
+    granularity_memory="64 GB"
+    granularity_time="90 min"
+    nongranularity_cpus=2
+    nongranularity_memory="24 GB"
+    nongranularity_time="45 min"
+    uv_project_environment="${NF1_PILOT_UV_ENVIRONMENT:-}"
     account="${NF1_PILOT_ACCOUNT:-}"
     partition="${NF1_PILOT_PARTITION:-acpu}"
     qos="${NF1_PILOT_QOS:-cpu-normal}"
@@ -549,6 +595,13 @@ case "$cmd" in
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
+        --granularity-cpus) granularity_cpus="$2"; shift 2 ;;
+        --granularity-memory) granularity_memory="$2"; shift 2 ;;
+        --granularity-time) granularity_time="$2"; shift 2 ;;
+        --nongranularity-cpus) nongranularity_cpus="$2"; shift 2 ;;
+        --nongranularity-memory) nongranularity_memory="$2"; shift 2 ;;
+        --nongranularity-time) nongranularity_time="$2"; shift 2 ;;
+        --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
         --account) account="$2"; shift 2 ;;
         --partition) partition="$2"; shift 2 ;;
         --qos) qos="$2"; shift 2 ;;
@@ -560,7 +613,7 @@ case "$cmd" in
       echo "--manifest is required" >&2
       exit 2
     fi
-    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos" "$results_root"
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root"
     ;;
   submit)
     id="$(run_id)"
@@ -568,6 +621,13 @@ case "$cmd" in
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
+    granularity_cpus=2
+    granularity_memory="64 GB"
+    granularity_time="90 min"
+    nongranularity_cpus=2
+    nongranularity_memory="24 GB"
+    nongranularity_time="45 min"
+    uv_project_environment="${NF1_PILOT_UV_ENVIRONMENT:-}"
     account="${NF1_PILOT_ACCOUNT:-}"
     partition="${NF1_PILOT_PARTITION:-acpu}"
     qos="${NF1_PILOT_QOS:-cpu-normal}"
@@ -582,6 +642,13 @@ case "$cmd" in
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
+        --granularity-cpus) granularity_cpus="$2"; shift 2 ;;
+        --granularity-memory) granularity_memory="$2"; shift 2 ;;
+        --granularity-time) granularity_time="$2"; shift 2 ;;
+        --nongranularity-cpus) nongranularity_cpus="$2"; shift 2 ;;
+        --nongranularity-memory) nongranularity_memory="$2"; shift 2 ;;
+        --nongranularity-time) nongranularity_time="$2"; shift 2 ;;
+        --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
         --account) account="$2"; shift 2 ;;
         --partition) partition="$2"; shift 2 ;;
         --qos) qos="$2"; shift 2 ;;
@@ -595,7 +662,7 @@ case "$cmd" in
       echo "--manifest is required" >&2
       exit 2
     fi
-    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root"
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root"
     ;;
   -h|--help|"")
     usage

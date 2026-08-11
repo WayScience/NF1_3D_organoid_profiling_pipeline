@@ -14,14 +14,17 @@ process FEATURIZE_NONGRANULARITY {
 
   script:
   def slug = compartment.toLowerCase()
+  def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
   """
   set -euo pipefail
   outdir="${params.outdir}/compartments/${slug}/nongranularity"
   mkdir -p "\${outdir}"
-  export UV_PROJECT_ENVIRONMENT="\${PWD}/.venv"
+  export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
 
-  if command -v uv >/dev/null 2>&1; then
+  if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
+    PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
+  elif command -v uv >/dev/null 2>&1; then
     PYTHON_RUNNER=(uv run --project "${params.pilot_root}/environments" python)
   else
     PYTHON_RUNNER=(python3)
@@ -44,22 +47,25 @@ process FEATURIZE_GRANULARITY {
 
   input:
   path manifest_file
-  tuple val(compartment), val(channel)
+  tuple val(compartment), val(image_channel)
 
   output:
-  tuple val(compartment), val(channel)
+  tuple val(compartment), val(image_channel)
 
   script:
   def slug = compartment.toLowerCase()
-  def channel_slug = channel.toLowerCase()
+  def channel_slug = image_channel.toLowerCase()
+  def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
   """
   set -euo pipefail
   outdir="${params.outdir}/compartments/${slug}/granularity/${channel_slug}"
   mkdir -p "\${outdir}"
-  export UV_PROJECT_ENVIRONMENT="\${PWD}/.venv"
+  export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
 
-  if command -v uv >/dev/null 2>&1; then
+  if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
+    PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
+  elif command -v uv >/dev/null 2>&1; then
     PYTHON_RUNNER=(uv run --project "${params.pilot_root}/environments" python)
   else
     PYTHON_RUNNER=(python3)
@@ -72,7 +78,7 @@ process FEATURIZE_GRANULARITY {
     --run-id "${params.run_id ?: 'manual'}" \\
     --repo-root "${params.pilot_root}/.." \\
     --compartment "${compartment}" \\
-    --channel "${channel}" \\
+    --channel "${image_channel}" \\
     --feature-mode granularity \\
     --skip-warehouse
   """
@@ -87,15 +93,18 @@ process BUILD_WAREHOUSE {
   val completed_granularity
 
   script:
+  def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
   """
   set -euo pipefail
   mkdir -p "${params.outdir}"
-  export UV_PROJECT_ENVIRONMENT="\${PWD}/.venv"
+  export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
   printf '%s\\n' ${completed_nongranularity.join(' ')} > "${params.outdir}/completed_nongranularity.txt"
   printf '%s\\n' ${completed_granularity.collect { it.join(':') }.join(' ')} > "${params.outdir}/completed_granularity.txt"
 
-  if command -v uv >/dev/null 2>&1; then
+  if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
+    PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
+  elif command -v uv >/dev/null 2>&1; then
     PYTHON_RUNNER=(uv run --project "${params.pilot_root}/environments" python)
   else
     PYTHON_RUNNER=(python3)

@@ -28,6 +28,25 @@ make submit-dry-run RUN_ID=nf0055-b10-1-zp-benchmark ACCOUNT=amc-general
 make submit RUN_ID=nf0055-b10-1-zp-benchmark ACCOUNT=amc-general
 ```
 
+The split fan-out workflow exposes resource knobs for extraction stages:
+
+```bash
+make submit RUN_ID=nf0055-b10-1-zp-benchmark ACCOUNT=amc-general \
+  GRANULARITY_MEMORY="64 GB" \
+  NONGRANULARITY_MEMORY="24 GB"
+```
+
+By default, `make submit` also creates or reuses a shared worker virtualenv at:
+
+```text
+/pl/active/koala/nf1-3d-pilot-workflow-db/tools/zedprofiler-uv-env
+```
+
+The coordinator runs `uv sync` once before launching Nextflow. Worker tasks then
+execute the shared environment's `bin/python` directly instead of running
+`uv run`, avoiding concurrent mutation of the same virtualenv. Override the path
+with `UV_PROJECT_ENVIRONMENT=/path/to/env` if needed.
+
 Use `make submit` for benchmark runs instead of a foreground `make run` over
 SSH. The coordinator job owns the Nextflow process and survives local SSH
 disconnects.
@@ -310,3 +329,69 @@ profiles.cell_profiles: 9 rows
 profiles.cytoplasm_profiles: 9 rows
 profiles.organoid_profiles: 2 rows
 ```
+
+### Granularity-channel fan-out benchmark
+
+The workflow now fans out the slow granularity work by `compartment x channel`.
+Each compartment also gets one non-granularity task for volume, intensity,
+texture, colocalization, and neighbors. A final single-writer task merges the
+partials and builds the Iceberg warehouse.
+
+An initial run with `GRANULARITY_MEMORY="24 GB"` failed: one granularity task
+was OOM-killed and another raised a NumPy allocation error while allocating a
+`105 x 1527 x 1528` float64 intermediate. The default granularity memory was
+raised to `64 GB`.
+
+Successful run:
+
+```text
+run_id: nf0055-b10-1-granularity-channel-fanout-iceberg-20260811T190813Z
+mode: granularity_channel_fanout
+coordinator_job: 31115409
+worker_jobs: 21
+workflow_slurm_jobs: 22
+nextflow_exit_status: 0
+nextflow_duration: 13m 16s
+coordinator_walltime: 00:13:21
+cpu_hours: 3.2
+validation_status: pass
+```
+
+Trace summary:
+
+```text
+FEATURIZE_NONGRANULARITY: 4 tasks, 2m 7s to 3m 11s, max 2.3 GB peak RSS
+FEATURIZE_GRANULARITY: 16 tasks, 4m 39s to 12m 13s, max 16.3 GB peak RSS
+BUILD_WAREHOUSE: 49.7s trace duration, 18.48s /usr/bin/time wall, 1.1 GB peak RSS
+```
+
+Slurm accounting reported the granularity jobs with `ReqMem=64G`; most finished
+in about 4.5-6 minutes, while the slowest task took `00:11:04` Slurm elapsed.
+Compared with the per-compartment fan-out run, this reduced coordinator wall
+time from `00:26:20` to `00:13:21` for the same single image set, at the cost of
+using 22 Slurm jobs instead of 6.
+
+The final warehouse loaded successfully through PyIceberg with catalog name
+`nf1_pilot`:
+
+```text
+images.image_assets: 8 rows
+profiles.nuclei_profiles: 11 rows
+profiles.cell_profiles: 9 rows
+profiles.cytoplasm_profiles: 9 rows
+profiles.organoid_profiles: 2 rows
+```
+
+### Shared uv environment experiment
+
+A first shared-env attempt used the same virtualenv path but still launched
+workers through `uv run`. That is unsafe for this fan-out pattern on Alpine: some
+workers observed different `/usr/bin/python3.12` patch versions and `uv` removed
+and recreated the shared environment while other workers were importing from it.
+Observed failures included stale file handles and partially imported
+NumPy/SciPy modules.
+
+The worker launcher now uses `${UV_PROJECT_ENVIRONMENT}/bin/python` directly
+when a pre-synced environment exists, and only falls back to `uv run` for
+task-local environments that do not exist yet. This keeps `uv` out of concurrent
+worker execution while preserving the local fallback behavior.
