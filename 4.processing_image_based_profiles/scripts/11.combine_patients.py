@@ -34,7 +34,9 @@
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
@@ -117,12 +119,25 @@ unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 
 
 # Well-level strata: one row per (patient, well) combination
-aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
+aggregate_strata = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_Well",
+    "Metadata_Experiment_Class",
+    "Metadata_Experiment_Dose",
+    "Metadata_Experiment_Target",
+    "Metadata_Experiment_TherapeuticCategories",
+    "Metadata_Experiment_Treatment",
+    "Metadata_Experiment_Unit",
+]
 # Consensus strata: one row per (patient, treatment) combination
 consensus_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Treatment",
     "Metadata_Experiment_Dose",
+    "Metadata_Experiment_Class",
+    "Metadata_Experiment_Target",
+    "Metadata_Experiment_TherapeuticCategories",
+    "Metadata_Experiment_Unit",
 ]
 
 
@@ -149,16 +164,10 @@ for profile_type, files in levels_to_merge_dict.items():
     ###############################################
     # Feature selection
     ###############################################
-    metadata_cols = [x for x in df.columns if x.startswith("Metadata_")]
-    # Phase 1: fit feature selection on reference treatments only.
-    # all_trt_df retains the full dataset; df is narrowed to the reference subset.
-    all_trt_df = df.copy()
-    df = df.loc[
-        df["Metadata_Experiment_Treatment"].isin(["DMSO 1%", "Staurosporine 10 nM"])
-    ]
-    # feature selection
-    feature_columns = [col for col in df.columns if col not in metadata_cols]
-    fs_profiles = feature_select(
+    feature_columns = [col for col in df.columns if not col.startswith("Metadata_")]
+    df[feature_columns] = df[feature_columns].replace([np.inf, -np.inf], np.nan)
+
+    fs_profile = feature_select(
         df,
         operation=feature_select_ops,
         features=feature_columns,
@@ -166,62 +175,56 @@ for profile_type, files in levels_to_merge_dict.items():
         corr_threshold=corr_threshold,  # comment out to use default value
         freq_cut=freq_cut,  # comment out to use default value
         unique_cut=unique_cut,  # comment out to use default value
+        samples="(Metadata_Experiment_Treatment == 'DMSO' and Metadata_Experiment_Dose == 1) or (Metadata_Experiment_Treatment == 'Staurosporine' and Metadata_Experiment_Dose == 10)",
+        output_file=f"{all_patients_output_path}/1.feature_selected_profiles/{profile_type}_fs_profiles.parquet",
+        output_type="parquet",
     )
-    # Phase 2: apply retained feature set back to the full dataset.
-    fs_profiles = all_trt_df[
-        [col for col in all_trt_df.columns if col in fs_profiles.columns]
-    ]
-    fs_profile_path = pathlib.Path(
-        f"{all_patients_output_path}/1.feature_selected_profiles/{profile_type}_fs_profiles.parquet"
-    )
-    fs_profile_path.parent.mkdir(parents=True, exist_ok=True)
-    fs_profiles.to_parquet(
-        fs_profile_path,
-        index=False,
-    )
+
     ###############################################
     # Aggregation — produces well-level and consensus parquets
     ###############################################
     # Recompute feature columns from fs_profiles after feature selection.
-    feature_columns = [
-        col for col in fs_profiles.columns if not col.startswith("Metadata_")
-    ]
+    fs_df = pd.read_parquet(fs_profile)
+    # infer_cp would not work here given non_CP features
+    # so we just grab all non-metadata columns as features for aggregation.
+    feature_columns = [col for col in fs_df.columns if not col.startswith("Metadata_")]
+
     # aggregate the profiles
-    agg_df = aggregate(
-        population_df=fs_profiles,
+    agg_profile = aggregate(
+        population_df=fs_df,
         strata=aggregate_strata,
         features=feature_columns,
         operation="median",
+        output_file=f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet",
+        output_type="parquet",
     )
-    agg_df_path = pathlib.Path(
-        f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet"
-    )
-    agg_df_path.parent.mkdir(parents=True, exist_ok=True)
-    agg_df.to_parquet(
-        agg_df_path,
-        index=False,
-    )
+
     ###############################################
     # Consensus profiles
     ###############################################
-    consensus_df = aggregate(
-        population_df=fs_profiles,
+    consensus_profile = aggregate(
+        population_df=fs_df,
         strata=consensus_strata,
         features=feature_columns,
         operation="median",
+        output_file=f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet",
+        output_type="parquet",
     )
-    consensus_df_path = pathlib.Path(
-        f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet"
+
+    ###############################################
+    # print shapes as a sanity check
+    ###############################################
+    fs_pq_file, agg_pq_file, consensus_pq_file = (
+        pq.ParquetFile(fs_profile),
+        pq.ParquetFile(agg_profile),
+        pq.ParquetFile(consensus_profile),
     )
-    consensus_df_path.parent.mkdir(parents=True, exist_ok=True)
-    consensus_df.to_parquet(
-        consensus_df_path,
-        index=False,
+    fs_shape = (fs_pq_file.metadata.num_rows, len(fs_pq_file.schema.names))
+    agg_shape = (agg_pq_file.metadata.num_rows, len(agg_pq_file.schema.names))
+    consensus_shape = (
+        consensus_pq_file.metadata.num_rows,
+        len(consensus_pq_file.schema.names),
     )
-    print("The number features before feature selection:", df.shape[1])
-    print("The number features after feature selection:", fs_profiles.shape[1])
-    print("The number of profiles after aggregation:", agg_df.shape[0])
-    print(
-        "The number of profiles after consensus profile generation:",
-        consensus_df.shape[0],
-    )
+    print(f"  Feature-selected profile shape: {fs_shape}")
+    print(f"  Well-level aggregated profile shape: {agg_shape}")
+    print(f"  Consensus aggregated profile shape: {consensus_shape}")

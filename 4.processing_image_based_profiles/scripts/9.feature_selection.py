@@ -53,7 +53,9 @@
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -79,7 +81,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -224,15 +226,11 @@ for profile_name in run_dict.keys():
     df = run_dict[profile_name]["df"]
     output_path = run_dict[profile_name]["output_path"]
     # prep profiles for feature selection
-    # grab metadata columns
-    metadata_columns = [x for x in df.columns if x.startswith("Metadata_")]
     # grab feature columns
-    features_columns = [col for col in df.columns if col not in metadata_columns]
+    features_columns = [col for col in df.columns if not col.startswith("Metadata_")]
+    df[features_columns] = df[features_columns].replace([np.inf, -np.inf], np.nan)
     # Phase 1: fit feature selection on reference treatments only.
-    # all_trt_df retains the full dataset; df is narrowed to the reference subset.
-    all_trt_df = df.copy()
-    df = df.loc[df["Metadata_Experiment_Treatment"].isin(["DMSO", "Staurosporine"])]
-
+    # select DMSO 1% and Staurosporine 10 nM conditions for feature selection
     # run feature selection
     fs_profiles = feature_select(
         df,
@@ -242,13 +240,15 @@ for profile_name in run_dict.keys():
         corr_threshold=corr_threshold,
         freq_cut=freq_cut,
         unique_cut=unique_cut,
+        samples="(Metadata_Experiment_Treatment == 'DMSO' and Metadata_Experiment_Dose == 1) or (Metadata_Experiment_Treatment == 'Staurosporine' and Metadata_Experiment_Dose == 10)",
+        output_file=output_path,
+        output_type="parquet",
     )
-    # Phase 2: apply the retained feature set back to the full dataset.
-    fs_profiles = all_trt_df[
-        [col for col in all_trt_df.columns if col in fs_profiles.columns]
-    ]
 
     original_data_shape = df.shape
+    parquet_file = pq.ParquetFile(fs_profiles)
+    num_rows = parquet_file.metadata.num_rows
+    num_columns = len(parquet_file.schema.names)
+    fs_shape = (num_rows, num_columns)
     print("The number features before feature selection:", original_data_shape[1])
-    print("The number features after feature selection:", fs_profiles.shape[1])
-    fs_profiles.to_parquet(output_path, index=False)
+    print("The number features after feature selection:", fs_shape[1])

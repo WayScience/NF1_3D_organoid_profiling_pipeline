@@ -49,6 +49,7 @@ import os
 import pathlib
 
 import pandas as pd
+import pyarrow.parquet as pq
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -74,7 +75,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -222,12 +223,25 @@ run_dict = {
 
 
 # Well-level strata: one row per (patient, well) combination
-aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
+aggregate_strata = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_Well",
+    "Metadata_Experiment_Class",
+    "Metadata_Experiment_Dose",
+    "Metadata_Experiment_Target",
+    "Metadata_Experiment_TherapeuticCategories",
+    "Metadata_Experiment_Treatment",
+    "Metadata_Experiment_Unit",
+]
 # Consensus strata: one row per (patient, treatment) combination
 consensus_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Treatment",
     "Metadata_Experiment_Dose",
+    "Metadata_Experiment_Class",
+    "Metadata_Experiment_Target",
+    "Metadata_Experiment_TherapeuticCategories",
+    "Metadata_Experiment_Unit",
 ]
 
 
@@ -239,19 +253,17 @@ for profile_name in run_dict.keys():
     df = run_dict[profile_name]["df"]
     agg_well_output_path = run_dict[profile_name]["agg_well_output_path"]
     consensus_output_path = run_dict[profile_name]["consensus_output_path"]
-
-    metadata_columns = [x for x in df.columns if x.startswith("Metadata_")]
-    features_columns = [col for col in df.columns if col not in metadata_columns]
-
+    features_columns = [col for col in df.columns if not col.startswith("Metadata_")]
+    # aggregate the profiles
     # aggregate by well
     agg_well_df = aggregate(
         population_df=df,
         strata=aggregate_strata,
         features=features_columns,
         operation="median",
+        output_file=agg_well_output_path,
+        output_type="parquet",
     )
-    agg_well_df.to_parquet(agg_well_output_path, index=False)
-    print(f"  Well-level aggregated. Shape: {agg_well_df.shape}")
 
     # aggregate by treatment
     consensus_df = aggregate(
@@ -259,6 +271,16 @@ for profile_name in run_dict.keys():
         strata=consensus_strata,
         features=features_columns,
         operation="median",
+        output_file=consensus_output_path,
+        output_type="parquet",
     )
-    consensus_df.to_parquet(consensus_output_path, index=False)
-    print(f"  Consensus aggregated. Shape: {consensus_df.shape}")
+    parquet_file = pq.ParquetFile(agg_well_output_path)
+    num_rows = parquet_file.metadata.num_rows
+    num_columns = len(parquet_file.schema.names)
+    agg_well_shape = (num_rows, num_columns)
+    parquet_file = pq.ParquetFile(consensus_output_path)
+    num_rows = parquet_file.metadata.num_rows
+    num_columns = len(parquet_file.schema.names)
+    consensus_shape = (num_rows, num_columns)
+    print(f"  Well-level aggregated. Shape: {agg_well_shape}")
+    print(f"  Consensus aggregated. Shape: {consensus_shape}")
