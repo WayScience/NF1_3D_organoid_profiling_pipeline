@@ -345,14 +345,14 @@ print(
 )
 
 
-# In[9]:
+# In[ ]:
 
 
 sc_normalized_df = normalize(
     profiles=sc_annotated_profiles,
     features=sc_feature_cols,
     meta_features=sc_metadata_cols,
-    method="MAD_robustize",
+    method="standardize",
     samples=_dmso_qc_samples_query(sc_annotated_profiles),
     output_file=sc_normalized_output_path,
     output_type="parquet",
@@ -361,7 +361,7 @@ sc_sammed_normalized_df = normalize(
     profiles=sc_sammed_annotated_profiles,
     features=sc_sammed_feature_cols,
     meta_features=sc_sammed_metadata_cols,
-    method="MAD_robustize",
+    method="standardize",
     samples="Metadata_Experiment_Treatment == 'DMSO'",
     output_file=sc_sammed_normalized_output_path,
     output_type="parquet",
@@ -370,7 +370,7 @@ nucleocentric_sammed_normalized_df = normalize(
     profiles=nucleocentric_sammed_annotated_profiles,
     features=nucleocentric_sammed_feature_cols,
     meta_features=nucleocentric_sammed_metadata_cols,
-    method="MAD_robustize",
+    method="standardize",
     samples="Metadata_Experiment_Treatment == 'DMSO'",
     output_file=nucleocentric_sammed_normalized_output_path,
     output_type="parquet",
@@ -379,7 +379,7 @@ nucleocentric_morphem_normalized_df = normalize(
     profiles=nucleocentric_morphem_annotated_profiles,
     features=nucleocentric_morphem_feature_cols,
     meta_features=nucleocentric_morphem_metadata_cols,
-    method="MAD_robustize",
+    method="standardize",
     samples="Metadata_Experiment_Treatment == 'DMSO'",
     output_file=nucleocentric_morphem_normalized_output_path,
     output_type="parquet",
@@ -404,7 +404,7 @@ organoid_normalized_df = normalize(
     profiles=organoid_annotated_profiles,
     features=organoid_feature_cols,
     meta_features=organoid_metadata_cols,
-    method="MAD_robustize",
+    method="standardize",
     output_file=organoid_normalized_output_path,
     output_type="parquet",
 )
@@ -412,7 +412,7 @@ organoid_sc_sammed_normalized_df = normalize(
     profiles=organoid_sc_sammed_annotated_profiles,
     features=organoid_sc_sammed_feature_cols,
     meta_features=organoid_sc_sammed_metadata_cols,
-    method="MAD_robustize",
+    method="standardize",
     output_file=organoid_sc_sammed_normalized_output_path,
     output_type="parquet",
 )
