@@ -15,9 +15,11 @@ process FEATURIZE_NONGRANULARITY {
   script:
   def slug = compartment.toLowerCase()
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
+  def image_set_slug = params.image_sets ? manifest_file.baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_') : null
+  def base = image_set_slug ? "${params.outdir}/image_sets/${image_set_slug}" : "${params.outdir}"
   """
   set -euo pipefail
-  outdir="${params.outdir}/compartments/${slug}/nongranularity"
+  outdir="${base}/compartments/${slug}/nongranularity"
   mkdir -p "\${outdir}"
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
@@ -56,9 +58,11 @@ process FEATURIZE_GRANULARITY {
   def slug = compartment.toLowerCase()
   def channel_slug = image_channel.toLowerCase()
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
+  def image_set_slug = params.image_sets ? manifest_file.baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_') : null
+  def base = image_set_slug ? "${params.outdir}/image_sets/${image_set_slug}" : "${params.outdir}"
   """
   set -euo pipefail
-  outdir="${params.outdir}/compartments/${slug}/granularity/${channel_slug}"
+  outdir="${base}/compartments/${slug}/granularity/${channel_slug}"
   mkdir -p "\${outdir}"
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
@@ -94,6 +98,13 @@ process BUILD_WAREHOUSE {
 
   script:
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
+  def manifest_file_list = manifest_file instanceof List ? manifest_file : [manifest_file]
+  def image_set_args = params.image_sets
+    ? manifest_file_list.collect { mf ->
+        def slug = mf.baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_')
+        "--image-set \"${mf}\" \"${params.outdir}/image_sets/${slug}/compartments\""
+      }.join(' \\\n    ')
+    : "--manifest \"${manifest_file_list[0]}\" --compartment-root \"${params.outdir}/compartments\""
   """
   set -euo pipefail
   mkdir -p "${params.outdir}"
@@ -112,8 +123,7 @@ process BUILD_WAREHOUSE {
 
   /usr/bin/time -v -o "${params.outdir}/warehouse_resource_usage.txt" "\${PYTHON_RUNNER[@]}" \\
     "${params.pilot_root}/scripts/build_warehouse_from_compartments.py" \\
-    --manifest "${manifest_file}" \\
-    --compartment-root "${params.outdir}/compartments" \\
+    ${image_set_args} \\
     --outdir "${params.outdir}" \\
     --run-id "${params.run_id ?: 'manual'}" \\
     --repo-root "${params.pilot_root}/.."
@@ -121,8 +131,8 @@ process BUILD_WAREHOUSE {
 }
 
 workflow {
-  if (!params.manifest) {
-    error "params.manifest is required"
+  if (!params.manifest && !params.image_sets) {
+    error "params.manifest or params.image_sets is required"
   }
   if (!params.outdir) {
     error "params.outdir is required"
@@ -131,18 +141,39 @@ workflow {
     error "params.pilot_root is required"
   }
 
-  manifest_file = file(params.manifest)
   compartments = params.compartments.split(',').collect { it.trim() }.findAll { it }
   channels = params.channels.split(',').collect { it.trim() }.findAll { it }
 
   compartment_ch = Channel.fromList(compartments)
   granularity_ch = Channel.fromList(compartments).combine(Channel.fromList(channels))
 
-  FEATURIZE_NONGRANULARITY(manifest_file, compartment_ch)
-  FEATURIZE_GRANULARITY(manifest_file, granularity_ch)
-  BUILD_WAREHOUSE(
-    manifest_file,
-    FEATURIZE_NONGRANULARITY.out.collect(),
-    FEATURIZE_GRANULARITY.out.collect(),
-  )
+  if (params.image_sets) {
+    manifest_paths = params.image_sets.split(',').collect { it.trim() }.findAll { it }
+    slugs = manifest_paths.collect { file(it).baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_') }
+    if (slugs.unique(false).size() != slugs.size()) {
+      error "Duplicate image-set slugs derived from --image-sets manifest filenames: ${slugs}"
+    }
+    image_set_ch = Channel.fromList(manifest_paths).map { file(it) }
+
+    nongran_ch = image_set_ch.combine(compartment_ch)
+    gran_ch = image_set_ch.combine(granularity_ch)
+
+    FEATURIZE_NONGRANULARITY(nongran_ch.map { m, c -> m }, nongran_ch.map { m, c -> c })
+    FEATURIZE_GRANULARITY(gran_ch.map { m, c, ch -> m }, gran_ch.map { m, c, ch -> tuple(c, ch) })
+    BUILD_WAREHOUSE(
+      image_set_ch.collect(),
+      FEATURIZE_NONGRANULARITY.out.collect(),
+      FEATURIZE_GRANULARITY.out.collect(),
+    )
+  } else {
+    manifest_file = file(params.manifest)
+
+    FEATURIZE_NONGRANULARITY(manifest_file, compartment_ch)
+    FEATURIZE_GRANULARITY(manifest_file, granularity_ch)
+    BUILD_WAREHOUSE(
+      manifest_file,
+      FEATURIZE_NONGRANULARITY.out.collect(),
+      FEATURIZE_GRANULARITY.out.collect(),
+    )
+  }
 }

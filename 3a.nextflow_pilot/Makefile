@@ -3,6 +3,7 @@ export PYENV_VERSION ?= system
 
 RUN_ID ?=
 MANIFEST ?= manifest/nf0055_b10_1_alpine.yaml
+IMAGE_SETS ?=
 SOURCE_ROOT ?= /pl/active/koala/nf1-3d-pilot-workflow-db
 RESULTS_ROOT ?= /pl/active/koala/nf1-3d-pilot-workflow-db/results
 PATIENT ?= NF0055_T1
@@ -41,7 +42,11 @@ endif
 ifneq ($(strip $(UV_PROJECT_ENVIRONMENT)),)
 RUN_ARGS += --uv-project-environment "$(UV_PROJECT_ENVIRONMENT)"
 endif
+ifneq ($(strip $(IMAGE_SETS)),)
+RUN_ARGS += --image-sets "$(IMAGE_SETS)"
+else
 RUN_ARGS += --manifest "$(MANIFEST)"
+endif
 RUN_ARGS += --results-root "$(RESULTS_ROOT)"
 RUN_ARGS += --feature-cpus "$(FEATURE_CPUS)"
 RUN_ARGS += --feature-memory "$(FEATURE_MEMORY)"

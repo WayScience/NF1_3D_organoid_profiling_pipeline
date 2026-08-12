@@ -26,8 +26,12 @@ Usage:
   bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
   bin/nf1-nextflow-pilot clear-output --run-id ID [--results-root PATH] [--dry-run]
   bin/nf1-nextflow-pilot smoke [--run-id ID]
-  bin/nf1-nextflow-pilot run --manifest PATH [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION]
-  bin/nf1-nextflow-pilot submit --manifest PATH [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+  bin/nf1-nextflow-pilot run (--manifest PATH | --image-sets PATH,PATH,...) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION]
+  bin/nf1-nextflow-pilot submit (--manifest PATH | --image-sets PATH,PATH,...) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+
+  --manifest and --image-sets are mutually exclusive. --image-sets takes a
+  comma-separated list of manifest paths, one per image set, and fans the
+  workflow out over all of them into one shared warehouse.
 
 Common Make targets:
   make check
@@ -84,6 +88,79 @@ validate_positive_int() {
     echo "$label must be an integer from 1 to $max" >&2
     exit 2
   fi
+}
+
+trim() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+# Resolves either a single --manifest path or a comma-separated --image-sets
+# list to absolute paths, validating existence and (for --image-sets)
+# duplicate-slug collisions. Sets RESOLVED_MANIFEST xor RESOLVED_IMAGE_SETS.
+resolve_manifest_or_image_sets() {
+  local manifest="$1"
+  local image_sets="$2"
+  RESOLVED_MANIFEST=""
+  RESOLVED_IMAGE_SETS=""
+
+  if [[ -n "$manifest" && -n "$image_sets" ]]; then
+    echo "--manifest and --image-sets are mutually exclusive" >&2
+    exit 2
+  fi
+
+  if [[ -n "$image_sets" ]]; then
+    local IFS=','
+    local -a raw_paths=($image_sets)
+    unset IFS
+    local -a resolved=()
+    local -a slugs=()
+    local p slug existing
+    for p in "${raw_paths[@]}"; do
+      p="$(trim "$p")"
+      if [[ -z "$p" ]]; then
+        continue
+      fi
+      if [[ ! -f "$p" && ! -f "$ROOT_DIR/$p" ]]; then
+        echo "Image-set manifest not found: $p" >&2
+        exit 2
+      fi
+      if [[ ! -f "$p" ]]; then
+        p="$ROOT_DIR/$p"
+      fi
+      slug="$(basename "$p")"
+      slug="${slug%.*}"
+      for existing in ${slugs[@]+"${slugs[@]}"}; do
+        if [[ "$existing" == "$slug" ]]; then
+          echo "Duplicate image-set slug derived from manifest filenames: $slug" >&2
+          exit 2
+        fi
+      done
+      slugs+=("$slug")
+      resolved+=("$p")
+    done
+    if [[ "${#resolved[@]}" -eq 0 ]]; then
+      echo "--image-sets given but no valid manifest paths found" >&2
+      exit 2
+    fi
+    RESOLVED_IMAGE_SETS="$(IFS=,; echo "${resolved[*]}")"
+    return 0
+  fi
+
+  if [[ -z "$manifest" ]]; then
+    echo "--manifest or --image-sets is required" >&2
+    exit 2
+  fi
+  if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
+    echo "Manifest not found: $manifest" >&2
+    exit 2
+  fi
+  if [[ ! -f "$manifest" ]]; then
+    manifest="$ROOT_DIR/$manifest"
+  fi
+  RESOLVED_MANIFEST="$manifest"
 }
 
 run_capture() {
@@ -327,8 +404,10 @@ run_nextflow() {
   local partition="${15}"
   local qos="${16}"
   local results_root="${17}"
+  local image_sets="${18:-}"
   local outdir="$results_root/$id"
   local nextflow
+  local manifest_or_image_sets_args
 
   validate_name "run-id" "$id"
   validate_name "profile" "$profile"
@@ -336,12 +415,11 @@ run_nextflow() {
   validate_positive_int "granularity-cpus" "$granularity_cpus" 48
   validate_positive_int "nongranularity-cpus" "$nongranularity_cpus" 48
 
-  if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
-    echo "Manifest not found: $manifest" >&2
-    exit 2
-  fi
-  if [[ ! -f "$manifest" ]]; then
-    manifest="$ROOT_DIR/$manifest"
+  resolve_manifest_or_image_sets "$manifest" "$image_sets"
+  if [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
+    manifest_or_image_sets_args="--image_sets $RESOLVED_IMAGE_SETS"
+  else
+    manifest_or_image_sets_args="--manifest $RESOLVED_MANIFEST"
   fi
 
   nextflow="$(nextflow_cmd)"
@@ -354,7 +432,7 @@ run_nextflow() {
   preflight "$id" "$account" "$partition" "$qos" "$results_root"
 
   {
-    echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir --manifest $manifest --uv_project_environment ${uv_project_environment:-<task-local>}"
+    echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir $manifest_or_image_sets_args --uv_project_environment ${uv_project_environment:-<task-local>}"
   } > "$outdir/run-command.txt"
 
   if [[ -n "$uv_project_environment" ]] && have uv; then
@@ -370,7 +448,7 @@ run_nextflow() {
       --run_id "$id" \
       --outdir "$outdir" \
       --pilot_root "$ROOT_DIR" \
-      --manifest "$manifest" \
+      $manifest_or_image_sets_args \
       --feature_cpus "$feature_cpus" \
       --feature_memory "$feature_memory" \
       --feature_time "$feature_time" \
@@ -415,11 +493,13 @@ submit_slurm() {
   local dry_run="${16}"
   local submit_host="${17}"
   local results_root="${18}"
+  local image_sets="${19:-}"
   local outdir="$results_root/$id"
   local script="$outdir/coordinator.sbatch"
   local tools_root
   local account_directive=""
   local qos_directive=""
+  local manifest_or_image_sets_args
 
   validate_name "run-id" "$id"
   validate_name "account" "$account"
@@ -430,12 +510,11 @@ submit_slurm() {
   validate_positive_int "granularity-cpus" "$granularity_cpus" 48
   validate_positive_int "nongranularity-cpus" "$nongranularity_cpus" 48
 
-  if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
-    echo "Manifest not found: $manifest" >&2
-    exit 2
-  fi
-  if [[ ! -f "$manifest" ]]; then
-    manifest="$ROOT_DIR/$manifest"
+  resolve_manifest_or_image_sets "$manifest" "$image_sets"
+  if [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
+    manifest_or_image_sets_args="--image-sets \"$RESOLVED_IMAGE_SETS\""
+  else
+    manifest_or_image_sets_args="--manifest \"$RESOLVED_MANIFEST\""
   fi
 
   if [[ "$dry_run" != "true" && -z "$submit_host" ]] && ! have sbatch; then
@@ -490,7 +569,7 @@ if type module >/dev/null 2>&1 && [[ -n "\${NF1_PILOT_NEXTFLOW_MODULE:-}" && "\$
 fi
 
 NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \\
-  bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" --manifest "$manifest" --results-root "$results_root" \\
+  bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" $manifest_or_image_sets_args --results-root "$results_root" \\
     --uv-project-environment "\$NF1_PILOT_UV_ENVIRONMENT" \\
     --feature-cpus "$feature_cpus" --feature-memory "$feature_memory" --feature-time "$feature_time" \\
     --granularity-cpus "$granularity_cpus" --granularity-memory "$granularity_memory" --granularity-time "$granularity_time" \\
@@ -571,6 +650,7 @@ case "$cmd" in
   run)
     id="$(run_id)"
     manifest=""
+    image_sets=""
     profile="local"
     feature_cpus=2
     feature_memory="32 GB"
@@ -590,6 +670,7 @@ case "$cmd" in
       case "$1" in
         --run-id) id="$2"; shift 2 ;;
         --manifest) manifest="$2"; shift 2 ;;
+        --image-sets) image_sets="$2"; shift 2 ;;
         --profile) profile="$2"; shift 2 ;;
         --results-root) results_root="$2"; shift 2 ;;
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
@@ -609,15 +690,16 @@ case "$cmd" in
         *) echo "Unknown option: $1" >&2; exit 2 ;;
       esac
     done
-    if [[ -z "$manifest" ]]; then
-      echo "--manifest is required" >&2
+    if [[ -z "$manifest" && -z "$image_sets" ]]; then
+      echo "--manifest or --image-sets is required" >&2
       exit 2
     fi
-    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root"
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root" "$image_sets"
     ;;
   submit)
     id="$(run_id)"
     manifest=""
+    image_sets=""
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
@@ -638,6 +720,7 @@ case "$cmd" in
       case "$1" in
         --run-id) id="$2"; shift 2 ;;
         --manifest) manifest="$2"; shift 2 ;;
+        --image-sets) image_sets="$2"; shift 2 ;;
         --results-root) results_root="$2"; shift 2 ;;
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
@@ -658,11 +741,11 @@ case "$cmd" in
         *) echo "Unknown option: $1" >&2; exit 2 ;;
       esac
     done
-    if [[ -z "$manifest" ]]; then
-      echo "--manifest is required" >&2
+    if [[ -z "$manifest" && -z "$image_sets" ]]; then
+      echo "--manifest or --image-sets is required" >&2
       exit 2
     fi
-    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root"
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets"
     ;;
   -h|--help|"")
     usage

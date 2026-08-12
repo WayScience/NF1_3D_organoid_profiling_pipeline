@@ -12,7 +12,7 @@ dependencies = [
   "scikit-image>=0.23",
   "tifffile>=2024.2.12",
   "tomli>=2.0; python_version < '3.11'",
-  "zedprofiler @ git+https://github.com/d33bs/ZedProfiler.git@gran-32",
+  "zedprofiler==0.1.3",
   "pyiceberg[pyarrow,sql-sqlite]>=0.10",
 ]
 

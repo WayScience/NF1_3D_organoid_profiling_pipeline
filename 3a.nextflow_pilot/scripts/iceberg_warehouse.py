@@ -131,11 +131,20 @@ def write_table(
     catalog: Any,
     warehouse_root: Path,
     table_name: str,
-    frame: pd.DataFrame,
+    frames: list[pd.DataFrame],
     properties: dict[str, str] | None = None,
 ) -> tuple[Any, pa.Schema]:
-    """Create or replace a single local Iceberg table from a DataFrame."""
-    arrow_table = pa.Table.from_pandas(frame, preserve_index=False)
+    """Create or replace a local Iceberg table, appending each frame as its
+    own data file.
+
+    Frames are never concatenated in this process's memory: each is
+    converted to Arrow and appended independently, so peak memory stays
+    bounded by one frame at a time (one image set's worth of rows) instead
+    of scaling with the total number of frames across a run. The resulting
+    table is a normal multi-file Iceberg table -- reads still see one
+    logical table, unioning every appended data file.
+    """
+    schema = pa.Table.from_pandas(frames[0], preserve_index=False).schema if frames else pa.schema([])
     location = table_location(warehouse_root, table_name)
     namespace, _table = split_table_name(table_name)
     catalog.create_namespace_if_not_exists(namespace)
@@ -147,27 +156,31 @@ def write_table(
 
     table = catalog.create_table(
         identifier=table_name,
-        schema=arrow_table.schema,
+        schema=schema,
         location=file_uri(location),
         properties=properties or {},
     )
-    if arrow_table.num_rows:
-        table.append(arrow_table)
+    appended = False
+    for frame in frames:
+        if frame.empty:
+            continue
+        table.append(pa.Table.from_pandas(frame, preserve_index=False))
+        appended = True
+    if appended:
         table = catalog.load_table(table_name)
-    return table, arrow_table.schema
+    return table, schema
 
 
 def publish_iceberg_warehouse(
     outdir: Path,
     run_id: str,
     git_commit: str,
-    manifest: dict[str, Any],
-    profile_frames: dict[str, pd.DataFrame],
-    images: dict[str, Any],
-    masks: dict[str, Any],
+    image_assets: list[pd.DataFrame],
+    profile_frames: dict[str, list[pd.DataFrame]],
     validations: dict[str, dict[str, Any]],
     alignment: dict[str, Any],
     zedprofiler_version: str,
+    source_image_root: str,
 ) -> dict[str, Any]:
     """Publish profile/image tables and return the warehouse manifest."""
     warehouse_root = outdir / "warehouse"
@@ -187,7 +200,6 @@ def publish_iceberg_warehouse(
         "run_id": run_id,
     }
 
-    image_assets = build_image_assets(manifest, images, masks, run_id, git_commit)
     table, schema = write_table(
         catalog,
         warehouse_root,
@@ -212,15 +224,15 @@ def publish_iceberg_warehouse(
                 "Metadata_ImageAsset_AssetID",
             ],
             "columns": column_manifest(schema),
-            "row_count": int(image_assets.shape[0]),
+            "row_count": int(sum(len(frame) for frame in image_assets)),
             "validation_status": "pass",
-            "source_image_root": manifest.get("source_image_root", ""),
+            "source_image_root": source_image_root,
             "run_id": run_id,
             "git_commit": git_commit,
         }
     )
 
-    for table_name, frame in profile_frames.items():
+    for table_name, frames in profile_frames.items():
         _namespace, table_slug = split_table_name(table_name)
         compartment = table_slug.removesuffix("_profiles").capitalize()
         validation = validations.get(compartment, {})
@@ -228,7 +240,7 @@ def publish_iceberg_warehouse(
             catalog,
             warehouse_root,
             table_name,
-            frame,
+            frames,
             properties={**table_properties, "role": "profiles"},
         )
         tables.append(
@@ -251,10 +263,10 @@ def publish_iceberg_warehouse(
                     "Metadata_Object_ObjectID",
                 ],
                 "columns": column_manifest(schema),
-                "row_count": int(frame.shape[0]),
-                "column_count": int(frame.shape[1]),
+                "row_count": int(sum(len(frame) for frame in frames)),
+                "column_count": int(frames[0].shape[1]) if frames else 0,
                 "validation_status": "pass" if validation.get("valid") else "fail",
-                "source_image_root": manifest.get("source_image_root", ""),
+                "source_image_root": source_image_root,
                 "run_id": run_id,
                 "git_commit": git_commit,
             }
@@ -274,7 +286,7 @@ def publish_iceberg_warehouse(
         "run_id": run_id,
         "git_commit": git_commit,
         "zedprofiler_version": zedprofiler_version,
-        "source_image_root": manifest.get("source_image_root", ""),
+        "source_image_root": source_image_root,
         "alignment": alignment,
         "validation_status": "pass"
         if all(table["validation_status"] == "pass" for table in tables)

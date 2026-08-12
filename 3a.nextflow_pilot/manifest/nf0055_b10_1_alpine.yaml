@@ -4,7 +4,7 @@ Metadata_Biology_PatientTumor: NF0055_T1
 Metadata_Biology_PatientID: NF0055
 Metadata_Experiment_PlateID: NF0055_T1
 Metadata_Experiment_WellID: B10
-Metadata_Imaging_FieldID: 1
+Metadata_Imaging_FieldID: '1'
 Metadata_Imaging_ImageID: NF0055_T1__NF0055_T1__B10__F1
 compartment: Nuclei
 compartments:

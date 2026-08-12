@@ -87,13 +87,20 @@ Use `trace.tsv` for the Nextflow task runtime, status, work directory, and
 Slurm native job ID.
 
 The full image-set manifest now includes all four compartments. A full run
-writes one profile parquet per compartment:
+writes one profile parquet **dataset directory** per compartment (one
+parquet file per image set inside, named by that image set's
+`Metadata_Imaging_ImageID`; a single-image-set run's directory just has
+one file in it). Nothing concatenates these files together, so reading the
+whole compartment table is `pd.read_parquet(directory)` or any
+multi-file-aware parquet reader:
 
 ```text
-nuclei_profiles.parquet
-cell_profiles.parquet
-cytoplasm_profiles.parquet
-organoid_profiles.parquet
+nuclei_profiles/
+  NF0055_T1__NF0055_T1__B10__F1.parquet
+  NF0014_T1__NF0014_T1__C4__F2.parquet
+cell_profiles/
+cytoplasm_profiles/
+organoid_profiles/
 ```
 
 The analysis output is also published as a local Apache Iceberg warehouse:
@@ -466,3 +473,177 @@ default (with headroom), which would also reduce the CURC-side allocated-CPU
 cost per task since this partition scales `AllocCPUS` to requested memory.
 Not changed in this experiment, to keep the resource directives identical
 between the two compared runs.
+
+**Update, later the same day:** PR #51 merged and shipped as ZedProfiler
+`v0.1.3` on PyPI ("Speed up granularity ~2x by only upsampling labeled
+voxels (@d33bs via #51)", confirmed via `gh release view v0.1.3 --repo
+WayScience/ZedProfiler`). `environments/pyproject.toml` was switched back
+from the PR branch git dependency to a normal PyPI pin,
+`zedprofiler==0.1.3`, for all runs from this point forward.
+
+## Alpine notes from 2026-08-12, continued
+
+### Multi-image-set fan-out (two patients, one shared warehouse)
+
+Added an outer fan-out layer over multiple image sets in one Nextflow run,
+on top of the existing per-compartment x per-channel fan-out, converging
+into a single shared Iceberg warehouse instead of one warehouse per image
+set. Backward compatible: a plain `--manifest PATH` invocation (no
+`--image-sets`) runs through an untouched code path with byte-identical
+output layout to before this change (verified locally: the legacy CLI path
+produces the exact same `run_record.json` key set as a pre-change run of the
+same fixture).
+
+New `--image-sets PATH,PATH,...` / `IMAGE_SETS` (comma-separated manifest
+list) flag on `bin/nf1-nextflow-pilot run|submit` and `make run|submit`,
+mutually exclusive with `--manifest`/`MANIFEST`. Each image set's
+per-compartment output nests under
+`${outdir}/image_sets/<manifest-filename-stem>/compartments/...`; a single
+`BUILD_WAREHOUSE` task at the end reads every image set's compartment
+outputs and unions them into one warehouse, one row set per compartment
+table, keyed by each image set's own (already-unique)
+`Metadata_Imaging_ImageID`. `scripts/build_warehouse_from_compartments.py`
+gained a repeatable `--image-set MANIFEST COMPARTMENT_ROOT` pair (append),
+kept `--manifest`/`--compartment-root` for the single-image-set case, and
+now raises a clear error instead of a downstream PyArrow failure if image
+sets disagree on compartments, columns, or column dtypes.
+
+**Second image set:** `NF0014_T1/C4-2`, staged from
+`~/mnt/bandicoot/NF1_organoid_data/data/NF0014_T1/{zstack_images,segmentation_masks}/C4-2/`
+to
+`/pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0014_T1/{zstack_images,segmentation_masks}/C4-2/`
+(the koala `GFF_Data` mirror used by the main pipeline does not carry a
+plain combined `segmentation_masks` folder per patient, only bandicoot
+does). All 5 channel TIFFs and all 4 compartment masks confirmed present and
+shape-aligned at `(33, 1537, 1540)` before submitting — a notably smaller
+z-stack than `NF0055_T1/B10-1`'s `(105, 1527, 1528)`. Manifest built with
+the existing, unmodified `scripts/build_manifest.py`.
+
+**A first submission failed** at the final `BUILD_WAREHOUSE` step (all 40
+worker tasks across both image sets succeeded) with a PyArrow error:
+`Metadata_Imaging_FieldID` was an unquoted int (`1`) in the checked-in
+`NF0055_T1/B10-1` manifest but a quoted string (`'2'`) in `NF0014_T1/C4-2`'s
+freshly-generated one (`scripts/build_manifest.py`'s current code always
+writes a string; the NF0055 manifest predates that convention or was hand
+edited). Concatenating the two image sets' profile frames silently upcast
+the column to mixed-type `object`, which PyArrow refused to write to
+parquet. Fixed the root cause (requoted `Metadata_Imaging_FieldID: '1'` in
+`manifest/nf0055_b10_1_alpine.yaml`) and hardened
+`build_warehouse_from_compartments.py` to normalize that field to string at
+manifest-load time regardless, plus added an explicit dtype-mismatch check
+across image sets before any concatenation so a future recurrence fails
+with a clear message naming the column and per-image-set dtypes instead of
+a bare PyArrow traceback.
+
+Resubmitted run, using the now-0.1.3 environment and `GRANULARITY_MEMORY="24
+GB"` (informed by the same-day finding that granularity's real peak RSS is
+~5-6.6 GB, not the `64 GB` default) — completed successfully:
+
+```text
+run_id: nf0055-nf0014-multi-image-set-20260812T211627Z
+mode: granularity_channel_fanout
+coordinator_job: 31170628
+workflow_slurm_jobs: 42
+nextflow_exit_status: 0
+coordinator_walltime: 00:05:45
+zedprofiler_version: 0.1.3
+validation_status: pass
+quality_warning_count: 8
+cpu_hours: 5.07
+max_MaxRSS_across_all_jobs: 6.23 GB
+```
+
+Compared with the same-day single-image-set PR #51 run (one image set,
+`GRANULARITY_MEMORY="64 GB"`, `coordinator_walltime: 00:04:26`,
+`cpu_hours: 5.56`): running **two** image sets together took only ~30% more
+coordinator wall time and used *fewer* total CPU-hours, because lowering
+`GRANULARITY_MEMORY` to `24 GB` roughly halved `AllocCPUS` per granularity
+task on this partition's memory-scaled core allocation (~3.5 GB/core),
+letting more of the 32 granularity tasks run concurrently within
+`executor.queueSize = 20` and more than offsetting the doubled task count.
+
+The warehouse union was verified by loading it directly through PyIceberg
+(not just this pilot's own scripts):
+
+```text
+profiles.nuclei_profiles:    56 rows (NF0014: 45, NF0055: 11)
+profiles.cell_profiles:      51 rows (NF0014: 42, NF0055: 9)
+profiles.cytoplasm_profiles: 51 rows (NF0014: 42, NF0055: 9)
+profiles.organoid_profiles:   3 rows (NF0014: 1,  NF0055: 2)
+images.image_assets:         16 rows (8 per image set: 4 channels + 4 masks)
+```
+
+NF0055's counts (11/9/9/2) exactly match its previously documented
+single-image-set baseline, confirming no cross-contamination between image
+sets in the union. NF0014 is a distinct organoid with substantially more
+detected objects despite its smaller z-stack. All rows carry the correct,
+distinct `Metadata_Imaging_ImageID` for their source image set; validation
+status is `pass` for every table.
+
+Granularity peak RSS across both image sets topped out at 6.23 GB (Slurm
+`MaxRSS`), comfortably inside the `24 GB` request used here — a real
+data point (not just NF0055 alone) to inform lowering the persisted
+`GRANULARITY_MEMORY` default in a future change.
+
+### Multi-image-set warehouse writer no longer concatenates in memory
+
+The initial multi-image-set implementation above joined image sets by
+`pd.concat`-ing every image set's compartment profile frame into one
+combined `DataFrame` before writing it out as a single parquet file and a
+single Iceberg `table.append()` call. That's fine at 2 image sets, but it
+means peak memory in the single `BUILD_WAREHOUSE` process scales with the
+*total* number of image sets in a run — the wrong shape for the roadmap's
+eventual production-scale run.
+
+Revised so no cross-image-set concatenation happens anywhere. Each image
+set's compartment frame (already merged from its own nongranularity +
+granularity outputs, a per-image-set step that was already memory-bounded
+and unchanged) is now written to its own parquet file and appended to the
+Iceberg table as its own data file, in a loop over image sets. `write_table`
+in `scripts/iceberg_warehouse.py` takes `frames: list[pd.DataFrame]` instead
+of one `pd.DataFrame` and calls `table.append()` once per frame; row counts
+are summed across the list rather than read off one concatenated frame.
+Peak memory in `BUILD_WAREHOUSE` is now bounded by one image set's data at a
+time, regardless of how many image sets are in the run.
+
+The top-level convenience output changed shape to match: `nuclei_profiles`
+(etc.) is now a **directory** containing one parquet file per image set,
+named by that image set's `Metadata_Imaging_ImageID`
+(`nuclei_profiles/NF0055_T1__NF0055_T1__B10__F1.parquet`, ...), not a single
+`nuclei_profiles.parquet` file — a "parquet dataset" in the normal sense,
+readable as one logical table by `pd.read_parquet(directory)` or any
+multi-file-aware reader. This is now the standard shape for every run,
+single-image-set or multi: the single/multi distinction that used to gate a
+copy-shortcut for the old single-file output was removed along with it, so
+`build_warehouse_from_compartments.py`'s parquet-writing path is the same
+code regardless of image-set count. (The `run_record.json`/`validation.json`
+flat-vs-nested-by-`ImageID` shape decision is unrelated and unchanged.)
+
+Verified locally against the same synthetic smoke fixture used earlier
+(`results/split-granularity-aggregate-smoke/compartments`, two throwaway
+manifests): both the flat dataset directory and the Iceberg table's own
+`data/` directory contained one file per image set, `pd.read_parquet` on the
+directory and `catalog.load_table(...).scan()` both returned the correctly
+unioned 2-row result, and the legacy single-manifest path still produced the
+same `run_record.json` key set as before (still one file, just now inside a
+one-entry directory).
+
+Re-ran the full `NF0055_T1/B10-1` + `NF0014_T1/C4-2` experiment end-to-end
+after clearing the prior run's output, same `IMAGE_SETS`/`GRANULARITY_MEMORY="24
+GB"` arguments:
+
+```text
+run_id: nf0055-nf0014-multi-image-set-20260812T215903Z
+coordinator_job: 31173131
+nextflow_exit_status: 0
+coordinator_walltime: 00:05:47
+```
+
+Identical to the concatenated run in every observable way except file
+count: every profile table and `images.image_assets` now has exactly 2
+Iceberg data files (`len(table.scan().plan_files()) == 2`, one per image
+set), and the same row counts and per-`ImageID` breakdown as before
+(`nuclei_profiles`: 56 total, 45 NF0014 + 11 NF0055; `images.image_assets`:
+16 total, 8 + 8) — confirmed by loading the warehouse through PyIceberg
+directly, and by reading the flat `nuclei_profiles/` directory through
+plain `pd.read_parquet`.

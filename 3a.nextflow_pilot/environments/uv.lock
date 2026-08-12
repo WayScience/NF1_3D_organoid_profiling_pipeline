@@ -1091,7 +1091,7 @@ requires-dist = [
     { name = "scikit-image", specifier = ">=0.23" },
     { name = "tifffile", specifier = ">=2024.2.12" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0" },
-    { name = "zedprofiler", git = "https://github.com/d33bs/ZedProfiler.git?rev=gran-32" },
+    { name = "zedprofiler", specifier = "==0.1.3" },
 ]
 
 [[package]]
@@ -2262,8 +2262,8 @@ wheels = [
 
 [[package]]
 name = "zedprofiler"
-version = "0.0.post1.dev48"
-source = { git = "https://github.com/d33bs/ZedProfiler.git?rev=gran-32#1ca0c7d2ca94e45de8db1cac9f55ede767191431" }
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beartype" },
     { name = "bioio" },
@@ -2279,6 +2279,9 @@ dependencies = [
     { name = "scikit-image" },
     { name = "scipy" },
     { name = "tomli" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/a9/796c0635b7fe117da3f131ae7bf5ac4e8de4da005edfa996ccf0087f4a70/zedprofiler-0.1.3-py3-none-any.whl", hash = "sha256:465353e0d00cd01ac9c3ad92f567783416466ce86e25892230418fbf1257b9fd", size = 58180, upload-time = "2026-08-12T17:17:51.069Z" },
 ]
 
 [[package]]
