@@ -42,6 +42,7 @@ from image_analysis_3D.file_utils.notebook_init_utils import (
     init_notebook,
 )
 from pycytominer import aggregate, feature_select
+from pycytominer.cyto_utils import infer_cp_features
 
 root_dir, in_notebook = init_notebook()
 
@@ -139,9 +140,10 @@ consensus_strata = [
     "Metadata_Experiment_TherapeuticCategories",
     "Metadata_Experiment_Unit",
 ]
+potential_compartments = ["Cell", "Cytoplasm", "Nuclei", "Organoid", "Nucleocentric"]
 
 
-# In[7]:
+# In[ ]:
 
 
 for profile_type, files in levels_to_merge_dict.items():
@@ -164,15 +166,20 @@ for profile_type, files in levels_to_merge_dict.items():
     ###############################################
     # Feature selection
     ###############################################
-    feature_columns = [col for col in df.columns if not col.startswith("Metadata_")]
+    feature_columns = infer_cp_features(
+        df, metadata=False, compartments=potential_compartments
+    )
     df[feature_columns] = df[feature_columns].replace([np.inf, -np.inf], np.nan)
 
     fs_profile = feature_select(
         df,
         operation=feature_select_ops,
-        features=feature_columns,
+        features=infer_cp_features(
+            df, metadata=False, compartments=potential_compartments
+        ),
         na_cutoff=na_cutoff,
         corr_threshold=corr_threshold,  # comment out to use default value
+        method="standardize",  # comment out to use default value
         freq_cut=freq_cut,  # comment out to use default value
         unique_cut=unique_cut,  # comment out to use default value
         samples="(Metadata_Experiment_Treatment == 'DMSO' and Metadata_Experiment_Dose == 1) or (Metadata_Experiment_Treatment == 'Staurosporine' and Metadata_Experiment_Dose == 10)",
@@ -183,17 +190,14 @@ for profile_type, files in levels_to_merge_dict.items():
     ###############################################
     # Aggregation — produces well-level and consensus parquets
     ###############################################
-    # Recompute feature columns from fs_profiles after feature selection.
     fs_df = pd.read_parquet(fs_profile)
-    # infer_cp would not work here given non_CP features
-    # so we just grab all non-metadata columns as features for aggregation.
-    feature_columns = [col for col in fs_df.columns if not col.startswith("Metadata_")]
-
     # aggregate the profiles
     agg_profile = aggregate(
         population_df=fs_df,
         strata=aggregate_strata,
-        features=feature_columns,
+        features=infer_cp_features(
+            fs_df, metadata=False, compartments=potential_compartments
+        ),
         operation="median",
         output_file=f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet",
         output_type="parquet",
@@ -205,7 +209,9 @@ for profile_type, files in levels_to_merge_dict.items():
     consensus_profile = aggregate(
         population_df=fs_df,
         strata=consensus_strata,
-        features=feature_columns,
+        features=infer_cp_features(
+            fs_df, metadata=False, compartments=potential_compartments
+        ),
         operation="median",
         output_file=f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet",
         output_type="parquet",

@@ -26,13 +26,19 @@ profile_base_dir = root_dir
 # In[2]:
 
 
+threshold = 1e5
+
+
+# In[3]:
+
+
 patient_ids_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(
     strict=True
 )
 patient_ids = pd.read_csv(patient_ids_file_path, header=None).iloc[:, 0].tolist()
 
 
-# In[3]:
+# In[ ]:
 
 
 # set up log file
@@ -129,21 +135,30 @@ with open(log_path, "w") as log_file:
         log(f"Processing patient: {patient}", log_file)
         log(f"{'=' * 60}", log_file)
         log(
-            f"{'name':40} | {'shape':>15} | {'nans':>8} | {'infs':>8} | {'dupes':>8}",
+            f"{'name':40} | {'shape':>15} | {'nans':>8} | {'infs':>8} | {'dupes':>8} | {'values_above_threshold':>8}",
             log_file,
         )
-        log(f"{'-' * 40} | {'-' * 15} | {'-' * 8} | {'-' * 8} | {'-' * 8}", log_file)
+        log(
+            f"{'-' * 40} | {'-' * 15} | {'-' * 8} | {'-' * 8} | {'-' * 8} | {'-' * 8}",
+            log_file,
+        )
 
         for name, path in profile_path_dict.items():
             df = pd.read_parquet(path)
             nas = df.isna().sum().sum()
             infs = np.isinf(df.select_dtypes(include=[np.number])).sum().sum()
             duplicates = df.duplicated().sum()
+            values_above_threshold = (
+                (df.select_dtypes(include=[np.number]) > threshold).sum().sum()
+            )
             shape = df.shape
 
             log(
-                f"{name:40} | {str(shape):>15} | {nas:>8} | {infs:>8} | {duplicates:>8}",
+                f"{name:40} | {str(shape):>15} | {nas:>8} | {infs:>8} | {duplicates:>8} | {values_above_threshold:>8}",
                 log_file,
             )
 
 print(f"\nLog written to: {log_path}")
+
+
+# In[ ]:
