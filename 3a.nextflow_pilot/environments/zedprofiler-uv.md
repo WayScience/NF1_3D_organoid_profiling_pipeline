@@ -7,8 +7,14 @@ The pilot process runs Python through:
 uv run --project 3a.nextflow_pilot/environments python
 ```
 
-The environment pins `zedprofiler==0.1.2` for the Phase A/B pilot. Build it on
-the execution system before the first real run:
+The environment normally pins `zedprofiler==0.1.2` for the Phase A/B pilot,
+but is currently pinned to
+[WayScience/ZedProfiler#51](https://github.com/WayScience/ZedProfiler/pull/51)
+(`zedprofiler @ git+https://github.com/d33bs/ZedProfiler.git@gran-32`) to
+benchmark that PR's granularity speedup against the 0.1.2 baseline; see the
+README's 2026-08-12 notes. Revert to the PyPI pin once the PR merges and a
+release picks up the change. Build the environment on the execution system
+before the first real run:
 
 ```bash
 cd 3a.nextflow_pilot

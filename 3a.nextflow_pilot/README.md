@@ -395,3 +395,74 @@ The worker launcher now uses `${UV_PROJECT_ENVIRONMENT}/bin/python` directly
 when a pre-synced environment exists, and only falls back to `uv run` for
 task-local environments that do not exist yet. This keeps `uv` out of concurrent
 worker execution while preserving the local fallback behavior.
+
+## Alpine notes from 2026-08-12
+
+### ZedProfiler PR #51 (granularity upsampling speedup)
+
+`environments/pyproject.toml` was switched from PyPI `zedprofiler==0.1.2` to
+[WayScience/ZedProfiler#51](https://github.com/WayScience/ZedProfiler/pull/51)
+via a git dependency on the PR's source branch:
+
+```text
+zedprofiler @ git+https://github.com/d33bs/ZedProfiler.git@gran-32
+```
+
+This installed commit `1ca0c7d2` (`v0.0.post1.dev48`). The PR replaces
+`compute_granularity`'s per-scale full-image upsample with an upsample
+restricted to the voxels that actually belong to a labeled object, since
+`scipy.ndimage.mean(image, masked_labels, label_range)` discards everything
+else anyway. The PR claims ~2.8x speedup on its own benchmark (5.15s to
+1.85s) and byte-identical output.
+
+The shared worker virtualenv was resynced from the login node (`uv lock` +
+`uv sync` against the updated `pyproject.toml`) before submitting, so compute
+nodes never needed GitHub access. A fresh `granularity_channel_fanout` run
+against the same `NF0055_T1/B10-1` image set, same resource directives
+(`GRANULARITY_MEMORY="64 GB"`, etc.) as the 2026-08-11 baseline, completed
+successfully:
+
+```text
+run_id: nf0055-b10-1-granularity-channel-fanout-pr51-20260812T122331Z
+mode: granularity_channel_fanout
+coordinator_job: 31153849
+worker_jobs: 21
+zedprofiler_version: 0.0.post1.dev48 (git+d33bs/ZedProfiler@1ca0c7d2, PR #51)
+nextflow_exit_status: 0
+coordinator_walltime: 00:04:26
+validation_status: pass
+quality_warning_count: 4
+```
+
+Comparison against the 2026-08-11 baseline run
+(`nf0055-b10-1-granularity-channel-fanout-iceberg-20260811T190813Z`, same
+image set, same resource directives, `zedprofiler==0.1.2` from PyPI):
+
+| Metric                                             | Baseline (0.1.2)  | PR #51            | Change            |
+| --------------------------------------------------- | ------------------ | ------------------ | ------------------ |
+| Coordinator wall time                                | 00:13:21            | 00:04:26            | 3.0x faster         |
+| Granularity task duration, mean of 16 tasks          | 317.1s              | 48.5s               | 6.5x faster         |
+| Granularity task duration, slowest task               | 642.6s              | 86.3s               | 7.4x faster         |
+| Granularity task peak RSS (Nextflow trace)           | 16.3 GB             | 5.2 GB              | ~3.1x less memory   |
+| Granularity task peak RSS (Slurm `MaxRSS`, max)      | ~19.8 GB            | ~6.6 GB             | ~3.0x less memory   |
+| Total allocated CPU-time (`AllocCPUS x Elapsed`, all Slurm tasks) | 27.55 cpu-hours     | 5.56 cpu-hours      | ~5.0x less          |
+
+Both `AllocCPUS x Elapsed` totals were recomputed directly from each run's
+`slurm.tsv` with the same method, since `AllocCPUS` on this partition tracks
+requested memory (64 GB implies 18 allocated CPUs per granularity task,
+regardless of the `granularity-cpus` directive) rather than actual thread
+usage.
+
+Output correctness was verified, not just claimed: the `nuclei_profiles`
+table's 64 Granularity feature columns across all 11 objects were
+byte-identical between the baseline and PR #51 run (max absolute difference
+`0.0`), and every other numeric column matched too. Row counts (11/9/9/2),
+column counts (903), quality warning counts (4, all in `Nuclei`), and
+validation status (`pass`) were unchanged.
+
+Granularity's peak RSS dropping from ~19.8 GB to ~6.6 GB means a future run
+could likely lower `GRANULARITY_MEMORY` well below the current `64 GB`
+default (with headroom), which would also reduce the CURC-side allocated-CPU
+cost per task since this partition scales `AllocCPUS` to requested memory.
+Not changed in this experiment, to keep the resource directives identical
+between the two compared runs.
