@@ -57,8 +57,12 @@ from pathlib import Path
 
 import duckdb
 
-# Identical across every compartment table for the same image set -- kept
-# exactly once, from images.image_assets, and excluded everywhere else.
+# Candidates only -- when present, identical across every compartment table
+# for the same image set, so kept exactly once (from images.image_assets)
+# and excluded everywhere else. Not every table is guaranteed to carry all
+# of these (e.g. synthetic test data doesn't), so _compartment_projection
+# intersects this against each table's actual live columns rather than
+# assuming.
 DEDUPE_COLUMNS = (
     "Metadata_Biology_PatientTumor",
     "Metadata_Biology_PatientID",
@@ -96,20 +100,45 @@ def discover_tables(warehouse_dir: Path) -> list[tuple[str, str, Path]]:
     return tables
 
 
-def _compartment_projection(alias: str, compartment: str, drop_object_id: bool) -> str:
+def _table_columns(conn: duckdb.DuckDBPyConnection, namespace: str, table: str) -> set[str]:
+    """Actual column names of a view/table, queried live rather than
+    assumed -- schemas can vary (e.g. synthetic smoke-test data doesn't
+    carry every column a real run's does)."""
+    return set(conn.execute(f'SELECT * FROM "{namespace}"."{table}" LIMIT 0').fetchdf().columns)
+
+
+def _compartment_projection(
+    conn: duckdb.DuckDBPyConnection,
+    namespace: str,
+    table: str,
+    alias: str,
+    compartment: str,
+    drop_object_id: bool,
+) -> str:
     """SQL fragment projecting one compartment's columns: dedupe columns
     dropped, per-compartment columns renamed with this compartment's
     prefix, feature columns (already compartment-prefixed by name)
-    untouched."""
-    exclude = list(DEDUPE_COLUMNS)
+    untouched. Only references columns confirmed present in this table --
+    EXCLUDE/RENAME on a column that doesn't exist is a hard DuckDB error,
+    not a no-op, so this can't just assume DEDUPE_COLUMNS/
+    PER_COMPARTMENT_COLUMNS are always all there."""
+    columns = _table_columns(conn, namespace, table)
+    exclude = [column for column in DEDUPE_COLUMNS if column in columns]
     if drop_object_id:
         exclude.append("Metadata_Object_ObjectID")
-    rename = ", ".join(
-        f"{column} AS Metadata_{compartment}_{column.removeprefix('Metadata_')}"
+    rename_pairs = [
+        (column, f"Metadata_{compartment}_{column.removeprefix('Metadata_')}")
         for column in PER_COMPARTMENT_COLUMNS
-    )
-    exclude_sql = ", ".join(exclude)
-    return f'{alias}.* EXCLUDE ({exclude_sql}) RENAME ({rename})'
+        if column in columns
+    ]
+
+    fragment = f"{alias}.*"
+    if exclude:
+        fragment += f' EXCLUDE ({", ".join(exclude)})'
+    if rename_pairs:
+        rename_sql = ", ".join(f"{old} AS {new}" for old, new in rename_pairs)
+        fragment += f" RENAME ({rename_sql})"
+    return fragment
 
 
 def build_joined_views(conn: duckdb.DuckDBPyConnection, tables: set[tuple[str, str]]) -> list[str]:
@@ -131,9 +160,9 @@ def build_joined_views(conn: duckdb.DuckDBPyConnection, tables: set[tuple[str, s
             CREATE OR REPLACE VIEW "joined"."images_nuclei_cell_cytoplasm" AS
             SELECT
                 a.*,
-                {_compartment_projection("n", "Nuclei", drop_object_id=False)},
-                {_compartment_projection("c", "Cell", drop_object_id=True)},
-                {_compartment_projection("cy", "Cytoplasm", drop_object_id=True)}
+                {_compartment_projection(conn, "profiles", "nuclei_profiles", "n", "Nuclei", drop_object_id=False)},
+                {_compartment_projection(conn, "profiles", "cell_profiles", "c", "Cell", drop_object_id=True)},
+                {_compartment_projection(conn, "profiles", "cytoplasm_profiles", "cy", "Cytoplasm", drop_object_id=True)}
             FROM images.image_assets a
             JOIN profiles.nuclei_profiles n
                 ON n.Metadata_Imaging_ImageID = a.Metadata_Imaging_ImageID
@@ -154,7 +183,7 @@ def build_joined_views(conn: duckdb.DuckDBPyConnection, tables: set[tuple[str, s
             CREATE OR REPLACE VIEW "joined"."images_organoid" AS
             SELECT
                 a.*,
-                {_compartment_projection("o", "Organoid", drop_object_id=False)}
+                {_compartment_projection(conn, "profiles", "organoid_profiles", "o", "Organoid", drop_object_id=False)}
             FROM images.image_assets a
             JOIN profiles.organoid_profiles o
                 ON o.Metadata_Imaging_ImageID = a.Metadata_Imaging_ImageID

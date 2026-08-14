@@ -3,8 +3,13 @@
 granularity features together, each channel loaded once and reused across
 all compartments) for one image set, writing each compartment's result
 directly into the run's shared warehouse directory -- its one and only
-write. Runs as one Nextflow task per image set in the fan-out workflow;
---compartment restricts it to a single compartment, for manual testing."""
+write. Also builds and writes images.image_assets (one row per channel plus
+one per compartment mask) and checks whole-image-set channel/mask alignment
+-- reusing the same pixel arrays already loaded for feature extraction, no
+separate task or extra file I/O needed for either. Runs as one Nextflow
+task per image set in the fan-out workflow; --compartment restricts it to a
+single compartment for manual testing, which also skips the image_assets
+build (that mode doesn't load every mask)."""
 
 from __future__ import annotations
 
@@ -565,6 +570,91 @@ def extract_compartment_profile(
     return profiles, validation, timings
 
 
+def build_image_assets(
+    manifest: dict[str, object],
+    images: dict[str, object],
+    masks: dict[str, object],
+    run_id: str,
+    git_commit_hash: str,
+) -> pd.DataFrame:
+    """Build the pilot `images.image_assets` table: one row per raw channel
+    plus one row per compartment mask. ``images``/``masks`` values only need
+    ``.shape``/``.dtype`` -- the full pixel arrays already loaded for
+    feature extraction work directly, no separate header-only read needed.
+    """
+    metadata = {
+        key: manifest[key]
+        for key in (
+            "Metadata_Biology_PatientTumor",
+            "Metadata_Biology_PatientID",
+            "Metadata_Experiment_PlateID",
+            "Metadata_Experiment_WellID",
+            "Metadata_Imaging_FieldID",
+            "Metadata_Imaging_ImageID",
+        )
+    }
+    channel_paths = manifest.get("channel_paths") or {}
+    channel_codes = manifest.get("channel_codes") or {}
+    mask_paths = manifest.get("mask_paths") or {}
+    primary_channels = manifest.get("compartment_primary_channels") or {}
+    primary_codes = manifest.get("compartment_primary_channel_codes") or {}
+    methods = manifest.get("compartment_segmentation_methods") or {}
+
+    rows: list[dict[str, object]] = []
+    for channel, array in images.items():
+        shape = list(array.shape)
+        rows.append(
+            {
+                **metadata,
+                "Metadata_ImageAsset_AssetID": (
+                    f"{metadata['Metadata_Imaging_ImageID']}::{channel}"
+                ),
+                "Metadata_ImageAsset_AssetType": "raw_image",
+                "Metadata_ImageAsset_Channel": channel,
+                "Metadata_ImageAsset_ChannelCode": str(channel_codes.get(channel, "")),
+                "Metadata_ImageAsset_Compartment": "",
+                "Metadata_ImageAsset_SegmentationMethod": "",
+                "Metadata_ImageAsset_SourceURI": str(channel_paths.get(channel, "")),
+                "Metadata_ImageAsset_DType": str(array.dtype),
+                "Metadata_ImageAsset_SizeZ": int(shape[0]) if len(shape) > 0 else None,
+                "Metadata_ImageAsset_SizeY": int(shape[1]) if len(shape) > 1 else None,
+                "Metadata_ImageAsset_SizeX": int(shape[2]) if len(shape) > 2 else None,
+                "Metadata_Run_RunID": run_id,
+                "Metadata_Run_GitCommit": git_commit_hash,
+            }
+        )
+
+    for compartment, array in masks.items():
+        shape = list(array.shape)
+        channel = str(primary_channels.get(compartment, ""))
+        rows.append(
+            {
+                **metadata,
+                "Metadata_ImageAsset_AssetID": (
+                    f"{metadata['Metadata_Imaging_ImageID']}::{compartment}_mask"
+                ),
+                "Metadata_ImageAsset_AssetType": "segmentation_mask",
+                "Metadata_ImageAsset_Channel": channel,
+                "Metadata_ImageAsset_ChannelCode": str(
+                    primary_codes.get(compartment, "")
+                ),
+                "Metadata_ImageAsset_Compartment": compartment,
+                "Metadata_ImageAsset_SegmentationMethod": str(
+                    methods.get(compartment, "")
+                ),
+                "Metadata_ImageAsset_SourceURI": str(mask_paths.get(compartment, "")),
+                "Metadata_ImageAsset_DType": str(array.dtype),
+                "Metadata_ImageAsset_SizeZ": int(shape[0]) if len(shape) > 0 else None,
+                "Metadata_ImageAsset_SizeY": int(shape[1]) if len(shape) > 1 else None,
+                "Metadata_ImageAsset_SizeX": int(shape[2]) if len(shape) > 2 else None,
+                "Metadata_Run_RunID": run_id,
+                "Metadata_Run_GitCommit": git_commit_hash,
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
@@ -617,9 +707,8 @@ def main() -> int:
         for compartment in compartments
     }
     # Cheap here (arrays are already loaded for feature extraction below) --
-    # a fail-fast guard against computing features on misaligned data. The
-    # run-level alignment record is owned by build_image_assets.py, which
-    # checks this independently in parallel.
+    # a fail-fast guard against computing features on misaligned data. This
+    # result also becomes the images.image_assets validation record below.
     alignment = validate_aligned_shapes(images, masks)
     if not alignment["valid"]:
         raise SystemExit(
@@ -630,6 +719,28 @@ def main() -> int:
     git_revision = git_commit(args.repo_root)
     image_id = str(manifest["Metadata_Imaging_ImageID"])
     all_valid = True
+
+    if not args.compartment:
+        # Whole image set (the Nextflow fan-out's only mode): also build and
+        # write images.image_assets here, reusing the channel/mask arrays
+        # already loaded above -- no extra I/O, no separate task. Skipped
+        # under --compartment since that mode only loads one mask, not the
+        # full 4 image_assets needs.
+        assets = build_image_assets(manifest, images, masks, args.run_id, git_revision)
+        assets_target_dir = args.outdir / "warehouse" / "images" / "image_assets"
+        assets_target_dir.mkdir(parents=True, exist_ok=True)
+        assets.to_parquet(assets_target_dir / f"{image_id}.parquet", index=False)
+        assets_validation = {
+            "valid": bool(alignment["valid"]),
+            "row_count": int(assets.shape[0]),
+            "column_count": int(assets.shape[1]),
+            "alignment": alignment,
+        }
+        assets_metadata_dir = args.outdir / "metadata" / "images" / "image_assets"
+        assets_metadata_dir.mkdir(parents=True, exist_ok=True)
+        (assets_metadata_dir / f"{image_id}.validation.json").write_text(
+            json.dumps(assets_validation, indent=2)
+        )
 
     for compartment in compartments:
         profiles, validation, timings = extract_compartment_profile(

@@ -2,20 +2,20 @@
 """Validate and summarize one run's already-landed profile/image-asset
 datasets.
 
-Each (image set, compartment) task (scripts/run_zedprofiler_image_set.py)
-and each image set's image-assets build (scripts/build_image_assets.py)
-write their finished parquet directly into this run's shared namespaced
-directories (warehouse/profiles/<table>/, warehouse/images/image_assets/)
--- there is no separate collection or registration step, and no file is
-ever written twice, and nothing needs to move to end up with a complete
-warehouse/ directory once every task lands. That directory holds data files
-only; each task's validation.json and run_record.json sidecars land under a
-parallel metadata/ tree instead, mirroring the same relative path. This
-script's only job is to confirm every expected file landed, cheaply
-cross-check schemas (metadata only, no data materialized), aggregate
-validation status, write one run-level summary (also under metadata/), and
-refresh warehouse/warehouse.duckdb, a small view catalog over warehouse/
-that stays portable with it (see build_duckdb_views.py).
+Each image-set task (scripts/run_zedprofiler_image_set.py) writes its
+finished profile parquet *and* its images.image_assets row directly into
+this run's shared namespaced directories (warehouse/profiles/<table>/,
+warehouse/images/image_assets/) -- there is no separate collection or
+registration step, and no file is ever written twice, and nothing needs to
+move to end up with a complete warehouse/ directory once every task lands.
+That directory holds data files only; each task's validation.json and
+run_record.json sidecars land under a parallel metadata/ tree instead,
+mirroring the same relative path. This script's only job is to confirm
+every expected file landed, cheaply cross-check schemas (metadata only, no
+data materialized), aggregate validation status, write one run-level
+summary (also under metadata/), and refresh warehouse/warehouse.duckdb, a
+small view catalog over warehouse/ that stays portable with it (see
+build_duckdb_views.py).
 """
 
 from __future__ import annotations
@@ -155,17 +155,17 @@ def main() -> int:
         if not parquet_path.exists() or not validation_path.exists():
             raise SystemExit(
                 f"Missing image assets for {image_id}: expected {parquet_path} "
-                f"and {validation_path} (BUILD_IMAGE_ASSETS output)"
+                f"and {validation_path} (FEATURIZE_IMAGE_SET output)"
             )
         validation = json.loads(validation_path.read_text())
         assets_valid = assets_valid and bool(validation["valid"])
         assets_row_count += int(validation["row_count"])
     all_valid = all_valid and assets_valid
 
-    # One FEATURIZE_IMAGE_SET task and one BUILD_IMAGE_ASSETS task per image
-    # set (all compartments handled in one task now), plus BUILD_WAREHOUSE +
-    # coordinator.
-    workflow_slurm_jobs_expected = len(manifests) * 2 + 2
+    # One FEATURIZE_IMAGE_SET task per image set (all compartments and
+    # images.image_assets handled in that one task now), plus BUILD_WAREHOUSE
+    # + coordinator.
+    workflow_slurm_jobs_expected = len(manifests) + 2
 
     # Views only, no data copied -- cheap to refresh here since this task
     # already has every table's path in hand from the scan above, at no

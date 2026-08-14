@@ -70,44 +70,11 @@ process FEATURIZE_IMAGE_SET {
   """
 }
 
-process BUILD_IMAGE_ASSETS {
-  input:
-  val image_set_slug
-
-  output:
-  val image_set_slug
-
-  script:
-  def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
-  def manifest_path = manifestPathForSlug(image_set_slug)
-  """
-  set -euo pipefail
-  export UV_PROJECT_ENVIRONMENT="${uv_env}"
-  export UV_LINK_MODE=copy
-
-  if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
-    PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
-  elif command -v uv >/dev/null 2>&1; then
-    PYTHON_RUNNER=(uv run --project "${params.pilot_root}/environments" python)
-  else
-    PYTHON_RUNNER=(python3)
-  fi
-
-  "\${PYTHON_RUNNER[@]}" \\
-    "${params.pilot_root}/scripts/build_image_assets.py" \\
-    --manifest "${manifest_path}" \\
-    --outdir "${params.outdir}" \\
-    --run-id "${params.run_id ?: 'manual'}" \\
-    --repo-root "${params.pilot_root}/.."
-  """
-}
-
 process BUILD_WAREHOUSE {
   label 'warehouse_cpu'
 
   input:
   val completed_image_sets
-  val completed_assets
 
   script:
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
@@ -120,7 +87,6 @@ process BUILD_WAREHOUSE {
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
   printf '%s\\n' ${completed_image_sets.collect { it.toString() }.join(' ')} > "${params.outdir}/completed_image_sets.txt"
-  printf '%s\\n' ${completed_assets.collect { it.toString() }.join(' ')} > "${params.outdir}/completed_assets.txt"
 
   if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
     PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
@@ -155,10 +121,5 @@ workflow {
 
   FEATURIZE_IMAGE_SET(Channel.fromList(image_set_slugs))
 
-  // BUILD_IMAGE_ASSETS only needs each manifest, not any feature-extraction
-  // output, so it runs immediately alongside the fan-out above instead of
-  // waiting on it.
-  BUILD_IMAGE_ASSETS(Channel.fromList(image_set_slugs))
-
-  BUILD_WAREHOUSE(FEATURIZE_IMAGE_SET.out.collect(), BUILD_IMAGE_ASSETS.out.collect())
+  BUILD_WAREHOUSE(FEATURIZE_IMAGE_SET.out.collect())
 }

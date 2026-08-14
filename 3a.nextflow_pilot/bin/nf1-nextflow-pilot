@@ -193,7 +193,6 @@ check_repo() {
     "manifest/nf0055_b10_1_alpine.yaml"
     "manifest/smoke_test_image_set.yaml"
     "scripts/build_duckdb_views.py"
-    "scripts/build_image_assets.py"
     "scripts/build_manifest.py"
     "scripts/build_warehouse_from_compartments.py"
     "scripts/manifest_io.py"
@@ -215,7 +214,6 @@ check_repo() {
   bash -n "$ROOT_DIR/bin/nf1-nextflow-pilot" || failed=1
   python3 -m py_compile \
     "$ROOT_DIR/scripts/build_duckdb_views.py" \
-    "$ROOT_DIR/scripts/build_image_assets.py" \
     "$ROOT_DIR/scripts/build_manifest.py" \
     "$ROOT_DIR/scripts/build_warehouse_from_compartments.py" \
     "$ROOT_DIR/scripts/manifest_io.py" \
