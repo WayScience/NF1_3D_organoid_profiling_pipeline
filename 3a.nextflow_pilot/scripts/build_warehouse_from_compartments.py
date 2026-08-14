@@ -4,13 +4,18 @@ datasets.
 
 Each (image set, compartment) task (scripts/run_zedprofiler_image_set.py)
 and each image set's image-assets build (scripts/build_image_assets.py)
-write their finished parquet plus a validation.json sidecar directly into
-this run's shared namespaced directories (profiles/<table>/,
-images/image_assets/) -- there is no separate collection or registration
-step, and no file is ever written twice. This script's only job is to
-confirm every expected file landed, cheaply cross-check schemas (metadata
-only, no data materialized), aggregate validation status, and write one
-run-level summary.
+write their finished parquet directly into this run's shared namespaced
+directories (warehouse/profiles/<table>/, warehouse/images/image_assets/)
+-- there is no separate collection or registration step, and no file is
+ever written twice, and nothing needs to move to end up with a complete
+warehouse/ directory once every task lands. That directory holds data files
+only; each task's validation.json and run_record.json sidecars land under a
+parallel metadata/ tree instead, mirroring the same relative path. This
+script's only job is to confirm every expected file landed, cheaply
+cross-check schemas (metadata only, no data materialized), aggregate
+validation status, write one run-level summary (also under metadata/), and
+refresh warehouse/warehouse.duckdb, a small view catalog over warehouse/
+that stays portable with it (see build_duckdb_views.py).
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow.parquet as pq
+from build_duckdb_views import build_views
 from manifest_io import load_manifest, require_manifest_paths
 from run_zedprofiler_image_set import (
     COMPARTMENTS,
@@ -90,7 +96,9 @@ def main() -> int:
     for compartment in compartments:
         table_name = profile_table(compartment)
         slug = compartment_slug(compartment)
-        target_dir = args.outdir / "profiles" / f"{slug}_profiles"
+        table_slug = f"{slug}_profiles"
+        target_dir = args.outdir / "warehouse" / "profiles" / table_slug
+        compartment_metadata_dir = args.outdir / "metadata" / "profiles" / table_slug
         table_valid = True
         row_count = 0
         column_count = 0
@@ -98,11 +106,11 @@ def main() -> int:
         reference_image_id = None
         for image_id in image_ids:
             parquet_path = target_dir / f"{image_id}.parquet"
-            validation_path = target_dir / f"{image_id}.validation.json"
+            validation_path = compartment_metadata_dir / f"{image_id}.validation.json"
             if not parquet_path.exists() or not validation_path.exists():
                 raise SystemExit(
-                    f"Missing merged artifact for {compartment}/{image_id} under "
-                    f"{target_dir} (expected FEATURIZE_IMAGE_SET output)"
+                    f"Missing merged artifact for {compartment}/{image_id}: expected "
+                    f"{parquet_path} and {validation_path} (FEATURIZE_IMAGE_SET output)"
                 )
             schema = pq.read_schema(parquet_path)
             if reference_schema is None:
@@ -137,16 +145,17 @@ def main() -> int:
             }
         )
 
-    assets_dir = args.outdir / "images" / "image_assets"
+    assets_dir = args.outdir / "warehouse" / "images" / "image_assets"
+    assets_metadata_dir = args.outdir / "metadata" / "images" / "image_assets"
     assets_valid = True
     assets_row_count = 0
     for image_id in image_ids:
         parquet_path = assets_dir / f"{image_id}.parquet"
-        validation_path = assets_dir / f"{image_id}.validation.json"
+        validation_path = assets_metadata_dir / f"{image_id}.validation.json"
         if not parquet_path.exists() or not validation_path.exists():
             raise SystemExit(
-                f"Missing image assets for {image_id} under {assets_dir} "
-                "(expected BUILD_IMAGE_ASSETS output)"
+                f"Missing image assets for {image_id}: expected {parquet_path} "
+                f"and {validation_path} (BUILD_IMAGE_ASSETS output)"
             )
         validation = json.loads(validation_path.read_text())
         assets_valid = assets_valid and bool(validation["valid"])
@@ -158,6 +167,15 @@ def main() -> int:
     # coordinator.
     workflow_slurm_jobs_expected = len(manifests) * 2 + 2
 
+    # Views only, no data copied -- cheap to refresh here since this task
+    # already has every table's path in hand from the scan above, at no
+    # extra Slurm-job cost. Lives inside warehouse/ itself, with relative
+    # view paths, so the whole warehouse/ directory stays portable as one
+    # self-contained unit.
+    warehouse_dir = args.outdir / "warehouse"
+    db_path = warehouse_dir / "warehouse.duckdb"
+    build_views(warehouse_dir, db_path)
+
     run_record: dict[str, Any] = {
         "run_id": args.run_id,
         "command": " ".join(sys.argv),
@@ -167,12 +185,14 @@ def main() -> int:
         "python_version": platform.python_version(),
         "image_sets": image_ids,
         "outdir": str(args.outdir),
+        "warehouse_dir": str(warehouse_dir),
         "tables": output_tables,
         "images.image_assets": {
             "path": str(assets_dir),
             "row_count": assets_row_count,
             "validation_status": "pass" if assets_valid else "fail",
         },
+        "duckdb": str(db_path),
         "elapsed_seconds": round(time.perf_counter() - started, 3),
         "exit_status": 0 if all_valid else 1,
         "validation_status": "pass" if all_valid else "fail",
@@ -187,8 +207,10 @@ def main() -> int:
         },
     }
 
-    (args.outdir / "run_record.json").write_text(json.dumps(run_record, indent=2))
-    (args.outdir / "validation.json").write_text(json.dumps(validation_report, indent=2))
+    metadata_dir = args.outdir / "metadata"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    (metadata_dir / "run_record.json").write_text(json.dumps(run_record, indent=2))
+    (metadata_dir / "validation.json").write_text(json.dumps(validation_report, indent=2))
 
     if not all_valid:
         print(json.dumps(validation_report, indent=2), file=sys.stderr)

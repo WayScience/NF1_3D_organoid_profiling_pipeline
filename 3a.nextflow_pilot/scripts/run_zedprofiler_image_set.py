@@ -573,8 +573,8 @@ def main() -> int:
         required=True,
         type=Path,
         help="Run's shared outdir. Each compartment's profile is written "
-        "directly under <outdir>/profiles/<compartment>_profiles/ -- its "
-        "one and only write.",
+        "directly under <outdir>/warehouse/profiles/<compartment>_profiles/ "
+        "-- its one and only write.",
     )
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--repo-root", required=True, type=Path)
@@ -640,7 +640,8 @@ def main() -> int:
             manifest=manifest,
         )
         slug = compartment_slug(compartment)
-        target_dir = args.outdir / "profiles" / f"{slug}_profiles"
+        table_slug = f"{slug}_profiles"
+        target_dir = args.outdir / "warehouse" / "profiles" / table_slug
         target_dir.mkdir(parents=True, exist_ok=True)
         profiles.to_parquet(target_dir / f"{image_id}.parquet", index=False)
         run_record = {
@@ -656,10 +657,15 @@ def main() -> int:
             "validation_status": "pass" if validation["valid"] else "fail",
             "quality_warning_count": len(validation.get("quality_warnings", [])),
         }
-        (target_dir / f"{image_id}.validation.json").write_text(
+        # Sidecars live under metadata/, mirroring the data path, not
+        # alongside the parquet -- the warehouse directories (profiles/,
+        # images/) hold data files only.
+        metadata_dir = args.outdir / "metadata" / "profiles" / table_slug
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        (metadata_dir / f"{image_id}.validation.json").write_text(
             json.dumps({"compartments": {compartment: validation}}, indent=2)
         )
-        (target_dir / f"{image_id}.run_record.json").write_text(
+        (metadata_dir / f"{image_id}.run_record.json").write_text(
             json.dumps(run_record, indent=2)
         )
         all_valid = all_valid and bool(validation["valid"])

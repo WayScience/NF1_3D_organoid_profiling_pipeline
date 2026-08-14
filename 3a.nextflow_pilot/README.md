@@ -1404,3 +1404,181 @@ failure still identifies which compartment via its own sidecar. A hard
 crash partway through (a corrupt TIFF, an unhandled exception) still loses
 that per-compartment breakdown and requires reading the task's own log, same
 as before.
+
+## Alpine notes from 2026-08-14
+
+### Warehouse directory: parquet-only, portable, with lightweight DuckDB views
+
+Two follow-up requests once Option B was decided: keep `validation.json`/
+`run_record.json`/every other JSON artifact out of the warehouse's data
+directories entirely, and add a lightweight SQL-queryable layer over the
+parquet without copying data or reintroducing catalog machinery.
+
+**Layout, now with a dedicated `warehouse/` directory holding data only:**
+
+```text
+${outdir}/
+├── warehouse/                          <- data only, nothing else
+│   ├── profiles/
+│   │   ├── nuclei_profiles/<image_id>.parquet
+│   │   ├── cell_profiles/<image_id>.parquet
+│   │   ├── cytoplasm_profiles/<image_id>.parquet
+│   │   └── organoid_profiles/<image_id>.parquet
+│   ├── images/
+│   │   └── image_assets/<image_id>.parquet
+│   └── warehouse.duckdb                <- views only, no copied data
+└── metadata/                           <- every JSON sidecar, mirroring the same paths
+    ├── profiles/<table>/<image_id>.validation.json, .run_record.json
+    ├── images/image_assets/<image_id>.validation.json
+    ├── run_record.json                 <- BUILD_WAREHOUSE's run-level summary
+    └── validation.json
+```
+
+`FEATURIZE_IMAGE_SET` and `BUILD_IMAGE_ASSETS` write straight into
+`warehouse/profiles/...`/`warehouse/images/...` from the start -- same
+"write once, no move" principle as before, just one directory level deeper.
+Nothing needs shuffling once every task lands; `warehouse/` is already the
+complete, final artifact.
+
+**The DuckDB layer** (`scripts/build_duckdb_views.py`): one `CREATE VIEW
+namespace.table AS SELECT * FROM read_parquet(glob)` per discovered
+`profiles/<table>/` or `images/<table>/` directory, mapped onto the same
+`profiles.nuclei_profiles` / `images.image_assets` naming already used
+everywhere else in this pilot. A view is a stored query, not a copy, so
+`warehouse.duckdb` stays a few KB regardless of data volume, and rerunning
+the script picks up newly landed image sets for free -- confirmed locally
+by adding a second image set's parquet file to an existing table directory
+and rerunning: the view immediately returned both, no `DROP`/recreate
+needed.
+
+**Portability was the point, not just convenience.** View definitions use
+paths *relative* to `warehouse/`, never the absolute PetaLibrary path --
+verified by copying a `warehouse/` directory to `/tmp` under a completely
+different path and querying it successfully with zero knowledge of where it
+came from. The tradeoff: DuckDB resolves relative `read_parquet` globs
+against the *querying process's* working directory, not the `.duckdb`
+file's own location, so both view creation and later querying need `cwd`
+set to `warehouse/` (`build_views()` handles this internally via a
+temporary `os.chdir`; anyone querying later needs `cd warehouse/ &&
+duckdb warehouse.duckdb`, documented in the script's own docstring).
+
+`build_warehouse_from_compartments.py` calls `build_views()` right after
+validation, at zero extra Slurm-job cost -- it already has every table's
+path in hand from the scan it just did. The script is also fully usable
+standalone against any warehouse directory, finished or still landing.
+
+**Verified before trusting on Alpine**: local smoke test confirming the
+exact layout above; a real local run through `run_zedprofiler_image_set.py`
+→ `build_image_assets.py` → `build_warehouse_from_compartments.py` against
+synthetic TIFFs, including a cross-table `JOIN` between `profiles.
+nuclei_profiles` and `images.image_assets` through the views; the same
+portability check (copy `warehouse/` elsewhere, query with no absolute-path
+knowledge) repeated against real Alpine output.
+
+**Real run, full `NF0055_T1/B10-1` + `NF0014_T1/C4-2`:**
+
+```text
+run_id: nf0055-nf0014-warehouse-dir-retry-20260814T030514Z
+coordinator_walltime: 00:20:33
+validation_status: pass
+quality_warning_count: 8
+```
+
+Output identical to every prior baseline (56/51/51/3 rows, 903 columns, 16
+`images.image_assets` rows). `warehouse/` confirmed to hold only `.parquet`
+files plus `warehouse.duckdb`; `metadata/` confirmed to hold every JSON
+artifact, nothing else. Queried `profiles.nuclei_profiles` and its `JOIN`
+against `images.image_assets` directly through the views on this real data
+-- both returned correct row counts (56 total nuclei rows across 2 image
+sets; 448 = 56 x 8 from the join, as expected for an unfiltered join against
+8 asset rows per image set).
+
+### A real instance of the flagged retry-cost risk, caught live
+
+The first submission attempt for this change failed outright --
+`FEATURIZE_IMAGE_SET` for one image set hit `numpy._core._exceptions.
+ArrayMemoryError: Unable to allocate 467. MiB` inside `tifffile.imread`,
+retried twice per `conf/base.config`'s `errorStrategy`, failed identically
+each time, and Nextflow gave up (`Execution cancelled -- Finishing pending
+tasks before exit`), taking the whole run's exit status to 1. `sacct`
+showed all three attempts landed on the *same* node (`c3cpu-c13-u1-2`) with
+`MaxRSS` of only 6.4-9.2 GB against a 32 GB request -- not this job
+exceeding its own limit, but that node's actual free memory being consumed
+by something else sharing it, exactly the "shared-cluster contention" risk
+flagged (as a theoretical uncertainty) in the production-scale estimate
+above. Confirmed this wasn't a code regression: the traceback is inside the
+very first `tifffile.imread` call, before any of this session's write-path
+changes run at all, and the same manifests had already succeeded earlier
+the same day.
+
+**What actually happened before drawing conclusions -- verified, not
+assumed:** the write-once design meant nothing needed cleanup after the
+failure. `warehouse/` for the *other*, successful image set was already
+complete and correctly laid out (all 4 compartments + `images.
+image_assets`); `BUILD_WAREHOUSE` correctly never fired (still waiting on
+the failed image set's `.collect()`); a plain resubmission with identical
+arguments landed both `FEATURIZE_IMAGE_SET` tasks on two different,
+uncontended nodes and completed cleanly in 20m33s. This is the retry-cost
+trade-off from the Option A/B decision section above, now a real measured
+incident rather than a hypothetical: one bad node cost one lost ~20-minute
+task and a full pipeline restart, not data loss or a corrupted warehouse.
+
+### Example notebook: querying the warehouse through its DuckDB views
+
+`notebooks/query_warehouse_views.ipynb` -- connects to a run's
+`warehouse.duckdb`, lists the views, shows `head()` on each profile table
+and `images.image_assets`, a cross-table `JOIN` example, a `UNION
+ALL`/`GROUP BY` aggregate (object counts per compartment per image set),
+and both `joined.*` composite views (see below). Executed against the real
+`nf0055-nf0014-warehouse-dir-retry-20260814T030514Z` output, so opening it
+shows real data without rerunning anything; edit the `WAREHOUSE_DIR`
+variable in the first cell to point at a different run.
+
+### Two composite `joined.*` views, image-asset columns first
+
+`build_duckdb_views.py` also creates a `joined` schema with two views built
+on top of the per-table ones, both requested to put image-asset columns
+first:
+
+- `joined.images_nuclei_cell_cytoplasm` -- Nuclei, Cell, and Cytoplasm
+  joined together on `(Metadata_Imaging_ImageID, Metadata_Object_ObjectID)`
+  before joining to `images.image_assets` on `Metadata_Imaging_ImageID`
+  alone. The object-ID join is valid because Cell and Cytoplasm are seeded
+  from Nuclei's own segmentation (`compartment_seed_channels` in
+  `run_zedprofiler_image_set.py`) -- confirmed empirically before writing
+  the query, not assumed: for `NF0014_T1/C4-2`, `nuclei_profiles` has 45
+  rows but `cell_profiles`/`cytoplasm_profiles` have 42 each, and joining
+  all three on that key gives exactly 42 -- Cell/Cytoplasm object IDs are a
+  strict subset of Nuclei's, one row per successfully segmented cell.
+- `joined.images_organoid` -- Organoid joined directly to `images.
+  image_assets`. Organoid is segmented independently
+  (`segmented_from_agp`, no seed channel) with its own, much smaller
+  object-ID space (1-2 per image set), so it isn't part of the first view.
+
+Both views fan out against `image_assets` the same way the notebook's plain
+`JOIN` example does (each object row repeated once per image asset, 8 per
+image set) -- consistent with the pattern already established, not a new
+convention.
+
+**Column collisions handled explicitly, not left ambiguous.** Six columns
+carry different values per compartment (`Metadata_Compartment`,
+`Metadata_Segmentation_Method`, and the four `PrimaryChannel`/
+`SeedChannel` fields) -- confirmed by comparing real values for the same
+image set across `nuclei_profiles` and `cell_profiles` before deciding this
+mattered (naive testing without pinning to one image set gave false
+"differs" results for other columns due to comparing unrelated rows; fixed
+by filtering to one `Metadata_Imaging_ImageID` before comparing). These get
+a per-compartment prefix via DuckDB's `* RENAME (...)`
+(`Metadata_Nuclei_Compartment`, `Metadata_Cell_Compartment`, etc.) rather
+than colliding. Seven more columns (patient/plate/well/field/image IDs)
+are identical across every table for the same image set and are kept
+exactly once, from `images.image_assets`, via `* EXCLUDE (...)` on every
+profile table joined in. Verified: `duplicate column names: False` on both
+views against real data, and row counts land exactly on the expected
+compartment counts x 8 (`NF0014_T1/C4-2`: 42 x 8 = 336 for the single-cell
+view, 1 x 8 = 8 for organoid; `NF0055_T1/B10-1`: 9 x 8 = 72 and 2 x 8 = 16;
+408 and 24 total).
+Open with `uv run --project environments --with jupyter jupyter lab
+notebooks/query_warehouse_views.ipynb` -- `jupyter` isn't a tracked
+dependency of the pilot's own environment, so it's pulled in transiently
+rather than added to `environments/pyproject.toml`.

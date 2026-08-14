@@ -130,7 +130,7 @@ def main() -> int:
         required=True,
         type=Path,
         help="This run's shared outdir. Assets are written under "
-        "<outdir>/images/image_assets/.",
+        "<outdir>/warehouse/images/image_assets/.",
     )
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--repo-root", required=True, type=Path)
@@ -164,7 +164,7 @@ def main() -> int:
     assets = build_image_assets(manifest, images, masks, args.run_id, git_revision)
 
     image_id = str(manifest["Metadata_Imaging_ImageID"])
-    target_dir = args.outdir / "images" / "image_assets"
+    target_dir = args.outdir / "warehouse" / "images" / "image_assets"
     target_dir.mkdir(parents=True, exist_ok=True)
     assets.to_parquet(target_dir / f"{image_id}.parquet", index=False)
     validation = {
@@ -173,7 +173,11 @@ def main() -> int:
         "column_count": int(assets.shape[1]),
         "alignment": alignment,
     }
-    (target_dir / f"{image_id}.validation.json").write_text(
+    # Sidecar lives under metadata/, mirroring the data path, not alongside
+    # the parquet -- images/image_assets/ holds data files only.
+    metadata_dir = args.outdir / "metadata" / "images" / "image_assets"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    (metadata_dir / f"{image_id}.validation.json").write_text(
         json.dumps(validation, indent=2)
     )
 

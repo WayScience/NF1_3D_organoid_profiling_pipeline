@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from build_duckdb_views import build_views
 
 
 def main() -> int:
@@ -36,7 +37,8 @@ def main() -> int:
             }
         )
         table_name = f"profiles.{compartment.lower()}_profiles"
-        target_dir = args.outdir / "profiles" / f"{compartment.lower()}_profiles"
+        table_slug = f"{compartment.lower()}_profiles"
+        target_dir = args.outdir / "warehouse" / "profiles" / table_slug
         target_dir.mkdir(parents=True, exist_ok=True)
         frame.to_parquet(target_dir / f"{image_id}.parquet", index=False)
         validation = {
@@ -45,7 +47,9 @@ def main() -> int:
             "column_count": int(frame.shape[1]),
             "quality_warnings": [],
         }
-        (target_dir / f"{image_id}.validation.json").write_text(
+        metadata_dir = args.outdir / "metadata" / "profiles" / table_slug
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        (metadata_dir / f"{image_id}.validation.json").write_text(
             json.dumps({"compartments": {compartment: validation}}, indent=2)
         )
         tables.append(
@@ -58,7 +62,7 @@ def main() -> int:
             }
         )
 
-    assets_dir = args.outdir / "images" / "image_assets"
+    assets_dir = args.outdir / "warehouse" / "images" / "image_assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
     assets = pd.DataFrame(
         {
@@ -77,7 +81,9 @@ def main() -> int:
         "column_count": int(assets.shape[1]),
         "alignment": {"valid": True, "reference_shape": [2, 4, 4]},
     }
-    (assets_dir / f"{image_id}.validation.json").write_text(
+    assets_metadata_dir = args.outdir / "metadata" / "images" / "image_assets"
+    assets_metadata_dir.mkdir(parents=True, exist_ok=True)
+    (assets_metadata_dir / f"{image_id}.validation.json").write_text(
         json.dumps(assets_validation, indent=2)
     )
 
@@ -91,15 +97,22 @@ def main() -> int:
             "row_count": assets_validation["row_count"],
         },
     }
+    warehouse_dir = args.outdir / "warehouse"
+    db_path = warehouse_dir / "warehouse.duckdb"
+    build_views(warehouse_dir, db_path)
+
     run_record = {
         "run_id": args.run_id,
         "validation_status": "pass",
         "mode": "synthetic-wiring-only",
         "outdir": str(args.outdir),
         "tables": tables,
+        "duckdb": str(db_path),
     }
-    (args.outdir / "validation.json").write_text(json.dumps(validation, indent=2))
-    (args.outdir / "run_record.json").write_text(json.dumps(run_record, indent=2))
+    metadata_dir = args.outdir / "metadata"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    (metadata_dir / "validation.json").write_text(json.dumps(validation, indent=2))
+    (metadata_dir / "run_record.json").write_text(json.dumps(run_record, indent=2))
     print(f"Smoke artifacts written to {args.outdir}")
     return 0
 
