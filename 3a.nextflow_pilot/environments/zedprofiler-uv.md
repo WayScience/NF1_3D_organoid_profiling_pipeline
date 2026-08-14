@@ -24,6 +24,6 @@ If the cluster blocks package resolution from compute nodes, run `uv sync` from
 an allowed login or build node first so the shared `UV_CACHE_DIR` is populated.
 The CURC profile stores uv cache files under `NF1_PILOT_PROJECT` by default.
 
-The same environment includes `pyiceberg[sql-sqlite,pyarrow]` so each run can
-publish a local SQLite-catalog Apache Iceberg warehouse under its result
-directory.
+There is no warehouse catalog dependency (no Iceberg, no SQLite). Each run's
+outputs land directly as plain namespaced parquet-dataset directories under
+its result directory -- see the README's warehouse-layout notes.

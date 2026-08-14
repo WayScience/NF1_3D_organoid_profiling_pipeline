@@ -2,25 +2,54 @@
 
 nextflow.enable.dsl = 2
 
-process FEATURIZE_NONGRANULARITY {
-  label 'nongranularity_cpu'
+// Top-level `def` functions, not top-level statements: newer Nextflow
+// parsers (confirmed on 26.04.6) reject executable statements mixed with
+// process/workflow declarations at file scope. Every one of these recomputes
+// its result fresh from params.* each call -- cheap at any realistic image-set
+// count -- so both the workflow {} block and every process's script: block
+// can call them directly without relying on cross-block variable capture.
+
+def parseManifestPaths() {
+  return params.image_sets
+    ? params.image_sets.split(',').collect { it.trim() }.findAll { it }
+    : [params.manifest]
+}
+
+def slugFor(manifestPath) {
+  return file(manifestPath).baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_')
+}
+
+def imageSets() {
+  def paths = parseManifestPaths()
+  def slugs = paths.collect { slugFor(it) }
+  if (slugs.unique(false).size() != slugs.size()) {
+    error "Duplicate image-set slugs derived from manifest filenames: ${slugs}"
+  }
+  return [slugs, paths].transpose()
+}
+
+def manifestPathForSlug(slug) {
+  def match = imageSets().find { it[0] == slug }
+  if (!match) {
+    error "Unknown image-set slug: ${slug}"
+  }
+  return file(match[1])
+}
+
+process FEATURIZE_IMAGE_SET {
+  label 'zedprofiler_cpu'
 
   input:
-  path manifest_file
-  val compartment
+  val image_set_slug
 
   output:
-  val compartment
+  val image_set_slug
 
   script:
-  def slug = compartment.toLowerCase()
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
-  def image_set_slug = params.image_sets ? manifest_file.baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_') : null
-  def base = image_set_slug ? "${params.outdir}/image_sets/${image_set_slug}" : "${params.outdir}"
+  def manifest_path = manifestPathForSlug(image_set_slug)
   """
   set -euo pipefail
-  outdir="${base}/compartments/${slug}/nongranularity"
-  mkdir -p "\${outdir}"
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
 
@@ -32,38 +61,27 @@ process FEATURIZE_NONGRANULARITY {
     PYTHON_RUNNER=(python3)
   fi
 
-  /usr/bin/time -v -o "\${outdir}/resource_usage.txt" "\${PYTHON_RUNNER[@]}" \\
+  /usr/bin/time -v -o "resource_usage.txt" "\${PYTHON_RUNNER[@]}" \\
     "${params.pilot_root}/scripts/run_zedprofiler_image_set.py" \\
-    --manifest "${manifest_file}" \\
-    --outdir "\${outdir}" \\
+    --manifest "${manifest_path}" \\
+    --outdir "${params.outdir}" \\
     --run-id "${params.run_id ?: 'manual'}" \\
-    --repo-root "${params.pilot_root}/.." \\
-    --compartment "${compartment}" \\
-    --feature-mode nongranularity \\
-    --skip-warehouse
+    --repo-root "${params.pilot_root}/.."
   """
 }
 
-process FEATURIZE_GRANULARITY {
-  label 'granularity_cpu'
-
+process BUILD_IMAGE_ASSETS {
   input:
-  path manifest_file
-  tuple val(compartment), val(image_channel)
+  val image_set_slug
 
   output:
-  tuple val(compartment), val(image_channel)
+  val image_set_slug
 
   script:
-  def slug = compartment.toLowerCase()
-  def channel_slug = image_channel.toLowerCase()
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
-  def image_set_slug = params.image_sets ? manifest_file.baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_') : null
-  def base = image_set_slug ? "${params.outdir}/image_sets/${image_set_slug}" : "${params.outdir}"
+  def manifest_path = manifestPathForSlug(image_set_slug)
   """
   set -euo pipefail
-  outdir="${base}/compartments/${slug}/granularity/${channel_slug}"
-  mkdir -p "\${outdir}"
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
 
@@ -75,16 +93,12 @@ process FEATURIZE_GRANULARITY {
     PYTHON_RUNNER=(python3)
   fi
 
-  /usr/bin/time -v -o "\${outdir}/resource_usage.txt" "\${PYTHON_RUNNER[@]}" \\
-    "${params.pilot_root}/scripts/run_zedprofiler_image_set.py" \\
-    --manifest "${manifest_file}" \\
-    --outdir "\${outdir}" \\
+  "\${PYTHON_RUNNER[@]}" \\
+    "${params.pilot_root}/scripts/build_image_assets.py" \\
+    --manifest "${manifest_path}" \\
+    --outdir "${params.outdir}" \\
     --run-id "${params.run_id ?: 'manual'}" \\
-    --repo-root "${params.pilot_root}/.." \\
-    --compartment "${compartment}" \\
-    --channel "${image_channel}" \\
-    --feature-mode granularity \\
-    --skip-warehouse
+    --repo-root "${params.pilot_root}/.."
   """
 }
 
@@ -92,26 +106,21 @@ process BUILD_WAREHOUSE {
   label 'warehouse_cpu'
 
   input:
-  path manifest_file
-  val completed_nongranularity
-  val completed_granularity
+  val completed_image_sets
+  val completed_assets
 
   script:
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
-  def manifest_file_list = manifest_file instanceof List ? manifest_file : [manifest_file]
-  def image_set_args = params.image_sets
-    ? manifest_file_list.collect { mf ->
-        def slug = mf.baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_')
-        "--image-set \"${mf}\" \"${params.outdir}/image_sets/${slug}/compartments\""
-      }.join(' \\\n    ')
-    : "--manifest \"${manifest_file_list[0]}\" --compartment-root \"${params.outdir}/compartments\""
+  def manifest_args = imageSets().collect { slug, manifest_path ->
+    "--manifest \"${file(manifest_path)}\""
+  }.join(' \\\n    ')
   """
   set -euo pipefail
   mkdir -p "${params.outdir}"
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
   export UV_LINK_MODE=copy
-  printf '%s\\n' ${completed_nongranularity.join(' ')} > "${params.outdir}/completed_nongranularity.txt"
-  printf '%s\\n' ${completed_granularity.collect { it.join(':') }.join(' ')} > "${params.outdir}/completed_granularity.txt"
+  printf '%s\\n' ${completed_image_sets.collect { it.toString() }.join(' ')} > "${params.outdir}/completed_image_sets.txt"
+  printf '%s\\n' ${completed_assets.collect { it.toString() }.join(' ')} > "${params.outdir}/completed_assets.txt"
 
   if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
     PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
@@ -123,7 +132,7 @@ process BUILD_WAREHOUSE {
 
   /usr/bin/time -v -o "${params.outdir}/warehouse_resource_usage.txt" "\${PYTHON_RUNNER[@]}" \\
     "${params.pilot_root}/scripts/build_warehouse_from_compartments.py" \\
-    ${image_set_args} \\
+    ${manifest_args} \\
     --outdir "${params.outdir}" \\
     --run-id "${params.run_id ?: 'manual'}" \\
     --repo-root "${params.pilot_root}/.."
@@ -141,39 +150,15 @@ workflow {
     error "params.pilot_root is required"
   }
 
-  compartments = params.compartments.split(',').collect { it.trim() }.findAll { it }
-  channels = params.channels.split(',').collect { it.trim() }.findAll { it }
+  image_sets = imageSets()
+  image_set_slugs = image_sets.collect { slug, path -> slug }
 
-  compartment_ch = Channel.fromList(compartments)
-  granularity_ch = Channel.fromList(compartments).combine(Channel.fromList(channels))
+  FEATURIZE_IMAGE_SET(Channel.fromList(image_set_slugs))
 
-  if (params.image_sets) {
-    manifest_paths = params.image_sets.split(',').collect { it.trim() }.findAll { it }
-    slugs = manifest_paths.collect { file(it).baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_') }
-    if (slugs.unique(false).size() != slugs.size()) {
-      error "Duplicate image-set slugs derived from --image-sets manifest filenames: ${slugs}"
-    }
-    image_set_ch = Channel.fromList(manifest_paths).map { file(it) }
+  // BUILD_IMAGE_ASSETS only needs each manifest, not any feature-extraction
+  // output, so it runs immediately alongside the fan-out above instead of
+  // waiting on it.
+  BUILD_IMAGE_ASSETS(Channel.fromList(image_set_slugs))
 
-    nongran_ch = image_set_ch.combine(compartment_ch)
-    gran_ch = image_set_ch.combine(granularity_ch)
-
-    FEATURIZE_NONGRANULARITY(nongran_ch.map { m, c -> m }, nongran_ch.map { m, c -> c })
-    FEATURIZE_GRANULARITY(gran_ch.map { m, c, ch -> m }, gran_ch.map { m, c, ch -> tuple(c, ch) })
-    BUILD_WAREHOUSE(
-      image_set_ch.collect(),
-      FEATURIZE_NONGRANULARITY.out.collect(),
-      FEATURIZE_GRANULARITY.out.collect(),
-    )
-  } else {
-    manifest_file = file(params.manifest)
-
-    FEATURIZE_NONGRANULARITY(manifest_file, compartment_ch)
-    FEATURIZE_GRANULARITY(manifest_file, granularity_ch)
-    BUILD_WAREHOUSE(
-      manifest_file,
-      FEATURIZE_NONGRANULARITY.out.collect(),
-      FEATURIZE_GRANULARITY.out.collect(),
-    )
-  }
+  BUILD_WAREHOUSE(FEATURIZE_IMAGE_SET.out.collect(), BUILD_IMAGE_ASSETS.out.collect())
 }

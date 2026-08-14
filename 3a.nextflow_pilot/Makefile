@@ -17,12 +17,6 @@ UV_PROJECT_ENVIRONMENT ?=
 FEATURE_CPUS ?= 2
 FEATURE_MEMORY ?= 32 GB
 FEATURE_TIME ?= 2h
-GRANULARITY_CPUS ?= 2
-GRANULARITY_MEMORY ?= 64 GB
-GRANULARITY_TIME ?= 90 min
-NONGRANULARITY_CPUS ?= 2
-NONGRANULARITY_MEMORY ?= 24 GB
-NONGRANULARITY_TIME ?= 45 min
 
 MANIFEST_ARGS :=
 ifneq ($(strip $(SOURCE_ROOT)),)
@@ -51,12 +45,6 @@ RUN_ARGS += --results-root "$(RESULTS_ROOT)"
 RUN_ARGS += --feature-cpus "$(FEATURE_CPUS)"
 RUN_ARGS += --feature-memory "$(FEATURE_MEMORY)"
 RUN_ARGS += --feature-time "$(FEATURE_TIME)"
-RUN_ARGS += --granularity-cpus "$(GRANULARITY_CPUS)"
-RUN_ARGS += --granularity-memory "$(GRANULARITY_MEMORY)"
-RUN_ARGS += --granularity-time "$(GRANULARITY_TIME)"
-RUN_ARGS += --nongranularity-cpus "$(NONGRANULARITY_CPUS)"
-RUN_ARGS += --nongranularity-memory "$(NONGRANULARITY_MEMORY)"
-RUN_ARGS += --nongranularity-time "$(NONGRANULARITY_TIME)"
 
 .PHONY: help check doctor preflight clear-output clear-output-dry-run build-manifest validate-manifest run submit submit-dry-run smoke clean
 

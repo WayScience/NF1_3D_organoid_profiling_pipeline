@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Run the one-image-set NF1 ZEDProfiler pilot and write validation artifacts."""
+"""Extract every compartment's full ZEDProfiler profile (nongranularity and
+granularity features together, each channel loaded once and reused across
+all compartments) for one image set, writing each compartment's result
+directly into the run's shared warehouse directory -- its one and only
+write. Runs as one Nextflow task per image set in the fan-out workflow;
+--compartment restricts it to a single compartment, for manual testing."""
 
 from __future__ import annotations
 
@@ -16,7 +21,6 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 import tifffile
-from iceberg_warehouse import publish_iceberg_warehouse
 from manifest_io import load_manifest, require_manifest_paths
 
 CHANNELS = ("DNA", "ER", "AGP", "Mito")
@@ -60,9 +64,6 @@ FEATURE_FAMILIES = (
     "Colocalization",
     "Neighbors",
     "Granularity",
-)
-NONGRANULARITY_FEATURE_FAMILIES = tuple(
-    family for family in FEATURE_FAMILIES if family != "Granularity"
 )
 
 
@@ -162,12 +163,6 @@ def validate_aligned_shapes(
         else None,
         "shapes": shapes,
     }
-
-
-def tiff_shape(path: Path | str) -> list[int]:
-    """Read TIFF shape metadata without materializing the full image."""
-    with tifffile.TiffFile(str(path)) as tiff:
-        return list(tiff.series[0].shape)
 
 
 def numeric_nonfinite_counts(df: pd.DataFrame) -> dict[str, int]:
@@ -570,260 +565,25 @@ def extract_compartment_profile(
     return profiles, validation, timings
 
 
-def extract_granularity_profile(
-    zapi: dict[str, object],
-    compartment: str,
-    channel: str,
-    mask: np.ndarray,
-    image: np.ndarray,
-    manifest: dict[str, object],
-) -> tuple[pd.DataFrame, dict[str, object], dict[str, float]]:
-    image_set_name = str(manifest["Metadata_Imaging_ImageID"])
-    z_spacing = float(manifest.get("z_spacing") or 1.0)
-    xy_spacing = float(manifest.get("xy_spacing") or 0.1)
-
-    ObjectLoader = zapi["ObjectLoader"]
-    timings: dict[str, float] = {}
-    quality_warnings: list[dict[str, object]] = []
-    loader = make_image_set_loader(
-        zapi,
-        image_set_name,
-        channel,
-        compartment,
-        image,
-        mask,
-        z_spacing,
-        xy_spacing,
-    )
-    object_loader = ObjectLoader(
-        image_set_loader=loader,
-        channel_name=channel,
-        compartment_name=compartment,
-    )
-    frame = run_timed(
-        f"{compartment}_{channel}_Granularity",
-        lambda: zapi["compute_granularity"](
-            object_loader=object_loader,
-            radius=10,
-            granular_spectrum_length=16,
-            subsample_size=0.25,
-            image_sample_size=0.25,
-            mask_threshold=0.9,
-            verbose=False,
-        ),
-        timings,
-        quality_warnings,
-    )
-    frame = clean_columns(frame)
-    object_ids = sorted(int(value) for value in np.unique(mask) if value != 0)
-    observed_ids = sorted(
-        int(value)
-        for value in frame["Metadata_Object_ObjectID"].dropna().unique()
-        if not pd.isna(value)
-    )
-    feature_columns = [
-        column for column in frame.columns if not column.startswith("Metadata_")
-    ]
-    validation = {
-        "valid": observed_ids == object_ids
-        and feature_family_presence(
-            feature_columns, required_families=("Granularity",)
-        )["Granularity"],
-        "compartment": compartment,
-        "channel": channel,
-        "row_count": int(frame.shape[0]),
-        "column_count": int(frame.shape[1]),
-        "mask_object_count": len(object_ids),
-        "missing_object_ids": sorted(set(object_ids) - set(observed_ids)),
-        "unexpected_object_ids": sorted(set(observed_ids) - set(object_ids)),
-        "feature_family_presence": feature_family_presence(
-            feature_columns, required_families=("Granularity",)
-        ),
-        "nonfinite_numeric_feature_columns": numeric_nonfinite_counts(
-            frame[feature_columns]
-        ),
-        "quality_warnings": quality_warnings,
-    }
-    return frame, validation, timings
-
-
-def extract_compartment_nongranularity_profile(
-    zapi: dict[str, object],
-    compartment: str,
-    mask: np.ndarray,
-    channel_paths: dict[str, object],
-    manifest: dict[str, object],
-) -> tuple[pd.DataFrame, dict[str, object], dict[str, float]]:
-    image_set_name = str(manifest["Metadata_Imaging_ImageID"])
-    z_spacing = float(manifest.get("z_spacing") or 1.0)
-    xy_spacing = float(manifest.get("xy_spacing") or 0.1)
-
-    ObjectLoader = zapi["ObjectLoader"]
-    TwoObjectLoader = zapi["TwoObjectLoader"]
-    timings: dict[str, float] = {}
-    quality_warnings: list[dict[str, object]] = []
-    frames: list[pd.DataFrame] = []
-
-    for channel in CHANNELS:
-        image = tifffile.imread(str(channel_paths[channel]))
-        loader = make_image_set_loader(
-            zapi,
-            image_set_name,
-            channel,
-            compartment,
-            image,
-            mask,
-            z_spacing,
-            xy_spacing,
-        )
-        object_loader = ObjectLoader(
-            image_set_loader=loader,
-            channel_name=channel,
-            compartment_name=compartment,
-        )
-        frames.append(
-            run_timed(
-                f"{compartment}_{channel}_Intensity",
-                lambda object_loader=object_loader: zapi["compute_intensity"](
-                    object_loader=object_loader
-                ),
-                timings,
-                quality_warnings,
-            )
-        )
-        frames.append(
-            run_timed(
-                f"{compartment}_{channel}_Texture",
-                lambda object_loader=object_loader: zapi["compute_texture"](
-                    object_loader=object_loader,
-                    distance=3,
-                    grayscale=256,
-                ),
-                timings,
-                quality_warnings,
-            )
-        )
-        del image, loader, object_loader
-
-    no_channel = np.zeros_like(mask)
-    no_channel_loader = make_image_set_loader(
-        zapi,
-        image_set_name,
-        "NoChannel",
-        compartment,
-        no_channel,
-        mask,
-        z_spacing,
-        xy_spacing,
-    )
-    no_channel_object_loader = ObjectLoader(
-        image_set_loader=no_channel_loader,
-        channel_name="NoChannel",
-        compartment_name=compartment,
-    )
-    frames.append(
-        run_timed(
-            f"{compartment}_NoChannel_VolumeSizeShape",
-            lambda: zapi["compute_volume_size_shape"](
-                image_set_loader=no_channel_loader,
-                object_loader=no_channel_object_loader,
-            ),
-            timings,
-            quality_warnings,
-        )
-    )
-    frames.append(
-        run_timed(
-            f"{compartment}_NoChannel_Neighbors",
-            lambda: zapi["compute_neighbors"](
-                object_loader=no_channel_object_loader,
-                distance_threshold=10,
-                anisotropy_factor=z_spacing / xy_spacing,
-            ),
-            timings,
-            quality_warnings,
-        )
-    )
-    del no_channel, no_channel_loader, no_channel_object_loader
-
-    for channel1, channel2 in itertools.combinations(CHANNELS, 2):
-        image1 = tifffile.imread(str(channel_paths[channel1]))
-        image2 = tifffile.imread(str(channel_paths[channel2]))
-        coloc_loader = make_image_set_loader(
-            zapi,
-            image_set_name,
-            channel1,
-            compartment,
-            image1,
-            mask,
-            z_spacing,
-            xy_spacing,
-        )
-        coloc_loader.image_set_dict[channel2] = image2
-        two_object_loader = TwoObjectLoader(
-            image_set_loader=coloc_loader,
-            compartment=compartment,
-            channel1=channel1,
-            channel2=channel2,
-        )
-        frames.append(
-            run_timed(
-                f"{compartment}_{channel1}_{channel2}_Colocalization",
-                lambda two_object_loader=two_object_loader, channel1=channel1, channel2=channel2: (
-                    zapi["compute_colocalization"](
-                        two_object_loader=two_object_loader,
-                        thr=15,
-                        fast_costes="Faster",
-                        channel1=channel1,
-                        channel2=channel2,
-                    )
-                ),
-                timings,
-                quality_warnings,
-            )
-        )
-        del image1, image2, coloc_loader, two_object_loader
-
-    profiles = add_metadata(merge_feature_frames(frames), manifest)
-    profiles.insert(0, "Metadata_Compartment", compartment)
-    profiles = add_segmentation_metadata(profiles, manifest, compartment)
-    validation = validate_profiles(
-        profiles,
-        mask,
-        manifest,
-        required_feature_families=NONGRANULARITY_FEATURE_FAMILIES,
-    )
-    validation["compartment"] = compartment
-    validation["quality_warnings"] = quality_warnings
-    return profiles, validation, timings
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
-    parser.add_argument("--outdir", required=True, type=Path)
+    parser.add_argument(
+        "--outdir",
+        required=True,
+        type=Path,
+        help="Run's shared outdir. Each compartment's profile is written "
+        "directly under <outdir>/profiles/<compartment>_profiles/ -- its "
+        "one and only write.",
+    )
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--repo-root", required=True, type=Path)
     parser.add_argument(
         "--compartment",
         choices=COMPARTMENTS,
-        help="Extract only one compartment. Used by the Nextflow fan-out workflow.",
-    )
-    parser.add_argument(
-        "--skip-warehouse",
-        action="store_true",
-        help="Write profile and validation artifacts without building Iceberg tables.",
-    )
-    parser.add_argument(
-        "--feature-mode",
-        choices=("all", "granularity", "nongranularity"),
-        default="all",
-        help="Select full extraction or one fan-out partial feature mode.",
-    )
-    parser.add_argument(
-        "--channel",
-        choices=CHANNELS,
-        help="Channel to process when --feature-mode=granularity.",
+        help="Restrict extraction to one compartment, for manual testing. "
+        "The Nextflow fan-out workflow omits this to process every "
+        "compartment in the manifest in one task.",
     )
     args = parser.parse_args()
 
@@ -832,9 +592,6 @@ def main() -> int:
     path_errors = require_manifest_paths(manifest)
     if path_errors:
         raise SystemExit("\n".join(path_errors))
-
-    outdir = args.outdir
-    outdir.mkdir(parents=True, exist_ok=True)
 
     zapi = import_zedprofiler()
     channel_paths = manifest["channel_paths"]
@@ -852,129 +609,6 @@ def main() -> int:
         manifest["compartment"]: manifest["mask_path"]
     }
 
-    if args.feature_mode != "all":
-        if not args.compartment:
-            raise SystemExit("--compartment is required for partial feature modes")
-        if args.feature_mode == "granularity" and not args.channel:
-            raise SystemExit("--channel is required for --feature-mode=granularity")
-
-        compartment = args.compartment
-        mask = tifffile.imread(str(mask_paths[compartment]))
-        channel_shapes = (
-            {str(args.channel): tiff_shape(channel_paths[str(args.channel)])}
-            if args.feature_mode == "granularity"
-            else {
-                channel: tiff_shape(channel_paths[channel])
-                for channel in CHANNELS
-            }
-        )
-        alignment = {
-            "valid": len(
-                {tuple(shape) for shape in channel_shapes.values()}
-                | {tuple(mask.shape)}
-            )
-            == 1,
-            "reference_shape": list(mask.shape),
-            "shapes": {
-                "channels": channel_shapes,
-                "masks": {compartment: list(mask.shape)},
-            },
-        }
-        if not alignment["valid"]:
-            (outdir / "alignment_validation.json").write_text(
-                json.dumps(alignment, indent=2)
-            )
-            raise SystemExit(
-                "Channel and mask arrays are not aligned by shape; see "
-                f"{outdir / 'alignment_validation.json'}"
-            )
-
-        git_revision = git_commit(args.repo_root)
-        if args.feature_mode == "granularity":
-            channel = str(args.channel)
-            image = tifffile.imread(str(channel_paths[channel]))
-            profiles, validation, timings = extract_granularity_profile(
-                zapi=zapi,
-                compartment=compartment,
-                channel=channel,
-                mask=mask,
-                image=image,
-                manifest=manifest,
-            )
-            profile_path = (
-                outdir
-                / f"{compartment_slug(compartment)}_{channel.lower()}_granularity.parquet"
-            )
-            output_name = f"granularity.{compartment}.{channel}"
-        else:
-            profiles, validation, timings = (
-                extract_compartment_nongranularity_profile(
-                    zapi=zapi,
-                    compartment=compartment,
-                    mask=mask,
-                    channel_paths=channel_paths,
-                    manifest=manifest,
-                )
-            )
-            profile_path = (
-                outdir / f"{compartment_slug(compartment)}_nongranularity_profiles.parquet"
-            )
-            output_name = f"nongranularity.{compartment}"
-
-        profiles.to_parquet(profile_path, index=False)
-        all_valid = bool(validation["valid"])
-        run_record = {
-            "run_id": args.run_id,
-            "command": " ".join(sys.argv),
-            "mode": args.feature_mode,
-            "compartments": [compartment],
-            "channel": args.channel or "",
-            "git_commit": git_revision,
-            "zedprofiler_version": zapi["version"],
-            "python_version": platform.python_version(),
-            "manifest": manifest,
-            "alignment": alignment,
-            "outputs": {output_name: str(profile_path)},
-            "tables": [
-                {
-                    "name": output_name,
-                    "path": str(profile_path),
-                    "schema_version": "0.1.0-pilot",
-                    "source_image_root": manifest.get("source_image_root", ""),
-                    "run_id": args.run_id,
-                    "git_commit": git_revision,
-                    "row_count": validation["row_count"],
-                    "column_count": validation["column_count"],
-                    "validation_status": "pass" if all_valid else "fail",
-                }
-            ],
-            "timings_seconds": timings,
-            "elapsed_seconds": round(time.perf_counter() - started, 3),
-            "exit_status": 0 if all_valid else 1,
-            "validation_status": "pass" if all_valid else "fail",
-            "quality_warning_count": len(validation.get("quality_warnings", [])),
-        }
-        validation_report = {
-            "valid": all_valid,
-            "alignment": alignment,
-            "compartments": {compartment: validation},
-        }
-        (outdir / "run_record.json").write_text(json.dumps(run_record, indent=2))
-        (outdir / "validation.json").write_text(
-            json.dumps(validation_report, indent=2)
-        )
-        (outdir / "alignment_validation.json").write_text(
-            json.dumps(alignment, indent=2)
-        )
-        if not all_valid:
-            print(json.dumps(validation_report, indent=2), file=sys.stderr)
-            return 1
-        print(
-            "NF1_ZEDPROFILER_PARTIAL_OK "
-            f"mode={args.feature_mode} elapsed={run_record['elapsed_seconds']}"
-        )
-        return 0
-
     images = {
         channel: tifffile.imread(str(channel_paths[channel])) for channel in CHANNELS
     }
@@ -982,22 +616,20 @@ def main() -> int:
         compartment: tifffile.imread(str(mask_paths[compartment]))
         for compartment in compartments
     }
+    # Cheap here (arrays are already loaded for feature extraction below) --
+    # a fail-fast guard against computing features on misaligned data. The
+    # run-level alignment record is owned by build_image_assets.py, which
+    # checks this independently in parallel.
     alignment = validate_aligned_shapes(images, masks)
     if not alignment["valid"]:
-        (outdir / "alignment_validation.json").write_text(
-            json.dumps(alignment, indent=2)
-        )
         raise SystemExit(
-            "Channel and mask arrays are not aligned by shape; see "
-            f"{outdir / 'alignment_validation.json'}"
+            f"Channel and mask arrays are not aligned by shape for {args.manifest}:\n"
+            f"{json.dumps(alignment, indent=2)}"
         )
 
-    validations: dict[str, dict[str, object]] = {}
-    profile_frames: dict[str, pd.DataFrame] = {}
-    output_tables = []
-    all_timings: dict[str, float] = {}
-    total_quality_warnings = 0
     git_revision = git_commit(args.repo_root)
+    image_id = str(manifest["Metadata_Imaging_ImageID"])
+    all_valid = True
 
     for compartment in compartments:
         profiles, validation, timings = extract_compartment_profile(
@@ -1007,98 +639,39 @@ def main() -> int:
             images=images,
             manifest=manifest,
         )
-        profile_path = outdir / f"{compartment_slug(compartment)}_profiles.parquet"
-        profiles.to_parquet(profile_path, index=False)
-        validations[compartment] = validation
-        profile_frames[profile_table(compartment)] = profiles
-        all_timings.update(timings)
-        total_quality_warnings += len(validation["quality_warnings"])
-        output_tables.append(
-            {
-                "name": profile_table(compartment),
-                "path": str(profile_path),
-                "schema_version": "0.1.0-pilot",
-                "join_keys": [
-                    "Metadata_Biology_PatientTumor",
-                    "Metadata_Imaging_ImageID",
-                    "Metadata_Compartment",
-                    "Metadata_Object_ObjectID",
-                ],
-                "source_image_root": manifest.get("source_image_root", ""),
-                "run_id": args.run_id,
-                "git_commit": git_revision,
-                "row_count": validation["row_count"],
-                "column_count": validation["column_count"],
-                "validation_status": "pass" if validation["valid"] else "fail",
-            }
-        )
-
-    elapsed = time.perf_counter() - started
-    all_valid = all(validation["valid"] for validation in validations.values())
-    warehouse_manifest = None
-    if not args.skip_warehouse:
-        warehouse_manifest = publish_iceberg_warehouse(
-            outdir=outdir,
-            run_id=args.run_id,
-            git_commit=git_revision,
-            manifest=manifest,
-            profile_frames=profile_frames,
-            images=images,
-            masks=masks,
-            validations=validations,
-            alignment=alignment,
-            zedprofiler_version=str(zapi["version"]),
-        )
-    run_record = {
-        "run_id": args.run_id,
-        "command": " ".join(sys.argv),
-        "mode": "single_compartment" if args.compartment else "image_set",
-        "compartments": compartments,
-        "git_commit": git_revision,
-        "zedprofiler_version": zapi["version"],
-        "python_version": platform.python_version(),
-        "manifest": manifest,
-        "alignment": alignment,
-        "outputs": {table["name"]: table["path"] for table in output_tables},
-        "tables": output_tables,
-        "timings_seconds": all_timings,
-        "elapsed_seconds": round(elapsed, 3),
-        "exit_status": 0 if all_valid else 1,
-        "validation_status": "pass" if all_valid else "fail",
-        "quality_warning_count": total_quality_warnings,
-    }
-    if warehouse_manifest:
-        run_record.update(
-            {
-                "warehouse_root": warehouse_manifest["warehouse_root"],
-                "warehouse_manifest": str(
-                    outdir / "warehouse" / "warehouse_manifest.json"
-                ),
-            }
-        )
-    validation_report = {
-        "valid": all_valid,
-        "alignment": alignment,
-        "compartments": validations,
-    }
-    if warehouse_manifest:
-        validation_report["warehouse"] = {
-            "valid": warehouse_manifest["validation_status"] == "pass",
-            "manifest": str(outdir / "warehouse" / "warehouse_manifest.json"),
-            "namespaces": warehouse_manifest["namespaces"],
-            "tables": [table["table_name"] for table in warehouse_manifest["tables"]],
+        slug = compartment_slug(compartment)
+        target_dir = args.outdir / "profiles" / f"{slug}_profiles"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        profiles.to_parquet(target_dir / f"{image_id}.parquet", index=False)
+        run_record = {
+            "run_id": args.run_id,
+            "command": " ".join(sys.argv),
+            "mode": "compartment",
+            "compartment": compartment,
+            "git_commit": git_revision,
+            "zedprofiler_version": zapi["version"],
+            "python_version": platform.python_version(),
+            "timings_seconds": timings,
+            "elapsed_seconds": round(time.perf_counter() - started, 3),
+            "validation_status": "pass" if validation["valid"] else "fail",
+            "quality_warning_count": len(validation.get("quality_warnings", [])),
         }
-
-    (outdir / "run_record.json").write_text(json.dumps(run_record, indent=2))
-    (outdir / "validation.json").write_text(json.dumps(validation_report, indent=2))
-    (outdir / "alignment_validation.json").write_text(json.dumps(alignment, indent=2))
+        (target_dir / f"{image_id}.validation.json").write_text(
+            json.dumps({"compartments": {compartment: validation}}, indent=2)
+        )
+        (target_dir / f"{image_id}.run_record.json").write_text(
+            json.dumps(run_record, indent=2)
+        )
+        all_valid = all_valid and bool(validation["valid"])
+        if not validation["valid"]:
+            print(json.dumps(validation, indent=2), file=sys.stderr)
 
     if not all_valid:
-        print(json.dumps(validation_report, indent=2), file=sys.stderr)
         return 1
     print(
-        "NF1_ZEDPROFILER_PILOT_OK "
-        f"tables={len(output_tables)} elapsed={run_record['elapsed_seconds']}"
+        "NF1_FEATURIZE_COMPARTMENT_OK "
+        f"compartments={','.join(compartments)} "
+        f"elapsed={round(time.perf_counter() - started, 3)}"
     )
     return 0
 

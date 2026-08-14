@@ -647,3 +647,760 @@ set), and the same row counts and per-`ImageID` breakdown as before
 16 total, 8 + 8) — confirmed by loading the warehouse through PyIceberg
 directly, and by reading the flat `nuclei_profiles/` directory through
 plain `pd.read_parquet`.
+
+### Production-scale (4200 image-set) time estimate
+
+This is a **projection**, not a measured run — the pilot has only ever run
+1-2 image sets. Grounded in two real inputs measured today: per-task
+duration from the 2-image-set run's `trace.tsv`, and Alpine's actual live
+queue/account limits (queried directly, not assumed).
+
+**Task count is deterministic, not estimated.** Each image set is 4
+compartments x (4 granularity channels + 1 nongranularity task) = 20 worker
+tasks. At `N = 4200`: `16 x 4200 = 67,200` granularity tasks, `4 x 4200 =
+16,800` nongranularity tasks, **84,000 worker tasks**, plus one
+`BUILD_WAREHOUSE` and one coordinator = **84,002 total Slurm jobs** for a
+single run.
+
+**Per-task duration**, from today's real `trace.tsv` (`realtime` column,
+excludes queue wait):
+
+```text
+granularity avg:    52.0s  (32 tasks, range 22.1s-96s)
+nongranularity avg: 124.9s (8 tasks, range 53.5s-222s)
+weighted avg:        66.6s across all worker tasks
+```
+
+At `N=4200` and this weighted average, total compute is
+`84,000 x 66.6s x 7 AllocCPUS = ~10,878 cpu-hours` (matches a linear
+scale-up of today's measured `5.07 cpu-hours / 40 tasks` to `84,000` tasks
+within about 2%, a useful cross-check on the model).
+
+**Alpine's real constraints** (queried live today via `sacctmgr`/`sinfo`,
+not assumed from documentation):
+
+```text
+acpu partition:        420 nodes, 26,976 total CPUs (64/node)
+                        23,442 allocated / 2,846 idle at query time (~87% busy)
+QOS cpu-normal:         MaxSubmitJobsPerUser = 1000, MaxTRESPerUser = 128 nodes
+Association (amc-general, this user): MaxJobs = 200
+```
+
+`MaxJobs = 200` is the binding constraint, not partition size: 200
+concurrent jobs at 7 `AllocCPUS` each is only 1,400 cores, well inside the
+26,976-core partition. **This 200-job ceiling is shared across every QOS
+this account uses** (`cpu-normal`, `cpu-long`, `mem-normal`, `interactive`,
+the `gpu-*` QOS's, etc.) — any other Alpine work running under this account
+at the same time eats into the same budget.
+
+Wall-clock time is throughput-bound: `total_tasks / min(concurrency-limited
+throughput, submission-rate-limit)`, where concurrency-limited throughput is
+`concurrency_slots x 60 / weighted_avg_duration` tasks/min.
+
+| Scenario | Concurrency | Rate limit | Throughput | Wall time |
+| --- | --- | --- | --- | --- |
+| A: today's pilot config (`queueSize=20`, `submitRateLimit='20/min'`) | 20 | 20/min | 18.0 tasks/min | **~78 hours (3.2 days)** |
+| B: right-sized (`queueSize≈180`, rate raised so it doesn't bind) | 180 | not binding | 162 tasks/min | **~8.6 hours** |
+| C: maxed at the account's hard ceiling, zero contention | 200 | not binding | 180 tasks/min | **~7.8 hours** |
+
+**The current pilot config (`conf/curc_alpine.config`: `executor.queueSize =
+20`, `submitRateLimit = '20 / 1 min'`) is the dominant bottleneck at this
+scale, not compute efficiency or Alpine's real limits.** Both were sized
+for a 2-image-set pilot; at `N=4200` they cap throughput at ~18 tasks/min,
+while the account's actual `MaxJobs=200` ceiling would support ~180
+tasks/min — 10x more headroom than today's settings allow. Getting close to
+Scenario B/C requires raising both values before a production-scale run,
+not just requesting more resources per task.
+
+**What this estimate does not capture, and why the honest range is wider
+than "~8 hours":**
+
+- **Shared-cluster contention.** Scenario B/C assume slots are available the
+  instant they're requested. Today's live snapshot showed `acpu` at ~87%
+  allocated *before* this workload starts. Getting a sustained 180-200
+  concurrent slots on a cluster shared with every other Alpine cpu-normal
+  user is not guaranteed at any given moment; Slurm fair-share can leave
+  jobs `PENDING` for a queued account well below its `MaxJobs` ceiling. This
+  is the single largest source of uncertainty and can't be modeled from one
+  point-in-time snapshot — real wall time could plausibly run 1.5-3x past
+  the compute-bound estimate depending on when the run lands.
+- **`BUILD_WAREHOUSE` doesn't parallelize, and its N=4200 scaling is
+  unmeasured.** It's a deliberate single-writer step (see the SQLite-catalog
+  discussion above), so it runs after every worker task finishes, entirely
+  serially, reading every image set's compartment outputs one at a time
+  (including a `tifffile` metadata read per channel/mask for alignment
+  validation — `8 x 4200 = 33,600` file opens). Today's only two data points
+  (34.9s and 27.8s for `N=1` and `N=2`) are too close together to tell
+  whether this is dominated by fixed per-invocation overhead or genuinely
+  scales with `N` — a naive linear extrapolation (`27.8s / 2 x 4200 ≈ 16
+  hours`) is plausible but not trustworthy from two points. **This needs its
+  own measurement at an intermediate scale (e.g. 50-100 image sets) before
+  trusting any number here**, since if it does scale linearly it could rival
+  the worker-task wall time above.
+- **84,002 individual Slurm jobs in one run is a lot of jobs**, independent
+  of whether the account's limits technically allow it — this is exactly
+  the situation `PLAN.md`'s still-deferred "job arrays for homogeneous
+  shards" item exists for. Job arrays reduce Slurm controller overhead per
+  task and are the more considerate way to submit this many near-identical
+  jobs on a shared cluster, separate from the throughput math above.
+
+**Recommendation:** before committing to a full 4200 run, do a staged
+capacity test — e.g. 50 image sets with `queueSize`/`submitRateLimit` raised
+toward Scenario B — to get a real `BUILD_WAREHOUSE`-scaling data point and a
+real achieved-throughput number under actual same-day cluster contention,
+rather than trusting this projection's ~8-hour compute-bound figure as a
+commitment.
+
+#### Fair-share priority impact of a run this size
+
+Queried live (`sshare -u $USER -A amc-general -l`, `sacctmgr show
+associations`, `scontrol show config`) rather than assumed, since a
+4200-image-set run's ~10,878 cpu-hours is enough compute to meaningfully
+move this account's fair-share standing, and the real worry is whether that
+makes the account unable to get *anything* scheduled afterward.
+
+**Current standing** (`amc-general`, this user):
+
+```text
+RawShares:     1        (this user's allocated share within amc-general)
+NormShares:    0.001416 (normalized share of the account)
+RawUsage:      574,047  (decayed usage so far, all recent -- see below)
+EffectvUsage:  0.000126 (this user's share of amc-general's decayed usage)
+FairShare:     0.192688 (composite score, 0-1, folds in amc-general's own
+                          standing under its parent "amc" account too)
+LevelFS:       11.27    (at just this level: using ~1/11th of allocated
+                          share -- currently well *under* fair share)
+```
+
+`GrpTRESMins`/`MaxTRESMins` are blank for this association — **there is no
+hard usage-time cap**. Only `MaxJobs=200` (concurrency, discussed above) is
+a hard limit; everything about usage volume is a *soft priority* effect, not
+an access restriction.
+
+**How much would this workload move that.** `RawUsage=574,047` is small
+enough (~160 cpu-hour-equivalent if the units are raw core-seconds, which
+the ratio check above is consistent with) that it looks like mostly recent
+activity, not a multi-year accumulation — expected, since `PriorityDecayHalfLife
+= 14-00:00:00` (14 days) continuously decays old usage; anything older than
+a few months has decayed to statistical noise. Today's four real pilot runs
+alone (~20.8 cpu-hours) don't fully explain the current `RawUsage`, so other
+Alpine work is also contributing to it recently — this is a working
+account, not one starting from zero.
+
+A 4200-image-set run's ~10,878 cpu-hours is **roughly 68x** today's
+`RawUsage` (order-of-magnitude, not exact — depends on whether Alpine bills
+fair-share usage in plain core-seconds or applies `TRESBillingWeights` I
+haven't confirmed). That would swing this user from currently sitting
+*under* fair share (`LevelFS=11.27`) to sitting *substantially over it* —
+a real, meaningful priority hit, not a rounding error. Worth saying plainly
+rather than downplaying it.
+
+**Why that doesn't mean "locked out," concretely:**
+
+- **The hit decays with a 14-day half-life**, continuously, with no periodic
+  reset (`PriorityUsageResetPeriod = NONE`) — this *is* the recovery
+  mechanism, and it's automatic:
+
+  | Days after the run | Fair-share impact remaining |
+  | --- | --- |
+  | 0 | 100% |
+  | 7 | 71% |
+  | 14 | 50% |
+  | 28 | 25% |
+  | 42 | 12.5% |
+  | 56 | 6.2% |
+
+  Effectively back to baseline within 6-8 weeks; already half-gone in 2.
+
+- **Fair-share isn't the only factor, and it's not even the largest one.**
+  Alpine's multifactor priority weights (`scontrol show config`):
+  `PriorityWeightJobSize=40320`, `PriorityWeightQOS=30240`,
+  `PriorityWeightAge=20160`, `PriorityWeightFairShare=20160`,
+  `PriorityWeightPartition=0`, `PriorityWeightAssoc=0`. **Age and FairShare
+  are weighted exactly equally**, and QOS and JobSize both outweigh
+  FairShare on their own.
+- **The anti-starvation guarantee is explicit and load-bearing here**:
+  `PriorityMaxAge = 14-00:00:00`. A job's age-based priority contribution
+  grows the longer it waits and **saturates at 14 days**, at which point it
+  contributes the same as a perfect `FairShare=1.0` job would. Combined with
+  FairShare and Age being equally weighted, this is a hard guarantee that no
+  job queues forever because of this run's usage — worst case, a
+  low-priority job waits toward that ceiling once, not indefinitely, and
+  only during periods where the partition is actually contended (right now:
+  ~87% allocated, so this is a real possibility, not theoretical).
+
+**One implication for the earlier wall-time estimate, not previously
+modeled**: `RawUsage` accrues continuously as each task completes, not just
+at the end of the run. On an 8+ hour run, the fair-share hit from the
+*first* few thousand completed tasks is already partially in effect by the
+time the *last* few thousand submit — meaning, under real contention, a run
+this size could plausibly see its own back half scheduled slightly slower
+than its front half, self-throttling somewhat as it progresses. This
+compounds with the shared-cluster-contention uncertainty already flagged
+above rather than replacing it.
+
+**Bottom line for "could I end up unable to use anything":** no — there's
+no hard cap that blocks submission or execution, and the 14-day max-age
+guarantee means no individual job can be starved indefinitely regardless of
+how low fair-share drops. What's real is a multi-week window (roughly
+matching the 14-day half-life, mostly faded by 4-6 weeks) where *other*,
+unrelated Alpine jobs from this account would compete less favorably against
+other users' jobs during periods of partition contention, and would likely
+see longer queue waits than usual during that window — an inconvenience,
+not a lockout.
+
+#### Open questions for CURC, checked against formascute first
+
+[formascute](https://github.com/d33bs/formascute) (this pilot's sibling
+characterization project) already has a live CURC contact (Gregory Way) and
+a substantial answered/still-open question history from `2026-08-06`/`07` —
+see its `docs/alpine-findings.md` and `.agents/skills/alpine.md`. Checked
+that history before adding anything here, specifically to avoid re-asking
+what's already answered.
+
+**Already answered by CURC — do not re-ask:** the `MaxJobs=200` cap is
+real and `queueSize=200` with no rate limit is explicitly fine for a
+many-short-task workload; Apptainer/Singularity is CURC's preferred runtime
+over `uv`/conda (though this pilot has used `uv` successfully throughout);
+`Persistence1`'s per-user cgroup caps are quantified exactly (~1.6 GB RAM,
+80% of 8 CPUs); `cpu-long` is for walltime >24h only, not a priority
+shortcut; GPU work needs a separate partition/QOS sharing the same 200-job
+budget; institution-level fairshare methodology is confirmed (see below).
+
+**Gap this pilot's own analysis (above) missed, that formascute already
+flagged:** fairshare has a *second*, institution-level number
+(`levelfs $USER` reports both `LevelFS_User` and `LevelFS_Inst`) that
+this session never checked — only user- and `amc-general`-account-level
+standing were queried. formascute's `2026-08-07` reading had
+`LevelFS_Inst≈1.01` for institution `amc` — parity, not headroom, and not
+something this project's own usage controls. Re-check `levelfs $USER`
+(both numbers) before a real production run, not just `sshare`.
+
+**New questions, specific to this pilot's actual architecture, that
+formascute's own estimate doesn't cover:**
+
+1. **Task-count shape is well outside what CURC signed off on.** Formascute's
+   4200-image-set estimate (and CURC's "`queueSize=200` is fine" answer)
+   assumed **one task per image set** (4200 total). This pilot's actual
+   implementation fans out per compartment x channel: **20 tasks per image
+   set, 84,000 total at N=4200** — 20x formascute's baseline, beyond even
+   the "5-10x higher" range formascute's own doc flagged as needing
+   rescaling before trusting its estimate. Worth asking CURC directly
+   whether `queueSize=200`/no-rate-limit guidance still holds at this task
+   count, or whether they'd want batching (fewer, coarser tasks) first —
+   this is the single most consequential unanswered question here.
+2. **Repeated-read amplification against shared storage.** Confirmed today
+   (via `scripts/run_zedprofiler_image_set.py`) that this pilot's
+   fine-grained split reads each channel TIFF independently per task: ~8x
+   per channel per image set (once per compartment at the nongranularity
+   stage, again once per compartment at the granularity stage), all against
+   the same PetaLibrary-mounted source files. At N=4200 that's tens of
+   thousands of redundant multi-hundred-MB reads against shared storage.
+   This is exactly what formascute's own architecture notes recommended
+   avoiding ("one task can load an image-set once and compute multiple
+   compatible feature families" instead of "one Slurm job per feature
+   family, channel, and compartment") — worth asking CURC or PetaLibrary's
+   storage admins whether this read pattern is a real concern at production
+   scale, independent of the Slurm-side questions above.
+3. **`BUILD_WAREHOUSE`'s serial, single-writer scaling has no formascute
+   precedent.** Formascute's estimate only covers the feature-extraction
+   fan-out; it never modeled a downstream aggregation step. This pilot's
+   Iceberg-warehouse merge is deliberately single-threaded (see the
+   SQLite-catalog discussion above) and reads every image set's outputs
+   serially, including a `tifffile` metadata open per channel/mask (`8 x
+   4200 = 33,600` file opens at N=4200). Worth asking whether CURC has
+   guidance for a single long-running, I/O-bound, single-threaded process
+   following a large fan-out, separate from the many-small-jobs questions
+   above.
+4. **`TRESBillingWeights` on `acpu`, unconfirmed.** The fair-share magnitude
+   estimate above assumed Slurm bills fair-share usage in plain
+   core-seconds; `scontrol show partition acpu` doesn't surface this
+   directly, and it changes how much a real run would move fair-share
+   standing. Cheap to ask CURC directly rather than guess.
+5. **Timing, if a real run lands September-November.** CURC already told
+   formascute the current `cpu-normal`/`cpu-long` QOS split is new and they
+   "cannot guarantee" it holds up during named peak season. Worth a status
+   check with CURC if a production run is likely to land in that window,
+   since every queue-wait number in both projects was measured outside it.
+
+**One loop closed, worth reporting back to formascute:** its open question
+"why does granularity run ~7x slower than upstream-reported benchmarks" is
+now answered by *this* project's own work today — see the ZedProfiler PR #51
+section above (upsampling the whole image per scale instead of just labeled
+voxels; fixed, merged, shipped as `zedprofiler 0.1.3`). Worth a note back
+in formascute's docs since it was flagged there as open and unresolved.
+
+## Alpine notes from 2026-08-13
+
+### Optimizing BUILD_WAREHOUSE's serial reduce phase
+
+Four changes, aimed at the risks flagged in the production-scale estimate
+above (`BUILD_WAREHOUSE`'s serial, single-writer scaling had no measurement
+and no formascute precedent):
+
+1. **New parallel `MERGE_COMPARTMENT` stage.** The per-compartment merge
+   (joining nongranularity + 4 granularity outputs, validating, checking
+   alignment) used to happen inside `BUILD_WAREHOUSE`'s single-threaded loop
+   over every image set. It's genuinely parallel work — one Nextflow process
+   per (image set, compartment), same tier as `FEATURIZE_NONGRANULARITY`,
+   synced to fire once its own nongranularity task and all 4 granularity
+   tasks complete (Nextflow `groupTuple`/`join` on a `(image_set_slug,
+   compartment)` key). `BUILD_WAREHOUSE` now just reads already-merged,
+   already-validated files.
+2. **Stopped re-reading masks to revalidate what's already known.** Each
+   source task's own `validate_profiles` call already reads the mask once
+   and records `mask_object_count`. The merge step used to read the mask
+   *again* (`tifffile.imread`, full pixel array, not metadata) just to
+   recompute that count. New `validate_merged_profile` trusts the recorded
+   count instead — it re-checks that the merge itself didn't drop or
+   duplicate objects (row count matches, no duplicate IDs), not the
+   mask-vs-profile identity match a second time.
+3. **Alignment checking moved into the per-compartment merge, split by
+   compartment.** Each `MERGE_COMPARTMENT` task checks its own one mask
+   against all 4 channels (metadata-only TIFF reads). Four compartments'
+   worth of sub-checks collectively cover the same files a single
+   whole-image-set check would (`merge_alignment_results` combines them
+   with zero extra file I/O), just parallelized instead of one process
+   opening all 8 files serially.
+4. **Parallelized what's left in `BUILD_WAREHOUSE`.** After 1-3, the
+   per-image-set loop is mostly small-file reads (pre-merged parquet +
+   JSON). Runs through a `ThreadPoolExecutor` (`--max-workers`, default 8)
+   instead of a plain loop — safe since each image set only touches its own
+   files.
+
+**A real bug surfaced during this work, unrelated to the logic above:**
+Alpine's `nextflow` launcher silently self-updated to `26.04.6` between
+yesterday's runs and today's. Its parser is stricter than `25.04.6` (what
+local testing used first) — it rejects top-level executable statements
+(the `if (!params.manifest...)` guards, direct variable assignments) mixed
+with `process`/`workflow` declarations in the same file, where the older
+version allowed it. First submission failed in 16 seconds on a compile
+error. Fixed by moving all shared logic (compartment/channel parsing, the
+image-set list, manifest-path-by-slug lookup) into top-level `def`
+functions — legal at file scope on both versions — called fresh from
+inside each process's `script:` block instead of relying on closure capture
+of `workflow{}`-block-local variables. Updated the local Nextflow install to
+`26.04.6` to match and re-verified before resubmitting.
+
+**Verified correctness before trusting any of this**, in order:
+- `merge_compartment.py` run standalone against a real completed
+  `NF0055_T1/B10-1` compartment directory (copied off an earlier real run):
+  produced 11 rows / 903 columns (exact match), `mask_object_count: 11`
+  (correctly reused, not re-derived), `alignment.valid: true` with the
+  correct `(105, 1527, 1528)` shapes — and the actual feature *values*
+  compared byte-identical against the original run's output
+  (`np.allclose(..., equal_nan=True)` on every numeric column).
+- The full `build_warehouse_from_compartments.py` fallback path (all 4
+  compartments routed through the new `merge_compartment`, no pre-merged
+  files present) reproduced the exact known `NF0055_T1/B10-1` baseline:
+  11/9/9/2 rows, 903 columns, `quality_warning_count: 4`, `validation_status:
+  pass`.
+- The Nextflow channel wiring itself (the riskiest part — the
+  `groupTuple`/`join` synchronization and the top-level-function scoping
+  fix) was verified with a stubbed local run (process bodies replaced with
+  `echo` of their resolved arguments): exactly 4 `MERGE_COMPARTMENT`
+  invocations for 2 image sets x 2 compartments, each with the correct
+  manifest path, and exactly 1 `BUILD_WAREHOUSE` firing with correctly
+  built `--image-set` arguments for both.
+
+**Real run, full `NF0055_T1/B10-1` + `NF0014_T1/C4-2`, same
+`GRANULARITY_MEMORY="24 GB"` as the last comparable run:**
+
+```text
+run_id: nf0055-nf0014-merge-optimized-20260813T180124Z
+workflow_slurm_jobs: 50   (was 42 -- +8 for the new MERGE_COMPARTMENT stage,
+                            job-count formula fixed to match)
+nextflow_exit_status: 0
+coordinator_walltime: 00:07:56
+validation_status: pass
+quality_warning_count: 8
+```
+
+Warehouse output identical to the pre-optimization run in every respect:
+`nuclei_profiles` 56 rows (45 NF0014 + 11 NF0055), `cell_profiles`/
+`cytoplasm_profiles` 51 rows each (42+9), `organoid_profiles` 3 rows (1+2),
+`images.image_assets` 16 rows (8+8), 2 Iceberg data files per table, both
+image sets' alignment valid. Confirmed by loading the warehouse through
+PyIceberg directly, same as every other check today.
+
+**MERGE_COMPARTMENT tasks are genuinely cheap**: 7.3-31.4s realtime, peak
+RSS 128-176 MB across all 8 (trace.tsv) — far lighter than either
+`FEATURIZE_NONGRANULARITY` (0.9-4.3 GB) or `FEATURIZE_GRANULARITY` (up to
+5.2 GB). `BUILD_WAREHOUSE` itself got cheaper too: peak RSS dropped from
+1.1 GB to 280.7 MB (~4x), realtime from 23.4s to 16.9s, comparing this run
+against the last equivalent 2-image-set run before this change.
+
+**Coordinator wall time went up, not down, at this scale** (`00:05:47` to
+`00:07:56`, +~2m9s) — worth stating plainly rather than only reporting the
+flattering numbers. `MERGE_COMPARTMENT` can't start until *every* upstream
+`FEATURIZE_*` task for its image set finishes, so it's a full extra
+sequential wave of Slurm dispatch/queue latency on top of each task's own
+(small) runtime, and at only 2 image sets there's nowhere near enough total
+serial reduce-phase cost yet for the parallelization to pay for that
+overhead. That trade only inverts at scale: the whole point was bounding
+`BUILD_WAREHOUSE`'s cost to roughly one image set's worth of work
+regardless of `N`, instead of it scaling linearly with the full run's image
+count the way it used to. Confirming that inversion actually happens
+requires a real run at a scale large enough for it to show up (the earlier
+"moderate rehearsal, tens to ~100 image sets" recommendation) — not yet
+done here.
+
+### Write-once architecture: no Iceberg, no registration step
+
+Simplified further: dropped Apache Iceberg (the SQLite catalog, `write_table`,
+`publish_iceberg_warehouse`, the `pyiceberg` dependency) entirely in favor of
+plain namespaced parquet-dataset directories that *are* the warehouse. The
+motivating question was "are we joining the parquet data at the end, and do
+we need to" — the answer was no, and going further, the per-task write
+pattern was actually writing every profile **twice**: once to a private
+per-image-set location, again as Iceberg's own `table.append()` data file.
+Now each task that produces a table's row for one image set writes it
+**once**, directly to its final location:
+
+```text
+${outdir}/profiles/nuclei_profiles/<image_id>.parquet      (+ .validation.json, .run_record.json sidecars)
+${outdir}/profiles/cell_profiles/<image_id>.parquet
+${outdir}/profiles/cytoplasm_profiles/<image_id>.parquet
+${outdir}/profiles/organoid_profiles/<image_id>.parquet
+${outdir}/images/image_assets/<image_id>.parquet            (+ .validation.json sidecar)
+```
+
+Reading a table across all image sets is `pd.read_parquet(<table_dir>)` — a
+normal multi-file parquet dataset, no catalog needed.
+
+Three changes made this possible:
+
+1. **`MERGE_COMPARTMENT` writes directly to the joint directory** instead of
+   a private `image_sets/<slug>/compartments/<compartment>/` location that
+   something else later collected and rewrote. Its read side (merging the
+   split nongranularity/granularity outputs) is unchanged.
+2. **New `BUILD_IMAGE_ASSETS` process, one per image set**, independent of
+   the compartment/channel fan-out — it only needs the manifest, not any
+   feature-extraction output, so it runs immediately alongside everything
+   else instead of waiting on it. It also now owns the whole-image-set
+   channel/mask alignment check (moved back from the per-compartment split
+   introduced in the previous change): it already opens all 4 channels and
+   all 4 masks to build `images.image_assets`, so checking alignment there
+   is free, and it means alignment isn't split across 4 tasks' sidecars
+   anymore.
+3. **`BUILD_WAREHOUSE` is no longer a writer.** With nothing left to
+   collect or register, its only job is confirming every expected file
+   landed and cross-checking schemas across image sets (`pyarrow.parquet.
+   read_schema`, metadata only — no data materialized) before writing one
+   run-level summary. This is a much smaller, cheaper thing than either the
+   old Iceberg-writing version or yesterday's `ThreadPoolExecutor` version.
+
+**Verified before trusting on Alpine**, in order: standalone tests of
+`merge_compartment.py`'s and `build_image_assets.py`'s new write targets
+against real merge/alignment logic and real (small synthetic) TIFFs, confirming
+each writes its file exactly once to the correct joint-dir path; a full
+`build_warehouse_from_compartments.py` scan-and-summarize pass against that
+output, including deliberately removing a file to confirm the missing-artifact
+check fires and passes again once restored; and a stubbed local Nextflow run
+(process bodies replaced with `echo` of resolved arguments, Nextflow
+26.04.6, matching Alpine) confirming the new `BUILD_IMAGE_ASSETS` process and
+the now-two-input `BUILD_WAREHOUSE` wire up correctly for a 2-image-set fan-out
+(19/19 tasks correct).
+
+**Real run, full `NF0055_T1/B10-1` + `NF0014_T1/C4-2`, same
+`GRANULARITY_MEMORY="24 GB"`:**
+
+```text
+run_id: nf0055-nf0014-writeonce-20260813T231032Z
+workflow_slurm_jobs: 52   (was 50 -- +2 for the new BUILD_IMAGE_ASSETS process)
+nextflow_exit_status: 0
+coordinator_walltime: 00:08:27
+validation_status: pass
+quality_warning_count: 8
+```
+
+Output identical to every prior baseline: `nuclei_profiles` 56 rows (45+11),
+`cell_profiles`/`cytoplasm_profiles` 51 rows each (42+9), `organoid_profiles`
+3 rows (1+2), 903 columns, `images.image_assets` 16 rows (8+8), both image
+sets' alignment valid, no `warehouse/` directory or `catalog.db` anywhere on
+disk (confirmed by `find`).
+
+**Per-task cost dropped again, on top of yesterday's numbers** (`trace.tsv`,
+realtime / peak RSS):
+
+| Process | n | realtime | peak RSS |
+| --- | --- | --- | --- |
+| `FEATURIZE_NONGRANULARITY` | 8 | 57.7-237.0s (avg 116.9s) | 0.89-4.4 GB |
+| `FEATURIZE_GRANULARITY` | 32 | 20.4-79.0s (avg 50.1s) | 1.9-5.3 GB |
+| `MERGE_COMPARTMENT` | 8 | **0.8-5.2s** (was 7.3-31.4s) | 3.1-123.5 MB |
+| `BUILD_IMAGE_ASSETS` | 2 | 6.3s | ~109 MB |
+| `BUILD_WAREHOUSE` | 1 | **0.99s** (was 16.9s) | **3.1 MB** (was 280.7 MB) |
+
+`MERGE_COMPARTMENT` got faster because it no longer does its own alignment
+sub-check (moved to `BUILD_IMAGE_ASSETS`, see above). `BUILD_WAREHOUSE`
+dropped ~17x in time and ~90x in memory because it no longer reads or writes
+any table data at all -- just JSON sidecars and parquet schema headers.
+
+**Coordinator wall time went up again, not down** (`00:07:56` to
+`00:08:27`, +31s) -- same story as yesterday, one level further. Every
+individual task got cheaper, but total job *count* went up (52 vs 50) with
+the new `BUILD_IMAGE_ASSETS` wave, and at only 2 image sets there's nowhere
+near enough serial-reduce-phase savings to pay for one more wave of Slurm
+dispatch/queue latency. This is the same pattern as yesterday's
+`MERGE_COMPARTMENT` addition, and it's the direct motivation for the
+job-count-reduction proposal below: at pilot scale (N=2), *fewer, chunkier
+tasks beat more, cheaper tasks* every time, because dispatch/queue overhead
+is paid per task regardless of how little work that task does.
+
+#### Proposal: reduce jobs per image set for the N=4200 case
+
+Today's architecture is 25 Slurm tasks per image set (4
+`FEATURIZE_NONGRANULARITY` + 16 `FEATURIZE_GRANULARITY` + 4
+`MERGE_COMPARTMENT` + 1 `BUILD_IMAGE_ASSETS`), plus `BUILD_WAREHOUSE` and the
+coordinator. At `N=4200` that's **105,002 total Slurm jobs** -- more than
+the original 84,002 estimate from the production-scale write-up above, and
+today's own measurement shows the cost of each additional per-image-set task
+type: a full extra sequential dispatch/queue-wait wave, multiplied by every
+image set in the run.
+
+The codebase already has an unused code path that undoes this for free:
+`extract_compartment_profile()` in `run_zedprofiler_image_set.py`, reachable
+today via `--compartment X` with no `--feature-mode` flag. It's the
+*original*, pre-split, whole-compartment function -- one task computes
+nongranularity **and** all 4 granularity channels for one compartment,
+loading each channel's image once and reusing it for both (today's split
+design loads every channel's image twice: once in its
+`FEATURIZE_NONGRANULARITY` task, again in its own `FEATURIZE_GRANULARITY`
+task). Wiring this into the joint-dir write pattern established above would
+eliminate the channel-level fan-out *and* the separate merge job in one
+move -- no new extraction logic needed, just a new write target matching
+what `merge_compartment.py`/`build_image_assets.py` already do.
+
+| Option | Per-image-set tasks | N=4200 total jobs | vs. today |
+| --- | --- | --- | --- |
+| Today | 25 (4+16+4+1) | 105,002 | -- |
+| **A -- one task per compartment** (nongran+gran+merge combined, reuses `extract_compartment_profile`) | 5 (4 compartment + 1 image-assets) | 21,002 | **5x fewer** |
+| A+ -- also fold image-assets into one compartment task | 4 | 16,802 | 6.25x fewer |
+| B -- one task per image set (all 4 compartments + image-assets, already exists as the default `--feature-mode all` path) | 1-2 | 4,202-8,402 | 12.5-25x fewer |
+
+**Recommendation: implement A first.** Low risk (reuses already-tested
+extraction code, only the output write target changes), directly reverses
+the coordinator-walltime regression measured twice now, and lands well under
+even the original 84,002-job estimate while keeping this week's other wins
+(write-once, no Iceberg, bounded `BUILD_WAREHOUSE`). Task duration becomes
+roughly 5.5 min per compartment (125s nongranularity + 4x52s granularity),
+trivial against any realistic time limit. Peak memory likely stays close to
+today's `granularity_memory` ceiling (64 GB) rather than adding across
+channels, since channels are still processed one at a time within the
+process either way -- worth confirming empirically once implemented.
+
+**Option B is the fallback** if 21,002 jobs is still too many: it gives up
+all intra-image-set task parallelism (~20-22 min per image set) for the
+largest possible job-count cut. Since total CPU-work is roughly conserved
+either way (repackaging, not less compute), wall-clock time at saturated
+concurrency should land near the existing ~8-hour compute-bound estimate --
+the win is fewer Slurm submissions and less controller/accounting overhead,
+not a faster run.
+
+**Orthogonal, complementary lever:** Nextflow's Slurm executor array support
+(`executor.array`) can batch homogeneous tasks into fewer controller-visible
+job-array entries without changing task granularity at all -- stackable on
+top of A or B, and it's `PLAN.md`'s already-deferred "job arrays for
+homogeneous shards" item.
+
+#### Option A implemented and benchmarked
+
+`FEATURIZE_NONGRANULARITY`, `FEATURIZE_GRANULARITY`, and `MERGE_COMPARTMENT`
+are gone, replaced by one `FEATURIZE_COMPARTMENT` process per (image set,
+compartment) that calls `run_zedprofiler_image_set.py --compartment X` (no
+`--feature-mode` anymore -- there's only one mode now) and writes directly to
+`${outdir}/profiles/<compartment>_profiles/<image_id>.parquet`, its one and
+only write. `extract_granularity_profile()`,
+`extract_compartment_nongranularity_profile()`, `validate_merged_profile()`,
+and `scripts/merge_compartment.py` are deleted -- dead code once nothing
+called them. `conf/base.config` lost the `granularity_cpu`/
+`nongranularity_cpu`/`merge_cpu` labels and their params; `FEATURIZE_COMPARTMENT`
+reuses the `zedprofiler_cpu` label (`feature_cpus`/`feature_memory`/
+`feature_time`) that already existed, unused, from before the split was ever
+introduced. `bin/nf1-nextflow-pilot` and `Makefile` lost the matching
+`--granularity-*`/`--nongranularity-*` flags -- there's only `--feature-*`
+now. A nice side effect: `FEATURIZE_COMPARTMENT` writes straight to the
+joint dir, so the private `image_sets/<slug>/compartments/...` scratch tree
+this pilot has had since day one no longer exists at all.
+
+**Verified before trusting on Alpine**, in order: a real end-to-end run of
+`run_zedprofiler_image_set.py --compartment Nuclei` against synthetic
+16x16x4 TIFFs (via `tifffile`) with `zedprofiler` actually installed and
+executing locally, confirming the parquet lands at the correct joint-dir
+path with 903 columns, both feature families (granularity and
+nongranularity-only were checked separately before; this confirms they
+coexist correctly in one profile), and row count exactly matching mask
+object count (the only validation failure was expected null texture
+features from an object too small for GLCM at this synthetic scale, not a
+code defect); a stubbed local Nextflow run confirming the collapsed
+workflow wires up correctly (7 tasks for 2 image sets x 2 compartments: 4
+`FEATURIZE_COMPARTMENT` + 2 `BUILD_IMAGE_ASSETS` + 1 `BUILD_WAREHOUSE`,
+correct `--manifest` args reaching `BUILD_WAREHOUSE`).
+
+**Real run, full `NF0055_T1/B10-1` + `NF0014_T1/C4-2`, `FEATURE_MEMORY="32 GB"`:**
+
+```text
+run_id: nf0055-nf0014-optionA-20260813T233613Z
+workflow_slurm_jobs: 12   (was 52 -- 4.3x fewer at N=2; formula predicts 5x at N=4200)
+nextflow_exit_status: 0
+coordinator_walltime: 00:08:53
+validation_status: pass
+quality_warning_count: 8
+```
+
+Output identical to every prior baseline: 56/51/51/3 rows, 903 columns, 16
+`images.image_assets` rows, no `image_sets/` directory anywhere on disk.
+
+```text
+Process                  n   realtime            peak RSS
+FEATURIZE_COMPARTMENT    8   132.0-415.0s (288.4s avg)   2.46-6.76 GB
+BUILD_IMAGE_ASSETS       2   1.2s                        27.6-121.5 MB
+BUILD_WAREHOUSE          1   6.1s                        117.6 MB
+```
+
+**Honest finding: coordinator wall time went up again at this scale**
+(`00:08:27` to `00:08:53`, +26s), continuing the same pattern as both prior
+changes -- not what the job-count table above might suggest at a glance.
+The reason is specific to Option A and worth stating plainly: folding
+nongranularity and all 4 granularity channels into one task removes the
+*channel-level* parallelism those channels used to get as separate Slurm
+tasks, not just the separate-merge-job overhead. `FEATURIZE_COMPARTMENT`'s
+288.4s average is close to the sum of what used to be several
+concurrently-running tasks (old `FEATURIZE_NONGRANULARITY` avg 116.9s +
+`FEATURIZE_GRANULARITY` avg 50.1s x4 channels done serially inside one
+process). At `N=2`, Alpine has far more free concurrency than 8 tasks need,
+so that lost parallelism shows up directly as wall time; the fewer-waves
+saving (no separate merge dispatch) is real but smaller than the
+now-serialized channel work costs.
+
+**This doesn't undermine the N=4200 case, and here's why.** Total wall time
+at production scale is throughput-bound
+(`total_tasks / concurrency_slots x task_duration`), not latency-bound the
+way a 2-image-set pilot is. Plugging in today's *real* `FEATURIZE_COMPARTMENT`
+average (288.4s, not the earlier hand-estimated ~330s) at the same
+200-concurrent-slot scenario used in the original estimate:
+`16,800 FEATURIZE_COMPARTMENT tasks / (200 x 60 / 288.4s) ~= 6.7 hours` --
+in the same range as the original ~7.8-8.6 hour compute-bound estimate, not
+worse, because total CPU-time is conserved (repackaged into fewer, longer
+tasks) and concurrency is what dominates at that scale, not per-task
+latency. The pilot-scale wall-time regression is a real, now-measured
+artifact of having *more spare concurrency than work* at `N=2`, not a
+preview of what happens at `N=4200`.
+
+#### Option B implemented and benchmarked: one task per image set
+
+Went one level further: `FEATURIZE_COMPARTMENT` is gone too, replaced by
+`FEATURIZE_IMAGE_SET`, one task per image set with no `--compartment` flag
+at all -- `run_zedprofiler_image_set.py`'s `for compartment in compartments`
+loop (already written generically for this from the start) now processes
+every compartment the manifest lists in one task, loading each of the 4
+channels once and reusing it across all 4 compartments instead of reloading
+per compartment. `params.compartments`/`parseCompartments()` are gone from
+the workflow -- nothing needs to enumerate compartments at the Nextflow
+level anymore, the manifest alone drives it.
+
+**Verified before trusting on Alpine**, same rigor as before: a stubbed
+local Nextflow run confirmed the collapsed wiring (5 tasks for 2 image sets:
+2 `FEATURIZE_IMAGE_SET` + 2 `BUILD_IMAGE_ASSETS` + 1 `BUILD_WAREHOUSE`,
+correct manifest resolution); a real local run of
+`run_zedprofiler_image_set.py` with no `--compartment` against synthetic
+TIFFs confirmed all 4 compartments land correctly in one invocation, each
+with row count exactly matching its mask's object count and all 6 feature
+families present.
+
+**Real run, full `NF0055_T1/B10-1` + `NF0014_T1/C4-2`, `FEATURE_MEMORY="32 GB"`:**
+
+```text
+run_id: nf0055-nf0014-optionB-20260814T013546Z
+workflow_slurm_jobs: 6   (was 12 for Option A, 52 originally -- 2.5x fewer than A,
+                           12.5x fewer than where this started)
+nextflow_exit_status: 0
+coordinator_walltime: 00:22:41
+validation_status: pass
+quality_warning_count: 8
+```
+
+Output identical to every prior baseline again: 56/51/51/3 rows, 903
+columns, 16 `images.image_assets` rows.
+
+```text
+Process                n   realtime                     peak RSS
+FEATURIZE_IMAGE_SET    2   1122.0-1299.0s (1210.5s avg)  5.32-8.19 GB
+BUILD_IMAGE_ASSETS     2   8.1-8.2s                      105.2-112.9 MB
+BUILD_WAREHOUSE        1   2.7s                          118.2 MB
+```
+
+**The wall-time regression from Option A continues, and much more sharply
+this time**: coordinator walltime jumped from `00:08:53` to `00:22:41`
+(+13m48s). This is the predicted trade-off, now measured: `FEATURIZE_IMAGE_SET`
+gives up *all* intra-image-set parallelism, not just channel-level
+parallelism. Its 1210.5s average is close to the sum of what Option A's 4
+separate compartment tasks would take run one after another (4 x 288.4s =
+1153.6s -- within 5% of the observed average, a nice independent
+confirmation that this really is the same total work, just packaged
+differently), but Option A's 4 tasks ran *concurrently* at this small scale
+while `FEATURIZE_IMAGE_SET` runs them serially inside one process. Peak
+memory also rose as expected (5.32-8.19 GB vs Option A's 2.46-6.76 GB, from
+holding all 4 compartments' masks at once instead of one) but stays well
+under the 32 GB ceiling -- no memory risk found.
+
+**Extrapolating with today's real number, not the earlier estimate:** at
+`N=4200`, throughput-bound wall time is
+`4,200 FEATURIZE_IMAGE_SET tasks / (200 x 60 / 1210.5s) ~= 7.1 hours` --
+essentially the same as Option A's ~6.7 hour estimate and the original
+~7.8-8.6 hour figure. The pattern holds: consolidating task granularity
+doesn't change production-scale wall time (throughput-bound, total compute
+conserved either way), it only changes job count and pilot-scale iteration
+latency.
+
+**The real trade-off between A and B is not production wall time -- it's
+job count vs. iteration/debugging cost.** At `N=4200`: Option A is 21,002
+jobs at ~5 min/task; Option B is 8,402 jobs at ~20 min/task. Production wall
+time is a wash either way. What differs: Option B is 2.5x more considerate
+of Slurm's job controller and this account's submission budget, but a
+single failed task now costs ~20 min to retry instead of ~5, and there's no
+per-compartment task boundary left to isolate *which* compartment failed
+without reading the task's own log -- worth weighing against how often
+individual tasks are expected to fail or need debugging at production
+scale, which this pilot hasn't yet measured.
+
+**One operational note discovered during this run, unrelated to the
+architecture**: the background `squeue`-polling check used to detect this
+run's completion reported "done" once, prematurely, on an apparently
+transient empty `squeue` result while the coordinator and both
+`FEATURIZE_IMAGE_SET` tasks were still genuinely running (confirmed via
+`sacct` immediately after -- `RUNNING`, 15+ minutes elapsed). Re-checking
+against the actual `completion_status.txt` file's existence instead of
+queue emptiness caught this and avoided reporting fabricated results.
+Prefer checking for a run's own completion artifact over polling `squeue`
+emptiness for future long-running submissions.
+
+#### Decision: Option B is the main pilot architecture going forward
+
+Both A and B are fully measured now, not projections, and production-scale
+wall time is a wash between them (~6.7h vs ~7.1h at `N=4200`, both
+throughput-bound). Chose **Option B** -- one `FEATURIZE_IMAGE_SET` task per
+image set, no compartment-level fan-out at all -- as this pilot's main path
+going forward: 8,402 total jobs at `N=4200` (vs Option A's 21,002, vs
+105,002 where this thread started) is a meaningfully more considerate
+submission profile for a shared cluster, and today's per-task duration
+(~20 min) is nowhere near any Slurm time-limit concern. `workflows/
+featurize_image_set.nf`, `scripts/run_zedprofiler_image_set.py`, `conf/
+base.config`, `bin/nf1-nextflow-pilot`, and `Makefile` all already reflect
+this -- there's no separate Option A code path left to choose between,
+Option B *is* what `git status` on this repo shows today. The sections
+above stay as the record of how this was decided and what the real
+alternative would have cost, not as a currently-live fork to pick between.
+
+The retry-cost trade-off flagged above (a failed task now costs ~20 min to
+retry, no per-compartment log boundary) is worth watching once this runs at
+real scale, but isn't a blocker: `conf/base.config`'s existing
+`errorStrategy = { task.attempt <= 2 ? 'retry' : 'finish' }` already retries
+a failed `FEATURIZE_IMAGE_SET` task up to twice before giving up, and the
+compartment loop in `run_zedprofiler_image_set.py` keeps going through every
+compartment even when one fails *validation* (writing each one's sidecar
+regardless, `all_valid` only gates the final exit code) -- so a data-quality
+failure still identifies which compartment via its own sidecar. A hard
+crash partway through (a corrupt TIFF, an unhandled exception) still loses
+that per-compartment breakdown and requires reading the task's own log, same
+as before.

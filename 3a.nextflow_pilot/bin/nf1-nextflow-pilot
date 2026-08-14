@@ -26,8 +26,8 @@ Usage:
   bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
   bin/nf1-nextflow-pilot clear-output --run-id ID [--results-root PATH] [--dry-run]
   bin/nf1-nextflow-pilot smoke [--run-id ID]
-  bin/nf1-nextflow-pilot run (--manifest PATH | --image-sets PATH,PATH,...) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION]
-  bin/nf1-nextflow-pilot submit (--manifest PATH | --image-sets PATH,PATH,...) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--granularity-cpus N] [--granularity-memory SIZE] [--granularity-time DURATION] [--nongranularity-cpus N] [--nongranularity-memory SIZE] [--nongranularity-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+  bin/nf1-nextflow-pilot run (--manifest PATH | --image-sets PATH,PATH,...) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
+  bin/nf1-nextflow-pilot submit (--manifest PATH | --image-sets PATH,PATH,...) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
 
   --manifest and --image-sets are mutually exclusive. --image-sets takes a
   comma-separated list of manifest paths, one per image set, and fans the
@@ -192,9 +192,9 @@ check_repo() {
     "README.md"
     "manifest/nf0055_b10_1_alpine.yaml"
     "manifest/smoke_test_image_set.yaml"
+    "scripts/build_image_assets.py"
     "scripts/build_manifest.py"
     "scripts/build_warehouse_from_compartments.py"
-    "scripts/iceberg_warehouse.py"
     "scripts/manifest_io.py"
     "scripts/run_zedprofiler_image_set.py"
     "scripts/smoke_synthetic.py"
@@ -213,9 +213,9 @@ check_repo() {
 
   bash -n "$ROOT_DIR/bin/nf1-nextflow-pilot" || failed=1
   python3 -m py_compile \
+    "$ROOT_DIR/scripts/build_image_assets.py" \
     "$ROOT_DIR/scripts/build_manifest.py" \
     "$ROOT_DIR/scripts/build_warehouse_from_compartments.py" \
-    "$ROOT_DIR/scripts/iceberg_warehouse.py" \
     "$ROOT_DIR/scripts/manifest_io.py" \
     "$ROOT_DIR/scripts/run_zedprofiler_image_set.py" \
     "$ROOT_DIR/scripts/smoke_synthetic.py" || failed=1
@@ -393,18 +393,12 @@ run_nextflow() {
   local feature_cpus="$4"
   local feature_memory="$5"
   local feature_time="$6"
-  local granularity_cpus="$7"
-  local granularity_memory="$8"
-  local granularity_time="$9"
-  local nongranularity_cpus="${10}"
-  local nongranularity_memory="${11}"
-  local nongranularity_time="${12}"
-  local uv_project_environment="${13}"
-  local account="${14}"
-  local partition="${15}"
-  local qos="${16}"
-  local results_root="${17}"
-  local image_sets="${18:-}"
+  local uv_project_environment="$7"
+  local account="$8"
+  local partition="$9"
+  local qos="${10}"
+  local results_root="${11}"
+  local image_sets="${12:-}"
   local outdir="$results_root/$id"
   local nextflow
   local manifest_or_image_sets_args
@@ -412,8 +406,6 @@ run_nextflow() {
   validate_name "run-id" "$id"
   validate_name "profile" "$profile"
   validate_positive_int "feature-cpus" "$feature_cpus" 48
-  validate_positive_int "granularity-cpus" "$granularity_cpus" 48
-  validate_positive_int "nongranularity-cpus" "$nongranularity_cpus" 48
 
   resolve_manifest_or_image_sets "$manifest" "$image_sets"
   if [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
@@ -452,12 +444,6 @@ run_nextflow() {
       --feature_cpus "$feature_cpus" \
       --feature_memory "$feature_memory" \
       --feature_time "$feature_time" \
-      --granularity_cpus "$granularity_cpus" \
-      --granularity_memory "$granularity_memory" \
-      --granularity_time "$granularity_time" \
-      --nongranularity_cpus "$nongranularity_cpus" \
-      --nongranularity_memory "$nongranularity_memory" \
-      --nongranularity_time "$nongranularity_time" \
       --uv_project_environment "$uv_project_environment" \
       2>&1 | tee "$outdir/nextflow.log"
   local nextflow_status="${PIPESTATUS[0]}"
@@ -480,20 +466,14 @@ submit_slurm() {
   local feature_cpus="$3"
   local feature_memory="$4"
   local feature_time="$5"
-  local granularity_cpus="$6"
-  local granularity_memory="$7"
-  local granularity_time="$8"
-  local nongranularity_cpus="$9"
-  local nongranularity_memory="${10}"
-  local nongranularity_time="${11}"
-  local uv_project_environment="${12}"
-  local account="${13}"
-  local partition="${14}"
-  local qos="${15}"
-  local dry_run="${16}"
-  local submit_host="${17}"
-  local results_root="${18}"
-  local image_sets="${19:-}"
+  local uv_project_environment="$6"
+  local account="$7"
+  local partition="$8"
+  local qos="$9"
+  local dry_run="${10}"
+  local submit_host="${11}"
+  local results_root="${12}"
+  local image_sets="${13:-}"
   local outdir="$results_root/$id"
   local script="$outdir/coordinator.sbatch"
   local tools_root
@@ -507,8 +487,6 @@ submit_slurm() {
   validate_name "qos" "$qos"
   validate_name "submit-host" "$submit_host"
   validate_positive_int "feature-cpus" "$feature_cpus" 48
-  validate_positive_int "granularity-cpus" "$granularity_cpus" 48
-  validate_positive_int "nongranularity-cpus" "$nongranularity_cpus" 48
 
   resolve_manifest_or_image_sets "$manifest" "$image_sets"
   if [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
@@ -572,8 +550,6 @@ NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qo
   bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" $manifest_or_image_sets_args --results-root "$results_root" \\
     --uv-project-environment "\$NF1_PILOT_UV_ENVIRONMENT" \\
     --feature-cpus "$feature_cpus" --feature-memory "$feature_memory" --feature-time "$feature_time" \\
-    --granularity-cpus "$granularity_cpus" --granularity-memory "$granularity_memory" --granularity-time "$granularity_time" \\
-    --nongranularity-cpus "$nongranularity_cpus" --nongranularity-memory "$nongranularity_memory" --nongranularity-time "$nongranularity_time" \\
     --account "$account" --partition "$partition" --qos "$qos"
 EOF
 
@@ -655,12 +631,6 @@ case "$cmd" in
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
-    granularity_cpus=2
-    granularity_memory="64 GB"
-    granularity_time="90 min"
-    nongranularity_cpus=2
-    nongranularity_memory="24 GB"
-    nongranularity_time="45 min"
     uv_project_environment="${NF1_PILOT_UV_ENVIRONMENT:-}"
     account="${NF1_PILOT_ACCOUNT:-}"
     partition="${NF1_PILOT_PARTITION:-acpu}"
@@ -676,12 +646,6 @@ case "$cmd" in
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
-        --granularity-cpus) granularity_cpus="$2"; shift 2 ;;
-        --granularity-memory) granularity_memory="$2"; shift 2 ;;
-        --granularity-time) granularity_time="$2"; shift 2 ;;
-        --nongranularity-cpus) nongranularity_cpus="$2"; shift 2 ;;
-        --nongranularity-memory) nongranularity_memory="$2"; shift 2 ;;
-        --nongranularity-time) nongranularity_time="$2"; shift 2 ;;
         --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
         --account) account="$2"; shift 2 ;;
         --partition) partition="$2"; shift 2 ;;
@@ -694,7 +658,7 @@ case "$cmd" in
       echo "--manifest or --image-sets is required" >&2
       exit 2
     fi
-    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root" "$image_sets"
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root" "$image_sets"
     ;;
   submit)
     id="$(run_id)"
@@ -703,12 +667,6 @@ case "$cmd" in
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
-    granularity_cpus=2
-    granularity_memory="64 GB"
-    granularity_time="90 min"
-    nongranularity_cpus=2
-    nongranularity_memory="24 GB"
-    nongranularity_time="45 min"
     uv_project_environment="${NF1_PILOT_UV_ENVIRONMENT:-}"
     account="${NF1_PILOT_ACCOUNT:-}"
     partition="${NF1_PILOT_PARTITION:-acpu}"
@@ -725,12 +683,6 @@ case "$cmd" in
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
-        --granularity-cpus) granularity_cpus="$2"; shift 2 ;;
-        --granularity-memory) granularity_memory="$2"; shift 2 ;;
-        --granularity-time) granularity_time="$2"; shift 2 ;;
-        --nongranularity-cpus) nongranularity_cpus="$2"; shift 2 ;;
-        --nongranularity-memory) nongranularity_memory="$2"; shift 2 ;;
-        --nongranularity-time) nongranularity_time="$2"; shift 2 ;;
         --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
         --account) account="$2"; shift 2 ;;
         --partition) partition="$2"; shift 2 ;;
@@ -745,7 +697,7 @@ case "$cmd" in
       echo "--manifest or --image-sets is required" >&2
       exit 2
     fi
-    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$granularity_cpus" "$granularity_memory" "$granularity_time" "$nongranularity_cpus" "$nongranularity_memory" "$nongranularity_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets"
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets"
     ;;
   -h|--help|"")
     usage
