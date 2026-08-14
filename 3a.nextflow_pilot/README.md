@@ -1582,3 +1582,79 @@ Open with `uv run --project environments --with jupyter jupyter lab
 notebooks/query_warehouse_views.ipynb` -- `jupyter` isn't a tracked
 dependency of the pilot's own environment, so it's pulled in transiently
 rather than added to `environments/pyproject.toml`.
+
+### BUILD_IMAGE_ASSETS folded into FEATURIZE_IMAGE_SET: one job per image set
+
+`BUILD_IMAGE_ASSETS` is gone as a separate process. `FEATURIZE_IMAGE_SET`
+already loads all 4 channels and all 4 masks as full pixel arrays for
+feature extraction; `build_image_assets()` only ever needed `.shape`/
+`.dtype` off arrays, which numpy arrays already have -- so it now runs
+inline, right after the alignment check and before the compartment loop,
+reusing those same arrays with zero extra I/O and zero extra memory
+(confirmed below: peak RSS is unchanged from before this change). The
+separate task existed originally so a misaligned image set could fail fast
+via a cheap header-only read before any compute started; that advantage
+had already eroded once `FEATURIZE_IMAGE_SET` gained its own alignment
+check (this session, Option A) -- alignment was being checked twice, once
+cheaply and once redundantly. Folding them removes that duplication rather
+than adding a new risk. `scripts/build_image_assets.py` is deleted;
+`build_image_assets()` moved into `run_zedprofiler_image_set.py`, skipped
+under `--compartment` (manual single-compartment testing doesn't load
+every mask).
+
+**A real bug surfaced by the local smoke test, not the real Alpine data**:
+`build_duckdb_views.py`'s joined-view projection assumed `Metadata_
+Experiment_ImageSet` always exists across every profile table and hard
+`EXCLUDE`d it unconditionally -- DuckDB errors on `EXCLUDE`ing a column
+that isn't there, and the synthetic smoke-test frames don't carry that
+column (real ZEDProfiler output does). Fixed by having `_compartment_
+projection` query each table's actual live columns
+(`_table_columns`) and intersect against the candidate dedupe/rename lists,
+rather than assuming a fixed set always applies. This is the reason to keep
+running the smoke test against every change, not just the real Alpine
+data -- it caught a real robustness gap before Alpine did.
+
+**Verified before trusting on Alpine**: local smoke test (after the fix
+above) confirmed both `joined.*` views still build correctly against
+synthetic data; a stubbed local Nextflow run confirmed the collapsed wiring
+(3 tasks for 2 image sets: 2 `FEATURIZE_IMAGE_SET` + 1 `BUILD_WAREHOUSE`,
+correct manifest args reaching `BUILD_WAREHOUSE`); a real local run through
+`run_zedprofiler_image_set.py` against synthetic TIFFs confirmed
+`images.image_assets` lands correctly (8 rows, alignment valid) from the
+single task invocation, no separate script call.
+
+**Real run, full `NF0055_T1/B10-1` + `NF0014_T1/C4-2`, `FEATURE_MEMORY="32 GB"`:**
+
+```text
+run_id: nf0055-nf0014-fold-assets-20260814T130856Z
+workflow_slurm_jobs: 4   (was 6 with a separate BUILD_IMAGE_ASSETS -- N+2 now, not N x2+2)
+nextflow_exit_status: 0
+coordinator_walltime: 00:29:02
+validation_status: pass
+quality_warning_count: 8
+```
+
+Output identical to every prior baseline (56/51/51/3 rows, 903 columns, 16
+`images.image_assets` rows); both `joined.*` views confirmed working on
+this run's real data (408 and 24 rows, matching every prior count exactly).
+
+```text
+Process                n   realtime                    peak RSS
+FEATURIZE_IMAGE_SET    2   1008.0-1648.0s (1328.0s avg) 5.32-8.09 GB
+BUILD_WAREHOUSE        1   5.4s                          201.5 MB
+```
+
+**Coordinator walltime went up again** (`00:20:33` to `00:29:02`), but the
+evidence points to shared-cluster contention, not this change, and it's
+worth being explicit about why rather than assuming either way: peak RSS is
+*exactly* unchanged (`5324.8-8089.6 MB`, identical to the prior run down to
+the megabyte -- the same deterministic compute, same data), and folding in
+`build_image_assets()` adds at most a few seconds of work (one 8-row
+DataFrame built from data already in memory, one small parquet write) --
+nowhere near enough to explain `FEATURIZE_IMAGE_SET`'s max realtime jumping
+from `1177.0s` to `1648.0s` (+471s). Identical memory footprint with a
+large, variable duration swing is the signature of I/O/scheduling
+contention on a shared node, not more computational work -- consistent
+with the shared-cluster-contention risk already measured directly once
+this session (the node-contention `ArrayMemoryError` incident) rather than
+a new regression from this change.
