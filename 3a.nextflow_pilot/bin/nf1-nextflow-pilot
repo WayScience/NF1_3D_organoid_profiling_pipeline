@@ -26,18 +26,24 @@ Usage:
   bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
   bin/nf1-nextflow-pilot clear-output --run-id ID [--results-root PATH] [--dry-run]
   bin/nf1-nextflow-pilot smoke [--run-id ID]
-  bin/nf1-nextflow-pilot run (--manifest PATH | --image-sets PATH,PATH,...) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
-  bin/nf1-nextflow-pilot submit (--manifest PATH | --image-sets PATH,PATH,...) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+  bin/nf1-nextflow-pilot run (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
+  bin/nf1-nextflow-pilot submit (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
 
-  --manifest and --image-sets are mutually exclusive. --image-sets takes a
-  comma-separated list of manifest paths, one per image set, and fans the
-  workflow out over all of them into one shared warehouse.
+  --manifest, --image-sets, and --image-sets-index are mutually exclusive.
+  --image-sets takes a comma-separated list of manifest paths, one per
+  image set. --image-sets-index takes a CSV of patient,well_fov rows (see
+  scripts/build_image_sets_index.py) and derives each manifest on the fly
+  via build_manifest() instead of reading one YAML file per image set --
+  the intended path for large batches (hundreds to thousands of image
+  sets), where per-image-set YAML files are mostly duplicate content.
+  Either way, every image set fans out into one shared warehouse.
 
 Common Make targets:
   make check
   make doctor
   make clear-output RUN_ID=<experiment-id>
   make build-manifest
+  make build-image-sets-index SOURCE_ROOT=<path> INDEX_OUTPUT=<path>
   make run PROFILE=curc_alpine
   make submit-dry-run ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
   make submit ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
@@ -97,18 +103,45 @@ trim() {
   printf '%s' "$s"
 }
 
-# Resolves either a single --manifest path or a comma-separated --image-sets
-# list to absolute paths, validating existence and (for --image-sets)
-# duplicate-slug collisions. Sets RESOLVED_MANIFEST xor RESOLVED_IMAGE_SETS.
-resolve_manifest_or_image_sets() {
+# Resolves --manifest, --image-sets, or --image-sets-index (+ --source-root)
+# to absolute paths, validating existence and (for --image-sets)
+# duplicate-slug collisions. Sets exactly one of RESOLVED_MANIFEST /
+# RESOLVED_IMAGE_SETS / RESOLVED_IMAGE_SETS_INDEX (with RESOLVED_SOURCE_ROOT
+# alongside the index case).
+resolve_image_set_source() {
   local manifest="$1"
   local image_sets="$2"
+  local image_sets_index="$3"
+  local source_root="$4"
   RESOLVED_MANIFEST=""
   RESOLVED_IMAGE_SETS=""
+  RESOLVED_IMAGE_SETS_INDEX=""
+  RESOLVED_SOURCE_ROOT=""
 
-  if [[ -n "$manifest" && -n "$image_sets" ]]; then
-    echo "--manifest and --image-sets are mutually exclusive" >&2
+  local given=0
+  [[ -n "$manifest" ]] && given=$((given + 1))
+  [[ -n "$image_sets" ]] && given=$((given + 1))
+  [[ -n "$image_sets_index" ]] && given=$((given + 1))
+  if [[ "$given" -gt 1 ]]; then
+    echo "--manifest, --image-sets, and --image-sets-index are mutually exclusive" >&2
     exit 2
+  fi
+
+  if [[ -n "$image_sets_index" ]]; then
+    if [[ -z "$source_root" ]]; then
+      echo "--source-root is required with --image-sets-index" >&2
+      exit 2
+    fi
+    if [[ ! -f "$image_sets_index" && ! -f "$ROOT_DIR/$image_sets_index" ]]; then
+      echo "Image-sets index not found: $image_sets_index" >&2
+      exit 2
+    fi
+    if [[ ! -f "$image_sets_index" ]]; then
+      image_sets_index="$ROOT_DIR/$image_sets_index"
+    fi
+    RESOLVED_IMAGE_SETS_INDEX="$image_sets_index"
+    RESOLVED_SOURCE_ROOT="$source_root"
+    return 0
   fi
 
   if [[ -n "$image_sets" ]]; then
@@ -150,7 +183,7 @@ resolve_manifest_or_image_sets() {
   fi
 
   if [[ -z "$manifest" ]]; then
-    echo "--manifest or --image-sets is required" >&2
+    echo "--manifest, --image-sets, or --image-sets-index is required" >&2
     exit 2
   fi
   if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
@@ -193,6 +226,7 @@ check_repo() {
     "manifest/nf0055_b10_1_alpine.yaml"
     "manifest/smoke_test_image_set.yaml"
     "scripts/build_duckdb_views.py"
+    "scripts/build_image_sets_index.py"
     "scripts/build_manifest.py"
     "scripts/build_warehouse_from_compartments.py"
     "scripts/manifest_io.py"
@@ -214,6 +248,7 @@ check_repo() {
   bash -n "$ROOT_DIR/bin/nf1-nextflow-pilot" || failed=1
   python3 -m py_compile \
     "$ROOT_DIR/scripts/build_duckdb_views.py" \
+    "$ROOT_DIR/scripts/build_image_sets_index.py" \
     "$ROOT_DIR/scripts/build_manifest.py" \
     "$ROOT_DIR/scripts/build_warehouse_from_compartments.py" \
     "$ROOT_DIR/scripts/manifest_io.py" \
@@ -399,6 +434,8 @@ run_nextflow() {
   local qos="${10}"
   local results_root="${11}"
   local image_sets="${12:-}"
+  local image_sets_index="${13:-}"
+  local source_root="${14:-}"
   local outdir="$results_root/$id"
   local nextflow
   local manifest_or_image_sets_args
@@ -407,8 +444,10 @@ run_nextflow() {
   validate_name "profile" "$profile"
   validate_positive_int "feature-cpus" "$feature_cpus" 48
 
-  resolve_manifest_or_image_sets "$manifest" "$image_sets"
-  if [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
+  resolve_image_set_source "$manifest" "$image_sets" "$image_sets_index" "$source_root"
+  if [[ -n "$RESOLVED_IMAGE_SETS_INDEX" ]]; then
+    manifest_or_image_sets_args="--image_sets_index $RESOLVED_IMAGE_SETS_INDEX --source_root $RESOLVED_SOURCE_ROOT"
+  elif [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
     manifest_or_image_sets_args="--image_sets $RESOLVED_IMAGE_SETS"
   else
     manifest_or_image_sets_args="--manifest $RESOLVED_MANIFEST"
@@ -474,6 +513,8 @@ submit_slurm() {
   local submit_host="${11}"
   local results_root="${12}"
   local image_sets="${13:-}"
+  local image_sets_index="${14:-}"
+  local source_root="${15:-}"
   local outdir="$results_root/$id"
   local script="$outdir/coordinator.sbatch"
   local tools_root
@@ -488,8 +529,10 @@ submit_slurm() {
   validate_name "submit-host" "$submit_host"
   validate_positive_int "feature-cpus" "$feature_cpus" 48
 
-  resolve_manifest_or_image_sets "$manifest" "$image_sets"
-  if [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
+  resolve_image_set_source "$manifest" "$image_sets" "$image_sets_index" "$source_root"
+  if [[ -n "$RESOLVED_IMAGE_SETS_INDEX" ]]; then
+    manifest_or_image_sets_args="--image-sets-index \"$RESOLVED_IMAGE_SETS_INDEX\" --source-root \"$RESOLVED_SOURCE_ROOT\""
+  elif [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
     manifest_or_image_sets_args="--image-sets \"$RESOLVED_IMAGE_SETS\""
   else
     manifest_or_image_sets_args="--manifest \"$RESOLVED_MANIFEST\""
@@ -627,6 +670,8 @@ case "$cmd" in
     id="$(run_id)"
     manifest=""
     image_sets=""
+    image_sets_index=""
+    source_root=""
     profile="local"
     feature_cpus=2
     feature_memory="32 GB"
@@ -641,6 +686,8 @@ case "$cmd" in
         --run-id) id="$2"; shift 2 ;;
         --manifest) manifest="$2"; shift 2 ;;
         --image-sets) image_sets="$2"; shift 2 ;;
+        --image-sets-index) image_sets_index="$2"; shift 2 ;;
+        --source-root) source_root="$2"; shift 2 ;;
         --profile) profile="$2"; shift 2 ;;
         --results-root) results_root="$2"; shift 2 ;;
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
@@ -654,16 +701,18 @@ case "$cmd" in
         *) echo "Unknown option: $1" >&2; exit 2 ;;
       esac
     done
-    if [[ -z "$manifest" && -z "$image_sets" ]]; then
-      echo "--manifest or --image-sets is required" >&2
+    if [[ -z "$manifest" && -z "$image_sets" && -z "$image_sets_index" ]]; then
+      echo "--manifest, --image-sets, or --image-sets-index is required" >&2
       exit 2
     fi
-    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root" "$image_sets"
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root" "$image_sets" "$image_sets_index" "$source_root"
     ;;
   submit)
     id="$(run_id)"
     manifest=""
     image_sets=""
+    image_sets_index=""
+    source_root=""
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
@@ -679,6 +728,8 @@ case "$cmd" in
         --run-id) id="$2"; shift 2 ;;
         --manifest) manifest="$2"; shift 2 ;;
         --image-sets) image_sets="$2"; shift 2 ;;
+        --image-sets-index) image_sets_index="$2"; shift 2 ;;
+        --source-root) source_root="$2"; shift 2 ;;
         --results-root) results_root="$2"; shift 2 ;;
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
@@ -693,11 +744,11 @@ case "$cmd" in
         *) echo "Unknown option: $1" >&2; exit 2 ;;
       esac
     done
-    if [[ -z "$manifest" && -z "$image_sets" ]]; then
-      echo "--manifest or --image-sets is required" >&2
+    if [[ -z "$manifest" && -z "$image_sets" && -z "$image_sets_index" ]]; then
+      echo "--manifest, --image-sets, or --image-sets-index is required" >&2
       exit 2
     fi
-    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets"
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets" "$image_sets_index" "$source_root"
     ;;
   -h|--help|"")
     usage

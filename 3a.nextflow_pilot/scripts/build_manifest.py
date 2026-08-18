@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import fnmatch
 import re
 import sys
@@ -44,6 +45,34 @@ FEATURE_FAMILIES = (
     "Neighbors",
     "Granularity",
 )
+# One explanatory comment per top-level manifest field, written directly
+# above that field by dump_manifest() -- added after review questions kept
+# coming up about what individual fields meant (e.g. compartment_primary_
+# channels). Keep in sync with build_manifest()'s returned keys below.
+FIELD_COMMENTS: dict[str, str] = {
+    "schema_version": "Manifest schema version, for future migrations.",
+    "source_image_root": "Root directory this image set's files were staged under.",
+    "Metadata_Biology_PatientTumor": "Patient/tumor identifier, e.g. NF0055_T1.",
+    "Metadata_Biology_PatientID": "Patient identifier without the tumor suffix, e.g. NF0055.",
+    "Metadata_Experiment_PlateID": "Plate identifier (matches PatientTumor in this pilot).",
+    "Metadata_Experiment_WellID": "Well identifier, e.g. B10.",
+    "Metadata_Imaging_FieldID": "Field-of-view identifier within the well, e.g. 1.",
+    "Metadata_Imaging_ImageID": "Unique ID for this image set: patient__plate__well__field.",
+    "compartment": "Legacy single-compartment fallback for older tooling -- see compartments below for the real list this pilot uses.",
+    "compartments": "Every compartment ZEDProfiler extracts features for in this image set.",
+    "z_spacing": "Z-axis voxel spacing (microns), used for anisotropy-aware features.",
+    "xy_spacing": "XY-axis voxel spacing (microns), used for anisotropy-aware features.",
+    "mask_path": "Legacy single-compartment fallback for older tooling -- see mask_paths below.",
+    "mask_paths": "Segmentation mask TIFF path, one per compartment.",
+    "channel_paths": "Raw channel image TIFF path, one per channel.",
+    "channel_codes": "Wavelength/filter code per channel (e.g. DNA=405nm).",
+    "compartment_primary_channels": "The channel each compartment's mask was actually segmented from (e.g. Nuclei from DNA, Cell/Cytoplasm/Organoid from AGP). Provenance metadata only -- not used in any computation, just stamped onto every profile row and the image_assets table.",
+    "compartment_primary_channel_codes": "Wavelength code matching compartment_primary_channels.",
+    "compartment_seed_channels": "The channel used to seed this compartment's segmentation, if any (e.g. Cell/Cytoplasm are watershed-seeded from the Nuclei/DNA segmentation). Empty string if the compartment isn't seeded from another one.",
+    "compartment_seed_channel_codes": "Wavelength code matching compartment_seed_channels.",
+    "compartment_segmentation_methods": "Short description of how each compartment's mask was produced.",
+    "feature_families": "ZEDProfiler feature families this pilot expects and validates for every compartment.",
+}
 
 
 def repo_root() -> Path:
@@ -193,6 +222,53 @@ def build_manifest(
     }
 
 
+def resolve_manifest(
+    manifest_path: Path | None,
+    patient: str | None,
+    well_fov: str | None,
+    source_root: Path | None,
+) -> dict[str, object]:
+    """Load a manifest from an explicit YAML path, or derive one on the fly
+    from (source_root, patient, well_fov) via build_manifest() -- the
+    index-driven path that avoids needing one YAML file per image set,
+    since everything except patient/well/field/paths is a fixed pilot-wide
+    constant and the paths themselves are already deterministically
+    derivable by glob."""
+    if manifest_path:
+        return load_manifest(manifest_path)
+    if patient and well_fov and source_root:
+        return build_manifest(source_root, patient, well_fov)
+    raise SystemExit(
+        "Provide --manifest, or all of --patient/--well-fov/--source-root"
+    )
+
+
+def read_image_sets_index(path: Path) -> list[tuple[str, str]]:
+    """Read one (patient, well_fov) pair per row from a CSV index -- the
+    lightweight replacement for a whole YAML manifest file per image set.
+    Expects a header row with at least 'patient' and 'well_fov' columns."""
+    with open(path, newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = set(reader.fieldnames or [])
+        missing = {"patient", "well_fov"} - fieldnames
+        if missing:
+            raise SystemExit(
+                f"{path}: CSV header missing required column(s): {', '.join(sorted(missing))}"
+            )
+        return [
+            (row["patient"].strip(), row["well_fov"].strip())
+            for row in reader
+            if row.get("patient", "").strip()
+        ]
+
+
+def slug_for_image_set(patient: str, well_fov: str) -> str:
+    """Nextflow-safe slug for a (patient, well_fov) pair, matching the
+    lowercase/alnum-underscore convention featurize_image_set.nf already
+    uses for manifest-filename-derived slugs."""
+    return re.sub(r"[^a-z0-9_]+", "_", f"{patient}_{well_fov}".lower())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path)
@@ -223,7 +299,7 @@ def main() -> int:
     manifest = build_manifest(
         args.source_root.expanduser(), args.patient, args.well_fov
     )
-    dump_manifest(manifest, output)
+    dump_manifest(manifest, output, field_comments=FIELD_COMMENTS)
     print(f"Wrote manifest: {output}")
     return 0
 

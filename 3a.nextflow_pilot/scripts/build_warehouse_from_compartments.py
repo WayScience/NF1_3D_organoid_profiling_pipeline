@@ -16,6 +16,11 @@ data materialized), aggregate validation status, write one run-level
 summary (also under metadata/), and refresh warehouse/warehouse.duckdb, a
 small view catalog over warehouse/ that stays portable with it (see
 build_duckdb_views.py).
+
+Takes either --manifest (repeatable, one YAML path per image set) or
+--image-sets-index/--source-root (a CSV of patient,well_fov rows, each
+manifest derived on the fly the same way FEATURIZE_IMAGE_SET does) -- see
+build_manifest.py's resolve_manifest()/read_image_sets_index().
 """
 
 from __future__ import annotations
@@ -30,7 +35,8 @@ from typing import Any
 
 import pyarrow.parquet as pq
 from build_duckdb_views import build_views
-from manifest_io import load_manifest, require_manifest_paths
+from build_manifest import read_image_sets_index, resolve_manifest
+from manifest_io import require_manifest_paths
 from run_zedprofiler_image_set import (
     COMPARTMENTS,
     compartment_slug,
@@ -45,25 +51,47 @@ def main() -> int:
         "--manifest",
         type=Path,
         action="append",
-        required=True,
         dest="manifests",
-        help="Repeatable. One manifest per image set landed in this run.",
+        help="Repeatable. One manifest per image set landed in this run. "
+        "Mutually exclusive with --image-sets-index.",
     )
+    parser.add_argument(
+        "--image-sets-index",
+        type=Path,
+        help="CSV of patient,well_fov rows -- one per image set landed in "
+        "this run. Each manifest is derived on the fly via build_manifest(), "
+        "same as FEATURIZE_IMAGE_SET does. Requires --source-root.",
+    )
+    parser.add_argument("--source-root", type=Path)
     parser.add_argument("--outdir", required=True, type=Path)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--repo-root", required=True, type=Path)
     args = parser.parse_args()
 
+    if bool(args.manifests) == bool(args.image_sets_index):
+        raise SystemExit("Provide exactly one of --manifest (repeatable) or --image-sets-index")
+
     started = time.perf_counter()
     git_revision = git_commit(args.repo_root)
 
-    manifests: list[tuple[Path, dict[str, Any]]] = []
-    for manifest_path in args.manifests:
-        manifest = load_manifest(manifest_path)
-        path_errors = require_manifest_paths(manifest)
-        if path_errors:
-            raise SystemExit(f"{manifest_path}: " + "\n".join(path_errors))
-        manifests.append((manifest_path, manifest))
+    manifests: list[tuple[str, dict[str, Any]]] = []
+    if args.image_sets_index:
+        if not args.source_root:
+            raise SystemExit("--source-root is required with --image-sets-index")
+        for patient, well_fov in read_image_sets_index(args.image_sets_index):
+            label = f"{patient}/{well_fov}"
+            manifest = resolve_manifest(None, patient, well_fov, args.source_root)
+            path_errors = require_manifest_paths(manifest)
+            if path_errors:
+                raise SystemExit(f"{label}: " + "\n".join(path_errors))
+            manifests.append((label, manifest))
+    else:
+        for manifest_path in args.manifests:
+            manifest = resolve_manifest(manifest_path, None, None, None)
+            path_errors = require_manifest_paths(manifest)
+            if path_errors:
+                raise SystemExit(f"{manifest_path}: " + "\n".join(path_errors))
+            manifests.append((str(manifest_path), manifest))
 
     image_ids = [str(manifest["Metadata_Imaging_ImageID"]) for _, manifest in manifests]
     duplicate_ids = sorted({i for i in image_ids if image_ids.count(i) > 1})
@@ -79,14 +107,14 @@ def main() -> int:
     unknown = sorted(set(compartments) - set(COMPARTMENTS))
     if unknown:
         raise SystemExit(f"Unsupported compartments: {', '.join(unknown)}")
-    for manifest_path, manifest in manifests[1:]:
+    for label, manifest in manifests[1:]:
         entry_compartments = [
             str(c) for c in (manifest.get("compartments") or [manifest["compartment"]])
         ]
         if entry_compartments != compartments:
             raise SystemExit(
                 "All image sets in one run must share the same compartments list: "
-                f"{manifest_path} has {entry_compartments}, expected {compartments}"
+                f"{label} has {entry_compartments}, expected {compartments}"
             )
 
     all_valid = True

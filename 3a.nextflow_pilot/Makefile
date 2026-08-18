@@ -4,6 +4,8 @@ export PYENV_VERSION ?= system
 RUN_ID ?=
 MANIFEST ?= manifest/nf0055_b10_1_alpine.yaml
 IMAGE_SETS ?=
+IMAGE_SETS_INDEX ?=
+INDEX_OUTPUT ?= manifest/image_sets_index.csv
 SOURCE_ROOT ?= /pl/active/koala/nf1-3d-pilot-workflow-db
 RESULTS_ROOT ?= /pl/active/koala/nf1-3d-pilot-workflow-db/results
 PATIENT ?= NF0055_T1
@@ -36,7 +38,9 @@ endif
 ifneq ($(strip $(UV_PROJECT_ENVIRONMENT)),)
 RUN_ARGS += --uv-project-environment "$(UV_PROJECT_ENVIRONMENT)"
 endif
-ifneq ($(strip $(IMAGE_SETS)),)
+ifneq ($(strip $(IMAGE_SETS_INDEX)),)
+RUN_ARGS += --image-sets-index "$(IMAGE_SETS_INDEX)" --source-root "$(SOURCE_ROOT)"
+else ifneq ($(strip $(IMAGE_SETS)),)
 RUN_ARGS += --image-sets "$(IMAGE_SETS)"
 else
 RUN_ARGS += --manifest "$(MANIFEST)"
@@ -46,7 +50,7 @@ RUN_ARGS += --feature-cpus "$(FEATURE_CPUS)"
 RUN_ARGS += --feature-memory "$(FEATURE_MEMORY)"
 RUN_ARGS += --feature-time "$(FEATURE_TIME)"
 
-.PHONY: help check doctor preflight clear-output clear-output-dry-run build-manifest validate-manifest run submit submit-dry-run smoke clean
+.PHONY: help check doctor preflight clear-output clear-output-dry-run build-manifest validate-manifest build-image-sets-index run submit submit-dry-run smoke clean
 
 help:
 	@bash bin/nf1-nextflow-pilot --help
@@ -71,6 +75,9 @@ build-manifest:
 
 validate-manifest:
 	@python3 scripts/build_manifest.py --validate-only --output "$(MANIFEST)"
+
+build-image-sets-index:
+	@python3 scripts/build_image_sets_index.py --source-root "$(SOURCE_ROOT)" --output "$(INDEX_OUTPUT)"
 
 run:
 	@NF1_PILOT_ACCOUNT="$(ACCOUNT)" NF1_PILOT_PARTITION="$(PARTITION)" NF1_PILOT_QOS="$(QOS)" \

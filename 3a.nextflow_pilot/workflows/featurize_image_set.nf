@@ -19,21 +19,55 @@ def slugFor(manifestPath) {
   return file(manifestPath).baseName.toLowerCase().replaceAll(/[^a-z0-9_]+/, '_')
 }
 
+def slugForIndexRow(patient, wellFov) {
+  return "${patient}_${wellFov}".toLowerCase().replaceAll(/[^a-z0-9_]+/, '_')
+}
+
+// Every entry is [slug, patient, wellFov, manifestPath] regardless of
+// source -- index rows leave manifestPath null, manifest-path entries
+// leave patient/wellFov null. Keeping one shape means every other
+// function here doesn't need to know which mode is active.
 def imageSets() {
+  if (params.image_sets_index) {
+    def rows = file(params.image_sets_index).splitCsv(header: true)
+    def entries = rows.collect { row ->
+      def patient = row.patient.trim()
+      def wellFov = row.well_fov.trim()
+      [slugForIndexRow(patient, wellFov), patient, wellFov, null]
+    }
+    def slugs = entries.collect { it[0] }
+    if (slugs.unique(false).size() != slugs.size()) {
+      error "Duplicate image-set slugs derived from index rows: ${slugs}"
+    }
+    return entries
+  }
   def paths = parseManifestPaths()
-  def slugs = paths.collect { slugFor(it) }
+  def entries = paths.collect { path -> [slugFor(path), null, null, path] }
+  def slugs = entries.collect { it[0] }
   if (slugs.unique(false).size() != slugs.size()) {
     error "Duplicate image-set slugs derived from manifest filenames: ${slugs}"
   }
-  return [slugs, paths].transpose()
+  return entries
 }
 
-def manifestPathForSlug(slug) {
+def entryForSlug(slug) {
   def match = imageSets().find { it[0] == slug }
   if (!match) {
     error "Unknown image-set slug: ${slug}"
   }
-  return file(match[1])
+  return match
+}
+
+// CLI args identifying one image set to a Python script -- either
+// --manifest PATH, or --patient/--well-fov/--source-root for the
+// index-driven path, which derives the manifest on the fly instead of
+// reading a YAML file (see build_manifest.py's resolve_manifest()).
+def manifestArgsForSlug(slug) {
+  def (_slug, patient, wellFov, manifestPath) = entryForSlug(slug)
+  if (manifestPath) {
+    return "--manifest \"${file(manifestPath)}\""
+  }
+  return "--patient \"${patient}\" --well-fov \"${wellFov}\" --source-root \"${params.source_root}\""
 }
 
 process FEATURIZE_IMAGE_SET {
@@ -47,7 +81,7 @@ process FEATURIZE_IMAGE_SET {
 
   script:
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
-  def manifest_path = manifestPathForSlug(image_set_slug)
+  def manifest_args = manifestArgsForSlug(image_set_slug)
   """
   set -euo pipefail
   export UV_PROJECT_ENVIRONMENT="${uv_env}"
@@ -63,7 +97,7 @@ process FEATURIZE_IMAGE_SET {
 
   /usr/bin/time -v -o "resource_usage.txt" "\${PYTHON_RUNNER[@]}" \\
     "${params.pilot_root}/scripts/run_zedprofiler_image_set.py" \\
-    --manifest "${manifest_path}" \\
+    ${manifest_args} \\
     --outdir "${params.outdir}" \\
     --run-id "${params.run_id ?: 'manual'}" \\
     --repo-root "${params.pilot_root}/.."
@@ -78,9 +112,11 @@ process BUILD_WAREHOUSE {
 
   script:
   def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
-  def manifest_args = imageSets().collect { slug, manifest_path ->
-    "--manifest \"${file(manifest_path)}\""
-  }.join(' \\\n    ')
+  def manifest_args = params.image_sets_index
+    ? "--image-sets-index \"${file(params.image_sets_index)}\" --source-root \"${params.source_root}\""
+    : imageSets().collect { slug, patient, wellFov, manifestPath ->
+        "--manifest \"${file(manifestPath)}\""
+      }.join(' \\\n    ')
   """
   set -euo pipefail
   mkdir -p "${params.outdir}"
@@ -106,8 +142,11 @@ process BUILD_WAREHOUSE {
 }
 
 workflow {
-  if (!params.manifest && !params.image_sets) {
-    error "params.manifest or params.image_sets is required"
+  if (!params.manifest && !params.image_sets && !params.image_sets_index) {
+    error "params.manifest, params.image_sets, or params.image_sets_index is required"
+  }
+  if (params.image_sets_index && !params.source_root) {
+    error "params.source_root is required when using params.image_sets_index"
   }
   if (!params.outdir) {
     error "params.outdir is required"
@@ -117,7 +156,7 @@ workflow {
   }
 
   image_sets = imageSets()
-  image_set_slugs = image_sets.collect { slug, path -> slug }
+  image_set_slugs = image_sets.collect { slug, patient, wellFov, manifestPath -> slug }
 
   FEATURIZE_IMAGE_SET(Channel.fromList(image_set_slugs))
 

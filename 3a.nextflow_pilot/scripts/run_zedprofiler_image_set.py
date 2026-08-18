@@ -26,7 +26,8 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 import tifffile
-from manifest_io import load_manifest, require_manifest_paths
+from build_manifest import resolve_manifest
+from manifest_io import require_manifest_paths
 
 CHANNELS = ("DNA", "ER", "AGP", "Mito")
 COMPARTMENTS = ("Nuclei", "Cell", "Cytoplasm", "Organoid")
@@ -657,7 +658,20 @@ def build_image_assets(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        help="Path to a YAML manifest for this image set. Mutually "
+        "exclusive with --patient/--well-fov/--source-root.",
+    )
+    parser.add_argument(
+        "--patient",
+        help="Patient/tumor ID, e.g. NF0055_T1. Used with --well-fov and "
+        "--source-root to derive a manifest on the fly instead of reading "
+        "a YAML file -- the index-driven path for large batches.",
+    )
+    parser.add_argument("--well-fov", help="Well+field, e.g. B10-1.")
+    parser.add_argument("--source-root", type=Path)
     parser.add_argument(
         "--outdir",
         required=True,
@@ -678,10 +692,11 @@ def main() -> int:
     args = parser.parse_args()
 
     started = time.perf_counter()
-    manifest = load_manifest(args.manifest)
+    manifest = resolve_manifest(args.manifest, args.patient, args.well_fov, args.source_root)
     path_errors = require_manifest_paths(manifest)
     if path_errors:
         raise SystemExit("\n".join(path_errors))
+    image_id = str(manifest["Metadata_Imaging_ImageID"])
 
     zapi = import_zedprofiler()
     channel_paths = manifest["channel_paths"]
@@ -712,12 +727,11 @@ def main() -> int:
     alignment = validate_aligned_shapes(images, masks)
     if not alignment["valid"]:
         raise SystemExit(
-            f"Channel and mask arrays are not aligned by shape for {args.manifest}:\n"
+            f"Channel and mask arrays are not aligned by shape for {image_id}:\n"
             f"{json.dumps(alignment, indent=2)}"
         )
 
     git_revision = git_commit(args.repo_root)
-    image_id = str(manifest["Metadata_Imaging_ImageID"])
     all_valid = True
 
     if not args.compartment:

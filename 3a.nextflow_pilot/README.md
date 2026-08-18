@@ -1,19 +1,100 @@
-# NF0055 B10-1 Pilot
+# NF1 ZEDProfiler Pilot
 
-This pilot runs one ZEDProfiler extraction through Nextflow on Alpine.
+This pilot runs ZEDProfiler feature extraction through Nextflow on Alpine,
+for one or many NF1 organoid image sets in a single run, publishing
+results into a shared parquet + DuckDB warehouse.
 
 Data staged on PetaLibrary:
 
 ```text
-/pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/zstack_images/B10-1/
-/pl/active/koala/nf1-3d-pilot-workflow-db/data/NF0055_T1/segmentation_masks/B10-1/
+/pl/active/koala/nf1-3d-pilot-workflow-db/data/<patient>/zstack_images/<well_fov>/
+/pl/active/koala/nf1-3d-pilot-workflow-db/data/<patient>/segmentation_masks/<well_fov>/
 ```
 
-Manifest:
+Two ways to tell the pipeline which image sets to run, both fully
+supported (see [Index-driven image sets](#index-driven-image-sets-no-more-one-yaml-file-per-image-set)
+below):
 
-```text
-3a.nextflow_pilot/manifest/nf0055_b10_1_alpine.yaml
+- **Manifest YAML** -- one hand-editable file per image set, e.g.
+  `manifest/nf0055_b10_1_alpine.yaml`. Good for a specific override or a
+  small ad-hoc run.
+- **Image-sets index CSV** -- one `patient,well_fov` row per image set,
+  built by scanning PetaLibrary directly (`scripts/build_image_sets_index.py`).
+  Good for large batches (thousands of image sets), where a manifest file
+  per image set would mostly duplicate pilot-wide constants.
+
+## Architecture
+
+### Pipeline flow
+
+```mermaid
+flowchart TD
+    subgraph INPUT["Input mode -- pick one per run"]
+        A1["Manifest YAML files<br/>manifest/*.yaml"]
+        A2["Image-sets index CSV<br/>patient,well_fov rows"]
+    end
+
+    A1 -->|"--manifest"| B
+    A2 -->|"--image-sets-index / --source-root"| B
+
+    B["FEATURIZE_IMAGE_SET<br/>(one Slurm task per image set)"]
+    B --> B1["Load 4 channels + 4 masks once<br/>check whole-image-set alignment"]
+    B1 --> B2["Build images.image_assets<br/>(one row per channel + per mask)"]
+    B1 --> B3["Extract Nuclei / Cell / Cytoplasm / Organoid profiles<br/>(nongranularity + granularity together)"]
+    B2 --> W1[("warehouse/images/image_assets/&lt;image_id&gt;.parquet")]
+    B3 --> W2[("warehouse/profiles/&lt;compartment&gt;_profiles/&lt;image_id&gt;.parquet")]
+    B1 --> M1[("metadata/.../&lt;image_id&gt;.validation.json + .run_record.json")]
+
+    W1 --> C
+    W2 --> C
+    C["BUILD_WAREHOUSE<br/>(one Slurm task per run)"]
+    C --> C1["Scan + validate every landed parquet file<br/>(no data copy, no data load)"]
+    C1 --> C2["build_duckdb_views.py"]
+    C2 --> D[("warehouse/warehouse.duckdb<br/>views only, no copied data")]
+    C1 --> M2[("metadata/run_record.json + metadata/validation.json")]
+
+    D --> E1["profiles.nuclei_profiles<br/>profiles.cell_profiles<br/>profiles.cytoplasm_profiles<br/>profiles.organoid_profiles"]
+    D --> E2["images.image_assets"]
+    D --> E3["joined.images_nuclei_cell_cytoplasm<br/>joined.images_organoid"]
 ```
+
+`FEATURIZE_IMAGE_SET` and `BUILD_WAREHOUSE` both write directly into the
+run's final `${outdir}`; nothing is copied or moved afterward (see
+[Write-once architecture](#write-once-architecture-no-iceberg-no-registration-step)
+below). Total Slurm jobs for N image sets: `N + 2` (N `FEATURIZE_IMAGE_SET`
+tasks + 1 `BUILD_WAREHOUSE` task + the coordinator job itself).
+
+### Compartment segmentation relationships
+
+This diagram is the direct answer to two review questions:
+*is Cytoplasm seeded to Nuclei?* and *what do `compartment_primary_channels`
+/ `compartment_seed_channels` actually mean?*
+
+```mermaid
+flowchart LR
+    DNA(["DNA channel (405)"]) -->|primary| Nuclei["Nuclei mask<br/>segmented_from_dna"]
+    AGP(["AGP channel (555)"]) -->|primary| Cell["Cell mask<br/>agp_watershed_seeded_by_nuclei"]
+    Nuclei -->|seed| Cell
+    Cell -->|"Cell minus Nuclei"| Cytoplasm["Cytoplasm mask<br/>cell_mask_minus_nuclei_mask"]
+    Nuclei -->|subtracted| Cytoplasm
+    AGP -->|"primary, no seed"| Organoid["Organoid mask<br/>segmented_from_agp<br/>(independent object-ID space)"]
+
+    ER(["ER channel (488)"]) -.->|measured in every mask| Nuclei
+    Mito(["Mito channel (640)"]) -.->|measured in every mask| Nuclei
+```
+
+`Nuclei` segments independently from `DNA` alone. `Cell` is an AGP
+watershed *seeded* by `Nuclei`'s own segmentation, so their object IDs
+coincide -- which is why `joined.images_nuclei_cell_cytoplasm` can join all
+three compartments on `Metadata_Object_ObjectID` directly (confirmed
+empirically: `NF0014_T1/C4-2` has 45 Nuclei objects but only 42
+Cell/Cytoplasm objects, a strict subset -- one row per cell that
+successfully segmented). `Cytoplasm` is **not** an independent seeded
+watershed at all -- it's the plain set subtraction `Cell mask - Nuclei
+mask`. `Organoid` segments from `AGP` independently, with no seed channel
+and its own, much smaller object-ID space (1-2 per image set), so it's
+never part of the Nuclei/Cell/Cytoplasm join. `ER` and `Mito` are measured
+inside every compartment mask but never drive segmentation.
 
 ## Run
 
@@ -28,12 +109,22 @@ make submit-dry-run RUN_ID=nf0055-b10-1-zp-benchmark ACCOUNT=amc-general
 make submit RUN_ID=nf0055-b10-1-zp-benchmark ACCOUNT=amc-general
 ```
 
-The split fan-out workflow exposes resource knobs for extraction stages:
+The workflow exposes resource knobs for the single `FEATURIZE_IMAGE_SET`
+task, which does all feature extraction for one image set in one process:
 
 ```bash
 make submit RUN_ID=nf0055-b10-1-zp-benchmark ACCOUNT=amc-general \
-  GRANULARITY_MEMORY="64 GB" \
-  NONGRANULARITY_MEMORY="24 GB"
+  FEATURE_CPUS=2 FEATURE_MEMORY="32 GB" FEATURE_TIME=2h
+```
+
+For large batches, use the index-driven path instead of one manifest per
+image set (see [Index-driven image sets](#index-driven-image-sets-no-more-one-yaml-file-per-image-set)
+below):
+
+```bash
+make build-image-sets-index SOURCE_ROOT=/pl/active/koala/nf1-3d-pilot-workflow-db
+make submit IMAGE_SETS_INDEX=manifest/image_sets_index.csv \
+  SOURCE_ROOT=/pl/active/koala/nf1-3d-pilot-workflow-db ACCOUNT=amc-general
 ```
 
 By default, `make submit` also creates or reuses a shared worker virtualenv at:
@@ -75,64 +166,55 @@ UV_CACHE_DIR=/pl/active/koala/nf1-3d-pilot-workflow-db/tools/uv-cache \
 After the run finishes, check:
 
 ```text
-/pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/run_record.json
-/pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/warehouse/warehouse_manifest.json
-/pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/resource_usage.txt
-/pl/active/koala/nf1-3d-pilot-workflow-db/results/nf0055-b10-1-zp-benchmark/trace.tsv
+${RESULTS_ROOT}/${RUN_ID}/metadata/run_record.json
+${RESULTS_ROOT}/${RUN_ID}/metadata/validation.json
+${RESULTS_ROOT}/${RUN_ID}/resource_usage.txt
+${RESULTS_ROOT}/${RUN_ID}/trace.tsv
 ```
 
-Use `run_record.json` for total elapsed seconds and per-feature timing.
-Use `resource_usage.txt` for `/usr/bin/time -v` wall time and peak RSS.
-Use `trace.tsv` for the Nextflow task runtime, status, work directory, and
-Slurm native job ID.
+Use `metadata/run_record.json` for total elapsed seconds and per-feature
+timing. Use `resource_usage.txt` for `/usr/bin/time -v` wall time and peak
+RSS. Use `trace.tsv` for the Nextflow task runtime, status, work directory,
+and Slurm native job ID.
 
-The full image-set manifest now includes all four compartments. A full run
-writes one profile parquet **dataset directory** per compartment (one
-parquet file per image set inside, named by that image set's
-`Metadata_Imaging_ImageID`; a single-image-set run's directory just has
-one file in it). Nothing concatenates these files together, so reading the
-whole compartment table is `pd.read_parquet(directory)` or any
-multi-file-aware parquet reader:
+The warehouse holds data only -- see [Architecture](#architecture) above
+for the full flow and [Warehouse directory](#warehouse-directory-parquet-only-portable-with-lightweight-duckdb-views)
+below for how the exact layout came about:
 
 ```text
-nuclei_profiles/
-  NF0055_T1__NF0055_T1__B10__F1.parquet
-  NF0014_T1__NF0014_T1__C4__F2.parquet
-cell_profiles/
-cytoplasm_profiles/
-organoid_profiles/
-```
-
-The analysis output is also published as a local Apache Iceberg warehouse:
-
-```text
-warehouse/
-  catalog.db
-  warehouse_manifest.json
-  images/
-    image_assets/
+warehouse/                          <- data only, nothing else
   profiles/
-    nuclei_profiles/
-    cell_profiles/
-    cytoplasm_profiles/
-    organoid_profiles/
+    nuclei_profiles/<image_id>.parquet
+    cell_profiles/<image_id>.parquet
+    cytoplasm_profiles/<image_id>.parquet
+    organoid_profiles/<image_id>.parquet
+  images/
+    image_assets/<image_id>.parquet
+  warehouse.duckdb                  <- views only, no copied data
+metadata/                           <- every JSON sidecar, mirroring the same paths
+  profiles/<table>/<image_id>.validation.json, .run_record.json
+  images/image_assets/<image_id>.validation.json
+  run_record.json                   <- BUILD_WAREHOUSE's run-level summary
+  validation.json
 ```
 
-`warehouse_manifest.json` records namespace-qualified table names, roles,
-formats, join keys, columns, row counts, table locations, and current Iceberg
-metadata locations. A compatibility copy is written at the run root as
-`warehouse_manifest.json`, but the canonical manifest lives under `warehouse/`.
-
-The workflow writes the warehouse directly into the final results directory.
-Iceberg metadata contains absolute table, manifest, and data-file paths, so the
-warehouse should not be created in a Nextflow scratch directory and copied into
-place afterward.
+Each profile table is a plain parquet **dataset directory**: one file per
+image set, named by that image set's `Metadata_Imaging_ImageID`. Nothing
+concatenates these files together, so reading the whole compartment table
+is `pd.read_parquet(directory)` or any multi-file-aware parquet reader.
+`warehouse.duckdb` layers named views (`profiles.*`, `images.*`,
+`joined.*`) over the same files with zero data copy -- see
+`notebooks/query_warehouse_views.ipynb` for worked examples, and
+`FEATURIZE_IMAGE_SET`/`BUILD_WAREHOUSE` write directly into this final
+layout from the start, so nothing needs moving once a run finishes.
 
 ## Channel and Compartment Roles
 
-The pilot follows the repository channel mapping in `config/channel_mapping.toml`.
-Raw image filenames use wavelength tokens, while ZEDProfiler feature columns use
-the biological channel names:
+See [Compartment segmentation relationships](#compartment-segmentation-relationships)
+above for a diagram of how these connect. The pilot follows the repository
+channel mapping in `config/channel_mapping.toml`. Raw image filenames use
+wavelength tokens, while ZEDProfiler feature columns use the biological
+channel names:
 
 | Filename token | Channel name | Segmentation role                                                                                   |
 | -------------- | ------------ | --------------------------------------------------------------------------------------------------- |
@@ -160,9 +242,11 @@ The source code loads arrays into `ImageSetLoader.image_set_dict`, and
 by key. Pixel/voxel correspondence is therefore assumed.
 
 For this pilot, alignment means all channel z-stacks and all compartment masks
-must already be in the same `(z, y, x)` coordinate space. The runner records
-`alignment_validation.json` and fails before feature extraction if any shape
-differs.
+must already be in the same `(z, y, x)` coordinate space. `FEATURIZE_IMAGE_SET`
+loads every channel and mask once, checks this before any feature extraction
+starts, and fails the task (`SystemExit`, no partial output) if any shape
+differs. The result is also recorded as the `alignment` field inside
+`metadata/images/image_assets/<image_id>.validation.json`.
 
 For `NF0055_T1 / B10-1`, metadata-only TIFF inspection on Alpine showed all
 arrays have the same shape:
@@ -1658,3 +1742,119 @@ contention on a shared node, not more computational work -- consistent
 with the shared-cluster-contention risk already measured directly once
 this session (the node-contention `ArrayMemoryError` incident) rather than
 a new regression from this change.
+
+### Index-driven image sets: no more one YAML file per image set
+
+4200 manifest YAML files felt intense to manage, and most of the content
+was never actually per-image-set. Of the 22 top-level manifest fields, only
+patient/well/field (and the 8 file paths they imply) vary across image
+sets -- `compartments`, `channel_codes`, every `compartment_*` mapping,
+`z_spacing`/`xy_spacing`, and `feature_families` are identical pilot-wide
+constants, copied into every file for no reason. And the file paths
+themselves aren't independent data either: `build_manifest.py` already
+derives them deterministically from just `(patient, well_fov)` via glob
+patterns (`complete_well_fovs()`) -- that's how every manifest so far was
+actually built. So the real information content across N image sets is
+just a list of `(patient, well_fov)` pairs.
+
+**New: `scripts/build_image_sets_index.py`** scans `source_root/data/*` for
+every patient and writes one small CSV (`patient,well_fov` columns) listing
+every *complete* image set found (reusing `complete_well_fovs()`'s own
+completeness check, so an index never lists an image set that isn't
+actually ready to run). For N=4200 this is one file, a few KB, instead of
+4200 files with mostly duplicate content.
+
+**`scripts/build_manifest.py` gained two small shared functions** other
+scripts now import directly: `resolve_manifest(manifest_path, patient,
+well_fov, source_root)` returns a manifest dict either by loading a YAML
+path or by calling `build_manifest()` on the fly (same function
+`build_manifest.py`'s own CLI already used, now reused instead of
+duplicated), and `read_image_sets_index(path)` reads the CSV. Both
+`run_zedprofiler_image_set.py` and `build_warehouse_from_compartments.py`
+now accept `--patient`/`--well-fov`/`--source-root` (single image set) or
+`--image-sets-index`/`--source-root` (many) as alternatives to `--manifest`
+-- no manifest file is written or read anywhere in the index-driven path,
+the dict is built in memory at task time and used immediately.
+
+**Both paths remain fully supported, not a replacement.** `--manifest`/
+`--image-sets` (YAML-based) still work exactly as before -- useful for
+hand-editing one specific image set's manifest as an override, or for
+small ad-hoc runs like this pilot's own N=2 benchmarks throughout this
+document. `featurize_image_set.nf`'s `imageSets()` now returns a uniform
+`[slug, patient, wellFov, manifestPath]` per entry regardless of source
+(index rows leave `manifestPath` null, manifest-path entries leave
+`patient`/`wellFov` null), so every process's script block builds the
+right CLI args (`--manifest PATH` or `--patient`/`--well-fov`/
+`--source-root`) via one `manifestArgsForSlug()` helper without needing to
+know which mode is active.
+
+```bash
+make build-image-sets-index SOURCE_ROOT=/pl/active/koala/nf1-3d-pilot-workflow-db \
+  INDEX_OUTPUT=manifest/image_sets_index.csv
+make submit IMAGE_SETS_INDEX=manifest/image_sets_index.csv \
+  SOURCE_ROOT=/pl/active/koala/nf1-3d-pilot-workflow-db ACCOUNT=amc-general
+```
+
+**Verified locally, then confirmed for real on Alpine.** Locally: a
+stubbed Nextflow run confirmed both `imageSets()` modes resolve correct
+per-task CLI args (index mode: 3 rows -> 3 correctly-slugged
+`FEATURIZE_IMAGE_SET` tasks with correct `--patient`/`--well-fov`/
+`--source-root`, and `BUILD_WAREHOUSE` correctly receiving
+`--image-sets-index`/`--source-root` instead of per-manifest args;
+manifest-list mode re-verified unchanged as a regression check);
+`build_image_sets_index.py` tested against a synthetic 2-patient/3-well-fov
+source tree, correctly finding exactly the complete ones; a real
+end-to-end local run through `run_zedprofiler_image_set.py` (index mode)
+-> `build_warehouse_from_compartments.py` (index mode) against synthetic
+TIFFs reproduced the identical layout, row counts, and DuckDB views
+(including both `joined.*` views) as the manifest-path mode.
+
+On Alpine: `make build-image-sets-index SOURCE_ROOT=/pl/active/koala/nf1-3d-pilot-workflow-db`
+scanned the real PetaLibrary data and found exactly the two staged image
+sets this whole document benchmarks against (`NF0055_T1,B10-1` and
+`NF0014_T1,C4-2`) -- no manifest paths, no manual list, just discovered.
+Submitted a real run (`nf0055-nf0014-index-mode-20260817T180359Z`) against
+that index with no `--manifest`/`--image-sets` at all:
+
+```text
+workflow_slurm_jobs: 4   (N+2, same formula as the manifest-path mode)
+nextflow_exit_status: 0
+validation_status: pass
+quality_warning_count: 8
+```
+
+Output identical to every prior baseline (56/51/51/3 rows, 903 columns, 16
+`images.image_assets` rows); both `joined.*` views confirmed correct (408
+and 24 rows, matching every prior count exactly). No YAML manifest written
+or read anywhere in this run.
+
+## Alpine notes from 2026-08-18
+
+### Mermaid diagrams and a top-of-file cleanup
+
+PR review from MikeLippincott, anchored on `build_duckdb_views.py`'s
+joined-view docstring: *"A mermaid plot for all of this might be nice --
+there is a lot going on here. Not a bad thing as there already was a lot
+going on."* -- gwaybio agreed. Added two Mermaid diagrams to a new
+[Architecture](#architecture) section near the top of this file: a
+pipeline-flow diagram (input mode -> `FEATURIZE_IMAGE_SET` ->
+`warehouse/`+`metadata/` split -> `BUILD_WAREHOUSE` -> DuckDB base +
+joined views) and a compartment-segmentation-relationship diagram (the
+same Nuclei/Cell/Cytoplasm/Organoid channel and seed relationships behind
+the `compartment_seed_channels` review question answered above).
+
+While in there, fixed the top-of-file sections that had drifted out of
+sync with everything documented further down: the intro still described a
+single-image-set-only pilot, `## Run`'s resource-knob example still showed
+`GRANULARITY_MEMORY`/`NONGRANULARITY_MEMORY` (removed when the split
+nongran/gran fan-out was folded into one `FEATURIZE_IMAGE_SET` task per
+image set), `## Benchmark` still described the Apache Iceberg warehouse
+(`catalog.db`, `warehouse_manifest.json`) that was replaced entirely by
+the plain parquet + DuckDB warehouse, and `## Alignment Contract` still
+referenced a standalone `alignment_validation.json` file that no longer
+exists (alignment now lives in `images.image_assets`'s
+`validation.json`). No behavior changed -- documentation only, verified by
+rendering the Mermaid source locally and rereading every edited section
+against the current code (`workflows/featurize_image_set.nf`,
+`scripts/run_zedprofiler_image_set.py`) rather than against memory of past
+sessions.

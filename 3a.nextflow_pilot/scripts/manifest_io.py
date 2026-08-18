@@ -84,20 +84,40 @@ def load_manifest(path: str | Path) -> dict[str, Any]:
     return root
 
 
-def dump_manifest(data: dict[str, Any], path: str | Path) -> None:
-    """Write the small pilot manifest in stable YAML order."""
+def dump_manifest(
+    data: dict[str, Any],
+    path: str | Path,
+    field_comments: dict[str, str] | None = None,
+) -> None:
+    """Write the small pilot manifest in stable YAML order. When
+    field_comments is given, a '# ...' comment line is written directly
+    above any top-level key present in it -- PyYAML can't emit comments
+    from a plain dict, so each key's block is dumped separately instead of
+    the whole dict at once when comments are requested."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         import yaml
 
-        path.write_text(yaml.safe_dump(data, sort_keys=False))
+        if field_comments:
+            blocks: list[str] = []
+            for key, value in data.items():
+                comment = field_comments.get(key)
+                if comment:
+                    blocks.append(f"# {comment}")
+                blocks.append(yaml.safe_dump({key: value}, sort_keys=False).rstrip("\n"))
+            path.write_text("\n".join(blocks) + "\n")
+        else:
+            path.write_text(yaml.safe_dump(data, sort_keys=False))
         return
     except Exception:
         pass
 
     lines: list[str] = []
     for key, value in data.items():
+        comment = (field_comments or {}).get(key)
+        if comment:
+            lines.append(f"# {comment}")
         if isinstance(value, dict):
             lines.append(f"{key}:")
             for child_key, child_value in value.items():
