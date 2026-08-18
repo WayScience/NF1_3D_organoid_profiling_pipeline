@@ -1,4 +1,17 @@
 #!/usr/bin/env bash
+#
+# nf1-nextflow-pilot -- single entry point for the 3a ZEDProfiler pilot's
+# non-Nextflow plumbing: environment checks (check/doctor), preflight
+# capacity checks, clearing a run's output, a no-Nextflow synthetic-data
+# smoke test, and running or submitting the real workflow
+# (workflows/featurize_image_set.nf) either directly (`run`) or as a Slurm
+# coordinator job (`submit`, writes and sbatches coordinator.sbatch).
+# `make <target>` wraps every subcommand below with the pilot's default
+# paths/resource knobs -- see the repo-root Makefile.
+#
+# Usage, environment variables, and Make targets: run with no arguments,
+# `--help`, or see usage() just below.
+#
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
