@@ -70,6 +70,44 @@ def manifestArgsForSlug(slug) {
   return "--patient \"${patient}\" --well-fov \"${wellFov}\" --source-root \"${params.source_root}\""
 }
 
+process PLAN_IMAGE_SETS {
+  // Checks warehouse/ + metadata/ directly for each image set rather than
+  // relying on Nextflow's -resume: this pilot never configures a durable
+  // workDir across separate `make submit` invocations, so there is nothing
+  // for -resume to resume from, and even with one, its cache key is task
+  // inputs, not "does a finished, valid output already exist". Runs once
+  // per invocation, before any FEATURIZE_IMAGE_SET task is submitted.
+
+  output:
+  path 'image_set_plan.tsv'
+
+  script:
+  def uv_env = params.uv_project_environment ?: '${PWD}/.venv'
+  def plan_args = params.image_sets_index
+    ? "--image-sets-index \"${file(params.image_sets_index)}\" --source-root \"${params.source_root}\""
+    : imageSets().collect { slug, patient, wellFov, manifestPath ->
+        "--manifest \"${file(manifestPath)}\""
+      }.join(' \\\n    ')
+  """
+  set -euo pipefail
+  export UV_PROJECT_ENVIRONMENT="${uv_env}"
+  export UV_LINK_MODE=copy
+
+  if [[ -n "\${UV_PROJECT_ENVIRONMENT:-}" && -x "\${UV_PROJECT_ENVIRONMENT}/bin/python" ]]; then
+    PYTHON_RUNNER=("\${UV_PROJECT_ENVIRONMENT}/bin/python")
+  elif command -v uv >/dev/null 2>&1; then
+    PYTHON_RUNNER=(uv run --project "${params.pilot_root}/environments" python)
+  else
+    PYTHON_RUNNER=(python3)
+  fi
+
+  "\${PYTHON_RUNNER[@]}" "${params.pilot_root}/scripts/plan_image_sets.py" \\
+    ${plan_args} \\
+    --outdir "${params.outdir}" \\
+    > image_set_plan.tsv
+  """
+}
+
 process FEATURIZE_IMAGE_SET {
   label 'zedprofiler_cpu'
 
@@ -155,10 +193,19 @@ workflow {
     error "params.pilot_root is required"
   }
 
-  image_sets = imageSets()
-  image_set_slugs = image_sets.collect { slug, patient, wellFov, manifestPath -> slug }
+  PLAN_IMAGE_SETS()
 
-  FEATURIZE_IMAGE_SET(Channel.fromList(image_set_slugs))
+  pending_slugs = PLAN_IMAGE_SETS.out
+    .splitCsv(sep: '\t')
+    .filter { slug, status -> status == 'pending' }
+    .map { slug, status -> slug }
 
-  BUILD_WAREHOUSE(FEATURIZE_IMAGE_SET.out.collect())
+  FEATURIZE_IMAGE_SET(pending_slugs)
+
+  // ifEmpty() matters here, not just style: if every image set was already
+  // done and PLAN_IMAGE_SETS skipped all of them, FEATURIZE_IMAGE_SET never
+  // runs a single task, and .collect() on that untouched output channel
+  // never fires -- BUILD_WAREHOUSE would silently never run at all (caught
+  // by a local test of exactly this all-skipped case, not assumed).
+  BUILD_WAREHOUSE(FEATURIZE_IMAGE_SET.out.collect().ifEmpty(['none_pending']))
 }

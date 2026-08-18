@@ -34,10 +34,15 @@ flowchart TD
         A2["Image-sets index CSV<br/>patient,well_fov rows"]
     end
 
-    A1 -->|"--manifest"| B
-    A2 -->|"--image-sets-index / --source-root"| B
+    A1 -->|"--manifest"| P
+    A2 -->|"--image-sets-index / --source-root"| P
 
-    B["FEATURIZE_IMAGE_SET<br/>(one Slurm task per image set)"]
+    P["PLAN_IMAGE_SETS<br/>(one Slurm task per run)"]
+    P --> P1["Check warehouse/ + metadata/ per image set:<br/>already landed and valid?"]
+    P1 -->|pending| B
+    P1 -.->|done, skipped| C
+
+    B["FEATURIZE_IMAGE_SET<br/>(one Slurm task per pending image set)"]
     B --> B1["Load 4 channels + 4 masks once<br/>check whole-image-set alignment"]
     B1 --> B2["Build images.image_assets<br/>(one row per channel + per mask)"]
     B1 --> B3["Extract Nuclei / Cell / Cytoplasm / Organoid profiles<br/>(nongranularity + granularity together)"]
@@ -61,8 +66,28 @@ flowchart TD
 `FEATURIZE_IMAGE_SET` and `BUILD_WAREHOUSE` both write directly into the
 run's final `${outdir}`; nothing is copied or moved afterward (see
 [Write-once architecture](#write-once-architecture-no-iceberg-no-registration-step)
-below). Total Slurm jobs for N image sets: `N + 2` (N `FEATURIZE_IMAGE_SET`
-tasks + 1 `BUILD_WAREHOUSE` task + the coordinator job itself).
+below). `PLAN_IMAGE_SETS` skips `FEATURIZE_IMAGE_SET` for any image set
+whose warehouse output already exists and validated (see
+[Skip already-completed image sets](#skip-already-completed-image-sets-instead-of-recomputing-them)
+below) -- rerunning a mostly-finished batch doesn't redo the finished part.
+Total Slurm jobs for N image sets, P of them still pending: `P + 3`
+(P `FEATURIZE_IMAGE_SET` tasks + 1 `PLAN_IMAGE_SETS` task +
+1 `BUILD_WAREHOUSE` task + the coordinator job itself); `P == N` on a
+fresh run.
+
+**Deliberately decoupled from ZEDProfiler itself.** `build_warehouse_from_
+compartments.py`/`build_duckdb_views.py` only ever consume the parquet
+files `FEATURIZE_IMAGE_SET` already wrote -- they know nothing about
+ZEDProfiler's feature families, loaders, or masks. That split (per
+MikeLippincott's review of this file: *"This reads like something that
+should have a software -- maybe a cytotable port over in the future...
+I like the decoupling as it keeps the featurization flexible."*) is
+intentional: featurization can change (a different tool, a different
+compartment set) without touching how results get warehoused, and the
+warehousing/DB-management layer could plausibly grow into a standalone
+package later -- in the spirit of [CytoTable](https://github.com/cytomining/CytoTable)
+-- rather than staying pilot-specific. Not planned work for this pilot,
+just a design property worth keeping in mind.
 
 ### Compartment segmentation relationships
 
@@ -1858,3 +1883,77 @@ rendering the Mermaid source locally and rereading every edited section
 against the current code (`workflows/featurize_image_set.nf`,
 `scripts/run_zedprofiler_image_set.py`) rather than against memory of past
 sessions.
+
+### Skip already-completed image sets instead of recomputing them
+
+PR review from MikeLippincott, on the workflow's fan-out: *"In this
+workflow, nextflow should avoid running compute on well_fov's that have
+their outputs yes? Is there any risk here where nextflow does not have
+preemption properly setup and we rerun already computed features?"* --
+yes, a real risk, confirmed by grepping the whole pilot: `-resume` is never
+passed to `nextflow run` anywhere (`bin/nf1-nextflow-pilot`), and no
+persistent `workDir` is configured across separate `make submit`
+invocations for it to resume from even if it were. `FEATURIZE_IMAGE_SET`
+also had no application-level check of its own -- it unconditionally wrote
+(and would overwrite) every image set's output on every run. At N=4200
+that means any rerun -- a deliberate resubmission, an accidental
+double-submit, or recovering from a run that failed partway through --
+would silently redo every already-finished image set's ~15-25 minute
+compute, not just the ones still missing.
+
+**New `PLAN_IMAGE_SETS` process, ahead of the fan-out.** Runs once per
+invocation, before any `FEATURIZE_IMAGE_SET` task is submitted. Calls
+`scripts/plan_image_sets.py`, which checks -- for every image set, cheaply,
+via file existence and small JSON reads only, never loading parquet row
+data -- whether `warehouse/profiles/<compartment>_profiles/<image_id>.parquet`
+and `warehouse/images/image_assets/<image_id>.parquet` already exist *and*
+their `metadata/.../<image_id>.validation.json` sidecars report
+`valid: true`. Emits one `<slug>\tdone` or `<slug>\tpending` line per image
+set; the workflow filters its `FEATURIZE_IMAGE_SET` channel down to only
+the `pending` slugs before dispatching a single Slurm task; `BUILD_WAREHOUSE`
+is unchanged and still rescans the *entire* warehouse (done and newly-
+pending alike) the same way it always has.
+
+**Deliberately not built on `-resume`.** Even a correctly configured
+`-resume` wouldn't catch everything this needs to catch: its cache key is
+the task's inputs, not "does a finished, valid warehouse output already
+exist" -- it can't tell the difference between an image set that's
+genuinely done and one whose task simply hasn't changed inputs since a
+prior *failed* attempt. Checking the warehouse directly is the more
+literal, more trustworthy source of truth, and works the same whether the
+prior run happened five minutes or five weeks ago, with or without an
+intact `work/` directory.
+
+**A real bug caught by testing the empty case, not assumed away:** an
+early version triggered `BUILD_WAREHOUSE` off
+`FEATURIZE_IMAGE_SET.out.collect()` directly, same as before this change.
+That's correct when at least one image set is pending, but when *every*
+image set is already done, `FEATURIZE_IMAGE_SET` never runs a single task,
+and `.collect()` on that channel never fired -- `BUILD_WAREHOUSE` silently
+never ran at all, confirmed with a real local Nextflow execution
+(`completed=1` -- only `PLAN_IMAGE_SETS`, nothing else, no error). Fixed
+with `.collect().ifEmpty(['none_pending'])`, then reconfirmed the same
+scenario now runs `BUILD_WAREHOUSE` and exits 0 with `warehouse.duckdb`
+refreshed.
+
+**Verified locally with three real Nextflow executions** (`-profile local`,
+synthetic TIFFs, two image sets), not just the Python script in isolation:
+(1) empty warehouse -> both slugs `pending`, both `FEATURIZE_IMAGE_SET`
+tasks dispatched with correct args; (2) one image set's warehouse output
+hand-verified complete (`valid: true` sidecars, real parquet from an
+earlier real ZEDProfiler run) -> plan correctly reported one `done`/one
+`pending`, and only the pending image set's task launched, across every
+retry attempt -- confirmed by grepping every dispatched `.command.sh` for
+`--patient`/`--well-fov`, never once seeing the already-done image set;
+(3) both image sets marked complete -> zero `FEATURIZE_IMAGE_SET` tasks,
+`BUILD_WAREHOUSE` still ran and succeeded (`exit_status: 0`,
+`workflow_slurm_jobs_expected: 5`, matching the updated `N + 3` formula
+below).
+
+`build_warehouse_from_compartments.py`'s `workflow_slurm_jobs_expected`
+field is now `len(manifests) + 3` (was `+ 2`) to account for
+`PLAN_IMAGE_SETS`, and is documented as an upper bound, not an exact count
+-- skipped image sets mean the real total for a given run can be lower;
+`PLAN_IMAGE_SETS`'s own stderr summary
+(`NF1_PLAN_IMAGE_SETS done=.../pending=.../total=...`) is the place to see
+what actually happened for that invocation.

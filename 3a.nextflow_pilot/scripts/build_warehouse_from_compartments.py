@@ -190,10 +190,15 @@ def main() -> int:
         assets_row_count += int(validation["row_count"])
     all_valid = all_valid and assets_valid
 
-    # One FEATURIZE_IMAGE_SET task per image set (all compartments and
-    # images.image_assets handled in that one task now), plus BUILD_WAREHOUSE
-    # + coordinator.
-    workflow_slurm_jobs_expected = len(manifests) + 2
+    # Upper bound, not an exact count: one FEATURIZE_IMAGE_SET task per image
+    # set (all compartments and images.image_assets handled in that one task
+    # now), plus PLAN_IMAGE_SETS + BUILD_WAREHOUSE + coordinator. PLAN_IMAGE_
+    # SETS skips FEATURIZE_IMAGE_SET for any image set whose warehouse output
+    # already exists and validated, so the real count for a rerun over a
+    # partially- or fully-complete warehouse is lower than this -- see that
+    # task's own stderr summary (NF1_PLAN_IMAGE_SETS done=.../pending=...)
+    # for what actually ran in a given invocation.
+    workflow_slurm_jobs_expected = len(manifests) + 3
 
     # Views only, no data copied -- cheap to refresh here since this task
     # already has every table's path in hand from the scan above, at no
