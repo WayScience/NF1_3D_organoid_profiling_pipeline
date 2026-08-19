@@ -1,0 +1,94 @@
+# Example/template manifest only. Paths below mirror NF0014_T1/C4-2, an
+# image set already validated end-to-end by 3a.nextflow_pilot, but they will
+# not resolve until that patient/well is staged under this folder's
+# production data root (see ../staging/README.md). Once staged, prefer
+# regenerating a real manifest with `make build-manifest PATIENT=... WELL_FOV=...`
+# over hand-editing this file -- for large batches, prefer
+# `make build-image-sets-index` + `--image-sets-index` instead of any
+# per-image-set manifest at all.
+# Manifest schema version, for future migrations.
+schema_version: 0.1.0-production
+# Root directory this image set's files were staged under.
+source_image_root: /pl/active/koala/nf1-3d-production-workflow-db
+# Patient/tumor identifier, e.g. NF0014_T1.
+Metadata_Biology_PatientTumor: NF0014_T1
+# Patient identifier without the tumor suffix, e.g. NF0014.
+Metadata_Biology_PatientID: NF0014
+# Plate identifier (matches PatientTumor in this workflow).
+Metadata_Experiment_PlateID: NF0014_T1
+# Well identifier, e.g. C4.
+Metadata_Experiment_WellID: C4
+# Field-of-view identifier within the well, e.g. 2.
+Metadata_Imaging_FieldID: '2'
+# Unique ID for this image set: patient__plate__well__field.
+Metadata_Imaging_ImageID: NF0014_T1__NF0014_T1__C4__F2
+# Legacy single-compartment fallback for older tooling -- see compartments below for the real list this workflow uses.
+compartment: Nuclei
+# Every compartment ZEDProfiler extracts features for in this image set.
+compartments:
+- Nuclei
+- Cell
+- Cytoplasm
+- Organoid
+# Z-axis voxel spacing (microns), used for anisotropy-aware features.
+z_spacing: 1.0
+# XY-axis voxel spacing (microns), used for anisotropy-aware features.
+xy_spacing: 0.1
+# Legacy single-compartment fallback for older tooling -- see mask_paths below.
+mask_path: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/segmentation_masks/C4-2/nuclei_mask.tiff
+# Segmentation mask TIFF path, one per compartment.
+mask_paths:
+  Nuclei: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/segmentation_masks/C4-2/nuclei_mask.tiff
+  Cell: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/segmentation_masks/C4-2/cell_mask.tiff
+  Cytoplasm: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/segmentation_masks/C4-2/cytoplasm_mask.tiff
+  Organoid: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/segmentation_masks/C4-2/organoid_mask.tiff
+# Raw channel image TIFF path, one per channel.
+channel_paths:
+  DNA: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/zstack_images/C4-2/C4-2_405.tif
+  ER: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/zstack_images/C4-2/C4-2_488.tif
+  AGP: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/zstack_images/C4-2/C4-2_555.tif
+  Mito: /pl/active/koala/nf1-3d-production-workflow-db/data/NF0014_T1/zstack_images/C4-2/C4-2_640.tif
+# Wavelength/filter code per channel (e.g. DNA=405nm).
+channel_codes:
+  DNA: '405'
+  ER: '488'
+  AGP: '555'
+  Mito: '640'
+# The channel each compartment's mask was actually segmented from (e.g. Nuclei from DNA, Cell/Cytoplasm/Organoid from AGP). Provenance metadata only -- not used in any computation, just stamped onto every profile row and the image_assets table.
+compartment_primary_channels:
+  Nuclei: DNA
+  Cell: AGP
+  Cytoplasm: AGP
+  Organoid: AGP
+# Wavelength code matching compartment_primary_channels.
+compartment_primary_channel_codes:
+  Nuclei: '405'
+  Cell: '555'
+  Cytoplasm: '555'
+  Organoid: '555'
+# The channel used to seed this compartment's segmentation, if any (e.g. Cell/Cytoplasm are watershed-seeded from the Nuclei/DNA segmentation). Empty string if the compartment isn't seeded from another one.
+compartment_seed_channels:
+  Nuclei: ''
+  Cell: DNA
+  Cytoplasm: DNA
+  Organoid: ''
+# Wavelength code matching compartment_seed_channels.
+compartment_seed_channel_codes:
+  Nuclei: ''
+  Cell: '405'
+  Cytoplasm: '405'
+  Organoid: ''
+# Short description of how each compartment's mask was produced.
+compartment_segmentation_methods:
+  Nuclei: segmented_from_dna
+  Cell: agp_watershed_seeded_by_nuclei
+  Cytoplasm: cell_mask_minus_nuclei_mask
+  Organoid: segmented_from_agp
+# ZEDProfiler feature families this workflow expects and validates for every compartment.
+feature_families:
+- VolumeSizeShape
+- Intensity
+- Texture
+- Colocalization
+- Neighbors
+- Granularity
