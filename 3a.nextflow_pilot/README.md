@@ -1957,3 +1957,52 @@ field is now `len(manifests) + 3` (was `+ 2`) to account for
 `PLAN_IMAGE_SETS`'s own stderr summary
 (`NF1_PLAN_IMAGE_SETS done=.../pending=.../total=...`) is the place to see
 what actually happened for that invocation.
+
+### Segmentation-quality checks: tried, then removed -- not this pilot's job
+
+PR review (Mike Lippincott, on `joined.images_nuclei_cell_cytoplasm`'s
+docstring) raised a real question: does `object_id` equality across
+compartments actually mean spatial correspondence, given 3D-seeded
+watershed can fail (nuclei with no matching cell, cells that don't
+overlap their seed nucleus, cell fragments). Investigated this fully --
+added mask-overlap and multi-component-label checks to
+`run_zedprofiler_image_set.py`, a `quality` DuckDB schema to query them,
+notebook cells to show them -- and confirmed the concern is real on this
+pilot's own Alpine data, not hypothetical: `NF0055_T1/B10-1` had 3
+nuclei-cell overlap warnings (as low as 18%) and 13 fragmented-label
+instances; `NF0014_T1/C4-2` had 34 fragmented-label instances (one
+Cytoplasm object split into 23 pieces). Cytoplasm was by far the most
+fragmented compartment in both -- consistent with it being a subtraction
+(`Cell - Nuclei`) rather than an independent segmentation, so any
+boundary noise in either input mask can shatter it into shards.
+
+**Then removed all of it.** This pilot's job is proving ZEDProfiler runs
+at speed and scale on Alpine -- not re-solving segmentation quality,
+which is a separate concern owned elsewhere: upstream in
+`2.segment_images` (where the masks are actually produced), or already
+handled downstream in `4.processing_image_based_profiles`, which has its
+own working machinery for exactly this --
+`4.processing_image_based_profiles/scripts/2.merge_sc.py` filters
+Nuclei/Cell/Cytoplasm to the 3-way `object_id` intersection before
+merging (mathematically the same protection `joined.
+images_nuclei_cell_cytoplasm`'s plain `JOIN` already has, against the
+"no match" failure modes -- confirmed by reading that script directly,
+not assumed), and `4.processing_image_based_profiles/scripts/
+3.organoid_cell_relationship.py` already assigns cells to parent
+organoids via bounding-box containment and computes distance/shell
+features -- exactly the organoid-cell relating problem this pilot's
+`joined.images_organoid` doesn't attempt. Building a parallel checking
+layer here duplicated work that already exists and works, for a concern
+outside this pilot's actual scope. Reverted: the mask-overlap/multi-
+component-label functions, the `quality` schema, the notebook cells, and
+the `scipy` dependency they needed. `joined.images_nuclei_cell_cytoplasm`
+keeps the same `object_id`-equality `JOIN` it always had (still exactly
+as safe as `2.merge_sc.py` against the "no match" cases, per the above),
+with the "does it mean spatial correspondence" caveat now documented
+here rather than actively checked in this pilot.
+
+**For anyone who needs to verify or use this later:** the real findings
+above (`NF0055_T1/B10-1` and `NF0014_T1/C4-2`'s actual warning/fragment
+counts) are worth knowing if this data ever exercises the existing stage-4
+tooling -- start with `2.merge_sc.py` and `3.organoid_cell_relationship.py`
+rather than rebuilding either.
