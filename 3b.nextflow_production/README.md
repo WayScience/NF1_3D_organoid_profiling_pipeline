@@ -34,8 +34,10 @@ share, different mount point.)
       `results/`, `tools/`), isolated from `nf1-3d-pilot-workflow-db`.
 - [x] This folder scaffolded from `3a.nextflow_pilot`, renamed and
       re-tuned for production scale (see below).
-- [ ] Staging: bandicoot -> PetaLibrary for the initial 9-patient batch
-      (`staging/`) -- **not yet run**. See `staging/README.md`.
+- [x] Staging: bandicoot -> PetaLibrary for the 12-patient batch
+      (`staging/`) -- **all 12 staged and verified** (3,443/3,449 well/FOVs
+      complete; the 6-well shortfall is a source data gap on bandicoot
+      itself, not a transfer issue -- see `staging/README.md`).
 - [ ] A repo checkout, `uv sync`, and Nextflow/JDK toolchain on Alpine under
       `/pl/active/koala/nf1-3d-production-workflow-db/` (same one-time setup
       the pilot's README documents under "Alpine notes from 2026-08-10").
@@ -49,8 +51,8 @@ share, different mount point.)
 Before any Nextflow run, the target patients' raw data must exist under this
 folder's PetaLibrary `data/` root -- it is not read from bandicoot directly.
 See [`staging/README.md`](staging/README.md) for the transfer script, the
-current 9-patient batch (`staging/patients.txt`), and how to verify
-completeness. That batch is roughly 2,480 well/FOV directories -- large
+current 12-patient batch (`staging/patients.txt`), and how to verify
+completeness. That batch is roughly ~3,449 well/FOV directories -- large
 enough to run as a background/tmux job, not inline.
 
 ## Run
@@ -131,7 +133,7 @@ section before scheduling a full run, not just this summary:
   N=2.** It's a deliberate single-writer step, so it runs fully serially
   after every worker task finishes. Do a staged capacity test at an
   intermediate scale (the pilot suggested 50-100 image sets; this batch's
-  full ~2,480 well/FOVs is itself a reasonable "intermediate scale" relative
+  full ~3,449 well/FOVs is itself a reasonable "intermediate scale" relative
   to the 4200-image-set full-dataset projection) before trusting any
   wall-time estimate for the complete batch.
 - **A run this size will measurably move this account's fair-share

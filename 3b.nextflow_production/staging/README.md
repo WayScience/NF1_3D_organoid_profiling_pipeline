@@ -26,7 +26,9 @@ nothing under the pilot folder is touched by this workflow.
 
 ## Patient list
 
-`patients.txt` lists the initial production batch, one patient per line:
+`patients.txt` lists the production batch, one patient per line. The first
+nine were staged and verified first; `NF0055_T1`, `SARCO219_T2`, and
+`SARCO361_T1` were added in a follow-up pass:
 
 ```text
 NF0014_T1
@@ -38,6 +40,9 @@ NF0030_T1
 NF0035_T1
 NF0037_T1
 NF0040_T1
+NF0055_T1
+SARCO219_T2
+SARCO361_T1
 ```
 
 Confirmed present on bandicoot at prep time, with these well/FOV counts
@@ -45,24 +50,46 @@ Confirmed present on bandicoot at prep time, with these well/FOV counts
 one higher -- an extra non-well_fov entry in that listing, not investigated
 further here):
 
-| Patient | zstack well/FOV dirs |
-| --- | --- |
-| NF0014_T1 | 104 |
-| NF0014_T2 | 350 |
-| NF0016_T1 | 122 |
-| NF0018_T6 | 160 |
-| NF0021_T1 | 348 |
-| NF0030_T1 | 207 |
-| NF0035_T1 | 349 |
-| NF0037_T1 | 420 |
-| NF0040_T1 | 420 |
+| Patient | zstack well/FOV dirs | Status |
+| --- | --- | --- |
+| NF0014_T1 | 104 | staged, verified complete 104/104 |
+| NF0014_T2 | 350 | staged, verified complete 350/350 |
+| NF0016_T1 | 122 | staged, verified complete 122/122 |
+| NF0018_T6 | 160 | staged, verified complete 160/160 |
+| NF0021_T1 | 348 | staged, verified complete 348/348 |
+| NF0030_T1 | 207 | staged, verified complete 203/207 (4 wells missing masks on bandicoot itself: F9-3, G2-1, G2-2, G2-3 -- see below) |
+| NF0035_T1 | 349 | staged, verified complete 348/349 (1 well missing masks on bandicoot itself: C9-7 -- see below) |
+| NF0037_T1 | 420 | staged, verified complete 420/420 |
+| NF0040_T1 | 420 | staged, verified complete 420/420 |
+| NF0055_T1 | 420 | staged, verified complete 419/420 (1 well missing masks on bandicoot itself: D8-2 -- see below) |
+| SARCO219_T2 | 199 | staged, verified complete 199/199 |
+| SARCO361_T1 | 350 | staged, verified complete 350/350 |
 
-That's ~2,480 well/FOV directories across 9 patients -- large enough that
+All 12 patients staged and verified: **3,443 of 3,449 well/FOVs complete**.
+That's ~3,449 well/FOV directories across 12 patients -- large enough that
 this transfer should run under `nohup`/`tmux`/`screen` or as its own job,
 not a short interactive shell, and large enough to be worth the same
 production-scale caution `3a.nextflow_pilot/PLAN.md`'s "Production-scale
 (4200 image-set) time estimate" section already worked through for the
 Nextflow run itself.
+
+The six-well shortfall across `NF0030_T1`/`NF0035_T1`/`NF0055_T1` is a
+**source** data gap, not a transfer bug -- confirmed by checking bandicoot
+directly: every one of these wells has only `nuclei_mask.tiff` under
+`segmentation_masks/`, missing `cell_mask`, `cytoplasm_mask`, and
+`organoid_mask`:
+
+```text
+~/mnt/bandicoot/NF1_organoid_data/data/NF0030_T1/segmentation_masks/F9-3/
+~/mnt/bandicoot/NF1_organoid_data/data/NF0030_T1/segmentation_masks/G2-1/
+~/mnt/bandicoot/NF1_organoid_data/data/NF0030_T1/segmentation_masks/G2-2/
+~/mnt/bandicoot/NF1_organoid_data/data/NF0030_T1/segmentation_masks/G2-3/
+~/mnt/bandicoot/NF1_organoid_data/data/NF0035_T1/segmentation_masks/C9-7/
+~/mnt/bandicoot/NF1_organoid_data/data/NF0055_T1/segmentation_masks/D8-2/
+```
+
+Compare e.g. `.../NF0030_T1/segmentation_masks/F9-3/` (incomplete) against
+`.../NF0030_T1/segmentation_masks/F9-1/` (complete, all four masks present).
 
 ## Running the transfer
 
@@ -77,6 +104,11 @@ cd 3b.nextflow_production/staging
 
 # stage one patient only (e.g. to test the path end-to-end first)
 ./stage_from_bandicoot.sh --patient NF0014_T1
+
+# stage a specific subset (e.g. patients added in a follow-up pass) without
+# re-running the full patients.txt list
+printf 'NF0055_T1\nSARCO219_T2\nSARCO361_T1\n' > /tmp/new_patients.txt
+./stage_from_bandicoot.sh --patients-file /tmp/new_patients.txt
 ```
 
 Uses `rsync -a --partial`, so it is safe to re-run: unchanged files are
