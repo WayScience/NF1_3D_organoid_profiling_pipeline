@@ -38,9 +38,25 @@ share, different mount point.)
       (`staging/`) -- **all 12 staged and verified** (3,443/3,449 well/FOVs
       complete; the 6-well shortfall is a source data gap on bandicoot
       itself, not a transfer issue -- see `staging/README.md`).
-- [ ] A repo checkout, `uv sync`, and Nextflow/JDK toolchain on Alpine under
+- [x] A repo checkout, `uv sync`, and Nextflow/JDK toolchain on Alpine under
       `/pl/active/koala/nf1-3d-production-workflow-db/` (same one-time setup
-      the pilot's README documents under "Alpine notes from 2026-08-10").
+      the pilot's README documents under "Alpine notes from 2026-08-10";
+      JDK21 and the Nextflow launcher were copied from the pilot's own
+      working install rather than re-downloaded, keeping this folder's
+      `tools/` isolated from the pilot's).
+- [x] **Single-image-set test case** (`NF0014_T1/C4-2`, run ID
+      `prod-testcase-nf0014-c4-2`): confirms the full toolchain works
+      end-to-end against real staged production data. `PLAN_IMAGE_SETS`
+      34.6s, `FEATURIZE_IMAGE_SET` 19m 10s (peak RSS 5.2 GB),
+      `BUILD_WAREHOUSE` 4.9s; `validation_status: pass` on every table, row
+      counts matching the pilot's own historical benchmark for this exact
+      image set exactly. Output was 1.4 MB for this one image set --
+      consistent with the ~5 GB estimate for the full 3,443-image-set batch.
+      This is one image set on one Slurm task, so it validates the
+      toolchain and gives a real per-task timing/memory data point, but it
+      does *not* validate concurrent throughput under `queueSize=180` or
+      `BUILD_WAREHOUSE`'s behavior at higher N -- the staged capacity test
+      below is still the next step.
 - [ ] A staged capacity test at intermediate scale before the full batch
       (see PLAN.md) -- the pilot's own production-scale estimate flags this
       as a prerequisite, not optional polish.
