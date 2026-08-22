@@ -137,6 +137,13 @@ reimplementation:
   `submit` run of the current 3,443-image-set index is `P + 3` (3,446: one
   `FEATURIZE_IMAGE_SET` per image set, `PLAN_IMAGE_SETS`, `BUILD_WAREHOUSE`,
   and the coordinator), not the pilot's per-compartment-fan-out job counts.
+  `P + 3` counts the coordinator as its own Slurm job because that's what
+  `make submit` actually does (`submit_slurm()` runs the coordinator via
+  `sbatch`, confirmed by this folder's own single-image-set test case:
+  4 distinct `sacct`-tracked jobs -- coordinator, `PLAN_IMAGE_SETS`,
+  `FEATURIZE_IMAGE_SET`, `BUILD_WAREHOUSE` -- for `P=1`). `make run`
+  (direct/foreground, no `sbatch`) is `P + 2` Slurm jobs instead, since the
+  coordinator then runs in the calling shell rather than as its own job.
   Still a lot of individual Slurm jobs independent of whether account
   limits allow it. Job arrays for homogeneous shards remain deferred, same
   as in the pilot.

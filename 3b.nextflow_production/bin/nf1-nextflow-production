@@ -490,11 +490,15 @@ run_nextflow() {
   fi
 
   mkdir -p "$outdir"
-  # conf/curc_alpine.config points every task's TMPDIR/UV_CACHE_DIR at these
-  # paths; nothing else creates them, and Python's tempfile (and most TIFF
-  # readers) fail outright when TMPDIR doesn't exist.
-  mkdir -p "${NF1_PROD_SCRATCH:-/scratch/alpine/${USER:-unknown}}/tmp" \
-    "${NF1_PROD_PROJECT:-/projects/${USER:-unknown}}/uv_cache"
+  if [[ "$profile" == "curc_alpine" ]]; then
+    # conf/curc_alpine.config points every task's TMPDIR/UV_CACHE_DIR at these
+    # paths; nothing else creates them, and Python's tempfile (and most TIFF
+    # readers) fail outright when TMPDIR doesn't exist. Only relevant under
+    # this profile -- the local profile has no scratch_root/project_root and
+    # these paths (/scratch/alpine, /projects) may not even exist off Alpine.
+    mkdir -p "${NF1_PROD_SCRATCH:-/scratch/alpine/${USER:-unknown}}/tmp" \
+      "${NF1_PROD_PROJECT:-/projects/${USER:-unknown}}/uv_cache"
+  fi
   preflight "$id" "$account" "$partition" "$qos" "$results_root"
 
   {
