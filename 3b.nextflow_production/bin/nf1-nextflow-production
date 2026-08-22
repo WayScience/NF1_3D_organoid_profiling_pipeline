@@ -97,6 +97,13 @@ validate_name() {
     echo "$label contains unsupported characters: $value" >&2
     exit 2
   fi
+  # run-id becomes a results-root subdirectory component (outdir="$results_root/$id")
+  # in clear_output/run_nextflow/submit_slurm; "." or ".." would resolve outside
+  # results_root, and the allowed character class above otherwise permits both.
+  if [[ "$label" == "run-id" && -n "$value" && ( "$value" == "." || "$value" == ".." ) ]]; then
+    echo "$label must not be a relative path component: $value" >&2
+    exit 2
+  fi
 }
 
 validate_positive_int() {
@@ -346,7 +353,12 @@ preflight() {
     echo "git_commit: $(git -C "$ROOT_DIR/.." rev-parse --short HEAD 2>/dev/null || true)"
   } > "$outdir/summary.txt"
 
-  env | sort > "$outdir/environment.txt"
+  # Scoped allowlist, not the full environment: this file lands under shared
+  # PetaLibrary results storage, and a bare `env` dump would also capture
+  # unrelated credentials/tokens (e.g. SSH_AUTH_SOCK) present in the caller's shell.
+  (umask 077; env | sort \
+    | grep -E '^(NF1_PROD_[A-Z_]+|NXF_[A-Z_]+|UV_[A-Z_]+|PATH|JAVA_HOME|TMPDIR|SLURM_[A-Z_]+|USER|HOSTNAME)=' \
+    > "$outdir/environment.txt")
   run_capture "$outdir/python-version.txt" python3 --version
   run_capture "$outdir/nextflow-version.txt" "$(nextflow_cmd)" -version
   run_capture "$outdir/uv-version.txt" uv --version
@@ -478,6 +490,11 @@ run_nextflow() {
   fi
 
   mkdir -p "$outdir"
+  # conf/curc_alpine.config points every task's TMPDIR/UV_CACHE_DIR at these
+  # paths; nothing else creates them, and Python's tempfile (and most TIFF
+  # readers) fail outright when TMPDIR doesn't exist.
+  mkdir -p "${NF1_PROD_SCRATCH:-/scratch/alpine/${USER:-unknown}}/tmp" \
+    "${NF1_PROD_PROJECT:-/projects/${USER:-unknown}}/uv_cache"
   preflight "$id" "$account" "$partition" "$qos" "$results_root"
 
   {

@@ -179,6 +179,8 @@ UV_CACHE_DIR=/pl/active/koala/nf1-3d-production-workflow-db/tools/uv-cache \
   uv sync --project environments
 make build-image-sets-index SOURCE_ROOT=/pl/active/koala/nf1-3d-production-workflow-db
 make submit-dry-run RUN_ID=nf1-production-batch-1 ACCOUNT=amc-general
+# Run the staged capacity test from PLAN.md first -- see "Before the first
+# full run" below. Only run this against the full index after that passes:
 make submit RUN_ID=nf1-production-batch-1 ACCOUNT=amc-general
 ```
 

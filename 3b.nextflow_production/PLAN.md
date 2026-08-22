@@ -130,10 +130,16 @@ reimplementation:
 - A run at this scale will visibly move this account's fair-share standing
   for several weeks (14-day decay half-life); not a lockout risk, but worth
   timing around other queued work if possible.
-- 84,000+ individual Slurm jobs (this batch's own worker-task count will be
-  in a similar range, given ~3,449 image sets x 20 tasks/image set) is a lot
-  of jobs independent of whether account limits allow it. Job arrays for
-  homogeneous shards remain deferred, same as in the pilot.
+- The workflow this folder runs (`workflows/featurize_image_set.nf`) is the
+  single-task-per-image-set version -- one `FEATURIZE_IMAGE_SET` Slurm job
+  per pending image set, not the compartment x channel fan-out the pilot's
+  own README documents benchmarking separately. Total jobs for a fresh
+  `submit` run of the current 3,443-image-set index is `P + 3` (3,446: one
+  `FEATURIZE_IMAGE_SET` per image set, `PLAN_IMAGE_SETS`, `BUILD_WAREHOUSE`,
+  and the coordinator), not the pilot's per-compartment-fan-out job counts.
+  Still a lot of individual Slurm jobs independent of whether account
+  limits allow it. Job arrays for homogeneous shards remain deferred, same
+  as in the pilot.
 
 ## Success criteria
 
