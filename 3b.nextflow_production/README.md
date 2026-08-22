@@ -12,10 +12,10 @@ namespace so a production run can never collide with pilot output. Where
 this folder's defaults differ from the pilot's, it's because production
 scale changes what a sane default is (see
 [Differences from the pilot](#differences-from-the-pilot) below) -- read
-`3a.nextflow_pilot/README.md` and `PLAN.md` for the full architecture
-discussion, the compartment/channel role tables, the alignment contract, and
-the benchmark history behind every default here; this README does not
-repeat that.
+`3a.nextflow_pilot/README.md` and `PLAN.md` for the full benchmark history
+and channel/compartment role tables behind every default here, and the
+[Architecture](#architecture) section below for the DAG and compartment
+diagrams reproduced directly in this folder rather than only by reference.
 
 Data staged on PetaLibrary:
 
@@ -27,6 +27,102 @@ Data staged on PetaLibrary:
 (`~/mnt/alpine/active/koala/nf1-3d-production-workflow-db/...` from a host
 where PetaLibrary is mounted locally rather than on Alpine itself -- same
 share, different mount point.)
+
+## Architecture
+
+Unchanged from `3a.nextflow_pilot` -- reproduced here rather than only
+linked, since a prior PR review (WayScience/NF1_3D_organoid_profiling_pipeline#158)
+specifically asked for a picture of the DAG, and a reader of this folder
+shouldn't have to open a sibling folder's README to get one.
+
+### Pipeline flow
+
+```mermaid
+flowchart TD
+    subgraph INPUT["Input mode -- pick one per run"]
+        A1["Manifest YAML files<br/>manifest/*.yaml"]
+        A2["Image-sets index CSV<br/>patient,well_fov rows"]
+    end
+
+    A1 -->|"--manifest"| P
+    A2 -->|"--image-sets-index / --source-root"| P
+
+    P["PLAN_IMAGE_SETS<br/>(one Slurm task per run)"]
+    P --> P1["Check warehouse/ + metadata/ per image set:<br/>already landed and valid?"]
+    P1 -->|pending| B
+    P1 -.->|done, skipped| C
+
+    B["FEATURIZE_IMAGE_SET<br/>(one Slurm task per pending image set)"]
+    B --> B1["Load 4 channels + 4 masks once<br/>check whole-image-set alignment"]
+    B1 --> B2["Build images.image_assets<br/>(one row per channel + per mask)"]
+    B1 --> B3["Extract Nuclei / Cell / Cytoplasm / Organoid profiles<br/>(nongranularity + granularity together)"]
+    B2 --> W1[("warehouse/images/image_assets/&lt;image_id&gt;.parquet")]
+    B3 --> W2[("warehouse/profiles/&lt;compartment&gt;_profiles/&lt;image_id&gt;.parquet")]
+    B1 --> M1[("metadata/.../&lt;image_id&gt;.validation.json + .run_record.json")]
+
+    W1 --> C
+    W2 --> C
+    C["BUILD_WAREHOUSE<br/>(one Slurm task per run)"]
+    C --> C1["Scan + validate every landed parquet file<br/>(no data copy, no data load)"]
+    C1 --> C2["build_duckdb_views.py"]
+    C2 --> D[("warehouse/warehouse.duckdb<br/>views only, no copied data")]
+    C1 --> M2[("metadata/run_record.json + metadata/validation.json")]
+
+    D --> E1["profiles.nuclei_profiles<br/>profiles.cell_profiles<br/>profiles.cytoplasm_profiles<br/>profiles.organoid_profiles"]
+    D --> E2["images.image_assets"]
+    D --> E3["joined.images_nuclei_cell_cytoplasm<br/>joined.images_organoid"]
+```
+
+`PLAN_IMAGE_SETS` skips `FEATURIZE_IMAGE_SET` for any image set whose
+warehouse output already exists and validated -- rerunning a
+mostly-finished batch doesn't redo the finished part (this exists because
+of a PR #158 review question about rerun/preemption risk on
+already-computed image sets). Total Slurm jobs for N image sets, P of them
+still pending: `P + 3` (P `FEATURIZE_IMAGE_SET` tasks + 1
+`PLAN_IMAGE_SETS` task + 1 `BUILD_WAREHOUSE` task + the coordinator job
+itself); `P == N` on a fresh run.
+
+**Deliberately decoupled from ZEDProfiler itself.** `build_warehouse_from_
+compartments.py`/`build_duckdb_views.py` only ever consume the parquet
+files `FEATURIZE_IMAGE_SET` already wrote -- they know nothing about
+ZEDProfiler's feature families, loaders, or masks. That split (per
+MikeLippincott's PR #158 review: *"This reads like something that should
+have a software -- maybe a cytotable port over in the future... I like the
+decoupling as it keeps the featurization flexible."*) is intentional:
+featurization can change without touching how results get warehoused, and
+the warehousing/DB-management layer could plausibly grow into a standalone
+package later, in the spirit of [CytoTable](https://github.com/cytomining/CytoTable).
+Not planned work here, just a design property worth keeping in mind at
+production scale too.
+
+### Compartment segmentation relationships
+
+```mermaid
+flowchart LR
+    DNA(["DNA channel (405)"]) -->|primary| Nuclei["Nuclei mask<br/>segmented_from_dna"]
+    AGP(["AGP channel (555)"]) -->|primary| Cell["Cell mask<br/>agp_watershed_seeded_by_nuclei"]
+    Nuclei -->|seed| Cell
+    Cell -->|"Cell minus Nuclei"| Cytoplasm["Cytoplasm mask<br/>cell_mask_minus_nuclei_mask"]
+    Nuclei -->|subtracted| Cytoplasm
+    AGP -->|"primary, no seed"| Organoid["Organoid mask<br/>segmented_from_agp<br/>(independent object-ID space)"]
+
+    ER(["ER channel (488)"]) -.->|measured in every mask| Nuclei
+    Mito(["Mito channel (640)"]) -.->|measured in every mask| Nuclei
+```
+
+`Nuclei` segments independently from `DNA` alone. `Cell` is an AGP
+watershed *seeded* by `Nuclei`'s own segmentation, so their object IDs
+coincide -- which is why `joined.images_nuclei_cell_cytoplasm` can join all
+three compartments on `Metadata_Object_ObjectID` directly. `Cytoplasm` is
+**not** an independent seeded watershed at all -- it's the plain set
+subtraction `Cell mask - Nuclei mask`. `Organoid` segments from `AGP`
+independently, with no seed channel and its own, much smaller object-ID
+space, so it's never part of the Nuclei/Cell/Cytoplasm join. Confirmed
+empirically twice now, not just once: the pilot's own `NF0014_T1/C4-2`
+benchmark and this folder's own single-image-set test case
+(`prod-testcase-nf0014-c4-2`, see [Status](#status) below) both produced
+exactly 45 Nuclei objects but only 42 Cell/Cytoplasm objects -- a strict
+subset, one row per object that successfully segmented in every compartment.
 
 ## Status
 
@@ -131,12 +227,13 @@ in place of `NF1_PILOT_*` (e.g. `NF1_PROD_ACCOUNT`, `NF1_PROD_RESULTS_ROOT`).
 - **`schema_version` is `0.1.0-production`**, not `0.1.0-pilot`, in
   manifests this folder generates.
 
-Everything else -- the Nextflow DAG (`PLAN_IMAGE_SETS` ->
-`FEATURIZE_IMAGE_SET` fan-out -> `BUILD_WAREHOUSE`), the warehouse directory
-shape, the alignment contract, the channel/compartment role tables, the
-skip-already-completed-image-sets behavior, and the shared-`uv`-environment
-worker pattern -- is unchanged from `3a.nextflow_pilot`. See that folder's
-README for all of it.
+Everything else -- the Nextflow DAG shown in [Architecture](#architecture)
+above, the warehouse directory shape, the alignment contract, the
+channel/compartment role tables, the skip-already-completed-image-sets
+behavior, and the shared-`uv`-environment worker pattern -- is unchanged
+from `3a.nextflow_pilot`. See that folder's README for the full benchmark
+history and the channel/compartment role tables this summary doesn't
+repeat.
 
 ## Before the first full run
 
