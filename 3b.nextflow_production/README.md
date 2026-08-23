@@ -131,11 +131,12 @@ subset, one row per object that successfully segmented in every compartment.
 - [x] This folder scaffolded from `3a.nextflow_pilot`, renamed and
       re-tuned for production scale (see below).
 - [x] Staging: bandicoot -> PetaLibrary for the 13-patient batch
-      (`staging/`) -- **12/13 staged and verified** (3,443/3,449 well/FOVs
+      (`staging/`) -- **all 13 staged and verified** (4,136/4,142 well/FOVs
       complete; the 6-well shortfall is a source data gap on bandicoot
-      itself, not a transfer issue). `NF0037_T1_CQ1` (693 well/FOVs, per
-      review request WayScience/NF1_3D_organoid_profiling_pipeline#161)
-      staging in progress -- see `staging/README.md`.
+      itself, not a transfer issue). `NF0037_T1_CQ1` (693 well/FOVs) was
+      added per review request
+      (WayScience/NF1_3D_organoid_profiling_pipeline#161) -- see
+      `staging/README.md`.
 - [x] A repo checkout, `uv sync`, and Nextflow/JDK toolchain on Alpine under
       `/pl/active/koala/nf1-3d-production-workflow-db/` (same one-time setup
       the pilot's README documents under "Alpine notes from 2026-08-10";
@@ -149,7 +150,7 @@ subset, one row per object that successfully segmented in every compartment.
       `BUILD_WAREHOUSE` 4.9s; `validation_status: pass` on every table, row
       counts matching the pilot's own historical benchmark for this exact
       image set exactly. Output was 1.4 MB for this one image set --
-      consistent with the ~5 GB estimate for the full 3,443-image-set batch.
+      consistent with the ~6 GB estimate for the full 4,136-image-set batch.
       This is one image set on one Slurm task, so it validates the
       toolchain and gives a real per-task timing/memory data point, but it
       does *not* validate concurrent throughput under `queueSize=180` or
@@ -174,8 +175,8 @@ subset, one row per object that successfully segmented in every compartment.
 Before any Nextflow run, the target patients' raw data must exist under this
 folder's PetaLibrary `data/` root -- it is not read from bandicoot directly.
 See [`staging/README.md`](staging/README.md) for the transfer script, the
-current 12-patient batch (`staging/patients.txt`), and how to verify
-completeness. That batch is roughly ~3,449 well/FOV directories -- large
+current 13-patient batch (`staging/patients.txt`), and how to verify
+completeness. That batch is roughly ~4,142 well/FOV directories -- large
 enough to run as a background/tmux job, not inline.
 
 ## Run
@@ -259,7 +260,7 @@ section before scheduling a full run, not just this summary:
   N=2.** It's a deliberate single-writer step, so it runs fully serially
   after every worker task finishes. Do a staged capacity test at an
   intermediate scale (the pilot suggested 50-100 image sets; this batch's
-  full ~3,449 well/FOVs is itself a reasonable "intermediate scale" relative
+  full ~4,142 well/FOVs is itself a reasonable "intermediate scale" relative
   to the 4200-image-set full-dataset projection) before trusting any
   wall-time estimate for the complete batch.
 - **A run this size will measurably move this account's fair-share

@@ -62,16 +62,14 @@ further here):
 | NF0030_T1 | 207 | staged, verified complete 203/207 (4 wells missing masks on bandicoot itself: F9-3, G2-1, G2-2, G2-3 -- see below) |
 | NF0035_T1 | 349 | staged, verified complete 348/349 (1 well missing masks on bandicoot itself: C9-7 -- see below) |
 | NF0037_T1 | 420 | staged, verified complete 420/420 |
-| NF0037_T1_CQ1 | 693 | staging in progress |
+| NF0037_T1_CQ1 | 693 | staged, verified complete 693/693 |
 | NF0040_T1 | 420 | staged, verified complete 420/420 |
 | NF0055_T1 | 420 | staged, verified complete 419/420 (1 well missing masks on bandicoot itself: D8-2 -- see below) |
 | SARCO219_T2 | 199 | staged, verified complete 199/199 |
 | SARCO361_T1 | 350 | staged, verified complete 350/350 |
 
-12 of 13 patients staged and verified: **3,443 of 3,449 well/FOVs complete**
-(figures below still exclude `NF0037_T1_CQ1`, in progress). That's
-~4,142 well/FOV directories across 13 patients once `NF0037_T1_CQ1`
-lands -- large enough that
+All 13 patients staged and verified: **4,136 of 4,142 well/FOVs complete**.
+That's ~4,142 well/FOV directories across 13 patients -- large enough that
 this transfer should run under `nohup`/`tmux`/`screen` or as its own job,
 not a short interactive shell, and large enough to be worth the same
 production-scale caution `3a.nextflow_pilot/PLAN.md`'s "Production-scale

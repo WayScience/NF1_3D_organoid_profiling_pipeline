@@ -4,7 +4,7 @@
 
 Expand `3a.nextflow_pilot`'s validated Nextflow/Slurm fan-out engine (proven
 on `NF0055_T1/B10-1` and `NF0014_T1/C4-2`, see that folder's README) to an
-initial production batch: **12 patients, every complete well/FOV**, staged
+initial production batch: **13 patients, every complete well/FOV**, staged
 from bandicoot to a new, isolated PetaLibrary root. This is
 `docs/source/future_processing_plan.md`'s implementation-sequence step 7,
 "Production workflow rollout" -- it follows step 6's pre-operational
@@ -12,8 +12,8 @@ validation of the pilot, not a replacement for it.
 
 Explicitly **not** in this plan:
 
-- The full ~4200-image-set dataset in one run. This batch (~3,449 well/FOVs
-  across 12 patients) is itself the next scale step up from the pilot's 1-2
+- The full ~4200-image-set dataset in one run. This batch (~4,142 well/FOVs
+  across 13 patients) is itself the next scale step up from the pilot's 1-2
   image sets, and per the pilot's own PLAN.md, `BUILD_WAREHOUSE`'s scaling
   behavior needs a real intermediate-scale data point before a full-dataset
   run is trustworthy. This batch is that data point.
@@ -49,12 +49,11 @@ without either one touching the other's files.
 **Staging is a manual/scripted prep step, before any Nextflow run** -- see
 `staging/README.md` for the transfer script (`stage_from_bandicoot.sh`,
 `rsync -a --partial`, resumable) and how to verify completeness with
-`scripts/build_image_sets_index.py` once transferred. 12 of 13 patients
-are staged and verified: 3,443 of 3,449 well/FOVs complete (figures
-exclude `NF0037_T1_CQ1`, staging in progress). The 6-well shortfall
-(4 in `NF0030_T1`, 1 in `NF0035_T1`, 1 in `NF0055_T1`) is missing masks on
-bandicoot itself, not a transfer issue -- see `staging/README.md` for the
-specific paths.
+`scripts/build_image_sets_index.py` once transferred. All 13 patients are
+staged and verified: 4,136 of 4,142 well/FOVs complete. The 6-well
+shortfall (4 in `NF0030_T1`, 1 in `NF0035_T1`, 1 in `NF0055_T1`) is missing
+masks on bandicoot itself, not a transfer issue -- see `staging/README.md`
+for the specific paths.
 
 ## Reused, unchanged from the pilot
 
@@ -98,7 +97,7 @@ reimplementation:
 
 ## Execution sequence
 
-1. **Stage data** (`staging/stage_from_bandicoot.sh`) for all 12 patients.
+1. **Stage data** (`staging/stage_from_bandicoot.sh`) for all 13 patients.
    Verify with `build_image_sets_index.py` against the expected well/FOV
    counts in `staging/README.md`.
 2. **One-time Alpine setup**: repo checkout under
@@ -137,7 +136,7 @@ reimplementation:
   single-task-per-image-set version -- one `FEATURIZE_IMAGE_SET` Slurm job
   per pending image set, not the compartment x channel fan-out the pilot's
   own README documents benchmarking separately. Total jobs for a fresh
-  `submit` run of the current 3,443-image-set index is `P + 3` (3,446: one
+  `submit` run of the current 4,136-image-set index is `P + 3` (4,139: one
   `FEATURIZE_IMAGE_SET` per image set, `PLAN_IMAGE_SETS`, `BUILD_WAREHOUSE`,
   and the coordinator), not the pilot's per-compartment-fan-out job counts.
   `P + 3` counts the coordinator as its own Slurm job because that's what
@@ -153,7 +152,7 @@ reimplementation:
 
 ## Success criteria
 
-- Staging verified complete for all 12 patients (index row count matches
+- Staging verified complete for all 13 patients (index row count matches
   expected well/FOV counts, allowing for genuinely incomplete source data).
 - Staged capacity test completes with a valid warehouse and a real
   `BUILD_WAREHOUSE` timing point at the tested scale.
@@ -167,7 +166,7 @@ reimplementation:
 
 ## Explicitly deferred
 
-- The remaining patients beyond this 12-patient batch, and the full
+- The remaining patients beyond this 13-patient batch, and the full
   ~4200-image-set dataset.
 - Job arrays for homogeneous shards.
 - Any GPU/deep-learning execution.
