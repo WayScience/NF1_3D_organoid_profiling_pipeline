@@ -28,7 +28,8 @@ nothing under the pilot folder is touched by this workflow.
 
 `patients.txt` lists the production batch, one patient per line. The first
 nine were staged and verified first; `NF0055_T1`, `SARCO219_T2`, and
-`SARCO361_T1` were added in a follow-up pass:
+`SARCO361_T1` were added in a follow-up pass; `NF0037_T1_CQ1` was added
+after that, per review request (WayScience/NF1_3D_organoid_profiling_pipeline#161):
 
 ```text
 NF0014_T1
@@ -39,6 +40,7 @@ NF0021_T1
 NF0030_T1
 NF0035_T1
 NF0037_T1
+NF0037_T1_CQ1
 NF0040_T1
 NF0055_T1
 SARCO219_T2
@@ -60,13 +62,16 @@ further here):
 | NF0030_T1 | 207 | staged, verified complete 203/207 (4 wells missing masks on bandicoot itself: F9-3, G2-1, G2-2, G2-3 -- see below) |
 | NF0035_T1 | 349 | staged, verified complete 348/349 (1 well missing masks on bandicoot itself: C9-7 -- see below) |
 | NF0037_T1 | 420 | staged, verified complete 420/420 |
+| NF0037_T1_CQ1 | 693 | staging in progress |
 | NF0040_T1 | 420 | staged, verified complete 420/420 |
 | NF0055_T1 | 420 | staged, verified complete 419/420 (1 well missing masks on bandicoot itself: D8-2 -- see below) |
 | SARCO219_T2 | 199 | staged, verified complete 199/199 |
 | SARCO361_T1 | 350 | staged, verified complete 350/350 |
 
-All 12 patients staged and verified: **3,443 of 3,449 well/FOVs complete**.
-That's ~3,449 well/FOV directories across 12 patients -- large enough that
+12 of 13 patients staged and verified: **3,443 of 3,449 well/FOVs complete**
+(figures below still exclude `NF0037_T1_CQ1`, in progress). That's
+~4,142 well/FOV directories across 13 patients once `NF0037_T1_CQ1`
+lands -- large enough that
 this transfer should run under `nohup`/`tmux`/`screen` or as its own job,
 not a short interactive shell, and large enough to be worth the same
 production-scale caution `3a.nextflow_pilot/PLAN.md`'s "Production-scale

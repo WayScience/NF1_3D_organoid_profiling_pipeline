@@ -34,9 +34,11 @@ Source of truth is bandicoot, same layout the pilot used:
 
 **Patients for this batch** (`staging/patients.txt`):
 `NF0014_T1`, `NF0014_T2`, `NF0016_T1`, `NF0018_T6`, `NF0021_T1`,
-`NF0030_T1`, `NF0035_T1`, `NF0037_T1`, `NF0040_T1`, `NF0055_T1`,
-`SARCO219_T2`, `SARCO361_T1` -- the last three added in a follow-up staging
-pass after the first nine were verified.
+`NF0030_T1`, `NF0035_T1`, `NF0037_T1`, `NF0037_T1_CQ1`, `NF0040_T1`,
+`NF0055_T1`, `SARCO219_T2`, `SARCO361_T1` -- `NF0055_T1`/`SARCO219_T2`/
+`SARCO361_T1` added in a follow-up staging pass after the first nine were
+verified; `NF0037_T1_CQ1` added after that per review request
+(WayScience/NF1_3D_organoid_profiling_pipeline#161).
 
 **Working copy: a new PetaLibrary root, not bandicoot directly and not the
 pilot's root.** `nf1-3d-production-workflow-db` was created alongside the
@@ -47,11 +49,12 @@ without either one touching the other's files.
 **Staging is a manual/scripted prep step, before any Nextflow run** -- see
 `staging/README.md` for the transfer script (`stage_from_bandicoot.sh`,
 `rsync -a --partial`, resumable) and how to verify completeness with
-`scripts/build_image_sets_index.py` once transferred. All 12 patients are
-staged and verified: 3,443 of 3,449 well/FOVs complete. The 6-well
-shortfall (4 in `NF0030_T1`, 1 in `NF0035_T1`, 1 in `NF0055_T1`) is missing
-masks on bandicoot itself, not a transfer issue -- see `staging/README.md`
-for the specific paths.
+`scripts/build_image_sets_index.py` once transferred. 12 of 13 patients
+are staged and verified: 3,443 of 3,449 well/FOVs complete (figures
+exclude `NF0037_T1_CQ1`, staging in progress). The 6-well shortfall
+(4 in `NF0030_T1`, 1 in `NF0035_T1`, 1 in `NF0055_T1`) is missing masks on
+bandicoot itself, not a transfer issue -- see `staging/README.md` for the
+specific paths.
 
 ## Reused, unchanged from the pilot
 

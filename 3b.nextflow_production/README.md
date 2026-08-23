@@ -130,10 +130,12 @@ subset, one row per object that successfully segmented in every compartment.
       `results/`, `tools/`), isolated from `nf1-3d-pilot-workflow-db`.
 - [x] This folder scaffolded from `3a.nextflow_pilot`, renamed and
       re-tuned for production scale (see below).
-- [x] Staging: bandicoot -> PetaLibrary for the 12-patient batch
-      (`staging/`) -- **all 12 staged and verified** (3,443/3,449 well/FOVs
+- [x] Staging: bandicoot -> PetaLibrary for the 13-patient batch
+      (`staging/`) -- **12/13 staged and verified** (3,443/3,449 well/FOVs
       complete; the 6-well shortfall is a source data gap on bandicoot
-      itself, not a transfer issue -- see `staging/README.md`).
+      itself, not a transfer issue). `NF0037_T1_CQ1` (693 well/FOVs, per
+      review request WayScience/NF1_3D_organoid_profiling_pipeline#161)
+      staging in progress -- see `staging/README.md`.
 - [x] A repo checkout, `uv sync`, and Nextflow/JDK toolchain on Alpine under
       `/pl/active/koala/nf1-3d-production-workflow-db/` (same one-time setup
       the pilot's README documents under "Alpine notes from 2026-08-10";
