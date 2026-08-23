@@ -153,6 +153,15 @@ subset, one row per object that successfully segmented in every compartment.
       does *not* validate concurrent throughput under `queueSize=180` or
       `BUILD_WAREHOUSE`'s behavior at higher N -- the staged capacity test
       below is still the next step.
+- [x] **Post-CodeRabbit-fix verification** (run ID `post-fix-verify`,
+      `make check` + `make submit-dry-run` on Alpine at commit `5066f75`):
+      confirms the entrypoint fixes work in the real environment, not just
+      locally-stubbed tests. `environment.txt` dropped from the pre-fix
+      test case's 187 lines (full `env` dump, including exported bash
+      function bodies from Alpine's Lmod init scripts) to 5 scoped lines at
+      `-rw-------` permissions; `coordinator.sbatch` generates identically
+      to the original test case otherwise. No Slurm job submitted for this
+      check -- dry-run only, artifacts removed after inspection.
 - [ ] A staged capacity test at intermediate scale before the full batch
       (see PLAN.md) -- the pilot's own production-scale estimate flags this
       as a prerequisite, not optional polish.
