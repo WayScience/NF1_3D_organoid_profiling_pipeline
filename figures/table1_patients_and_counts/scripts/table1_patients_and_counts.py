@@ -27,11 +27,15 @@ organoid_profiles_path = pathlib.Path(
     root_dir,
     "data/all_patient_profiles/0.normalized_profiles/organoid_norm_norm_profile.parquet",
 ).resolve(strict=True)
+
 patient_extra_metadata_path = pathlib.Path(
-    root_dir, "config/patient_extra_metadata/paitent_extra_metadata.csv"
+    root_dir,
+    "config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type"
+    ".tsv",
 ).resolve(strict=True)
 table1_results_path = pathlib.Path(
-    root_dir, "figures/table1/results/table1_results.csv"
+    root_dir,
+    "figures/table1_patients_and_counts/results/table1_patients_and_counts_results.tsv",
 ).resolve()
 table1_results_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -41,7 +45,8 @@ table1_results_path.parent.mkdir(parents=True, exist_ok=True)
 
 sc_df = pd.read_parquet(sc_profiles_path)
 organoid_df = pd.read_parquet(organoid_profiles_path)
-patient_extra_metadata_df = pd.read_csv(patient_extra_metadata_path)
+
+patient_extra_metadata_df = pd.read_csv(patient_extra_metadata_path, sep="\t")
 
 
 # In[4]:
@@ -246,18 +251,18 @@ table1 = pd.merge(
     right_on="patient",
     how="left",
 ).drop(columns=["patient"])
-table1.to_csv(table1_results_path, index=False)
+table1.to_csv(table1_results_path, index=False, sep="\t")
 
 
 # In[12]:
 
 
-tumor_type = table1.pop("Tumor type")
-table1.insert(1, "Tumor type", tumor_type)
+tumor_type = table1.pop("Tumor_type")
+table1.insert(1, "Tumor_type", tumor_type)
 table1.rename(
     columns={
         "Metadata_Biology_PatientTumor": "Patient Tumor ",
-        "Tumor type": "Tumor type ",
+        "Tumor_type": "Tumor type ",
         "number_of_compounds": "Compound Count",
         "number_of_treatments": "Treatment Count",
         "number_of_wells": "Well Count",
@@ -282,12 +287,6 @@ table1_md = table1.to_markdown(index=False, tablefmt="pipe")
 # In[14]:
 
 
-table1_md
-
-
-# In[15]:
-
-
 # Display the table nicely formatted
 
 # Display as formatted markdown
@@ -295,7 +294,7 @@ print("Rendered Table:")
 display(Markdown(table1_md))
 
 
-# In[16]:
+# In[15]:
 
 
 n_columns = table1.shape[1]
@@ -356,7 +355,10 @@ for (i, j), cell in tbl.get_celld().items():
         cell.set_facecolor("#F8F8FF")
         cell.set_height(0.12)
 
-output_path = pathlib.Path(root_dir, "figures/table1/figures/table1.svg")
+output_path = pathlib.Path(
+    root_dir,
+    "figures/table1_patients_and_counts/figures/table1_patients_and_counts.svg",
+)
 output_path.parent.mkdir(parents=True, exist_ok=True)
 plt.savefig(output_path, format="svg", bbox_inches="tight", dpi=600)
 plt.show()
