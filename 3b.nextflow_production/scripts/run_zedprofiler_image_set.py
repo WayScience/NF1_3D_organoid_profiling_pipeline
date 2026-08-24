@@ -216,6 +216,23 @@ def merge_feature_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
             if key in merged.columns and key in frame.columns
         ]
         if not join_keys:
+            # Observed in production: a single feature computation (e.g.
+            # Colocalization on a channel pair with a constant/degenerate
+            # input -- ConstantInputWarning from scipy.stats.pearsonr) can
+            # return a frame with no object identifier at all, regardless of
+            # how many objects the compartment actually has. Blindly falling
+            # back to "Metadata_Object_ObjectID" crashed merge() with
+            # KeyError whenever that column wasn't actually in this specific
+            # frame. Drop just this one feature family's columns instead of
+            # failing the whole compartment -- every other feature family's
+            # columns for this image set are still valid and worth keeping.
+            if "Metadata_Object_ObjectID" not in frame.columns:
+                print(
+                    "merge_feature_frames: dropping a feature frame with no "
+                    f"Metadata_Object_ObjectID column (columns: {list(frame.columns)})",
+                    file=sys.stderr,
+                )
+                continue
             join_keys = ["Metadata_Object_ObjectID"]
         merged = merged.merge(frame, how="outer", on=join_keys)
     return merged
@@ -344,13 +361,23 @@ def validate_profiles(
             "Metadata_Imaging_ImageID",
         )
     }
-    valid = (
-        profiles.shape[0] == len(object_ids)
-        and observed_ids == object_ids
-        and all(family_presence.values())
-        and not all_null
-        and all(metadata_match.values())
-    )
+    if not object_ids:
+        # A compartment mask can legitimately contain zero objects (observed
+        # in production: an Organoid mask with no detected organoids).
+        # feature_family_presence/all_null are meaningless with nothing to
+        # compute -- every column is trivially "all null" on zero rows, and
+        # merge_feature_frames() already drops feature families that
+        # returned no object identifier at all for this exact reason. Valid
+        # here just means "correctly produced zero rows," not garbage.
+        valid = profiles.shape[0] == 0 and all(metadata_match.values())
+    else:
+        valid = (
+            profiles.shape[0] == len(object_ids)
+            and observed_ids == object_ids
+            and all(family_presence.values())
+            and not all_null
+            and all(metadata_match.values())
+        )
     return {
         "valid": valid,
         "row_count": int(profiles.shape[0]),
