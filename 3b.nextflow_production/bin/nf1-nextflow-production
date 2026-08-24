@@ -40,7 +40,15 @@ Usage:
   bin/nf1-nextflow-production clear-output --run-id ID [--results-root PATH] [--dry-run]
   bin/nf1-nextflow-production smoke [--run-id ID]
   bin/nf1-nextflow-production run (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
-  bin/nf1-nextflow-production submit (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+  bin/nf1-nextflow-production submit (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--coordinator-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+
+  --coordinator-time sets the coordinator Slurm job's own walltime (default
+  1-00:00:00 / 24h -- the acpu partition's ceiling). This is the job that
+  runs the Nextflow controller itself for the whole run's duration, distinct
+  from --feature-time (each FEATURIZE_IMAGE_SET task's own walltime). A
+  batch large enough to run past this limit gets its coordinator killed by
+  Slurm mid-run even though individual tasks are still well within
+  --feature-time.
 
   --manifest, --image-sets, and --image-sets-index are mutually exclusive.
   --image-sets takes a comma-separated list of manifest paths, one per
@@ -554,6 +562,7 @@ submit_slurm() {
   local image_sets="${13:-}"
   local image_sets_index="${14:-}"
   local source_root="${15:-}"
+  local coordinator_time="${16:-1-00:00:00}"
   local outdir="$results_root/$id"
   local script="$outdir/coordinator.sbatch"
   local tools_root
@@ -605,7 +614,7 @@ submit_slurm() {
 #SBATCH --partition=$partition
 $account_directive
 $qos_directive
-#SBATCH --time=03:00:00
+#SBATCH --time=$coordinator_time
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
@@ -755,6 +764,7 @@ case "$cmd" in
     feature_cpus=2
     feature_memory="32 GB"
     feature_time="2h"
+    coordinator_time="1-00:00:00"
     uv_project_environment="${NF1_PROD_UV_ENVIRONMENT:-}"
     account="${NF1_PROD_ACCOUNT:-}"
     partition="${NF1_PROD_PARTITION:-acpu}"
@@ -773,6 +783,7 @@ case "$cmd" in
         --feature-cpus) feature_cpus="$2"; shift 2 ;;
         --feature-memory) feature_memory="$2"; shift 2 ;;
         --feature-time) feature_time="$2"; shift 2 ;;
+        --coordinator-time) coordinator_time="$2"; shift 2 ;;
         --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
         --account) account="$2"; shift 2 ;;
         --partition) partition="$2"; shift 2 ;;
@@ -787,7 +798,7 @@ case "$cmd" in
       echo "--manifest, --image-sets, or --image-sets-index is required" >&2
       exit 2
     fi
-    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets" "$image_sets_index" "$source_root"
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets" "$image_sets_index" "$source_root" "$coordinator_time"
     ;;
   -h|--help|"")
     usage

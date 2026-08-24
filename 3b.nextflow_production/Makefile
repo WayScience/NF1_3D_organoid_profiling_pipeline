@@ -20,6 +20,7 @@ UV_PROJECT_ENVIRONMENT ?=
 FEATURE_CPUS ?= 2
 FEATURE_MEMORY ?= 32 GB
 FEATURE_TIME ?= 2h
+COORDINATOR_TIME ?= 1-00:00:00
 
 MANIFEST_ARGS :=
 ifneq ($(strip $(SOURCE_ROOT)),)
@@ -85,10 +86,10 @@ run:
 	  bash bin/nf1-nextflow-production run --profile "$(PROFILE)" $(RUN_ARGS) --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)"
 
 submit:
-	@bash bin/nf1-nextflow-production submit $(RUN_ARGS) --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)" $(if $(SUBMIT_HOST),--submit-host "$(SUBMIT_HOST)")
+	@bash bin/nf1-nextflow-production submit $(RUN_ARGS) --coordinator-time "$(COORDINATOR_TIME)" --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)" $(if $(SUBMIT_HOST),--submit-host "$(SUBMIT_HOST)")
 
 submit-dry-run:
-	@bash bin/nf1-nextflow-production submit $(RUN_ARGS) --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)" $(if $(SUBMIT_HOST),--submit-host "$(SUBMIT_HOST)") --dry-run
+	@bash bin/nf1-nextflow-production submit $(RUN_ARGS) --coordinator-time "$(COORDINATOR_TIME)" --account "$(ACCOUNT)" --partition "$(PARTITION)" --qos "$(QOS)" $(if $(SUBMIT_HOST),--submit-host "$(SUBMIT_HOST)") --dry-run
 
 smoke:
 	@bash bin/nf1-nextflow-production smoke $(if $(RUN_ID),--run-id "$(RUN_ID)")
