@@ -1,0 +1,14 @@
+Metadata_Biology_PatientTumor,number_of_compounds,number_of_treatments,number_of_wells,number_of_well_fovs,number_of_organoids,number_of_single_cells,theoretical_number_of_compounds,theoretical_number_of_treatments,theoretical_number_of_well_fovs,Tumor type
+NF0014_T1,17,21,50,95,191,2132,17,21,104,Neurofibroma (subcutaneous)
+NF0014_T2,17,21,50,347,870,2939,17,21,350,Plexiform Neurofibroma
+NF0016_T1,16,20,46,117,257,981,17,21,122,"Neurofibroma, diffuse and plexiform"
+NF0018_T6,17,21,50,152,271,1442,17,21,160,Cutaneous Neurofibroma
+NF0021_T1,17,21,50,346,820,5027,17,21,348,Cutaneous Neurofibroma
+NF0030_T1,17,21,50,204,696,3755,17,21,207,Myopericytoma
+NF0035_T1,17,21,50,347,621,4780,22,21,349,Cutaneous Neurofibroma
+NF0037_T1,22,26,60,416,793,7489,22,26,420,Cutaneous Neurofibroma
+NF0037_T1_CQ1,22,26,60,660,1067,13055,22,26,693,Cutaneous Neurofibroma
+NF0040_T1,22,26,60,411,588,5006,22,25,420,"Schwannoma, with degeneration"
+NF0055_T1,21,25,53,341,731,4325,21,21,420,Plexiform Neurofibroma
+SARCO219_T2,17,21,50,199,3086,12591,17,21,199,MPNST in association with plexiform neurofibroma
+SARCO361_T1,17,21,50,349,1505,4029,17,21,350,Sarcoma
