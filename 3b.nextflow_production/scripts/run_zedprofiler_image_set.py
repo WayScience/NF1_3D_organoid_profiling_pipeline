@@ -371,11 +371,35 @@ def validate_profiles(
         # here just means "correctly produced zero rows," not garbage.
         valid = profiles.shape[0] == 0 and all(metadata_match.values())
     else:
+        # Structural correctness (row count, object IDs, metadata) is still
+        # checked strictly. Whether *every* feature family/column has a
+        # non-null value is not: observed in production, at a ~22% rate
+        # across 6 patients, that a whole feature family can legitimately
+        # come back all-null for real, correctly-identified objects --
+        # dominant case is GLCM Texture needing a minimum object pixel
+        # extent for its distance parameter (all 676 Texture columns null
+        # for objects as large as 12, i.e. by count alone, not corrupted
+        # data), plus rarer degenerate-signal cases (Colocalization/
+        # Intensity stats undefined for a constant channel within one
+        # object). Previously this failed the whole compartment and burned
+        # 3 wasted Slurm attempts per image set before giving up permanently
+        # -- the same object/channel data deterministically produces the
+        # same nulls every retry. `all_null_feature_columns` below still
+        # records exactly what came back null, so this stays fully visible;
+        # it just no longer blocks. feature_family_presence is still required
+        # in full -- every case observed so far has every family's columns
+        # structurally present (just null-valued), never a family's columns
+        # dropped from the schema entirely; keeping this check catches that
+        # different, less-understood failure mode if it ever shows up,
+        # rather than silently accepting it too. Only a compartment with
+        # *zero* real signal anywhere (every feature column null) is
+        # rejected on nullness alone -- that remains a sign of genuine, not
+        # merely partial, failure.
         valid = (
             profiles.shape[0] == len(object_ids)
             and observed_ids == object_ids
             and all(family_presence.values())
-            and not all_null
+            and len(all_null) < len(feature_columns)
             and all(metadata_match.values())
         )
     return {
