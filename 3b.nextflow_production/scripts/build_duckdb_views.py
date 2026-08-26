@@ -219,9 +219,17 @@ def build_views(
         created: list[tuple[str, str, int]] = []
         for namespace, table, rel_dir in tables:
             glob = (rel_dir / "*.parquet").as_posix().replace("'", "''")
+            # union_by_name: some image sets (a compartment mask with zero
+            # detected objects -- observed in production) legitimately land
+            # a reduced-column file, since merge_feature_frames() drops
+            # feature families that can't compute on zero objects rather
+            # than padding with nulls. Reading the dataset by column name
+            # instead of by position means those files just contribute NULL
+            # for the columns they don't have, instead of every other file
+            # in the same table being misaligned against them.
             conn.execute(
                 f'CREATE OR REPLACE VIEW "{namespace}"."{table}" AS '
-                f"SELECT * FROM read_parquet('{glob}')"
+                f"SELECT * FROM read_parquet('{glob}', union_by_name = true)"
             )
             created.append((namespace, table, len(list((warehouse_dir / rel_dir).glob("*.parquet")))))
 

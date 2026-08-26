@@ -93,8 +93,8 @@ def main() -> int:
                 raise SystemExit(f"{manifest_path}: " + "\n".join(path_errors))
             manifests.append((str(manifest_path), manifest))
 
-    image_ids = [str(manifest["Metadata_Imaging_ImageID"]) for _, manifest in manifests]
-    duplicate_ids = sorted({i for i in image_ids if image_ids.count(i) > 1})
+    all_image_ids = [str(manifest["Metadata_Imaging_ImageID"]) for _, manifest in manifests]
+    duplicate_ids = sorted({i for i in all_image_ids if all_image_ids.count(i) > 1})
     if duplicate_ids:
         raise SystemExit(
             f"Duplicate Metadata_Imaging_ImageID across image sets: {duplicate_ids}"
@@ -117,6 +117,58 @@ def main() -> int:
                 f"{label} has {entry_compartments}, expected {compartments}"
             )
 
+    # Not every image set passed in necessarily landed output: FEATURIZE_
+    # IMAGE_SET's errorStrategy 'ignore's a task that exhausts its retries
+    # (e.g. a genuine source-data problem like a channel/mask z-slice
+    # mismatch -- see conf/base.config), so it writes nothing for that image
+    # set at all. Previously this hard-failed the whole warehouse build the
+    # moment BUILD_WAREHOUSE hit one, discarding every other image set's
+    # already-landed, valid output in the process. Determine landed-ness
+    # upfront (same completeness definition plan_image_sets.py already
+    # uses: images.image_assets plus every compartment's parquet, all
+    # present) and only build the warehouse from what's actually there --
+    # this stays a hard failure if *nothing* landed, since an empty
+    # warehouse from an otherwise-populated index is a real problem, not a
+    # partial-success case.
+    assets_dir = args.outdir / "warehouse" / "images" / "image_assets"
+    assets_metadata_dir = args.outdir / "metadata" / "images" / "image_assets"
+
+    def is_landed(image_id: str) -> bool:
+        if not (assets_dir / f"{image_id}.parquet").exists():
+            return False
+        if not (assets_metadata_dir / f"{image_id}.validation.json").exists():
+            return False
+        for compartment in compartments:
+            table_slug = f"{compartment_slug(compartment)}_profiles"
+            if not (
+                args.outdir / "warehouse" / "profiles" / table_slug / f"{image_id}.parquet"
+            ).exists():
+                return False
+            if not (
+                args.outdir
+                / "metadata"
+                / "profiles"
+                / table_slug
+                / f"{image_id}.validation.json"
+            ).exists():
+                return False
+        return True
+
+    image_ids = [i for i in all_image_ids if is_landed(i)]
+    skipped_image_ids = [i for i in all_image_ids if i not in set(image_ids)]
+    if not image_ids:
+        raise SystemExit(
+            f"No image set landed complete output out of {len(all_image_ids)} passed in -- "
+            "nothing to build a warehouse from. Check FEATURIZE_IMAGE_SET's own logs, not "
+            "just this task's."
+        )
+    if skipped_image_ids:
+        print(
+            f"NF1_BUILD_WAREHOUSE skipping {len(skipped_image_ids)} image set(s) with no "
+            f"landed output: {skipped_image_ids}",
+            file=sys.stderr,
+        )
+
     all_valid = True
     total_quality_warnings = 0
     output_tables: list[dict[str, Any]] = []
@@ -130,31 +182,49 @@ def main() -> int:
         table_valid = True
         row_count = 0
         column_count = 0
-        reference_schema = None
-        reference_image_id = None
+        reference_types: dict[str, Any] = {}
         for image_id in image_ids:
             parquet_path = target_dir / f"{image_id}.parquet"
             validation_path = compartment_metadata_dir / f"{image_id}.validation.json"
-            if not parquet_path.exists() or not validation_path.exists():
-                raise SystemExit(
-                    f"Missing merged artifact for {compartment}/{image_id}: expected "
-                    f"{parquet_path} and {validation_path} (FEATURIZE_IMAGE_SET output)"
-                )
-            schema = pq.read_schema(parquet_path)
-            if reference_schema is None:
-                reference_schema, reference_image_id = schema, image_id
-            elif schema != reference_schema:
-                raise SystemExit(
-                    f"Schema mismatch for {table_name}: {image_id} does not match "
-                    f"{reference_image_id}. Compare {parquet_path} against "
-                    f"{target_dir / f'{reference_image_id}.parquet'}"
-                )
+            # No existence check here: image_ids was already filtered to
+            # is_landed() image sets above, which requires this exact file.
             validation = json.loads(validation_path.read_text())["compartments"][
                 compartment
             ]
+            schema = pq.read_schema(parquet_path)
+            field_types = {field.name: field.type for field in schema}
+            # A file having fewer/more columns than another is expected now
+            # (a compartment with zero detected objects for this image set
+            # drops feature families that can't compute on zero objects
+            # rather than padding with nulls -- see merge_feature_frames()),
+            # and build_duckdb_views.py's union_by_name handles that at
+            # query time. Zero-row files are skipped for type-conflict
+            # purposes entirely: pandas/pyarrow infer an empty/all-NaN
+            # column as double regardless of what a populated column of the
+            # same name would be (observed: int64 columns like
+            # Metadata_Object_ObjectID coming back double on a 0-object
+            # file) -- with no actual values in that file, the type is
+            # meaningless, not a real conflict, and DuckDB's union_by_name
+            # widens int64/double for the same column name automatically.
+            # Only a *populated* file disagreeing with another populated
+            # file's type for the same column name is a genuine problem.
+            if int(validation["row_count"]) > 0:
+                conflicts = sorted(
+                    name
+                    for name, dtype in field_types.items()
+                    if name in reference_types and reference_types[name] != dtype
+                )
+                if conflicts:
+                    raise SystemExit(
+                        f"Type mismatch for {table_name}/{image_id}, column(s) {conflicts}: "
+                        "doesn't match the type already seen for these columns elsewhere "
+                        f"in this table. Compare {parquet_path} against other files in "
+                        f"{target_dir}."
+                    )
+                reference_types.update(field_types)
             table_valid = table_valid and bool(validation["valid"])
             row_count += int(validation["row_count"])
-            column_count = int(validation["column_count"])
+            column_count = max(column_count, int(validation["column_count"]))
             total_quality_warnings += len(validation.get("quality_warnings", []))
         all_valid = all_valid and table_valid
         output_tables.append(
@@ -173,8 +243,6 @@ def main() -> int:
             }
         )
 
-    assets_dir = args.outdir / "warehouse" / "images" / "image_assets"
-    assets_metadata_dir = args.outdir / "metadata" / "images" / "image_assets"
     assets_valid = True
     assets_row_count = 0
     for image_id in image_ids:
@@ -217,6 +285,7 @@ def main() -> int:
         "git_commit": git_revision,
         "python_version": platform.python_version(),
         "image_sets": image_ids,
+        "skipped_image_sets": skipped_image_ids,
         "outdir": str(args.outdir),
         "warehouse_dir": str(warehouse_dir),
         "tables": output_tables,
@@ -238,6 +307,7 @@ def main() -> int:
             "valid": assets_valid,
             "row_count": assets_row_count,
         },
+        "skipped_image_sets": skipped_image_ids,
     }
 
     metadata_dir = args.outdir / "metadata"
@@ -251,6 +321,7 @@ def main() -> int:
     print(
         "NF1_ZEDPROFILER_WAREHOUSE_OK "
         f"tables={len(output_tables)} image_sets={len(image_ids)} "
+        f"skipped={len(skipped_image_ids)} "
         f"elapsed={run_record['elapsed_seconds']}"
     )
     return 0
