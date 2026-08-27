@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -314,6 +315,18 @@ def main() -> int:
     metadata_dir.mkdir(parents=True, exist_ok=True)
     (metadata_dir / "run_record.json").write_text(json.dumps(run_record, indent=2))
     (metadata_dir / "validation.json").write_text(json.dumps(validation_report, indent=2))
+
+    # Last step of the pipeline, run regardless of all_valid: koala is a
+    # shared group allocation, and every file/dir under outdir needs to
+    # stay group-accessible for others on the project, not just readable by
+    # whoever's Slurm job happened to create it. beforeScript = 'umask 007'
+    # (conf/base.config) gets new files/dirs to 660/770 as they're created,
+    # but umask can never grant a file's execute bit, so a run that started
+    # before this fix -- or any file a umask gap slipped through -- would
+    # still land short of the 770 this project actually wants everywhere.
+    # This sweep is the single point that guarantees it, independent of
+    # umask working correctly at every creation site.
+    subprocess.run(["chmod", "-R", "770", str(args.outdir)], check=False)
 
     if not all_valid:
         print(json.dumps(validation_report, indent=2), file=sys.stderr)

@@ -14,6 +14,14 @@
 #
 set -euo pipefail
 
+# Everything under results/ on PetaLibrary needs to stay group-accessible
+# (koala is a shared group allocation) -- default file creation here was
+# leaving files at 644/755, group-readable but not group-writable, other
+# still readable. umask 007 gives new directories 770 and new files 660
+# (no execute requested for plain data anyway) for every file/dir this
+# script itself creates directly.
+umask 007
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYENV_VERSION="${PYENV_VERSION:-system}"
 
@@ -623,6 +631,13 @@ $qos_directive
 #SBATCH --error=$outdir/coordinator_%j.err
 
 set -euo pipefail
+
+# Explicit, not inherited: Slurm doesn't reliably carry the submitting
+# shell's umask across the sbatch job-submission boundary onto the compute
+# node. Set it fresh here so this coordinator job's own files land
+# group-writable (koala is a shared group allocation) regardless of what
+# the login node's umask happened to be at submit time.
+umask 007
 
 cd "$ROOT_DIR"
 mkdir -p "$tools_root/nextflow-home" "$tools_root/uv-cache"
