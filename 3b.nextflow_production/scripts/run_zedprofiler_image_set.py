@@ -210,6 +210,23 @@ def merge_feature_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
     merged = normalize_feature_frame(frames[0])
     for frame in frames[1:]:
         frame = normalize_feature_frame(frame)
+        # zedprofiler>=0.1.4 (ZedProfiler#53) started returning ID columns on
+        # otherwise-empty feature frames (e.g. Colocalization on a constant/
+        # degenerate channel pair) instead of omitting them. An all-empty
+        # join-candidate column carries no values to align rows on, and
+        # pandas infers its dtype as float64 (NaN) regardless of the
+        # populated frames' str/int dtype for the same key, so including it
+        # in `on=` crashed merge() with a dtype-mismatch ValueError. Drop the
+        # uninformative all-NaN copy up front -- both so it isn't picked as
+        # a join key below, and so it doesn't survive as a duplicate
+        # `_x`/`_y`-suffixed column once it's no longer a join key.
+        for candidate in ("Metadata_Object_ObjectID", "Metadata_Experiment_ImageSet"):
+            if candidate not in merged.columns or candidate not in frame.columns:
+                continue
+            if frame[candidate].isna().all() and not merged[candidate].isna().all():
+                frame = frame.drop(columns=[candidate])
+            elif merged[candidate].isna().all() and not frame[candidate].isna().all():
+                merged = merged.drop(columns=[candidate])
         join_keys = [
             key
             for key in ("Metadata_Object_ObjectID", "Metadata_Experiment_ImageSet")
