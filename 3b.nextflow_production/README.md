@@ -165,10 +165,17 @@ subset, one row per object that successfully segmented in every compartment.
       `-rw-------` permissions; `coordinator.sbatch` generates identically
       to the original test case otherwise. No Slurm job submitted for this
       check -- dry-run only, artifacts removed after inspection.
-- [ ] A staged capacity test at intermediate scale before the full batch
-      (see PLAN.md) -- the pilot's own production-scale estimate flags this
-      as a prerequisite, not optional polish.
-- [ ] First production run.
+- [x] **First production run** (run ID `nf1-production-full-run-1`,
+      `zedprofiler==0.1.3`): completed after fixing four cascading bugs
+      found live against real data (a zero-object crash, an overly-strict
+      all-null validation check, `errorStrategy` halting the whole run on
+      one permanently-bad image set, and `BUILD_WAREHOUSE` failing on
+      missing/reduced-schema image sets). Final result:
+      `NF1_ZEDPROFILER_WAREHOUSE_OK tables=4 image_sets=4134 skipped=2
+      elapsed=2415.45`, `valid: true` on all 4 tables (nuclei 88,027 / cell
+      78,831 / cytoplasm 78,394 / organoid 24,164 rows), DuckDB views
+      confirmed queryable. See the 2026-08-28 notes below for why this
+      warehouse is being superseded rather than reused as-is.
 
 ## Staging
 
@@ -273,3 +280,36 @@ section before scheduling a full run, not just this summary:
 - **Re-query live Alpine state** (`sacctmgr`, `sinfo`, `sshare -u $USER -A
   amc-general -l`) immediately before submitting, rather than trusting any
   cached numbers from pilot-era prep work.
+
+## 2026-08-28 notes: zedprofiler 0.1.4 and a second full run
+
+`environments/pyproject.toml` moved from `zedprofiler==0.1.3` (used for
+`nf1-production-full-run-1` above) to `zedprofiler==0.1.4`. This is not a
+routine version bump -- see `3a.nextflow_pilot/README.md`'s 2026-08-27
+notes for the full benchmark, but in short: `0.1.4` includes
+[WayScience/ZedProfiler#54](https://github.com/WayScience/ZedProfiler/pull/54),
+a correctness fix for several featurization modules that had been computing
+distances, structuring elements, and physical quantities in raw voxel-index
+space rather than physical space. On the pilot's benchmark image set this
+changed `Volume`/`BboxVolume`/`EquivalentDiameter` by ~100x and every
+`*Edge` intensity feature by tens to hundreds of millions in magnitude, and
+dropped the pilot's own NaN-based `quality_warning_count` from 4 to 0 --
+almost certainly the same small-object mechanism behind this warehouse's
+77.2%-non-null Texture finding from the earlier data-quality check. It is
+also ~13-25% faster per image set, but that is the secondary reason to move.
+
+Because `nf1-production-full-run-1`'s existing warehouse (`zedprofiler
+0.1.3`) is not numerically comparable to what `0.1.4` produces, the second
+full run writes to a **separate PetaLibrary results root**,
+`/pl/active/koala/nf1-3d-production-workflow-db/results-zedprofiler-0.1.4`,
+rather than overwriting or reusing `results/`. The original
+`nf1-production-full-run-1` warehouse under `results/` is left untouched
+for anyone who needs it for comparison or already depends on it. Everything
+else about the run (staged data under `data/`, the image-sets index, `conf/`
+resource directives, the group-writable-770 output layers) is unchanged.
+
+```text
+run_id: nf1-production-full-run-2
+results_root: /pl/active/koala/nf1-3d-production-workflow-db/results-zedprofiler-0.1.4
+zedprofiler_version: 0.1.4
+```
