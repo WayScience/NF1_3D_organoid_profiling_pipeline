@@ -200,7 +200,25 @@ def normalize_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
         for column in df.columns
         if column.startswith("Metadata_") and column not in join_candidates
     ]
-    return df.drop(columns=drop_columns)
+    df = df.drop(columns=drop_columns)
+    # zedprofiler>=0.1.4 (ZedProfiler#53) started returning ID columns on
+    # otherwise-empty feature frames (e.g. Colocalization on a constant/
+    # degenerate channel pair, or any feature family for a compartment with
+    # zero detected objects) instead of omitting them entirely. An empty
+    # column's dtype infers as float64 regardless of the field's real dtype
+    # (str for Metadata_Experiment_ImageSet), which crashed merge_feature_
+    # frames()'s merge() with a dtype-mismatch ValueError once aligned
+    # against any other frame that carries this key with its real dtype --
+    # including another all-empty frame from earlier in the same zero-
+    # object compartment's accumulation, whose dtype had already drifted.
+    # Normalize to str up front so every frame agrees on dtype for this key
+    # regardless of whether it holds real values, confirmed via astype("str")
+    # preserving NA-ness rather than stringifying it to a literal "nan".
+    if "Metadata_Experiment_ImageSet" in df.columns:
+        df["Metadata_Experiment_ImageSet"] = df["Metadata_Experiment_ImageSet"].astype(
+            "str"
+        )
+    return df
 
 
 def merge_feature_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
@@ -210,23 +228,6 @@ def merge_feature_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
     merged = normalize_feature_frame(frames[0])
     for frame in frames[1:]:
         frame = normalize_feature_frame(frame)
-        # zedprofiler>=0.1.4 (ZedProfiler#53) started returning ID columns on
-        # otherwise-empty feature frames (e.g. Colocalization on a constant/
-        # degenerate channel pair) instead of omitting them. An all-empty
-        # join-candidate column carries no values to align rows on, and
-        # pandas infers its dtype as float64 (NaN) regardless of the
-        # populated frames' str/int dtype for the same key, so including it
-        # in `on=` crashed merge() with a dtype-mismatch ValueError. Drop the
-        # uninformative all-NaN copy up front -- both so it isn't picked as
-        # a join key below, and so it doesn't survive as a duplicate
-        # `_x`/`_y`-suffixed column once it's no longer a join key.
-        for candidate in ("Metadata_Object_ObjectID", "Metadata_Experiment_ImageSet"):
-            if candidate not in merged.columns or candidate not in frame.columns:
-                continue
-            if frame[candidate].isna().all() and not merged[candidate].isna().all():
-                frame = frame.drop(columns=[candidate])
-            elif merged[candidate].isna().all() and not frame[candidate].isna().all():
-                merged = merged.drop(columns=[candidate])
         join_keys = [
             key
             for key in ("Metadata_Object_ObjectID", "Metadata_Experiment_ImageSet")

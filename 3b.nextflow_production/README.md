@@ -313,3 +313,41 @@ run_id: nf1-production-full-run-2
 results_root: /pl/active/koala/nf1-3d-production-workflow-db/results-zedprofiler-0.1.4
 zedprofiler_version: 0.1.4
 ```
+
+### Two bugs found live during the second full run, both fixed
+
+**1. `merge_feature_frames()` crashed on zedprofiler 0.1.4's empty-but-ID-columns frames.**
+[ZedProfiler#53](https://github.com/WayScience/ZedProfiler/pull/53) (also in
+`0.1.4`) started returning `Metadata_Object_ObjectID`/
+`Metadata_Experiment_ImageSet` on otherwise-empty feature frames (a
+degenerate/constant-input Colocalization pair, or every feature family for a
+compartment with zero detected objects) instead of omitting them entirely.
+An empty column's dtype infers as `float64` regardless of the field's real
+dtype (`str` for `Metadata_Experiment_ImageSet`), and once a zero-object
+compartment's accumulator had chained through enough all-empty frames its
+own dtype drifted too -- both sides ended up `float64` NaN in one case,
+`str` vs `float64` in another. Either crashed `merge()` with `You are trying
+to merge on str and float64 columns`. Caught live: by the time this was
+diagnosed and fixed, 288 image sets (~7%) had been permanently dropped from
+`nf1-production-full-run-2`. Fixed in `run_zedprofiler_image_set.py`'s
+`normalize_feature_frame()`: cast `Metadata_Experiment_ImageSet` to `str`
+immediately after column selection, before any merge, so every frame agrees
+on its dtype for this key regardless of whether it holds real values --
+confirmed `astype("str")` preserves NA-ness rather than stringifying it to
+a literal `"nan"` (pandas 3.0's `str` dtype is null-aware). Verified against
+the real failing image set (`NF0014_T2/G9-1`, a zero-object Organoid
+compartment) before resubmitting: `NF1_FEATURIZE_COMPARTMENT_OK
+compartments=Nuclei,Cell,Cytoplasm,Organoid`.
+
+**2. `BUILD_WAREHOUSE` OOM-killed (exit 137) at true full scale under Slurm.**
+`warehouse_memory` was `16 GB`, inherited unchanged from early single- and
+few-image-set testing. `nf1-production-full-run-1`'s warehouse build never
+actually exercised this limit -- it was run directly on a login node rather
+than through Nextflow's `BUILD_WAREHOUSE` Slurm task, so this is the first
+time the real ~3,800+-image-set warehouse build has run under Slurm's
+memory ceiling at all. Raised to `64 GB` / `warehouse_time` to `1h` in
+`conf/base.config`.
+
+Both fixes landed together; the resubmit reuses `nf1-production-full-run-2`'s
+run ID so the skip-already-landed-image-sets logic only reprocesses the ~288
+gaps rather than repeating the ~3,848 that already succeeded.
