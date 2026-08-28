@@ -2006,3 +2006,92 @@ above (`NF0055_T1/B10-1` and `NF0014_T1/C4-2`'s actual warning/fragment
 counts) are worth knowing if this data ever exercises the existing stage-4
 tooling -- start with `2.merge_sc.py` and `3.organoid_cell_relationship.py`
 rather than rebuilding either.
+
+## Alpine notes from 2026-08-27
+
+### ZedProfiler `main`-HEAD benchmark (PRs #52-#54), later released as v0.1.4
+
+Benchmarked `environments/pyproject.toml` against ZedProfiler's `main`
+branch HEAD (commit `f89173bdf9f1b7f2b2427aa076599b3e4d60c2b8`) instead of
+the PyPI `0.1.3` pin, via the same git-dependency pattern used for PR #51:
+
+```text
+zedprofiler @ git+https://github.com/WayScience/ZedProfiler.git@f89173bdf9f1b7f2b2427aa076599b3e4d60c2b8
+```
+
+That commit turned out to carry three merged PRs since `0.1.3`, not just
+the one this benchmark went looking for:
+
+- [#52](https://github.com/WayScience/ZedProfiler/pull/52) "Add a warning
+  for undersized objects in Texture" -- `compute_texture` now warns instead
+  of silently leaving `NaN` when an object is smaller than the Haralick
+  distance parameter.
+- [#53](https://github.com/WayScience/ZedProfiler/pull/53) "Return ID
+  columns in empty feature frames" -- fixes a merge crash when a channel or
+  compartment is missing for an image set.
+- [#54](https://github.com/WayScience/ZedProfiler/pull/54) "add fix to
+  anisotropy bugs" -- a real correctness fix, not a refactor. Several
+  featurization modules had been computing distances, structuring elements,
+  or physical quantities directly in voxel-index space, implicitly
+  assuming isotropic spacing. Fixes: `Volume`/`BboxVolume`/
+  `EquivalentDiameter` now scale by physical voxel volume instead of raw
+  voxel count; `get_outline()` now computes true 3D surface boundaries
+  (was looping `find_boundaries` per z-slice, silently missing the top/
+  bottom caps of objects -- affects every `*Edge` intensity feature);
+  `MassDisplacement` now scales each axis by physical voxel spacing before
+  combining into a Euclidean distance instead of mixing raw voxel-index
+  axes; texture and neighbor-adjacency calculations now operate in
+  physical rather than voxel-index space.
+
+Ran the same `NF0055_T1/B10-1` benchmark image set used throughout this
+README, same resource directives, current pilot code (`git_commit
+4072be1`) unchanged between the two runs -- only the `zedprofiler` pin
+differed:
+
+```text
+run_id: nf0055-b10-1-zp-source-baseline-pypi013 (baseline, zedprofiler==0.1.3)
+coordinator_job: 31728209
+coordinator_walltime: 00:20:15
+FEATURIZE_IMAGE_SET duration/realtime: 17m 50s / 17m 4s
+quality_warning_count: 4
+
+run_id: nf0055-b10-1-zp-source-latest (zedprofiler @ main HEAD f89173bd)
+coordinator_job: 31729891
+coordinator_walltime: 00:17:34
+FEATURIZE_IMAGE_SET duration/realtime: 15m 10s / 12m 44s
+quality_warning_count: 0
+```
+
+| Metric                        | 0.1.3    | main HEAD | Change        |
+| ------------------------------ | -------- | --------- | ------------- |
+| Coordinator wall time           | 20m 15s  | 17m 34s   | ~13% faster    |
+| FEATURIZE_IMAGE_SET duration    | 17m 50s  | 15m 10s   | ~15% faster    |
+| FEATURIZE_IMAGE_SET realtime    | 17m 4s   | 12m 44s   | ~25% faster    |
+| Quality warnings (NaN features) | 4        | 0         | all resolved   |
+
+The `quality_warning_count` drop from 4 to 0 on identical input is very
+likely PR #54's isotropic resampling before the Haralick distance check
+resolving the same small-object Texture-`NaN` pattern already diagnosed in
+the real 13-patient production warehouse (77.2% non-null Texture; see
+`3b.nextflow_production/README.md`).
+
+**This is not just a performance upgrade.** Row/column counts and
+`validation_status` matched between the two runs (11/9/9/2 objects, 903
+columns, `pass`), but the actual feature values did not: `Volume` came out
+almost exactly 100x smaller under the anisotropy fix (this dataset's
+z/xy voxel-spacing ratio, previously ignored), and `*Edge` intensity
+features (e.g. `Nuclei_DNA_Intensity_IntegratedIntensityEdge`) differed by
+tens to hundreds of millions in magnitude, consistent with the
+`get_outline()` top/bottom-cap bug described in PR #54. Any prior run built
+on `zedprofiler==0.1.3` -- including the real production warehouse in
+`3b.nextflow_production` -- carries these same bugs in Volume-, Edge-
+intensity-, MassDisplacement-, texture-, and neighbor-adjacency-derived
+features.
+
+**Update, same investigation:** PRs #52-#54 shipped together as ZedProfiler
+`v0.1.4` on PyPI shortly after this benchmark (confirmed via `gh release
+view v0.1.4 --repo WayScience/ZedProfiler`, same commit
+`f89173bdf9f1b7f2b2427aa076599b3e4d60c2b8`). `environments/pyproject.toml`
+was switched back from the git-commit dependency to a normal PyPI pin,
+`zedprofiler==0.1.4`, for all runs from this point forward -- see
+`3b.nextflow_production/README.md` for the production-side follow-up.

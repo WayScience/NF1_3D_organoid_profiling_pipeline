@@ -7,8 +7,12 @@ The pilot process runs Python through:
 uv run --project 3a.nextflow_pilot/environments python
 ```
 
-The environment pins `zedprofiler==0.1.3`, the current PyPI release.
-`0.1.3` carries [WayScience/ZedProfiler#51](https://github.com/WayScience/ZedProfiler/pull/51)'s granularity speedup (previously benchmarked here against a git-branch reference to that PR; see the README's 2026-08-12 notes) -- no git dependency needed anymore.
+The environment pins `zedprofiler==0.1.4`, the current PyPI release. `0.1.4`
+carries the same commit (`f89173bdf9f1b7f2b2427aa076599b3e4d60c2b8`) this
+project benchmarked as a git dependency on 2026-08-27, including
+[WayScience/ZedProfiler#54](https://github.com/WayScience/ZedProfiler/pull/54)'s
+anisotropy-correctness fixes -- see the README's 2026-08-27 notes for the
+benchmark against the prior PyPI `0.1.3` pin and why those fixes matter.
 Build the environment on the execution system before the first real run:
 
 ```bash
