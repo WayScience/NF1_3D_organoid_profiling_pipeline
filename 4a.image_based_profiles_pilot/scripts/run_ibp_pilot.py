@@ -179,6 +179,15 @@ def main() -> int:
                 file=sys.stderr,
             )
             result = {"patient": patient, "well_fov": well_fov, "status": "failed"}
+        except Exception as error:  # noqa: BLE001 -- one bad image set shouldn't
+            # abort the whole pilot run or drop the rest of the summary; this
+            # is a driver over a small manifest of image sets, not a single
+            # task, so failures here (a missing output file, a malformed
+            # parquet, etc.) should be reported per-image-set like the
+            # subprocess-failure case above rather than crashing the script.
+            all_ok = False
+            print(f"FAILED {patient}/{well_fov}: {error!r}", file=sys.stderr)
+            result = {"patient": patient, "well_fov": well_fov, "status": "failed"}
         results.append(result)
 
     print("\n=== NF1_IBP_PILOT_SUMMARY ===")

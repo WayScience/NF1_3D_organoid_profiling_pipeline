@@ -60,7 +60,7 @@ no torch/napari/cellpose required.
 
 ```bash
 cd 4a.image_based_profiles_pilot
-uv sync --project environments
+uv sync --project environments --locked
 uv run --project environments python scripts/run_ibp_pilot.py \
   --warehouse-dir /path/to/a/3a-or-3b/results/<run_id>/warehouse
 ```
