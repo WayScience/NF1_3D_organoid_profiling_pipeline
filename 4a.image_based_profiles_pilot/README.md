@@ -78,7 +78,7 @@ ZedProfiler's own output. Additive only -- never touches `profiles/` or
 warehouse/
   profiles/...                                  <- unchanged, ZedProfiler's own output
   images/...                                     <- unchanged
-  warehouse.duckdb                               <- unchanged
+  warehouse.duckdb                               <- unchanged base views; gains 3 new ibp.* views (see below)
   ibp/                                            <- new, this pilot's output
     sc_profiles_related/<image_id>.parquet        <- Nuclei+Cell+Cytoplasm + ParentOrganoid + shell/distance features
     organoid_profiles_related/<image_id>.parquet   <- Organoid + OrganoidSingleCellCount
@@ -88,6 +88,20 @@ warehouse/
 ```python
 import pandas as pd
 pd.read_parquet("warehouse/ibp/sc_profiles_related/NF0055_T1__NF0055_T1__B10__F1.parquet")
+```
+
+`run_ibp_pilot.py` also (re)creates three convenience DuckDB views in the
+warehouse's existing `warehouse.duckdb`, under a new `ibp` schema --
+`ibp.sc_profiles_related`, `ibp.organoid_profiles_related`,
+`ibp.nucleocentric_profiles_related` -- matching the same `CREATE OR REPLACE
+VIEW ... read_parquet(relative_glob)` pattern `build_duckdb_views.py` uses
+for `profiles.*`/`images.*` (a stored query, no data copy). Relative paths
+resolve against the current working directory at query time, so `cd` into
+the warehouse directory first:
+
+```bash
+cd <warehouse_dir> && duckdb warehouse.duckdb
+D SELECT * FROM ibp.sc_profiles_related LIMIT 5;
 ```
 
 ## Findings

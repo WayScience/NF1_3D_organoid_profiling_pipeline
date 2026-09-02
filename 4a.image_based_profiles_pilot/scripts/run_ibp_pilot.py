@@ -19,6 +19,15 @@ For each reference image set (manifest/reference_image_sets.yaml):
    same one-file-per-image-set convention as `profiles/<compartment>_profiles/`,
    additive only.
 
+After every image set has landed, (re)creates three convenience DuckDB
+views over the new `ibp/` tables in the warehouse's existing
+`warehouse.duckdb` -- `ibp.sc_profiles_related`, `ibp.organoid_profiles_related`,
+`ibp.nucleocentric_profiles_related` -- matching the same `CREATE OR REPLACE
+VIEW ... read_parquet(relative_glob)` pattern build_duckdb_views.py uses for
+`profiles.*`/`images.*`, so `SELECT * FROM ibp.sc_profiles_related` works
+the same way once you `cd` into the warehouse directory (relative paths,
+no data copy).
+
 No formal validation.json/run_record.json for this pilot -- just a visible
 pass/fail summary per image set.
 """
@@ -27,11 +36,11 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import duckdb
 import pandas as pd
 import yaml
 
@@ -146,6 +155,48 @@ def run_one_image_set(
     }
 
 
+_IBP_TABLES = (
+    "sc_profiles_related",
+    "organoid_profiles_related",
+    "nucleocentric_profiles_related",
+)
+
+
+def create_ibp_views(warehouse_dir: Path) -> None:
+    """(Re)create convenience views over ibp/<table>/*.parquet in the
+    warehouse's existing warehouse.duckdb, one per table, under a new `ibp`
+    schema -- same CREATE OR REPLACE VIEW over a CWD-relative read_parquet()
+    glob that build_duckdb_views.py uses for profiles.*/images.*, so this
+    only touches the DuckDB catalog (no data copy) and stays correct as
+    more image sets land.
+    """
+    duckdb_path = warehouse_dir / "warehouse.duckdb"
+    if not duckdb_path.exists():
+        print(
+            f"NOTE: {duckdb_path} does not exist -- skipping ibp.* view "
+            "creation (run build_duckdb_views.py against this warehouse "
+            "first if you want profiles.*/images.* views too).",
+            file=sys.stderr,
+        )
+        return
+
+    previous_cwd = Path.cwd()
+    os.chdir(warehouse_dir)
+    try:
+        with duckdb.connect("warehouse.duckdb") as con:
+            con.execute('CREATE SCHEMA IF NOT EXISTS "ibp"')
+            for table in _IBP_TABLES:
+                if not any((warehouse_dir / "ibp" / table).glob("*.parquet")):
+                    continue
+                con.execute(
+                    f'CREATE OR REPLACE VIEW "ibp"."{table}" AS '
+                    f"SELECT * FROM read_parquet('ibp/{table}/*.parquet')"
+                )
+        print(f"ibp.* views (re)created in {duckdb_path}")
+    finally:
+        os.chdir(previous_cwd)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -189,6 +240,22 @@ def main() -> int:
             print(f"FAILED {patient}/{well_fov}: {error!r}", file=sys.stderr)
             result = {"patient": patient, "well_fov": well_fov, "status": "failed"}
         results.append(result)
+
+    create_ibp_views(warehouse_dir)
+
+    # koala is a shared group allocation. Running from a local machine (as
+    # opposed to Alpine, where the coordinator scripts set umask 007) means
+    # new/rewritten files pick up whatever the local process's default
+    # umask is -- observed in practice landing warehouse.duckdb at 644
+    # after DuckDB rewrote it. Explicit sweep here, not relying on umask,
+    # same reasoning as build_warehouse_from_compartments.py's own final
+    # chmod -R 770 sweep.
+    subprocess.run(
+        ["chmod", "-R", "770", str(warehouse_dir / "ibp")], check=False
+    )
+    duckdb_path = warehouse_dir / "warehouse.duckdb"
+    if duckdb_path.exists():
+        subprocess.run(["chmod", "770", str(duckdb_path)], check=False)
 
     print("\n=== NF1_IBP_PILOT_SUMMARY ===")
     for result in results:
