@@ -127,6 +127,33 @@ the version reflected in the table above.
 nucleocentric table (ZedProfiler has no deep-learning nucleocentric
 features) -- step 3 handled this without incident.
 
+**Data quality, checked directly rather than assumed**: for both image
+sets, all 2,665 feature columns had zero all-null columns; centroid
+coordinates used for organoid assignment are real, physically plausible
+pixel values (not zero/NaN); and -- most importantly -- every cell's
+`ParentOrganoid` assignment was independently re-verified by checking that
+the cell's own centroid actually falls inside the assigned organoid's
+bounding box on every axis (`True` for both organoids with cells), not just
+inferred from a 100% assignment rate.
+
+**One real, expected difference from what the notebooks capture**: step 2's
+own docstring states object IDs are reassigned to a sequential `1..N` range,
+discarding the original segmentation mask IDs. This pilot skips step 2, so
+`object_id` is the *original* mask ID with gaps where the Nuclei/Cell/
+Cytoplasm intersection dropped an object (e.g. `B10-1`'s IDs are
+`[1,2,3,4,7,8,9,10,11]` -- 5 and 6 didn't survive the intersection). This
+doesn't affect step 3's logic (it only needs unique, stable IDs, not a
+contiguous range), but it is a real behavioral difference worth knowing
+about if anything downstream ever assumes sequential IDs.
+
+**Reproducibility, checked independently**: re-ran the full pilot a second
+time from a different machine entirely (a local workstation, not Alpine),
+executing the code locally and reading/writing the same warehouse directly
+over PetaLibrary via an sshfs mount (`~/mnt/alpine/active/koala/...`), no
+Slurm/SSH-to-Alpine involved. Produced identical results (same row counts,
+same assignments) confirming the pilot doesn't depend on anything
+Alpine-specific.
+
 Not yet checked: behavior at higher object counts (both reference image
 sets are small), and whether the `AreaSizeShape` rename should also be
 applied anywhere outside `sc_profiles`/`organoid_profiles` if this pilot is
