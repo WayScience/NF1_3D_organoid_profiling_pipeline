@@ -92,8 +92,42 @@ pd.read_parquet("warehouse/ibp/sc_profiles_related/NF0055_T1__NF0055_T1__B10__F1
 
 ## Findings
 
-_To fill in after the first real run: row counts in/out per image set,
-whether organoid-cell assignment looks sane (assigned vs. unassigned cell
-counts), spot-checked shell/distance feature values, and anything about the
-missing Nucleocentric family worth flagging back to whoever owns real IBP
-data._
+**Verified working end-to-end** against a real 3a.nextflow_pilot warehouse
+(`nf0055-nf0014-post-revert-20260821T150143Z`) for both reference image
+sets. Both ran through unmodified step 3 with sane, stable output:
+
+| Image set | Cells (sc_profiles rows) | Assigned to an organoid | Organoids | Max single-cell count on one organoid |
+|---|---|---|---|---|
+| `NF0055_T1/B10-1` | 9 | 9 (0 unassigned) | 2 (1 with 0 cells) | 9 |
+| `NF0014_T1/C4-2` | 42 | 42 (0 unassigned) | 1 | 42 |
+
+Shell/distance features (`Nuclei_NoChannel_Neighbors_*`) are populated with
+plausible, non-degenerate values -- e.g. `ShellsUsed=3` for all 9 cells in
+`B10-1` (the script's own small-sample-size fallback: "9 cells with 4
+shells = 2.2 cells/shell, reducing to 3 shells"), `NeighborsCountAdjacent`
+ranging 0-2. Both image sets triggered the script's built-in small-N
+fallbacks (Euclidean instead of Mahalanobis distance for `B10-1`'s 9 cells;
+regularized covariance for `C4-2`'s 42) -- expected, graceful behavior
+already present in step 3, not something this pilot needed to handle.
+
+**One real bug found and fixed**: the first version of
+`build_ibp_inputs_from_warehouse.py` read from
+`joined.images_nuclei_cell_cytoplasm`, which -- as documented in
+`build_duckdb_views.py` -- joins through `images.image_assets` and repeats
+each object row once per image asset (channel/mask). For `B10-1` that
+inflated 9 real cells into 72 duplicate rows before step 3 even ran, and
+step 3's own shell-classification merge multiplied that further to 576.
+Fixed by joining `profiles.nuclei_profiles`/`cell_profiles`/
+`cytoplasm_profiles` directly (no `image_assets` join), matching what step 2
+(the code this replaces) actually produces. Row counts were stable and
+correct (9 and 42, matching mask object counts) after the fix -- this is
+the version reflected in the table above.
+
+**Nucleocentric**: as expected, both image sets produced an empty
+nucleocentric table (ZedProfiler has no deep-learning nucleocentric
+features) -- step 3 handled this without incident.
+
+Not yet checked: behavior at higher object counts (both reference image
+sets are small), and whether the `AreaSizeShape` rename should also be
+applied anywhere outside `sc_profiles`/`organoid_profiles` if this pilot is
+extended to more of stage 4's later steps (5+).

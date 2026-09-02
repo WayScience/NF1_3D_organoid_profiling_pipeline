@@ -54,25 +54,73 @@ def rename_volumesizeshape_to_areasizeshape(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+# Columns that carry identical values across Nuclei/Cell/Cytoplasm rows for
+# the same object (patient/plate/well/field/image IDs, plus Object ID
+# itself) -- keep Nuclei's copy only, drop Cell's/Cytoplasm's. Columns that
+# differ per compartment (Metadata_Compartment, Segmentation_*) are dropped
+# entirely here since step 3 doesn't use them; mirrors build_duckdb_views.py's
+# DEDUPE_COLUMNS/PER_COMPARTMENT_COLUMNS lists, one level simpler since this
+# doesn't need to preserve per-compartment renamed copies.
+_SHARED_METADATA_COLUMNS = (
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Biology_PatientID",
+    "Metadata_Experiment_PlateID",
+    "Metadata_Experiment_WellID",
+    "Metadata_Imaging_FieldID",
+    "Metadata_Imaging_ImageID",
+    "Metadata_Experiment_ImageSet",
+)
+_PER_COMPARTMENT_METADATA_COLUMNS = (
+    "Metadata_Compartment",
+    "Metadata_Segmentation_Method",
+    "Metadata_Segmentation_PrimaryChannel",
+    "Metadata_Segmentation_PrimaryChannelCode",
+    "Metadata_Segmentation_SeedChannel",
+    "Metadata_Segmentation_SeedChannelCode",
+)
+
+
 def load_from_warehouse(
     warehouse_dir: Path, patient: str, well: str, field: str
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Query the warehouse's joined views for one image set.
+    """Query the warehouse's per-compartment tables for one image set.
+
+    Deliberately does NOT use warehouse.duckdb's joined.images_nuclei_cell_cytoplasm
+    view here: that view joins through images.image_assets (documented in
+    build_duckdb_views.py as "each object row is repeated once per image
+    asset"), which is exactly the wrong shape for a single-cell profile
+    table -- it fans out one row per object into one row per (object,
+    channel/mask asset). Joining Nuclei/Cell/Cytoplasm directly, without
+    the image_assets join, gives the same one-row-per-object shape step 2
+    (the code being bypassed here) originally produced.
 
     DuckDB resolves the views' relative parquet globs against the process's
     current working directory (see build_duckdb_views.py), so this
     temporarily chdirs into warehouse_dir for the query.
     """
+    exclude_from_cell_and_cytoplasm = ", ".join(
+        (*_SHARED_METADATA_COLUMNS, *_PER_COMPARTMENT_METADATA_COLUMNS, "Metadata_Object_ObjectID")
+    )
     previous_cwd = Path.cwd()
     os.chdir(warehouse_dir)
     try:
         with duckdb.connect("warehouse.duckdb", read_only=True) as con:
             sc_df = con.execute(
-                """
-                SELECT * FROM joined.images_nuclei_cell_cytoplasm
-                WHERE Metadata_Biology_PatientTumor = ?
-                  AND Metadata_Experiment_WellID = ?
-                  AND Metadata_Imaging_FieldID = ?
+                f"""
+                SELECT
+                    n.* EXCLUDE ({", ".join(_PER_COMPARTMENT_METADATA_COLUMNS)}),
+                    c.* EXCLUDE ({exclude_from_cell_and_cytoplasm}),
+                    cy.* EXCLUDE ({exclude_from_cell_and_cytoplasm})
+                FROM profiles.nuclei_profiles n
+                JOIN profiles.cell_profiles c
+                    ON c.Metadata_Imaging_ImageID = n.Metadata_Imaging_ImageID
+                    AND c.Metadata_Object_ObjectID = n.Metadata_Object_ObjectID
+                JOIN profiles.cytoplasm_profiles cy
+                    ON cy.Metadata_Imaging_ImageID = n.Metadata_Imaging_ImageID
+                    AND cy.Metadata_Object_ObjectID = n.Metadata_Object_ObjectID
+                WHERE n.Metadata_Biology_PatientTumor = ?
+                  AND n.Metadata_Experiment_WellID = ?
+                  AND n.Metadata_Imaging_FieldID = ?
                 """,
                 [patient, well, field],
             ).df()
