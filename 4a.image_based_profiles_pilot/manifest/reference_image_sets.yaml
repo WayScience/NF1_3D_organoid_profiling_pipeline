@@ -1,0 +1,9 @@
+# The two reference image sets used throughout 3a.nextflow_pilot
+# (manifest/nf0055_b10_1_alpine.yaml, manifest/nf0014_c4_2_alpine.yaml).
+# Reused here so IBP pilot results can be checked against the same
+# ZedProfiler warehouse output already validated for those pilots.
+image_sets:
+  - patient: NF0055_T1
+    well_fov: B10-1
+  - patient: NF0014_T1
+    well_fov: C4-2
