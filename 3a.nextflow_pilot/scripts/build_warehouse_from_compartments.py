@@ -255,10 +255,22 @@ def main() -> int:
     # before this fix -- or any file a umask gap slipped through -- would
     # still land short of the 770 this project actually wants everywhere.
     # This sweep is the single point that guarantees it, independent of
-    # umask working correctly at every creation site.
-    subprocess.run(["chmod", "-R", "770", str(args.outdir)], check=False)
+    # umask working correctly at every creation site. check=False because a
+    # permissions failure shouldn't mask a real validation failure below --
+    # but it must still fail the run, not be silently swallowed, so the
+    # return code is inspected explicitly instead.
+    chmod_result = subprocess.run(
+        ["chmod", "-R", "770", str(args.outdir)], check=False
+    )
+    if chmod_result.returncode != 0:
+        print(
+            f"WARNING: chmod -R 770 {args.outdir} exited "
+            f"{chmod_result.returncode} -- some files/dirs under this run "
+            "may not be group-writable on koala",
+            file=sys.stderr,
+        )
 
-    if not all_valid:
+    if not all_valid or chmod_result.returncode != 0:
         print(json.dumps(validation_report, indent=2), file=sys.stderr)
         return 1
     print(

@@ -249,19 +249,40 @@ def main() -> int:
     # umask is -- observed in practice landing warehouse.duckdb at 644
     # after DuckDB rewrote it. Explicit sweep here, not relying on umask,
     # same reasoning as build_warehouse_from_compartments.py's own final
-    # chmod -R 770 sweep.
-    subprocess.run(
+    # chmod -R 770 sweep. check=False so one chmod failing doesn't crash the
+    # whole run, but the failure still needs to surface and fail the script
+    # -- not be silently discarded -- so each result is inspected below.
+    permissions_ok = True
+    ibp_chmod = subprocess.run(
         ["chmod", "-R", "770", str(warehouse_dir / "ibp")], check=False
     )
+    if ibp_chmod.returncode != 0:
+        permissions_ok = False
+        print(
+            f"WARNING: chmod -R 770 {warehouse_dir / 'ibp'} exited "
+            f"{ibp_chmod.returncode} -- some output may not be group-writable "
+            "on koala",
+            file=sys.stderr,
+        )
     duckdb_path = warehouse_dir / "warehouse.duckdb"
     if duckdb_path.exists():
-        subprocess.run(["chmod", "770", str(duckdb_path)], check=False)
+        duckdb_chmod = subprocess.run(
+            ["chmod", "770", str(duckdb_path)], check=False
+        )
+        if duckdb_chmod.returncode != 0:
+            permissions_ok = False
+            print(
+                f"WARNING: chmod 770 {duckdb_path} exited "
+                f"{duckdb_chmod.returncode} -- warehouse.duckdb may not be "
+                "group-writable on koala",
+                file=sys.stderr,
+            )
 
     print("\n=== NF1_IBP_PILOT_SUMMARY ===")
     for result in results:
         print(result)
 
-    return 0 if all_ok else 1
+    return 0 if (all_ok and permissions_ok) else 1
 
 
 if __name__ == "__main__":
