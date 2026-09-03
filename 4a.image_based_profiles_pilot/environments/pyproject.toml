@@ -1,0 +1,15 @@
+[project]
+name = "nf1-ibp-pilot"
+version = "0.1.0"
+description = "Isolated Python environment for the IBP-on-ZedProfiler-warehouse pilot"
+requires-python = ">=3.12"
+dependencies = [
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "pyarrow>=16",
+  "duckdb>=1.0",
+  "pyyaml>=6.0",
+  "scikit-image>=0.23",
+  "matplotlib>=3.8",
+  "tqdm>=4.66",
+]
