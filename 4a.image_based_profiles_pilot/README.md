@@ -16,12 +16,11 @@ Two reference image sets, matching the ones used throughout
 ## Why steps 00/0a/1/2 are skipped
 
 Those steps convert old per-feature parquet files (101 per image set) into a
-merged per-well_fov DuckDB, then merge that into
-`sc_profiles_{well_fov}.parquet` / `organoid_profiles_{well_fov}.parquet` /
-`nucleocentric_profiles_{well_fov}.parquet` -- exactly what a ZedProfiler
-warehouse already holds natively via `warehouse.duckdb`'s
-`joined.images_nuclei_cell_cytoplasm` view (an inner join across Nuclei/
-Cell/Cytoplasm on `Metadata_Object_ObjectID`, the same object-intersection
+merged per-well*fov DuckDB, then merge that into
+`sc_profiles*{well*fov}.parquet`/`organoid_profiles*{well*fov}.parquet`/`nucleocentric_profiles*{well_fov}.parquet`-- exactly what a ZedProfiler
+warehouse already holds natively via`warehouse.duckdb`'s
+`joined.images_nuclei_cell_cytoplasm`view (an inner join across Nuclei/
+Cell/Cytoplasm on`Metadata_Object_ObjectID`, the same object-intersection
 step 2 computes) and `profiles.organoid_profiles`. Reimplementing steps
 00/0a/1/2 against this data would just reproduce work the warehouse already
 did. `scripts/build_ibp_inputs_from_warehouse.py` reads those views for one
@@ -61,7 +60,7 @@ differences along the way -- without touching step 3's own code:
 
 `4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py`
 imports from `image_analysis_3D` (`utils/`), a local editable package that's
-part of the repo's *root* uv environment. That root/utils environment also
+part of the repo's _root_ uv environment. That root/utils environment also
 declares heavy GPU dependencies (torch, napari, cellpose, medim) that step 3
 never actually touches -- tracing its real imports
 (`feature_writing_utils.py`, `neighbors_utils.py`, `loading_classes.py`,
@@ -103,7 +102,10 @@ features, so step 3's output for it is always empty and isn't persisted.)
 
 ```python
 import pandas as pd
-pd.read_parquet("warehouse/ibp/sc_profiles_related/NF0055_T1__NF0055_T1__B10__F1.parquet")
+
+pd.read_parquet(
+    "warehouse/ibp/sc_profiles_related/NF0055_T1__NF0055_T1__B10__F1.parquet"
+)
 ```
 
 `run_ibp_pilot.py` also (re)creates two convenience DuckDB views in the
@@ -125,10 +127,10 @@ D SELECT * FROM ibp.sc_profiles_related LIMIT 5;
 (`nf0055-nf0014-post-revert-20260821T150143Z`) for both reference image
 sets. Both ran through unmodified step 3 with sane, stable output:
 
-| Image set | Cells (sc_profiles rows) | Assigned to an organoid | Organoids | Max single-cell count on one organoid |
-|---|---|---|---|---|
-| `NF0055_T1/B10-1` | 9 | 9 (0 unassigned) | 2 (1 with 0 cells) | 9 |
-| `NF0014_T1/C4-2` | 42 | 42 (0 unassigned) | 1 | 42 |
+| Image set         | Cells (sc_profiles rows) | Assigned to an organoid | Organoids          | Max single-cell count on one organoid |
+| ----------------- | ------------------------ | ----------------------- | ------------------ | ------------------------------------- |
+| `NF0055_T1/B10-1` | 9                        | 9 (0 unassigned)        | 2 (1 with 0 cells) | 9                                     |
+| `NF0014_T1/C4-2`  | 42                       | 42 (0 unassigned)       | 1                  | 42                                    |
 
 Shell/distance features (`Nuclei_NoChannel_Neighbors_*`) are populated with
 plausible, non-degenerate values -- e.g. `ShellsUsed=3` for all 9 cells in
@@ -173,7 +175,7 @@ inferred from a 100% assignment rate.
 **One real, expected difference from what the notebooks capture**: step 2's
 own docstring states object IDs are reassigned to a sequential `1..N` range,
 discarding the original segmentation mask IDs. This pilot skips step 2, so
-`object_id` is the *original* mask ID with gaps where the Nuclei/Cell/
+`object_id` is the _original_ mask ID with gaps where the Nuclei/Cell/
 Cytoplasm intersection dropped an object (e.g. `B10-1`'s IDs are
 `[1,2,3,4,7,8,9,10,11]` -- 5 and 6 didn't survive the intersection). This
 doesn't affect step 3's logic (it only needs unique, stable IDs, not a
@@ -234,3 +236,41 @@ Verified the overwrite guard directly: seeded a fake "real" nucleocentric
 input file, re-ran the pilot, confirmed the file was left untouched. Also
 re-verified the full pilot end to end afterward: same correct results (9/9
 and 42/42 cells assigned) as before this change.
+## New IBP workflow diagram
+
+```mermaid
+flowchart TD
+    A1[cellpainting images and segmentations]
+
+    A1 -->|featurization| B[ZedProfiler single cell features ]
+    A1 -->|featurization| C[ZedProfiler organoid features ]
+    A1 -->|featurization| D[Masked SAM-Med3D single cell features ]
+    A1 -->|featurization| E[Masked SAM-Med3D organoid features ]
+    A1 -->|featurization| F[Nucleocentric SAM-Med3D features ]
+    A1 -->|featurization| G[Nucleocentric MorphEM features ]
+
+
+    D --> |merging| G3[single-cell Masked SAM-Med3D features ]
+    E --> |merging| G4[organoid Masked SAM-Med3D features ]
+    F --> |merging| G5[nucleocentric SAM-Med3D features ]
+    G --> |merging| G6[nucleocentric MorphEM features ]
+
+    B --> H1[relate objects to organoids]
+    C --> H2[relate objects to organoids]
+    G3 --> H3[relate objects to organoids]
+    G4 --> H4[relate objects to organoids]
+    G5 --> H5[relate objects to organoids]
+    G6 --> H6[relate objects to organoids]
+    H1 --> |ZedProfiler single cell features| I[Annotation]
+    H2 --> |ZedProfiler organoid features| I
+    H3 --> |Masked SAM-Med3D single cell features| I
+    H4 --> |Masked SAM-Med3D organoid features| I
+    H5 --> |Nucleocentric SAM-Med3D features| I
+    H6 --> |Nucleocentric MorphEM features| I
+    I --> |ZedProfiler single cell features| J[Normalized features]
+    I --> |ZedProfiler organoid features| J
+    I --> |Masked SAM-Med3D single cell features| J
+    I --> |Masked SAM-Med3D organoid features| J
+    I --> |Nucleocentric SAM-Med3D features| J
+    I --> |Nucleocentric MorphEM features| J
+```
