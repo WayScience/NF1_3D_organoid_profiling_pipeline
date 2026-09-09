@@ -34,10 +34,15 @@ own code:
 - Identifiers: step 3 expects `object_id` (ours: Metadata_Object_ObjectID)
   and `image_set` (ours: implicit, derived from patient/well_fov here).
 
-ZedProfiler does not produce deep-learning Nucleocentric features, so the
-nucleocentric output is written empty (0 rows, `object_id`/`image_set`
-columns only) -- step 3 already has empty-dataframe handling for exactly
-this case.
+ZedProfiler does not produce deep-learning Nucleocentric features. Step 3
+(unmodified) still hard-requires a nucleocentric_profiles_{well_fov}.parquet
+to exist -- it strictly resolves that path and crashes immediately if it's
+missing -- so an empty (0 rows, `object_id`/`image_set` columns only)
+placeholder is written *only if nothing is already there*, never
+overwriting real Nucleocentric data from an actual run of IBP steps
+00/0a/1/2 for the same well_fov/subparent_name. Its downstream
+`*_related.parquet` output is not persisted into warehouse/ibp/ -- see
+run_ibp_pilot.py.
 """
 
 from __future__ import annotations
@@ -224,8 +229,6 @@ def main() -> int:
     sc_df["image_set"] = args.well_fov
     organoid_df["image_set"] = args.well_fov
 
-    nucleocentric_df = pd.DataFrame(columns=["object_id", "image_set"])
-
     outdir = (
         args.repo_root
         / "data"
@@ -240,9 +243,19 @@ def main() -> int:
     organoid_df.to_parquet(
         outdir / f"organoid_profiles_{args.well_fov}.parquet", index=False
     )
-    nucleocentric_df.to_parquet(
-        outdir / f"nucleocentric_profiles_{args.well_fov}.parquet", index=False
-    )
+
+    # Step 3 (unmodified) does a strict path resolve on this file and
+    # crashes immediately if it's missing, so something has to exist here
+    # for step 3 to run at all -- ZedProfiler has no real Nucleocentric
+    # (deep-learning) features to put in it, hence empty. Only write it if
+    # nothing is there yet: if this same well_fov/subparent_name has real
+    # Nucleocentric data from an actual run of IBP steps 00/0a/1/2, this
+    # placeholder must never clobber it.
+    nucleocentric_path = outdir / f"nucleocentric_profiles_{args.well_fov}.parquet"
+    if not nucleocentric_path.exists():
+        pd.DataFrame(columns=["object_id", "image_set"]).to_parquet(
+            nucleocentric_path, index=False
+        )
 
     print(
         "NF1_IBP_PILOT_INPUTS_OK "

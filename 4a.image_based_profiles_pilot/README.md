@@ -46,8 +46,14 @@ differences along the way -- without touching step 3's own code:
 - **Identifiers**: step 3 expects `object_id` (ours: `Metadata_Object_ObjectID`)
   and `image_set` (ours: derived from `--well-fov` directly).
 - **No Nucleocentric data**: ZedProfiler doesn't produce deep-learning
-  nucleocentric features. The adapter writes an empty (0-row) nucleocentric
-  parquet -- step 3 already has empty-dataframe handling for this case.
+  nucleocentric features. Step 3 (unmodified) still hard-requires a
+  `nucleocentric_profiles_{well_fov}.parquet` to exist -- it strictly
+  resolves that path and crashes immediately if missing -- so the adapter
+  writes an empty placeholder *only if nothing is already there*, never
+  overwriting real Nucleocentric data from an actual run of IBP steps
+  00/0a/1/2 for the same well_fov. Step 3's resulting (always-empty)
+  `nucleocentric_profiles_*_related.parquet` output is not persisted into
+  `warehouse/ibp/` -- there's nothing in it worth keeping.
 
 `3.organoid_cell_relationship.py` itself is invoked completely unmodified.
 
@@ -86,26 +92,27 @@ ZedProfiler's own output. Additive only -- never touches `profiles/` or
 warehouse/
   profiles/...                                  <- unchanged, ZedProfiler's own output
   images/...                                     <- unchanged
-  warehouse.duckdb                               <- unchanged base views; gains 3 new ibp.* views (see below)
+  warehouse.duckdb                               <- unchanged base views; gains 2 new ibp.* views (see below)
   ibp/                                            <- new, this pilot's output
     sc_profiles_related/<image_id>.parquet        <- Nuclei+Cell+Cytoplasm + ParentOrganoid + shell/distance features
     organoid_profiles_related/<image_id>.parquet   <- Organoid + OrganoidSingleCellCount
-    nucleocentric_profiles_related/<image_id>.parquet  <- empty (ZedProfiler has no nucleocentric features)
 ```
+
+(No `nucleocentric_profiles_related/` -- ZedProfiler has no Nucleocentric
+features, so step 3's output for it is always empty and isn't persisted.)
 
 ```python
 import pandas as pd
 pd.read_parquet("warehouse/ibp/sc_profiles_related/NF0055_T1__NF0055_T1__B10__F1.parquet")
 ```
 
-`run_ibp_pilot.py` also (re)creates three convenience DuckDB views in the
+`run_ibp_pilot.py` also (re)creates two convenience DuckDB views in the
 warehouse's existing `warehouse.duckdb`, under a new `ibp` schema --
-`ibp.sc_profiles_related`, `ibp.organoid_profiles_related`,
-`ibp.nucleocentric_profiles_related` -- matching the same `CREATE OR REPLACE
-VIEW ... read_parquet(relative_glob)` pattern `build_duckdb_views.py` uses
-for `profiles.*`/`images.*` (a stored query, no data copy). Relative paths
-resolve against the current working directory at query time, so `cd` into
-the warehouse directory first:
+`ibp.sc_profiles_related`, `ibp.organoid_profiles_related` -- matching the
+same `CREATE OR REPLACE VIEW ... read_parquet(relative_glob)` pattern
+`build_duckdb_views.py` uses for `profiles.*`/`images.*` (a stored query,
+no data copy). Relative paths resolve against the current working
+directory at query time, so `cd` into the warehouse directory first:
 
 ```bash
 cd <warehouse_dir> && duckdb warehouse.duckdb
@@ -147,7 +154,12 @@ the version reflected in the table above.
 
 **Nucleocentric**: as expected, both image sets produced an empty
 nucleocentric table (ZedProfiler has no deep-learning nucleocentric
-features) -- step 3 handled this without incident.
+features) -- step 3 handled this without incident. Per review feedback,
+this output is no longer persisted into `warehouse/ibp/` at all (see the
+2026-09-09 update below) -- there's nothing in it worth keeping, and always
+writing an empty *input* placeholder for step 3 risked silently clobbering
+real Nucleocentric data if this same well_fov/subparent_name is ever also
+processed by an actual run of IBP steps 00/0a/1/2.
 
 **Data quality, checked directly rather than assumed**: for both image
 sets, all 2,665 feature columns had zero all-null columns; centroid
@@ -207,3 +219,18 @@ now picked up automatically instead of silently leaking through as an
 unexcluded, potentially name-colliding column. Re-verified: same output
 shape (9/42 rows, 2682 columns, 7 shared metadata columns, zero duplicate
 column names) as before this change.
+
+**Update (review feedback, 2026-09-09), nucleocentric:** per review, this
+pilot no longer persists a `nucleocentric_profiles_related` table into
+`warehouse/ibp/` at all -- ZedProfiler produces no real Nucleocentric
+features, so step 3's output for it was always empty and not worth
+keeping. Step 3 (unmodified) still hard-requires a
+`nucleocentric_profiles_{well_fov}.parquet` *input* to exist or it crashes
+immediately on a strict path resolve, so `build_ibp_inputs_from_warehouse.py`
+still writes an empty placeholder for that -- but now only if nothing is
+already there, so it can never clobber real Nucleocentric data from an
+actual run of IBP steps 00/0a/1/2 for the same well_fov/subparent_name.
+Verified the overwrite guard directly: seeded a fake "real" nucleocentric
+input file, re-ran the pilot, confirmed the file was left untouched. Also
+re-verified the full pilot end to end afterward: same correct results (9/9
+and 42/42 cells assigned) as before this change.

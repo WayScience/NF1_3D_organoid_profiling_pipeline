@@ -21,15 +21,20 @@ For each reference image set (manifest/reference_image_sets.yaml):
    columns (see build_ibp_inputs_from_warehouse.py), but that renaming is
    step-3-local only; VolumeSizeShape is this project's preferred naming
    everywhere data is actually persisted.
-4. Copy step 3's *_related.parquet outputs into the source warehouse's own
-   directory, under a new `ibp/` folder alongside `profiles/`/`images/` --
-   same one-file-per-image-set convention as `profiles/<compartment>_profiles/`,
-   additive only.
+4. Copy step 3's sc_profiles/organoid_profiles *_related.parquet outputs
+   into the source warehouse's own directory, under a new `ibp/` folder
+   alongside `profiles/`/`images/` -- same one-file-per-image-set
+   convention as `profiles/<compartment>_profiles/`, additive only. Step
+   3's nucleocentric_profiles_*_related.parquet output is not copied --
+   ZedProfiler produces no real Nucleocentric data, so that output is
+   always empty and not worth persisting; see
+   build_ibp_inputs_from_warehouse.py for why step 3 still needs an
+   (empty) nucleocentric *input* to run at all.
 
-After every image set has landed, (re)creates three convenience DuckDB
+After every image set has landed, (re)creates two convenience DuckDB
 views over the new `ibp/` tables in the warehouse's existing
-`warehouse.duckdb` -- `ibp.sc_profiles_related`, `ibp.organoid_profiles_related`,
-`ibp.nucleocentric_profiles_related` -- matching the same `CREATE OR REPLACE
+`warehouse.duckdb` -- `ibp.sc_profiles_related`,
+`ibp.organoid_profiles_related` -- matching the same `CREATE OR REPLACE
 VIEW ... read_parquet(relative_glob)` pattern build_duckdb_views.py uses for
 `profiles.*`/`images.*`, so `SELECT * FROM ibp.sc_profiles_related` works
 the same way once you `cd` into the warehouse directory (relative paths,
@@ -144,9 +149,11 @@ def run_one_image_set(
     organoid_related = pd.read_parquet(
         related_dir / f"organoid_profiles_{well_fov}_related.parquet"
     )
-    nucleocentric_related = pd.read_parquet(
-        related_dir / f"nucleocentric_profiles_{well_fov}_related.parquet"
-    )
+    # nucleocentric_profiles_{well_fov}_related.parquet is intentionally not
+    # read or persisted: ZedProfiler produces no real Nucleocentric data, so
+    # step 3's own output for it is always empty -- not a table worth
+    # keeping in warehouse/ibp/. See build_ibp_inputs_from_warehouse.py for
+    # why step 3 still needs an (empty) nucleocentric *input* to run at all.
 
     # Restore ZedProfiler's own VolumeSizeShape naming now that step 3's
     # AreaSizeShape-only column matching has done its job -- see
@@ -160,7 +167,6 @@ def run_one_image_set(
     for name, df in (
         ("sc_profiles_related", sc_related),
         ("organoid_profiles_related", organoid_related),
-        ("nucleocentric_profiles_related", nucleocentric_related),
     ):
         table_dir = ibp_dir / name
         table_dir.mkdir(parents=True, exist_ok=True)
@@ -188,7 +194,6 @@ def run_one_image_set(
 _IBP_TABLES = (
     "sc_profiles_related",
     "organoid_profiles_related",
-    "nucleocentric_profiles_related",
 )
 
 
