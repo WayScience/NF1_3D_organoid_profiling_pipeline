@@ -96,7 +96,7 @@ for patient in patients:
 levels_to_merge_dict
 
 
-# In[5]:
+# In[ ]:
 
 
 # Feature selection operations applied in order:
@@ -106,14 +106,18 @@ levels_to_merge_dict
 #   correlation_threshold — remove one feature from each pair with Pearson r > corr_threshold
 feature_select_ops = [
     "drop_na_columns",
+    "drop_outliers",
     "blocklist",
-    "variance_threshold",  # comment out to remove variance thresholding
+    "variance_threshold",
+    "frequency_threshold",
     "correlation_threshold",  # comment out to remove correlation thresholding
 ]
 na_cutoff = 0.05  # drop features with >5% NaN
-corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.95
-freq_cut = 0.05  # variance threshold: most-common / second-most-common value ratio
-unique_cut = 0.05  # variance threshold: minimum fraction of unique values
+outlier_cutoff = 100  # drop features whose min/max absolute value exceeds this
+corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.90
+freq_cut = 0.05  # frequency threshold: most-common / second-most-common value ratio
+# unique_cut (frequency_threshold) and min_variance (variance_threshold) are
+# intentionally left at pycytominer's own defaults (0.01 and 1e-6) -- not overridden.
 
 
 # In[6]:
