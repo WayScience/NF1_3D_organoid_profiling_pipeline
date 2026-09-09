@@ -46,6 +46,15 @@
 #   feature set is applied back to the full (all-treatment) dataset. This ensures
 #   feature selection is not biased by the full treatment distribution.
 # - QC-flagged rows are not filtered here; that is left to downstream analysis.
+# - `drop_outliers` (`outlier_cutoff=100`) was added per
+#   [#163](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/issues/163).
+# - `variance_threshold` and `frequency_threshold` are two distinct pycytominer
+#   operations (pycytominer>=1.7): `variance_threshold` only uses `min_variance`
+#   (left at pycytominer's own default), while `freq_cut`/`unique_cut` are consumed
+#   by `frequency_threshold` specifically. The previous operation list included only
+#   `"variance_threshold"`, so `freq_cut`/`unique_cut` were silently unused --
+#   confirmed directly (a synthetic low-frequency feature survived feature selection
+#   under the old config). `"frequency_threshold"` is now included explicitly.
 
 # In[1]:
 
@@ -194,20 +203,30 @@ run_dict = {
 
 
 # Feature selection operations applied in order:
-#   drop_na_columns      — remove features with >na_cutoff fraction of NaN values
-#   blocklist            — remove features on the pycytominer blocklist (known noisy/artifactual)
+#   drop_na_columns       — remove features with >na_cutoff fraction of NaN values
+#   drop_outliers         — remove features whose min or max absolute value exceeds
+#                         outlier_cutoff (see WayScience/NF1_3D_organoid_profiling_pipeline#163)
+#   blocklist             — remove features on the pycytominer blocklist (known noisy/artifactual)
+#   variance_threshold    — remove near-constant features (variance below pycytominer's
+#                         own min_variance default; not overridden here)
+#   frequency_threshold   — remove features with a large most-common/second-most-common
+#                         value gap (freq_cut) or too few unique values relative to
+#                         sample count (unique_cut, left at pycytominer's own default)
 #   correlation_threshold — remove one feature from each pair with Pearson r > corr_threshold
-#   variance_threshold   — remove near-constant features (low frequency or unique value ratio)
 feature_select_ops = [
     "drop_na_columns",
+    "drop_outliers",
     "blocklist",
+    "variance_threshold",
+    "frequency_threshold",
     "correlation_threshold",  # comment out to remove correlation thresholding
-    "variance_threshold",  # comment out to remove variance thresholding
 ]
 na_cutoff = 0.05  # drop features with >5% NaN
-corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.95
-freq_cut = 0.05  # variance threshold: most-common / second-most-common value ratio
-unique_cut = 0.05  # variance threshold: minimum fraction of unique values
+outlier_cutoff = 100  # drop features whose min/max absolute value exceeds this
+corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.90
+freq_cut = 0.05  # frequency threshold: most-common / second-most-common value ratio
+# unique_cut (frequency_threshold) and min_variance (variance_threshold) are
+# intentionally left at pycytominer's own defaults (0.01 and 1e-6) -- not overridden.
 
 
 # ## Feature select the profiles
@@ -237,9 +256,9 @@ for profile_name in run_dict.keys():
         operation=feature_select_ops,
         features=features_columns,
         na_cutoff=na_cutoff,
+        outlier_cutoff=outlier_cutoff,
         corr_threshold=corr_threshold,
         freq_cut=freq_cut,
-        unique_cut=unique_cut,
         samples="(Metadata_Experiment_Treatment == 'DMSO' and Metadata_Experiment_Dose == 1) or (Metadata_Experiment_Treatment == 'Staurosporine' and Metadata_Experiment_Dose == 10)",
         output_file=output_path,
         output_type="parquet",
