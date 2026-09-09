@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pilot driver: run IBP stage 4 step 3 against a ZedProfiler warehouse.
+"""Pilot driver: run IBP stage 4 step 3 against a ZEDProfiler warehouse.
 
 For each reference image set (manifest/reference_image_sets.yaml):
 
@@ -14,7 +14,7 @@ For each reference image set (manifest/reference_image_sets.yaml):
    (pandas/numpy/matplotlib/scikit-image/tqdm) -- none of the heavier
    torch/napari/cellpose dependencies declared in utils/pyproject.toml are
    needed for this.
-3. Restore ZedProfiler's own VolumeSizeShape column naming on step 3's
+3. Restore ZEDProfiler's own VolumeSizeShape column naming on step 3's
    output (rename_areasizeshape_to_volumesizeshape() below) -- step 3's
    input was temporarily renamed to CellProfiler-era AreaSizeShape naming
    so its unmodified "area" substring matching could find the relevant
@@ -26,7 +26,7 @@ For each reference image set (manifest/reference_image_sets.yaml):
    alongside `profiles/`/`images/` -- same one-file-per-image-set
    convention as `profiles/<compartment>_profiles/`, additive only. Step
    3's nucleocentric_profiles_*_related.parquet output is not copied --
-   ZedProfiler produces no real Nucleocentric data, so that output is
+   ZEDProfiler produces no real Nucleocentric data, so that output is
    always empty and not worth persisting; see
    build_ibp_inputs_from_warehouse.py for why step 3 still needs an
    (empty) nucleocentric *input* to run at all.
@@ -71,8 +71,8 @@ IBP_SUBPARENT_NAME = "image_based_profiles_pilot_zedprofiler"
 def rename_areasizeshape_to_volumesizeshape(df: pd.DataFrame) -> pd.DataFrame:
     """Undo build_ibp_inputs_from_warehouse.py's AreaSizeShape rename on
     step 3's output. That rename exists only so step 3's own unmodified
-    "area" substring matching can find ZedProfiler's VolumeSizeShape
-    centroid/bbox columns -- ZedProfiler's naming is preferred for anything
+    "area" substring matching can find ZEDProfiler's VolumeSizeShape
+    centroid/bbox columns -- ZEDProfiler's naming is preferred for anything
     actually persisted, so it's restored here before this pilot writes into
     warehouse/ibp/.
     """
@@ -150,12 +150,12 @@ def run_one_image_set(
         related_dir / f"organoid_profiles_{well_fov}_related.parquet"
     )
     # nucleocentric_profiles_{well_fov}_related.parquet is intentionally not
-    # read or persisted: ZedProfiler produces no real Nucleocentric data, so
+    # read or persisted: ZEDProfiler produces no real Nucleocentric data, so
     # step 3's own output for it is always empty -- not a table worth
     # keeping in warehouse/ibp/. See build_ibp_inputs_from_warehouse.py for
     # why step 3 still needs an (empty) nucleocentric *input* to run at all.
 
-    # Restore ZedProfiler's own VolumeSizeShape naming now that step 3's
+    # Restore ZEDProfiler's own VolumeSizeShape naming now that step 3's
     # AreaSizeShape-only column matching has done its job -- see
     # build_ibp_inputs_from_warehouse.py's rename_volumesizeshape_to_areasizeshape().
     sc_related = rename_areasizeshape_to_volumesizeshape(sc_related)
@@ -238,7 +238,7 @@ def main() -> int:
         "--warehouse-dir",
         required=True,
         type=Path,
-        help="Path to a ZedProfiler warehouse dir (contains warehouse.duckdb, profiles/, images/)",
+        help="Path to a ZEDProfiler warehouse dir (contains warehouse.duckdb, profiles/, images/)",
     )
     parser.add_argument(
         "--manifest",

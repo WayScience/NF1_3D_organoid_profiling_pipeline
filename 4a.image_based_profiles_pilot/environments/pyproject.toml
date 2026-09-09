@@ -1,7 +1,7 @@
 [project]
 name = "nf1-ibp-pilot"
 version = "0.1.0"
-description = "Isolated Python environment for the IBP-on-ZedProfiler-warehouse pilot"
+description = "Isolated Python environment for the IBP-on-ZEDProfiler-warehouse pilot"
 requires-python = ">=3.12"
 dependencies = [
   "numpy>=2.0",

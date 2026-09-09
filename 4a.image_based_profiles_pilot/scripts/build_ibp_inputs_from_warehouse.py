@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build IBP stage 4 step-3 inputs directly from a ZedProfiler warehouse.
+"""Build IBP stage 4 step-3 inputs directly from a ZEDProfiler warehouse.
 
 `4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py`
 expects three parquet files per well-FOV under
@@ -10,7 +10,7 @@ IBP steps 00/0a/1/2, which convert old CellProfiler-style per-feature
 parquet files into a merged per-well_fov DuckDB and then merge that into the
 three files above.
 
-A ZedProfiler warehouse (3a.nextflow_pilot / 3b.nextflow_production) already
+A ZEDProfiler warehouse (3a.nextflow_pilot / 3b.nextflow_production) already
 holds the same information in a different shape: one parquet per compartment
 per image set, joined via warehouse.duckdb's `joined.images_nuclei_cell_cytoplasm`
 (inner join across Nuclei/Cell/Cytoplasm on Metadata_Object_ObjectID -- the
@@ -20,12 +20,12 @@ step 3 expects, bridging two real differences instead of touching step 3's
 own code:
 
 - Column names: step 3 finds centroid/bbox columns by substring-matching
-  "area" (CellProfiler-era `*_AreaSizeShape_*` naming). ZedProfiler's own
+  "area" (CellProfiler-era `*_AreaSizeShape_*` naming). ZEDProfiler's own
   convention produces `*_VolumeSizeShape_*` instead, which the substring
   match misses entirely. Every VolumeSizeShape column is renamed to its
   AreaSizeShape equivalent here -- but only in the scratch files written to
   `0.converted_profiles/` that feed step 3's own unmodified matching logic.
-  ZedProfiler's VolumeSizeShape naming is preferred everywhere else,
+  ZEDProfiler's VolumeSizeShape naming is preferred everywhere else,
   including the *_related.parquet files this pilot actually persists into
   warehouse/ibp/ -- run_ibp_pilot.py renames those columns back to
   VolumeSizeShape immediately after step 3 produces them, before they're
@@ -34,7 +34,7 @@ own code:
 - Identifiers: step 3 expects `object_id` (ours: Metadata_Object_ObjectID)
   and `image_set` (ours: implicit, derived from patient/well_fov here).
 
-ZedProfiler does not produce deep-learning Nucleocentric features. Step 3
+ZEDProfiler does not produce deep-learning Nucleocentric features. Step 3
 (unmodified) still hard-requires a nucleocentric_profiles_{well_fov}.parquet
 to exist -- it strictly resolves that path and crashes immediately if it's
 missing -- so an empty (0 rows, `object_id`/`image_set` columns only)
@@ -59,8 +59,8 @@ def rename_volumesizeshape_to_areasizeshape(df: pd.DataFrame) -> pd.DataFrame:
     """Rename every `*VolumeSizeShape*` column to its `*AreaSizeShape*` form.
 
     Step-3-input-only compatibility shim: lets step 3's own unmodified
-    "area" substring matching find ZedProfiler's centroid/bbox columns.
-    ZedProfiler's VolumeSizeShape naming is preferred for anything this
+    "area" substring matching find ZEDProfiler's centroid/bbox columns.
+    ZEDProfiler's VolumeSizeShape naming is preferred for anything this
     pilot actually persists -- see run_ibp_pilot.py's
     rename_areasizeshape_to_volumesizeshape(), which undoes this on step 3's
     output before it's written into warehouse/ibp/.
@@ -254,7 +254,7 @@ def main() -> int:
 
     # Step 3 (unmodified) does a strict path resolve on this file and
     # crashes immediately if it's missing, so something has to exist here
-    # for step 3 to run at all -- ZedProfiler has no real Nucleocentric
+    # for step 3 to run at all -- ZEDProfiler has no real Nucleocentric
     # (deep-learning) features to put in it, hence empty. Only write it if
     # nothing is there yet: if this same well_fov/subparent_name has real
     # Nucleocentric data from an actual run of IBP steps 00/0a/1/2, this

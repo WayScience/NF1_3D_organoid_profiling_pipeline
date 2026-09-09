@@ -1,11 +1,11 @@
-# IBP pilot: stage 4 (organoid-cell relationships) on a ZedProfiler warehouse
+# IBP pilot: stage 4 (organoid-cell relationships) on a ZEDProfiler warehouse
 
 ## What this is
 
 A pilot checking whether `4.processing_image_based_profiles`'s downstream
 steps -- specifically step 3, `3.organoid_cell_relationship.py` (organoid-cell
 assignment + spatial shell/distance features) -- can run directly against a
-ZedProfiler warehouse (`3a.nextflow_pilot` / `3b.nextflow_production`
+ZEDProfiler warehouse (`3a.nextflow_pilot` / `3b.nextflow_production`
 output), instead of the older CellProfiler-style per-feature-file pipeline
 stage 4 was originally built for.
 
@@ -17,7 +17,7 @@ Two reference image sets, matching the ones used throughout
 
 Those steps convert old per-feature parquet files (101 per image set) into a
 merged per-well*fov DuckDB, then merge that into
-`sc_profiles*{well*fov}.parquet`/`organoid_profiles*{well*fov}.parquet`/`nucleocentric_profiles*{well_fov}.parquet`-- exactly what a ZedProfiler
+`sc_profiles*{well*fov}.parquet`/`organoid_profiles*{well*fov}.parquet`/`nucleocentric_profiles*{well_fov}.parquet`-- exactly what a ZEDProfiler
 warehouse already holds natively via`warehouse.duckdb`'s
 `joined.images_nuclei_cell_cytoplasm`view (an inner join across Nuclei/
 Cell/Cytoplasm on`Metadata_Object_ObjectID`, the same object-intersection
@@ -28,11 +28,11 @@ image set and writes the three files step 3 expects, bridging two real
 differences along the way -- without touching step 3's own code:
 
 - **Column names**: step 3 finds centroid/bbox columns by substring-matching
-  `"area"` (CellProfiler-era `*_AreaSizeShape_*` naming). ZedProfiler's own
+  `"area"` (CellProfiler-era `*_AreaSizeShape_*` naming). ZEDProfiler's own
   naming convention (same `format_morphology_feature_name()` helper,
   different feature-type string) produces `*_VolumeSizeShape_*` instead --
   `"volumesizeshape"` contains no `"area"` substring, so the match misses
-  silently. `VolumeSizeShape` is this project's preferred naming (ZedProfiler
+  silently. `VolumeSizeShape` is this project's preferred naming (ZEDProfiler
   lets us be opinionated about our own feature names rather than carrying
   CellProfiler-era conventions forward), so it's never persisted as
   `AreaSizeShape`: the rename to `AreaSizeShape` is applied only to the
@@ -44,7 +44,7 @@ differences along the way -- without touching step 3's own code:
   boundary is renamed and un-renamed around it.
 - **Identifiers**: step 3 expects `object_id` (ours: `Metadata_Object_ObjectID`)
   and `image_set` (ours: derived from `--well-fov` directly).
-- **No Nucleocentric data**: ZedProfiler doesn't produce deep-learning
+- **No Nucleocentric data**: ZEDProfiler doesn't produce deep-learning
   nucleocentric features. Step 3 (unmodified) still hard-requires a
   `nucleocentric_profiles_{well_fov}.parquet` to exist -- it strictly
   resolves that path and crashes immediately if missing -- so the adapter
@@ -84,12 +84,12 @@ Step 3's outputs land back in the **source warehouse's own directory**,
 under a new `ibp/` folder alongside `profiles/`/`images/` -- same
 one-file-per-image-set convention as `profiles/<compartment>_profiles/`, so
 it's immediately queryable the same way and clearly separated from
-ZedProfiler's own output. Additive only -- never touches `profiles/` or
+ZEDProfiler's own output. Additive only -- never touches `profiles/` or
 `images/`.
 
 ```text
 warehouse/
-  profiles/...                                  <- unchanged, ZedProfiler's own output
+  profiles/...                                  <- unchanged, ZEDProfiler's own output
   images/...                                     <- unchanged
   warehouse.duckdb                               <- unchanged base views; gains 2 new ibp.* views (see below)
   ibp/                                            <- new, this pilot's output
@@ -97,7 +97,7 @@ warehouse/
     organoid_profiles_related/<image_id>.parquet   <- Organoid + OrganoidSingleCellCount
 ```
 
-(No `nucleocentric_profiles_related/` -- ZedProfiler has no Nucleocentric
+(No `nucleocentric_profiles_related/` -- ZEDProfiler has no Nucleocentric
 features, so step 3's output for it is always empty and isn't persisted.)
 
 ```python
@@ -155,7 +155,7 @@ correct (9 and 42, matching mask object counts) after the fix -- this is
 the version reflected in the table above.
 
 **Nucleocentric**: as expected, both image sets produced an empty
-nucleocentric table (ZedProfiler has no deep-learning nucleocentric
+nucleocentric table (ZEDProfiler has no deep-learning nucleocentric
 features) -- step 3 handled this without incident. Per review feedback,
 this output is no longer persisted into `warehouse/ibp/` at all (see the
 2026-09-09 update below) -- there's nothing in it worth keeping, and always
@@ -224,7 +224,7 @@ column names) as before this change.
 
 **Update (review feedback, 2026-09-09), nucleocentric:** per review, this
 pilot no longer persists a `nucleocentric_profiles_related` table into
-`warehouse/ibp/` at all -- ZedProfiler produces no real Nucleocentric
+`warehouse/ibp/` at all -- ZEDProfiler produces no real Nucleocentric
 features, so step 3's output for it was always empty and not worth
 keeping. Step 3 (unmodified) still hard-requires a
 `nucleocentric_profiles_{well_fov}.parquet` *input* to exist or it crashes
@@ -267,8 +267,8 @@ results (9/9 and 42/42 cells assigned, zero duplicate columns) as before.
 flowchart TD
     A1[cellpainting images and segmentations]
 
-    A1 -->|featurization| B[ZedProfiler single cell features ]
-    A1 -->|featurization| C[ZedProfiler organoid features ]
+    A1 -->|featurization| B[ZEDProfiler single cell features ]
+    A1 -->|featurization| C[ZEDProfiler organoid features ]
     A1 -->|featurization| D[Masked SAM-Med3D single cell features ]
     A1 -->|featurization| E[Masked SAM-Med3D organoid features ]
     A1 -->|featurization| F[Nucleocentric SAM-Med3D features ]
@@ -286,14 +286,14 @@ flowchart TD
     G4 --> H4[relate objects to organoids]
     G5 --> H5[relate objects to organoids]
     G6 --> H6[relate objects to organoids]
-    H1 --> |ZedProfiler single cell features| I[Annotation]
-    H2 --> |ZedProfiler organoid features| I
+    H1 --> |ZEDProfiler single cell features| I[Annotation]
+    H2 --> |ZEDProfiler organoid features| I
     H3 --> |Masked SAM-Med3D single cell features| I
     H4 --> |Masked SAM-Med3D organoid features| I
     H5 --> |Nucleocentric SAM-Med3D features| I
     H6 --> |Nucleocentric MorphEM features| I
-    I --> |ZedProfiler single cell features| J[Normalized features]
-    I --> |ZedProfiler organoid features| J
+    I --> |ZEDProfiler single cell features| J[Normalized features]
+    I --> |ZEDProfiler organoid features| J
     I --> |Masked SAM-Med3D single cell features| J
     I --> |Masked SAM-Med3D organoid features| J
     I --> |Nucleocentric SAM-Med3D features| J
