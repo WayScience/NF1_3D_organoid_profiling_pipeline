@@ -236,6 +236,31 @@ Verified the overwrite guard directly: seeded a fake "real" nucleocentric
 input file, re-ran the pilot, confirmed the file was left untouched. Also
 re-verified the full pilot end to end afterward: same correct results (9/9
 and 42/42 cells assigned) as before this change.
+
+**Update (review feedback, 2026-09-09), two more fixes:**
+- The shared-metadata dedup's `shared` set was computed from Nuclei's
+  columns only, then unconditionally excluded from Cell's and Cytoplasm's
+  own `*` projections too. If either table were ever missing one of those
+  columns (schema drift -- currently doesn't happen, since all three tables
+  come from the same `add_metadata()` call, but this dedup logic exists
+  specifically to tolerate that changing), `EXCLUDE` on a column that
+  doesn't exist is a hard DuckDB error, not a no-op. `shared` is now
+  intersected with each table's own live columns before being excluded
+  from that table.
+- The nucleocentric input placeholder's `if not nucleocentric_path.exists()`
+  check and its write were not atomic -- a real file (from an actual IBP
+  steps 00/0a/1/2 run for the same well_fov) could appear in the gap
+  between them, and the write itself would still clobber it. Now written to
+  a private temp file first, then published via `os.link()`, which raises
+  `FileExistsError` instead of silently overwriting if the destination
+  exists by the time of the actual publish. Verified directly: simulated a
+  file appearing in exactly that gap (write temp file, then create the
+  "real" destination file, then attempt the link) and confirmed `os.link()`
+  raises, the real file survives untouched, and the temp file is cleaned up.
+
+Re-verified the full pilot end to end after both fixes: same correct
+results (9/9 and 42/42 cells assigned, zero duplicate columns) as before.
+
 ## New IBP workflow diagram
 
 ```mermaid

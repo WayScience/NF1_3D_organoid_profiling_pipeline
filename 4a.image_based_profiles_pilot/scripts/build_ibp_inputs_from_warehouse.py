@@ -149,8 +149,16 @@ def load_from_warehouse(
                 for column in nuclei_columns
                 if column.startswith(_PER_COMPARTMENT_METADATA_PREFIXES)
             ]
+            # Intersect `shared` with each table's own columns before
+            # excluding: EXCLUDE on a column name that doesn't exist in
+            # that table is a hard DuckDB error, not a no-op (same
+            # constraint noted in build_duckdb_views.py). All three tables
+            # currently carry identical Biology/Experiment/Imaging fields
+            # (same add_metadata() call in run_zedprofiler_image_set.py),
+            # but this makes that an assumption this code tolerates being
+            # wrong for, rather than one it silently requires.
             cell_exclude = sorted(
-                shared
+                (shared & set(cell_columns))
                 | {"Metadata_Object_ObjectID"}
                 | {
                     column
@@ -159,7 +167,7 @@ def load_from_warehouse(
                 }
             )
             cytoplasm_exclude = sorted(
-                shared
+                (shared & set(cytoplasm_columns))
                 | {"Metadata_Object_ObjectID"}
                 | {
                     column
@@ -250,12 +258,29 @@ def main() -> int:
     # (deep-learning) features to put in it, hence empty. Only write it if
     # nothing is there yet: if this same well_fov/subparent_name has real
     # Nucleocentric data from an actual run of IBP steps 00/0a/1/2, this
-    # placeholder must never clobber it.
+    # placeholder must never clobber it. The exists()-then-write pattern
+    # alone isn't atomic -- a real file could appear in the gap between the
+    # check and the write -- so the empty frame is written to a private
+    # temp file first, then published with os.link(), which fails with
+    # FileExistsError instead of silently overwriting if the destination
+    # exists by the time we get there. Both paths share outdir (the local
+    # repo checkout's own data/ scratch tree, never the PetaLibrary-mounted
+    # warehouse), so the hard link is same-filesystem and safe.
     nucleocentric_path = outdir / f"nucleocentric_profiles_{args.well_fov}.parquet"
     if not nucleocentric_path.exists():
-        pd.DataFrame(columns=["object_id", "image_set"]).to_parquet(
-            nucleocentric_path, index=False
+        tmp_path = (
+            outdir / f".nucleocentric_profiles_{args.well_fov}.{os.getpid()}.tmp.parquet"
         )
+        try:
+            pd.DataFrame(columns=["object_id", "image_set"]).to_parquet(
+                tmp_path, index=False
+            )
+            try:
+                os.link(tmp_path, nucleocentric_path)
+            except FileExistsError:
+                pass  # a real file appeared concurrently -- leave it alone
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
     print(
         "NF1_IBP_PILOT_INPUTS_OK "
