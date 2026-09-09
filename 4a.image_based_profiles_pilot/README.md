@@ -189,3 +189,21 @@ step 3, and reversed on step 3's own output before anything is written into
 `warehouse/ibp/`. Re-verified against the real warehouse: 0 `AreaSizeShape`
 columns remain in persisted output, organoid assignment still correct (9/9
 and 42/42 cells assigned).
+
+**Update (review feedback, 2026-09-09), metadata dedup:** the shared/
+per-compartment metadata dedup in `build_ibp_inputs_from_warehouse.py`
+(deciding which of Nuclei/Cell/Cytoplasm's copy of a metadata column to
+keep when joining them) previously hardcoded a fixed list of exact column
+names. Per review feedback, this is now driven by the metadata category
+prefix instead (per `docs/RFC-2119-Feature-Naming-Convention.md` section
+2.2): any `Metadata_Biology_*`/`Metadata_Experiment_*`/`Metadata_Imaging_*`
+column is treated as shared across compartments (sample/experiment/imaging-
+session metadata doesn't change because you're looking at a different
+compartment's segmentation), and any `Metadata_Compartment*`/
+`Metadata_Segmentation_*` column as per-compartment. This is both an answer
+to the review question (yes, Biology/Experiment/Imaging metadata is shared)
+and a real robustness fix: a newly added field under those categories is
+now picked up automatically instead of silently leaking through as an
+unexcluded, potentially name-colliding column. Re-verified: same output
+shape (9/42 rows, 2682 columns, 7 shared metadata columns, zero duplicate
+column names) as before this change.

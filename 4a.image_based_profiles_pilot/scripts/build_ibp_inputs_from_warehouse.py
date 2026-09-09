@@ -69,30 +69,43 @@ def rename_volumesizeshape_to_areasizeshape(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-# Columns that carry identical values across Nuclei/Cell/Cytoplasm rows for
-# the same object (patient/plate/well/field/image IDs, plus Object ID
-# itself) -- keep Nuclei's copy only, drop Cell's/Cytoplasm's. Columns that
-# differ per compartment (Metadata_Compartment, Segmentation_*) are dropped
-# entirely here since step 3 doesn't use them; mirrors build_duckdb_views.py's
-# DEDUPE_COLUMNS/PER_COMPARTMENT_COLUMNS lists, one level simpler since this
-# doesn't need to preserve per-compartment renamed copies.
-_SHARED_METADATA_COLUMNS = (
-    "Metadata_Biology_PatientTumor",
-    "Metadata_Biology_PatientID",
-    "Metadata_Experiment_PlateID",
-    "Metadata_Experiment_WellID",
-    "Metadata_Imaging_FieldID",
-    "Metadata_Imaging_ImageID",
-    "Metadata_Experiment_ImageSet",
+# Per the project's metadata naming convention
+# (docs/RFC-2119-Feature-Naming-Convention.md section 2.2), a metadata
+# column's category -- the `<featurecategory>` in
+# `Metadata_<featurecategory>_<featurename>` -- says whether it describes
+# the sample/experiment/imaging session as a whole (shared, identical
+# regardless of which compartment table it's read from: a patient, plate,
+# well, field, or image doesn't change because you're looking at Nuclei
+# instead of Cell) or the specific compartment/segmentation that produced
+# this row (Metadata_Compartment itself, and the Segmentation_* fields
+# describing how *that* compartment was segmented -- genuinely different
+# per compartment). Matched by category prefix rather than a hardcoded list
+# of exact column names, so a newly added Biology/Experiment/Imaging field
+# is picked up automatically instead of silently leaking through
+# unexcluded and colliding with Nuclei's own copy of the same name.
+_SHARED_METADATA_PREFIXES = (
+    "Metadata_Biology_",
+    "Metadata_Experiment_",
+    "Metadata_Imaging_",
 )
-_PER_COMPARTMENT_METADATA_COLUMNS = (
+_PER_COMPARTMENT_METADATA_PREFIXES = (
     "Metadata_Compartment",
-    "Metadata_Segmentation_Method",
-    "Metadata_Segmentation_PrimaryChannel",
-    "Metadata_Segmentation_PrimaryChannelCode",
-    "Metadata_Segmentation_SeedChannel",
-    "Metadata_Segmentation_SeedChannelCode",
+    "Metadata_Segmentation_",
 )
+
+
+def _table_columns(con: duckdb.DuckDBPyConnection, table: str) -> list[str]:
+    """Actual column names of a table, queried live rather than assumed --
+    see build_duckdb_views.py's own _table_columns() for the same
+    reasoning: schemas can vary."""
+    return list(con.execute(f"SELECT * FROM {table} LIMIT 0").df().columns)
+
+
+def _exclude_clause(columns: list[str]) -> str:
+    """DuckDB's `* EXCLUDE (...)` needs a non-empty, literal column list --
+    build one from whichever of `columns` actually needs excluding, or
+    return "" (meaning: no EXCLUDE at all) if none do."""
+    return f" EXCLUDE ({', '.join(columns)})" if columns else ""
 
 
 def load_from_warehouse(
@@ -113,19 +126,49 @@ def load_from_warehouse(
     current working directory (see build_duckdb_views.py), so this
     temporarily chdirs into warehouse_dir for the query.
     """
-    exclude_from_cell_and_cytoplasm = ", ".join(
-        (*_SHARED_METADATA_COLUMNS, *_PER_COMPARTMENT_METADATA_COLUMNS, "Metadata_Object_ObjectID")
-    )
     previous_cwd = Path.cwd()
     os.chdir(warehouse_dir)
     try:
         with duckdb.connect("warehouse.duckdb", read_only=True) as con:
+            nuclei_columns = _table_columns(con, "profiles.nuclei_profiles")
+            cell_columns = _table_columns(con, "profiles.cell_profiles")
+            cytoplasm_columns = _table_columns(con, "profiles.cytoplasm_profiles")
+
+            shared = {
+                column
+                for column in nuclei_columns
+                if column.startswith(_SHARED_METADATA_PREFIXES)
+            }
+            nuclei_exclude = [
+                column
+                for column in nuclei_columns
+                if column.startswith(_PER_COMPARTMENT_METADATA_PREFIXES)
+            ]
+            cell_exclude = sorted(
+                shared
+                | {"Metadata_Object_ObjectID"}
+                | {
+                    column
+                    for column in cell_columns
+                    if column.startswith(_PER_COMPARTMENT_METADATA_PREFIXES)
+                }
+            )
+            cytoplasm_exclude = sorted(
+                shared
+                | {"Metadata_Object_ObjectID"}
+                | {
+                    column
+                    for column in cytoplasm_columns
+                    if column.startswith(_PER_COMPARTMENT_METADATA_PREFIXES)
+                }
+            )
+
             sc_df = con.execute(
                 f"""
                 SELECT
-                    n.* EXCLUDE ({", ".join(_PER_COMPARTMENT_METADATA_COLUMNS)}),
-                    c.* EXCLUDE ({exclude_from_cell_and_cytoplasm}),
-                    cy.* EXCLUDE ({exclude_from_cell_and_cytoplasm})
+                    n.*{_exclude_clause(nuclei_exclude)},
+                    c.*{_exclude_clause(cell_exclude)},
+                    cy.*{_exclude_clause(cytoplasm_exclude)}
                 FROM profiles.nuclei_profiles n
                 JOIN profiles.cell_profiles c
                     ON c.Metadata_Imaging_ImageID = n.Metadata_Imaging_ImageID
