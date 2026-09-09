@@ -14,7 +14,14 @@ For each reference image set (manifest/reference_image_sets.yaml):
    (pandas/numpy/matplotlib/scikit-image/tqdm) -- none of the heavier
    torch/napari/cellpose dependencies declared in utils/pyproject.toml are
    needed for this.
-3. Copy step 3's *_related.parquet outputs into the source warehouse's own
+3. Restore ZedProfiler's own VolumeSizeShape column naming on step 3's
+   output (rename_areasizeshape_to_volumesizeshape() below) -- step 3's
+   input was temporarily renamed to CellProfiler-era AreaSizeShape naming
+   so its unmodified "area" substring matching could find the relevant
+   columns (see build_ibp_inputs_from_warehouse.py), but that renaming is
+   step-3-local only; VolumeSizeShape is this project's preferred naming
+   everywhere data is actually persisted.
+4. Copy step 3's *_related.parquet outputs into the source warehouse's own
    directory, under a new `ibp/` folder alongside `profiles/`/`images/` --
    same one-file-per-image-set convention as `profiles/<compartment>_profiles/`,
    additive only.
@@ -54,6 +61,23 @@ IBP_STEP3_SCRIPT = (
     / "3.organoid_cell_relationship.py"
 )
 IBP_SUBPARENT_NAME = "image_based_profiles_pilot_zedprofiler"
+
+
+def rename_areasizeshape_to_volumesizeshape(df: pd.DataFrame) -> pd.DataFrame:
+    """Undo build_ibp_inputs_from_warehouse.py's AreaSizeShape rename on
+    step 3's output. That rename exists only so step 3's own unmodified
+    "area" substring matching can find ZedProfiler's VolumeSizeShape
+    centroid/bbox columns -- ZedProfiler's naming is preferred for anything
+    actually persisted, so it's restored here before this pilot writes into
+    warehouse/ibp/.
+    """
+    return df.rename(
+        columns={
+            column: column.replace("AreaSizeShape", "VolumeSizeShape")
+            for column in df.columns
+            if "AreaSizeShape" in column
+        }
+    )
 
 
 def run_one_image_set(
@@ -123,6 +147,12 @@ def run_one_image_set(
     nucleocentric_related = pd.read_parquet(
         related_dir / f"nucleocentric_profiles_{well_fov}_related.parquet"
     )
+
+    # Restore ZedProfiler's own VolumeSizeShape naming now that step 3's
+    # AreaSizeShape-only column matching has done its job -- see
+    # build_ibp_inputs_from_warehouse.py's rename_volumesizeshape_to_areasizeshape().
+    sc_related = rename_areasizeshape_to_volumesizeshape(sc_related)
+    organoid_related = rename_areasizeshape_to_volumesizeshape(organoid_related)
 
     image_id = str(sc_related["Metadata_Imaging_ImageID"].iloc[0])
 

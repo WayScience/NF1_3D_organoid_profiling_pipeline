@@ -23,7 +23,14 @@ own code:
   "area" (CellProfiler-era `*_AreaSizeShape_*` naming). ZedProfiler's own
   convention produces `*_VolumeSizeShape_*` instead, which the substring
   match misses entirely. Every VolumeSizeShape column is renamed to its
-  AreaSizeShape equivalent here.
+  AreaSizeShape equivalent here -- but only in the scratch files written to
+  `0.converted_profiles/` that feed step 3's own unmodified matching logic.
+  ZedProfiler's VolumeSizeShape naming is preferred everywhere else,
+  including the *_related.parquet files this pilot actually persists into
+  warehouse/ibp/ -- run_ibp_pilot.py renames those columns back to
+  VolumeSizeShape immediately after step 3 produces them, before they're
+  written anywhere durable. This file's rename is a one-way, step-3-local
+  compatibility shim, not a change to this pilot's preferred naming.
 - Identifiers: step 3 expects `object_id` (ours: Metadata_Object_ObjectID)
   and `image_set` (ours: implicit, derived from patient/well_fov here).
 
@@ -44,7 +51,15 @@ import pandas as pd
 
 
 def rename_volumesizeshape_to_areasizeshape(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename every `*VolumeSizeShape*` column to its `*AreaSizeShape*` form."""
+    """Rename every `*VolumeSizeShape*` column to its `*AreaSizeShape*` form.
+
+    Step-3-input-only compatibility shim: lets step 3's own unmodified
+    "area" substring matching find ZedProfiler's centroid/bbox columns.
+    ZedProfiler's VolumeSizeShape naming is preferred for anything this
+    pilot actually persists -- see run_ibp_pilot.py's
+    rename_areasizeshape_to_volumesizeshape(), which undoes this on step 3's
+    output before it's written into warehouse/ibp/.
+    """
     return df.rename(
         columns={
             column: column.replace("VolumeSizeShape", "AreaSizeShape")

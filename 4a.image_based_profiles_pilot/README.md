@@ -33,8 +33,16 @@ differences along the way -- without touching step 3's own code:
   naming convention (same `format_morphology_feature_name()` helper,
   different feature-type string) produces `*_VolumeSizeShape_*` instead --
   `"volumesizeshape"` contains no `"area"` substring, so the match misses
-  silently. Every `VolumeSizeShape` column is renamed to its `AreaSizeShape`
-  equivalent.
+  silently. `VolumeSizeShape` is this project's preferred naming (ZedProfiler
+  lets us be opinionated about our own feature names rather than carrying
+  CellProfiler-era conventions forward), so it's never persisted as
+  `AreaSizeShape`: the rename to `AreaSizeShape` is applied only to the
+  scratch files step 3 reads (`build_ibp_inputs_from_warehouse.py`'s
+  `rename_volumesizeshape_to_areasizeshape()`), and undone on step 3's own
+  output (`run_ibp_pilot.py`'s `rename_areasizeshape_to_volumesizeshape()`)
+  before anything is written into `warehouse/ibp/`. Step 3's code itself
+  still isn't touched -- only its input/output at this pilot's own
+  boundary is renamed and un-renamed around it.
 - **Identifiers**: step 3 expects `object_id` (ours: `Metadata_Object_ObjectID`)
   and `image_set` (ours: derived from `--well-fov` directly).
 - **No Nucleocentric data**: ZedProfiler doesn't produce deep-learning
@@ -169,6 +177,15 @@ same assignments) confirming the pilot doesn't depend on anything
 Alpine-specific.
 
 Not yet checked: behavior at higher object counts (both reference image
-sets are small), and whether the `AreaSizeShape` rename should also be
+sets are small), and whether the rename/un-rename round-trip needs to be
 applied anywhere outside `sc_profiles`/`organoid_profiles` if this pilot is
 extended to more of stage 4's later steps (5+).
+
+**Update (review feedback, 2026-09-09):** an earlier version of this pilot
+persisted the `AreaSizeShape` rename into `warehouse/ibp/`'s final output.
+Per review feedback, `VolumeSizeShape` is this project's preferred naming
+end to end -- the rename is now applied only to the scratch files fed into
+step 3, and reversed on step 3's own output before anything is written into
+`warehouse/ibp/`. Re-verified against the real warehouse: 0 `AreaSizeShape`
+columns remain in persisted output, organoid assignment still correct (9/9
+and 42/42 cells assigned).
