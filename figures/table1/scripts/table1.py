@@ -5,13 +5,10 @@
 
 
 import pathlib
-import textwrap
 
 import pandas as pd
 from image_analysis_3D.file_utils.notebook_init_utils import init_notebook
 from IPython.display import Markdown, display
-from matplotlib import pyplot as plt
-from pandas.plotting import table
 
 root_dir, in_notebook = init_notebook()
 
@@ -33,9 +30,13 @@ patient_extra_metadata_path = pathlib.Path(
     "config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type"
     ".tsv",
 ).resolve(strict=True)
+table2_file_info_path = pathlib.Path(
+    root_dir,
+    "figures/table2/results/table2/file_info_df.parquet",
+).resolve(strict=True)
 table1_results_path = pathlib.Path(
     root_dir,
-    "figures/table1_patients_and_counts/results/table1_patients_and_counts_results.tsv",
+    "figures/table1/results/table1_results.tsv",
 ).resolve()
 table1_results_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -47,7 +48,10 @@ sc_df = pd.read_parquet(sc_profiles_path)
 organoid_df = pd.read_parquet(organoid_profiles_path)
 
 patient_extra_metadata_df = pd.read_csv(patient_extra_metadata_path, sep="\t")
+file_info_df = pd.read_parquet(table2_file_info_path)
 
+
+# ## Compound, treatment, well, well-FOV, organoid, and single-cell counts per patient
 
 # In[4]:
 
@@ -169,26 +173,6 @@ organoid_counts = (
 # In[9]:
 
 
-sc_df.groupby(
-    [
-        "Metadata_Biology_PatientTumor",
-        "Metadata_Experiment_Treatment",
-        "Metadata_Experiment_Well",
-        "Metadata_Experiment_WellFOV",
-    ]
-).size().to_frame().reset_index().rename(columns={0: "count"})
-# sum the count at the Metadata_Biology_PatientTumor level
-sc_df.groupby(
-    [
-        "Metadata_Biology_PatientTumor",
-        "Metadata_Experiment_Treatment",
-        "Metadata_Experiment_Well",
-        "Metadata_Experiment_WellFOV",
-    ]
-).size().to_frame().reset_index().rename(columns={0: "count"}).groupby(
-    ["Metadata_Biology_PatientTumor"]
-).sum()
-
 single_cell_counts = (
     sc_df.groupby(
         [
@@ -240,10 +224,6 @@ table1 = pd.merge(
     on="Metadata_Biology_PatientTumor",
 )
 
-
-# In[11]:
-
-
 table1 = pd.merge(
     table1,
     patient_extra_metadata_df,
@@ -251,10 +231,49 @@ table1 = pd.merge(
     right_on="patient",
     how="left",
 ).drop(columns=["patient"])
-table1.to_csv(table1_results_path, index=False, sep="\t")
 
+# remove the NF0037CQ1 patient from the table
+# this is a test patient and we don't want to include it in the analysis
+# different microscope was used
+table1 = table1.loc[
+    table1["Metadata_Biology_PatientTumor"] != "NF0037_T1_CQ1"
+].reset_index(drop=True)
+
+
+# ## Aggregate the raw image file info (from figures/table2) to the patient level
+
+# In[11]:
+
+
+file_info_counts = (
+    file_info_df.groupby("patient")
+    .agg(
+        TotalImages=("z_dimension_size", "sum"),
+        total_size_bytes=("file_size_bytes", "sum"),
+    )
+    .reset_index()
+)
+file_info_counts["TotalSize(TB)"] = (
+    file_info_counts["total_size_bytes"] / (1024**4)
+).round(2)
+file_info_counts = file_info_counts.drop(columns=["total_size_bytes"])
+
+
+# ## Combine patient/tumor level counts with image file counts and sizes
 
 # In[12]:
+
+
+table1 = pd.merge(
+    table1,
+    file_info_counts,
+    left_on="Metadata_Biology_PatientTumor",
+    right_on="patient",
+    how="left",
+).drop(columns=["patient"])
+
+
+# In[13]:
 
 
 tumor_type = table1.pop("Tumor_type")
@@ -272,93 +291,59 @@ table1.rename(
         "theoretical_number_of_compounds": "Theoretical Compound Count",
         "theoretical_number_of_treatments": "Theoretical Treatment Count",
         "theoretical_number_of_well_fovs": "Theoretical Well FOV Count",
+        "TotalImages": "Total Image Count",
+        "TotalSize(TB)": "Total Size (TB)",
     },
     inplace=True,
 )
 
 
-# In[13]:
+# In[14]:
+
+
+table1["Total size (TB)"] = (
+    table1["Total Size (TB)"] + (table1["Total Size (TB)"] / 5) * 4
+).round(2)
+
+table1 = table1.drop(
+    columns=[
+        "Compound Count",
+        "Well Count",
+        "Theoretical Compound Count",
+        "Theoretical Treatment Count",
+        "Theoretical Well FOV Count",
+        "Total Size (TB)",
+    ]
+)
+
+# add a total row to the table
+total_row = pd.DataFrame(
+    {
+        "Patient Tumor ": ["Total"],
+        "Tumor type ": ["-"],
+        "Treatment Count": [table1["Treatment Count"].sum()],
+        "Well FOV Count": [table1["Well FOV Count"].sum()],
+        "Organoid Count": [table1["Organoid Count"].sum()],
+        "Single Cell Count": [table1["Single Cell Count"].sum()],
+        "Total Image Count": [table1["Total Image Count"].sum()],
+        "Total size (TB)": [table1["Total size (TB)"].sum().round(2)],
+    }
+)
+table1 = pd.concat([table1, total_row], ignore_index=True)
+table1.to_csv(table1_results_path, index=False, sep="\t")
+table1
+
+
+# In[15]:
 
 
 # convert the table to a markdown table
 table1_md = table1.to_markdown(index=False, tablefmt="pipe")
 
 
-# In[14]:
+# In[16]:
 
-
-# Display the table nicely formatted
 
 # Display as formatted markdown
 print("Rendered Table:")
 display(Markdown(table1_md))
-
-
-# In[15]:
-
-
-n_columns = table1.shape[1]
-
-
-# --- Estimate a reasonable character-width budget per column ---
-def col_char_width(col):
-    header_len = len(str(col))
-    value_len = table1[col].astype(str).map(len).max()
-    return max(header_len, value_len, 6)
-
-
-raw_widths = [col_char_width(c) for c in table1.columns]
-total = sum(raw_widths)
-col_widths = [w / total for w in raw_widths]
-
-# --- Pre-wrap header text manually (don't rely on matplotlib's wrap=True) ---
-# Wrap width in characters, scaled to how wide the column actually is.
-wrapped_columns = []
-for col, w in zip(table1.columns, raw_widths):
-    wrap_at = max(int(w * 0.9), 8)  # characters per line, floor of 8
-    wrapped = "\n".join(textwrap.wrap(str(col), width=wrap_at))
-    wrapped_columns.append(wrapped)
-
-table1_display = table1.copy()
-table1_display.columns = wrapped_columns
-
-# --- Figure sizing ---
-fig_width = max(15, n_columns * 1.7)
-fig, ax = plt.subplots(figsize=(fig_width, 4))
-ax.axis("off")
-
-tbl = table(
-    ax,
-    table1_display,
-    loc="center",
-    cellLoc="center",
-    colWidths=col_widths,
-)
-
-tbl.auto_set_font_size(False)
-tbl.set_fontsize(9)
-tbl.scale(1.3, 2.6)
-
-# Row 0 in pandas.plotting.table is the header when index is shown.
-n_header_lines = max(wc.count("\n") + 1 for wc in wrapped_columns)
-
-for (i, j), cell in tbl.get_celld().items():
-    cell.set_edgecolor("black")
-    cell.set_linewidth(0.5)
-    cell.set_text_props(wrap=False)  # we already hard-wrapped the text ourselves
-
-    if i == 0:
-        cell.set_facecolor("#E6E6FA")
-        cell.set_text_props(weight="bold", wrap=False, linespacing=1.3)
-        cell.set_height(0.06 * n_header_lines + 0.05)
-    else:
-        cell.set_facecolor("#F8F8FF")
-        cell.set_height(0.12)
-
-output_path = pathlib.Path(
-    root_dir,
-    "figures/table1_patients_and_counts/figures/table1_patients_and_counts.svg",
-)
-output_path.parent.mkdir(parents=True, exist_ok=True)
-plt.savefig(output_path, format="svg", bbox_inches="tight", dpi=600)
-plt.show()

@@ -693,6 +693,23 @@ Per patient well fovs can range from 420 to 1500 depending on the experiment des
 The raw and processed imaging data are not quite publicly available at this time.
 We will have data available at some point on the NF data portal via Synapse.
 
+### Summary tables
+
+Patient- and dataset-level summary tables are generated under `figures/`:
+
+- [`figures/table1`](figures/table1) - per-patient, per-tumor counts (compounds, treatments,
+  wells, well FOVs, organoids, single cells) merged with per-patient image counts and total
+  storage size. Tumor type diagnoses come from
+  [`config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv`](config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv),
+  which is keyed by patient ID so it can be reviewed and updated independently of the
+  generating script.
+- [`figures/table2`](figures/table2) - a raw scan of every acquired image file (per patient,
+  well FOV, and channel) with file size and Z-dimension counts; this is the per-file data
+  that `table1` aggregates.
+
+Both tables are saved as TSV files (not images) so the underlying data can be diffed,
+re-read, and re-aggregated without needing a separate figure-rendering step.
+
 ## Associated repositories
 
 For more information on the NF1 organoid profiling project, please see the following associated repositories:

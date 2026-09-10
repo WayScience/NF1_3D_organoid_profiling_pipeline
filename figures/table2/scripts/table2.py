@@ -65,10 +65,6 @@ patients.remove("NF0037_T1_CQ1")
 table_df_save_path = pathlib.Path(
     f"{root_dir}/figures/table2/results/table2_info.parquet"
 ).resolve()
-png_figure_path = pathlib.Path(
-    f"{root_dir}/figures/table2/figures/image_file_counts_and_size.png"
-)
-png_figure_path.parent.mkdir(parents=True, exist_ok=True)
 table_df_save_path.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -197,16 +193,8 @@ file_paths_df_grouped.rename(
 # In[9]:
 
 
-# save the table as a png
-
-if in_notebook:
-    import matplotlib.pyplot as plt
-    from pandas.plotting import table
-
-    fig, ax = plt.subplots(figsize=(8, 8))  # Set the size of the figure
-    ax.axis("off")  # Hide the axes
-    tbl = table(ax, file_paths_df_grouped, loc="center", cellLoc="center")
-    tbl.auto_set_font_size(False)  # Disable automatic font size
-    tbl.set_fontsize(16)  # Set a fixed font size
-    tbl.scale(1.4, 1.9)  # Scale the table to fit better
-    plt.savefig(png_figure_path, bbox_inches="tight", dpi=300)
+table2_results_path = pathlib.Path(
+    f"{root_dir}/figures/table2/results/image_file_counts_and_size.tsv"
+).resolve()
+file_paths_df_grouped.to_csv(table2_results_path, index=False, sep="\t")
+file_paths_df_grouped
