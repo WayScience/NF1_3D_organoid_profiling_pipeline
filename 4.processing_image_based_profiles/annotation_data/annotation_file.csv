@@ -1,0 +1,463 @@
+Metadata_Experiment_Well,Metadata_Experiment_Treatment,Metadata_Experiment_Dose,Metadata_Experiment_Unit,Metadata_Experiment_Target,Metadata_Experiment_TherapeuticCategories,Metadata_Experiment_ViabilityPercentage,Metadata_Biology_PatientTumor,Metadata_Biology_TumorType
+B2,ARV-825,1,uM,BRD4 inhibitor,PROTAC,79.31937173,NF0037_T1,cNF
+B2,ARV-825,1,uM,BRD4 inhibitor,PROTAC,87.90125477,NF0055_T1,pNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,7.680144567,NF0014_T2,pNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,5.564387917,NF0035_T1,cNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,2.097902098,SARCO219_T2,MPNST
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,5.515338752,NF0014_T1,cNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,5.046403712,NF0021_T1,cNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,6.588132635,NF0037_T1,cNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,8.531517549,SARCO361_T1,MPNST
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,4.276642089,NF0055_T1,pNF
+C2,Staurosporine,10,nM,Apoptosis induction,Experimental,6.295322053,NF0018_T6,cNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,41.38242602,NF0014_T2,pNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,48.41017488,NF0035_T1,cNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,39.51048951,SARCO219_T2,MPNST
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,22.4991165,NF0014_T1,cNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,31.67053364,NF0021_T1,cNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,50.95986038,NF0037_T1,cNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,21.25869924,SARCO361_T1,MPNST
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,86.46139057,NF0055_T1,pNF
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,38.61794398,NF0018_T6,cNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,41.38242602,NF0014_T2,pNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,48.41017488,NF0035_T1,cNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,39.51048951,SARCO219_T2,MPNST
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,22.4991165,NF0014_T1,cNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,31.67053364,NF0021_T1,cNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,50.95986038,NF0037_T1,cNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,21.25869924,SARCO361_T1,MPNST
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,86.46139057,NF0055_T1,pNF
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Cardiac Glycosides,38.61794398,NF0018_T6,cNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,56.56200587,NF0014_T2,pNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,34.77742448,NF0035_T1,cNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,49.65034965,SARCO219_T2,MPNST
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,32.64515099,NF0014_T1,cNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,41.51474975,NF0021_T1,cNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,56.54450262,NF0037_T1,cNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,57.0069594,SARCO361_T1,MPNST
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,65.75516173,NF0055_T1,pNF
+F2,Onalespib,1,uM,HSP90 inhibitor,Investigational,50.16351486,NF0018_T6,cNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,7.680144567,NF0014_T2,pNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,5.564387917,NF0035_T1,cNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,2.097902098,SARCO219_T2,MPNST
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,5.515338752,NF0014_T1,cNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,5.046403712,NF0021_T1,cNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,6.588132635,NF0037_T1,cNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,8.531517549,SARCO361_T1,MPNST
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,4.276642089,NF0055_T1,pNF
+G2,Staurosporine,10,nM,Apoptosis induction,Experimental,6.295322053,NF0018_T6,cNF
+B3,ARV-825,1,uM,BRD4 inhibitor,PROTAC,79.31937173,NF0037_T1,cNF
+B3,ARV-825,1,uM,BRD4 inhibitor,PROTAC,87.90125477,NF0055_T1,pNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,56.56200587,NF0014_T2,pNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,34.77742448,NF0035_T1,cNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,49.65034965,SARCO219_T2,MPNST
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,32.64515099,NF0014_T1,cNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,41.51474975,NF0021_T1,cNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,56.54450262,NF0037_T1,cNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,57.0069594,SARCO361_T1,MPNST
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,65.75516173,NF0055_T1,pNF
+C3,Onalespib,1,uM,HSP90 inhibitor,Investigational,50.16351486,NF0018_T6,cNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,34.60582787,NF0014_T2,pNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,56.75675676,NF0035_T1,cNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,32.16783217,SARCO219_T2,MPNST
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,45.04383315,NF0014_T1,cNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,66.92078223,NF0021_T1,cNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,69.28446771,NF0037_T1,cNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,80.4385921,SARCO361_T1,MPNST
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,59.18987186,NF0055_T1,pNF
+D3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,76.29034551,NF0018_T6,cNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,34.60582787,NF0014_T2,pNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,56.75675676,NF0035_T1,cNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,32.16783217,SARCO219_T2,MPNST
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,45.04383315,NF0014_T1,cNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,66.92078223,NF0021_T1,cNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,69.28446771,NF0037_T1,cNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,80.4385921,SARCO361_T1,MPNST
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,59.18987186,NF0055_T1,pNF
+E3,Copanlisib,1,uM,PI3K inhibitor,Kinase Inhibitor,76.29034551,NF0018_T6,cNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,64.69392365,NF0014_T2,pNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,81.24006359,NF0035_T1,cNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,79.37062937,SARCO219_T2,MPNST
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,79.53123041,NF0014_T1,cNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,77.51077229,NF0021_T1,cNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,65.008726,NF0037_T1,cNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,73.78961598,SARCO361_T1,MPNST
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,93.71388835,NF0055_T1,pNF
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,102.7655339,NF0018_T6,cNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,64.69392365,NF0014_T2,pNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,81.24006359,NF0035_T1,cNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,79.37062937,SARCO219_T2,MPNST
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,79.53123041,NF0014_T1,cNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,77.51077229,NF0021_T1,cNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,65.008726,NF0037_T1,cNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,73.78961598,SARCO361_T1,MPNST
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,93.71388835,NF0055_T1,pNF
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Investigational,102.7655339,NF0018_T6,cNF
+B4,Trabectedin,1,uM,DNA binding,Alkylating Drugs,61.16928447,NF0037_T1,cNF
+B4,Trabectedin,1,uM,DNA binding,Alkylating Drugs,65.26838946,NF0055_T1,pNF
+C4,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+C4,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+C4,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+C4,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+C4,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+C4,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+C4,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+C4,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+C4,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+D4,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+D4,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+D4,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+D4,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+D4,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+D4,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+D4,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+D4,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+D4,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+E4,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+E4,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+E4,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+E4,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+E4,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+E4,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+E4,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+E4,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+E4,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+F4,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+F4,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+F4,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+F4,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+F4,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+F4,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+F4,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+F4,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+F4,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,75.26541676,NF0014_T2,pNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,87.08267091,NF0035_T1,cNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,62.58741259,SARCO219_T2,MPNST
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,79.88919162,NF0014_T1,cNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,84.18959231,NF0021_T1,cNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,83.33333333,NF0037_T1,cNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,82.3611876,SARCO361_T1,MPNST
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,87.60673709,NF0055_T1,pNF
+G4,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,79.27626902,NF0018_T6,cNF
+B5,Trabectedin,1,uM,DNA binding,Alkylating Drugs,61.16928447,NF0037_T1,cNF
+B5,Trabectedin,1,uM,DNA binding,Alkylating Drugs,65.26838946,NF0055_T1,pNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,75.26541676,NF0014_T2,pNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,87.08267091,NF0035_T1,cNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,62.58741259,SARCO219_T2,MPNST
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,79.88919162,NF0014_T1,cNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,84.18959231,NF0021_T1,cNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,83.33333333,NF0037_T1,cNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,82.3611876,SARCO361_T1,MPNST
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,87.60673709,NF0055_T1,pNF
+C5,Everolimus,1,uM,mTOR inhibitor,Kinase Inhibitor,79.27626902,NF0018_T6,cNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,72.5547775,NF0014_T2,pNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,70.38950715,NF0035_T1,cNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,44.05594406,SARCO219_T2,MPNST
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,39.49429428,NF0014_T1,cNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,60.29168048,NF0021_T1,cNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,69.98254799,NF0037_T1,cNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,77.82506384,SARCO361_T1,MPNST
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,86.51047685,NF0055_T1,pNF
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,70.31849851,NF0018_T6,cNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,72.5547775,NF0014_T2,pNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,70.38950715,NF0035_T1,cNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,44.05594406,SARCO219_T2,MPNST
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,39.49429428,NF0014_T1,cNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,60.29168048,NF0021_T1,cNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,69.98254799,NF0037_T1,cNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,77.82506384,SARCO361_T1,MPNST
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,86.51047685,NF0055_T1,pNF
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Investigational,70.31849851,NF0018_T6,cNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,59.09193585,NF0014_T2,pNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,83.18759936,NF0035_T1,cNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,53.84615385,SARCO219_T2,MPNST
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,70.41803942,NF0014_T1,cNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,71.41199867,NF0021_T1,cNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,84.991274,NF0037_T1,cNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,88.03885245,SARCO361_T1,MPNST
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,113.9088018,NF0055_T1,pNF
+F5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,84.99928907,NF0018_T6,cNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,59.09193585,NF0014_T2,pNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,83.18759936,NF0035_T1,cNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,53.84615385,SARCO219_T2,MPNST
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,70.41803942,NF0014_T1,cNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,71.41199867,NF0021_T1,cNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,84.991274,NF0037_T1,cNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,88.03885245,SARCO361_T1,MPNST
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,113.9088018,NF0055_T1,pNF
+G5,Rapamycin,1,uM,mTOR inhibitor,Kinase Inhibitor,84.99928907,NF0018_T6,cNF
+B6,Vistusertib,1,uM,mTOR inhibitor,Investigational,78.44677138,NF0037_T1,cNF
+B6,Vistusertib,1,uM,mTOR inhibitor,Investigational,66.41373598,NF0055_T1,pNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,85.65620059,NF0014_T2,pNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,76.23211447,NF0035_T1,cNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,102.4475524,SARCO219_T2,MPNST
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,114.1577081,NF0014_T1,cNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,100.1657275,NF0021_T1,cNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,93.45549738,NF0037_T1,cNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,99.50433085,SARCO361_T1,MPNST
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,98.76159408,NF0055_T1,pNF
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,93.26034409,NF0018_T6,cNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,85.65620059,NF0014_T2,pNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,76.23211447,NF0035_T1,cNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,102.4475524,SARCO219_T2,MPNST
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,114.1577081,NF0014_T1,cNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,100.1657275,NF0021_T1,cNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,93.45549738,NF0037_T1,cNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,99.50433085,SARCO361_T1,MPNST
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,98.76159408,NF0055_T1,pNF
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Kinase Inhibitor,93.26034409,NF0018_T6,cNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,77.0725096,NF0014_T2,pNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,126.0333863,NF0035_T1,cNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,86.71328671,SARCO219_T2,MPNST
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,103.6993126,NF0014_T1,cNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,136.8080875,NF0021_T1,cNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,90.40139616,NF0037_T1,cNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,99.68457418,SARCO361_T1,MPNST
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,119.0342275,NF0055_T1,pNF
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,104.4575572,NF0018_T6,cNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,77.0725096,NF0014_T2,pNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,126.0333863,NF0035_T1,cNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,86.71328671,SARCO219_T2,MPNST
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,103.6993126,NF0014_T1,cNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,136.8080875,NF0021_T1,cNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,90.40139616,NF0037_T1,cNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,99.68457418,SARCO361_T1,MPNST
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,119.0342275,NF0055_T1,pNF
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Investigational,104.4575572,NF0018_T6,cNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,108.4255704,NF0014_T2,pNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,98.76788553,NF0035_T1,cNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,104.1958042,SARCO219_T2,MPNST
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,112.7760234,NF0014_T1,cNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,119.1415313,NF0021_T1,cNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,112.3036649,NF0037_T1,cNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,104.7013468,SARCO361_T1,MPNST
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,114.1337806,NF0055_T1,pNF
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,99.72984502,NF0018_T6,cNF
+B7,Vistusertib,1,uM,mTOR inhibitor,Investigational,78.44677138,NF0037_T1,cNF
+B7,Vistusertib,1,uM,mTOR inhibitor,Investigational,66.41373598,NF0055_T1,pNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,108.4255704,NF0014_T2,pNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,98.76788553,NF0035_T1,cNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,104.1958042,SARCO219_T2,MPNST
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,112.7760234,NF0014_T1,cNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,119.1415313,NF0021_T1,cNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,112.3036649,NF0037_T1,cNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,104.7013468,SARCO361_T1,MPNST
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,114.1337806,NF0055_T1,pNF
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Anti-Allergic Agents,99.72984502,NF0018_T6,cNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,77.70499209,NF0014_T2,pNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,87.08267091,NF0035_T1,cNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,68.18181818,SARCO219_T2,MPNST
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,118.8020839,NF0014_T1,cNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,92.39310573,NF0021_T1,cNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,88.13263525,NF0037_T1,cNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,119.5313673,SARCO361_T1,MPNST
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,99.16246536,NF0055_T1,pNF
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,84.15327741,NF0018_T6,cNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,77.70499209,NF0014_T2,pNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,87.08267091,NF0035_T1,cNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,68.18181818,SARCO219_T2,MPNST
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,118.8020839,NF0014_T1,cNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,92.39310573,NF0021_T1,cNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,88.13263525,NF0037_T1,cNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,119.5313673,SARCO361_T1,MPNST
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,99.16246536,NF0055_T1,pNF
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Kinase Inhibitor,84.15327741,NF0018_T6,cNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.505986,NF0014_T2,pNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,86.80445151,NF0035_T1,cNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,78.32167832,SARCO219_T2,MPNST
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.74664554,NF0014_T1,cNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,85.13423931,NF0021_T1,cNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.20069808,NF0037_T1,cNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,89.53086667,SARCO361_T1,MPNST
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,92.58899445,NF0055_T1,pNF
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,84.8002275,NF0018_T6,cNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.505986,NF0014_T2,pNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,86.80445151,NF0035_T1,cNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,78.32167832,SARCO219_T2,MPNST
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.74664554,NF0014_T1,cNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,85.13423931,NF0021_T1,cNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.20069808,NF0037_T1,cNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,89.53086667,SARCO361_T1,MPNST
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,92.58899445,NF0055_T1,pNF
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,84.8002275,NF0018_T6,cNF
+B8,Panobinostat,1,uM,HDAC inhibitor,Histone Deacetylase Inhibitors,85.2530541,NF0037_T1,cNF
+B8,Panobinostat,1,uM,HDAC inhibitor,Histone Deacetylase Inhibitors,107.0162701,NF0055_T1,pNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,96.40840298,NF0014_T2,pNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,97.09856916,NF0035_T1,cNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,88.81118881,SARCO219_T2,MPNST
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,87.1464563,NF0014_T1,cNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,76.88100762,NF0021_T1,cNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,99.38917976,NF0037_T1,cNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,79.68757823,SARCO361_T1,MPNST
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,113.50384,NF0055_T1,pNF
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,115.605005,NF0018_T6,cNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,96.40840298,NF0014_T2,pNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,97.09856916,NF0035_T1,cNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,88.81118881,SARCO219_T2,MPNST
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,87.1464563,NF0014_T1,cNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,76.88100762,NF0021_T1,cNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,99.38917976,NF0037_T1,cNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,79.68757823,SARCO361_T1,MPNST
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,113.50384,NF0055_T1,pNF
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,115.605005,NF0018_T6,cNF
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.77704992,NF0014_T2,pNF
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,94.0381558,NF0035_T1,cNF
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,64.1025641,SARCO219_T2,MPNST
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,72.60523699,NF0021_T1,cNF
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,121.8150087,NF0037_T1,cNF
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,75.85240074,SARCO361_T1,MPNST
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,109.7569207,NF0055_T1,pNF
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.77704992,NF0014_T2,pNF
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,94.0381558,NF0035_T1,cNF
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,64.1025641,SARCO219_T2,MPNST
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,72.60523699,NF0021_T1,cNF
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,121.8150087,NF0037_T1,cNF
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,75.85240074,SARCO361_T1,MPNST
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,109.7569207,NF0055_T1,pNF
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,123.0630224,NF0014_T2,pNF
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,101.5500795,NF0035_T1,cNF
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,101.3986014,SARCO219_T2,MPNST
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,83.92442824,NF0021_T1,cNF
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,112.8272251,NF0037_T1,cNF
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.30841636,SARCO361_T1,MPNST
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,90.78098316,NF0055_T1,pNF
+B9,Panobinostat,1,uM,HDAC inhibitor,Histone Deacetylase Inhibitors,85.2530541,NF0037_T1,cNF
+B9,Panobinostat,1,uM,HDAC inhibitor,Histone Deacetylase Inhibitors,107.0162701,NF0055_T1,pNF
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,123.0630224,NF0014_T2,pNF
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,101.5500795,NF0035_T1,cNF
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,101.3986014,SARCO219_T2,MPNST
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,83.92442824,NF0021_T1,cNF
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,112.8272251,NF0037_T1,cNF
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.30841636,SARCO361_T1,MPNST
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,90.78098316,NF0055_T1,pNF
+D9,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+D9,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+D9,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+D9,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+D9,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+D9,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+D9,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+D9,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+D9,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+E9,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+E9,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+E9,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+E9,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+E9,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+E9,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+E9,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+E9,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+E9,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+F9,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+F9,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+F9,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+F9,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+F9,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+F9,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+F9,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+F9,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+F9,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+G9,DMSO,1,%,Control,Control,100.0,NF0014_T2,pNF
+G9,DMSO,1,%,Control,Control,100.0,NF0035_T1,cNF
+G9,DMSO,1,%,Control,Control,100.0,SARCO219_T2,MPNST
+G9,DMSO,1,%,Control,Control,100.0,NF0014_T1,cNF
+G9,DMSO,1,%,Control,Control,100.0,NF0021_T1,cNF
+G9,DMSO,1,%,Control,Control,100.0,NF0037_T1,cNF
+G9,DMSO,1,%,Control,Control,100.0,SARCO361_T1,MPNST
+G9,DMSO,1,%,Control,Control,100.0,NF0055_T1,pNF
+G9,DMSO,1,%,Control,Control,100.0,NF0018_T6,cNF
+B10,Sapanisertib,1,uM,mTOR inhibitor,Investigational,58.46422339,NF0037_T1,cNF
+B10,Sapanisertib,1,uM,mTOR inhibitor,Investigational,69.08075716,NF0055_T1,pNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,120.9848656,NF0014_T2,pNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,79.00529963,NF0035_T1,cNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,58.74125874,SARCO219_T2,MPNST
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,69.36695585,NF0014_T1,cNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,86.34405038,NF0021_T1,cNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,104.7993019,NF0037_T1,cNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,78.04536124,SARCO361_T1,MPNST
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,117.3407508,NF0055_T1,pNF
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,86.29318925,NF0018_T6,cNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,120.9848656,NF0014_T2,pNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,79.00529963,NF0035_T1,cNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,58.74125874,SARCO219_T2,MPNST
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,69.36695585,NF0014_T1,cNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,86.34405038,NF0021_T1,cNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,104.7993019,NF0037_T1,cNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,78.04536124,SARCO361_T1,MPNST
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,117.3407508,NF0055_T1,pNF
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,86.29318925,NF0018_T6,cNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,135.3512537,NF0014_T2,pNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,173.3306836,NF0035_T1,cNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,63.28671329,SARCO219_T2,MPNST
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,69.85031749,NF0014_T1,cNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,82.20086178,NF0021_T1,cNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,117.539267,NF0037_T1,cNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,78.29569919,SARCO361_T1,MPNST
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,118.0525019,NF0055_T1,pNF
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,100.7749182,NF0018_T6,cNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,135.3512537,NF0014_T2,pNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,173.3306836,NF0035_T1,cNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,63.28671329,SARCO219_T2,MPNST
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,69.85031749,NF0014_T1,cNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,82.20086178,NF0021_T1,cNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,117.539267,NF0037_T1,cNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,78.29569919,SARCO361_T1,MPNST
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,118.0525019,NF0055_T1,pNF
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,100.7749182,NF0018_T6,cNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,109.4194714,NF0014_T2,pNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,82.90937997,NF0035_T1,cNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,68.53146853,SARCO219_T2,MPNST
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,83.46196377,NF0014_T1,cNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,83.11236327,NF0021_T1,cNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.02617801,NF0037_T1,cNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,76.08271166,SARCO361_T1,MPNST
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,108.5134016,NF0055_T1,pNF
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,94.00682497,NF0018_T6,cNF
+B11,Sapanisertib,1,uM,mTOR inhibitor,Investigational,58.46422339,NF0037_T1,cNF
+B11,Sapanisertib,1,uM,mTOR inhibitor,Investigational,69.08075716,NF0055_T1,pNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,7.680144567,NF0014_T2,pNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,5.564387917,NF0035_T1,cNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,2.097902098,SARCO219_T2,MPNST
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,5.515338752,NF0014_T1,cNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,5.046403712,NF0021_T1,cNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,6.588132635,NF0037_T1,cNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,8.531517549,SARCO361_T1,MPNST
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,4.276642089,NF0055_T1,pNF
+C11,Staurosporine,10,nM,Apoptosis induction,Experimental,6.295322053,NF0018_T6,cNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,109.4194714,NF0014_T2,pNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,82.90937997,NF0035_T1,cNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,68.53146853,SARCO219_T2,MPNST
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,83.46196377,NF0014_T1,cNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,83.11236327,NF0021_T1,cNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.02617801,NF0037_T1,cNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,76.08271166,SARCO361_T1,MPNST
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,108.5134016,NF0055_T1,pNF
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Kinase Inhibitor,94.00682497,NF0018_T6,cNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,124.0569234,NF0014_T2,pNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,158.5850556,NF0035_T1,cNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.45454545,SARCO219_T2,MPNST
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,90.55278788,NF0014_T1,cNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.84189592,NF0021_T1,cNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,97.03315881,NF0037_T1,cNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,82.60151204,SARCO361_T1,MPNST
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,108.7833761,NF0055_T1,pNF
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,91.12043225,NF0018_T6,cNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,124.0569234,NF0014_T2,pNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,158.5850556,NF0035_T1,cNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,95.45454545,SARCO219_T2,MPNST
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,90.55278788,NF0014_T1,cNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,80.84189592,NF0021_T1,cNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,97.03315881,NF0037_T1,cNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,82.60151204,SARCO361_T1,MPNST
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,108.7833761,NF0055_T1,pNF
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Kinase Inhibitor,91.12043225,NF0018_T6,cNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,7.680144567,NF0014_T2,pNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,5.564387917,NF0035_T1,cNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,2.097902098,SARCO219_T2,MPNST
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,5.515338752,NF0014_T1,cNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,5.046403712,NF0021_T1,cNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,6.588132635,NF0037_T1,cNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,8.531517549,SARCO361_T1,MPNST
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,4.276642089,NF0055_T1,pNF
+G11,Staurosporine,10,nM,Apoptosis induction,Experimental,6.295322053,NF0018_T6,cNF
