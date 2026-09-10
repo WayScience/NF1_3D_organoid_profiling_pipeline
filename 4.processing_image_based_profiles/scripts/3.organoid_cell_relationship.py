@@ -33,6 +33,13 @@
 #   matrix (applied automatically when cell count is low).
 # - Shell classification divides cells into 4 concentric shells from organoid centroid
 #   outward, requiring at least 3 cells per shell.
+# - Object identifiers: accepts either the older CellProfiler-era pipeline's own
+#   `object_id` column (produced by IBP steps 00/0a/1/2) or ZEDProfiler's native
+#   `Metadata_Object_ObjectID`, normalized to `object_id` right after loading (see
+#   the data-loading cell below) rather than requiring a caller to rename it first.
+#   `image_set` is set directly from this script's own `well_fov` argument rather
+#   than required as an input column, since every row in a given input file
+#   belongs to the single well-FOV this script is invoked for.
 
 # In[1]:
 
@@ -113,6 +120,24 @@ sc_profile_output_path.parent.mkdir(parents=True, exist_ok=True)
 sc_profile_df = pd.read_parquet(sc_profile_path)
 nucleocentric_df = pd.read_parquet(nucleocentric_profile_path)
 organoid_profile_df = pd.read_parquet(organoid_profile_path)
+
+# Normalize the object identifier column name: ZEDProfiler's own
+# Metadata_Object_ObjectID is accepted directly, same object concept as
+# the older CellProfiler-era pipeline's own `object_id` -- renamed once,
+# here, rather than requiring a caller to disguise ZEDProfiler's column
+# as the older convention before handoff. A no-op wherever `object_id`
+# is already present.
+for _df in (sc_profile_df, organoid_profile_df, nucleocentric_df):
+    if "object_id" not in _df.columns and "Metadata_Object_ObjectID" in _df.columns:
+        _df.rename(columns={"Metadata_Object_ObjectID": "object_id"}, inplace=True)
+
+# `image_set` is just this well-FOV's own label -- this script already
+# has it as `well_fov`, so set it directly rather than requiring it as an
+# input column. Both dataframes are scoped to this single well-FOV
+# already, so every row gets the same value.
+sc_profile_df["image_set"] = well_fov
+nucleocentric_df["image_set"] = well_fov
+
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 print(f"Organoid profile shape: {organoid_profile_df.shape}")

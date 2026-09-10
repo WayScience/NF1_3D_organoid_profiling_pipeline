@@ -16,25 +16,29 @@ per image set, joined via warehouse.duckdb's `joined.images_nuclei_cell_cytoplas
 (inner join across Nuclei/Cell/Cytoplasm on Metadata_Object_ObjectID -- the
 same object-intersection step 2 computes) and `profiles.organoid_profiles`.
 This script reads those views for one image set and writes the three files
-step 3 expects, bridging two real differences instead of touching step 3's
-own code:
+step 3 expects. Two real differences between ZEDProfiler's native shape and
+what step 3 was originally written for are bridged inside step 3 itself
+(4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py,
+same changes mirrored in the paired notebook), not here -- this script does
+no column renaming at all, and writes ZEDProfiler's own column names through
+unchanged:
 
 - Column names: step 3 finds centroid/bbox columns by substring-matching
   "area" (CellProfiler-era `*_AreaSizeShape_*` naming). ZEDProfiler's own
   convention produces `*_VolumeSizeShape_*` instead, which the substring
-  match originally missed entirely. Rather than rename ZEDProfiler's
-  columns to disguise them as the older convention, step 3's own matching
-  was widened to accept "volumesizeshape" directly (see
-  4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py,
-  same change mirrored in the paired notebook) -- so ZEDProfiler's own
-  naming flows through unchanged, no renaming anywhere in this pilot.
-- Identifiers: step 3 expects `object_id` (ours: Metadata_Object_ObjectID)
-  and `image_set` (ours: implicit, derived from patient/well_fov here).
+  match originally missed entirely. Step 3's own matching was widened to
+  accept "volumesizeshape" directly.
+- Identifiers: step 3 originally expected `object_id` and `image_set`
+  columns (the older CellProfiler-era pipeline's own naming). Step 3 now
+  accepts ZEDProfiler's native `Metadata_Object_ObjectID` directly
+  (normalized to `object_id` internally, right after loading) and derives
+  `image_set` itself from its own `well_fov` argument, so neither needs to
+  be supplied here.
 
 ZEDProfiler does not produce deep-learning Nucleocentric features. Step 3
 (unmodified) still hard-requires a nucleocentric_profiles_{well_fov}.parquet
 to exist -- it strictly resolves that path and crashes immediately if it's
-missing -- so an empty (0 rows, `object_id`/`image_set` columns only)
+missing -- so an empty (0 rows, `Metadata_Object_ObjectID` column only)
 placeholder is written *only if nothing is already there*, never
 overwriting real Nucleocentric data from an actual run of IBP steps
 00/0a/1/2 for the same well_fov/subparent_name. Its downstream
@@ -207,11 +211,6 @@ def main() -> int:
             "contains this image set (profiles/*_profiles/<image_id>.parquet)."
         )
 
-    sc_df = sc_df.rename(columns={"Metadata_Object_ObjectID": "object_id"})
-    organoid_df = organoid_df.rename(columns={"Metadata_Object_ObjectID": "object_id"})
-    sc_df["image_set"] = args.well_fov
-    organoid_df["image_set"] = args.well_fov
-
     outdir = (
         args.repo_root
         / "data"
@@ -247,7 +246,7 @@ def main() -> int:
             outdir / f".nucleocentric_profiles_{args.well_fov}.{os.getpid()}.tmp.parquet"
         )
         try:
-            pd.DataFrame(columns=["object_id", "image_set"]).to_parquet(
+            pd.DataFrame(columns=["Metadata_Object_ObjectID"]).to_parquet(
                 tmp_path, index=False
             )
             try:

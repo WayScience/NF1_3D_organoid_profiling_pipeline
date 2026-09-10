@@ -48,8 +48,20 @@ expects, bridging two real differences along the way:
   removed in favor of widening step 3's matching, since it's a smaller,
   more direct fix than disguising and undisguising column names around an
   unmodified script.)
-- **Identifiers**: step 3 expects `object_id` (ours: `Metadata_Object_ObjectID`)
-  and `image_set` (ours: derived from `--well-fov` directly).
+- **Identifiers**: step 3 originally expected `object_id` and `image_set`
+  columns (the older CellProfiler-era pipeline's own naming). Rather than
+  have this pilot rename `Metadata_Object_ObjectID` to `object_id` and
+  invent an `image_set` column before handoff, step 3 was changed to accept
+  `Metadata_Object_ObjectID` directly (normalized to `object_id` -- step
+  3's own internal working name, and the name the *rest* of stage 4
+  downstream of step 3 already expects in these particular files, e.g.
+  `6.annotation.py`/`7b.single_cell_qc.py` -- right after loading) and to
+  derive `image_set` itself from its own `well_fov` argument, which it
+  already has, rather than requiring it as an input column. So this pilot's
+  adapter writes ZEDProfiler's own `Metadata_Object_ObjectID` straight
+  through with no renaming; only step 3's persisted *output* uses
+  `object_id`/`image_set`, matching the existing convention every other
+  stage-4 step downstream of step 3 already relies on.
 - **No Nucleocentric data**: ZEDProfiler doesn't produce deep-learning
   nucleocentric features. Step 3 still hard-requires a
   `nucleocentric_profiles_{well_fov}.parquet` to exist -- it strictly
@@ -292,6 +304,62 @@ order the code depends on (`[MaxX, MaxY, MaxZ, MinX, MinY, MinZ]`) holds
 identically for `VolumeSizeShape` columns as it did for `AreaSizeShape`,
 since sort order is determined only by the trailing Max/Min + axis letter,
 not the family-name prefix.
+
+**Update (review feedback, 2026-09-10), removed the identifier renaming
+too:** a further reviewer comment raised the same concern about
+`build_ibp_inputs_from_warehouse.py` renaming `Metadata_Object_ObjectID` to
+`object_id` -- "if we need object_id for downstream code, we should change
+the downstream code." Same fix pattern as the VolumeSizeShape round-trip
+above: rather than rename ZEDProfiler's identifier column before handoff,
+`3.organoid_cell_relationship.py` (and the paired notebook) was changed to
+accept `Metadata_Object_ObjectID` directly, normalizing it to `object_id`
+right after loading -- a no-op wherever `object_id` is already present, so
+the older CellProfiler-era pipeline (steps 00/0a/1/2) is unaffected. The
+adapter no longer renames anything at all: it writes ZEDProfiler's native
+`Metadata_Object_ObjectID` straight through.
+
+`image_set` needed a different fix, since ZEDProfiler has no equivalent
+column at all to rename -- it's a synthetic per-well-FOV run label the
+older pipeline's raw feature files happened to carry alongside `object_id`.
+Rather than have the adapter invent this column, step 3 now derives it
+directly from its own `well_fov` argument (which it already has) and sets
+it unconditionally on the two dataframes that need it for an internal
+merge (`sc_profile_df`, `nucleocentric_df` -- `organoid_profile_df` never
+actually used this column; confirmed by grep, so the adapter's earlier
+`organoid_df["image_set"] = ...` was dead weight and is also removed, not
+just moved). Verified this is semantically correct, not just convenient:
+`6.annotation.py` (a later stage-4 step) parses `image_set` as a literal
+`"{well}-{fov}"` string (`.str.split("-").str[0]`) -- exactly the format
+`--well-fov` already uses (e.g. `"B10-1"`), confirming `image_set == well_fov`
+is the pipeline's own existing invariant, not a new assumption introduced
+here.
+
+The nucleocentric placeholder's columns changed from `["object_id",
+"image_set"]` to `["Metadata_Object_ObjectID"]` for the same reason --
+`image_set` is no longer supplied by any input file, and the identifier
+column matches ZEDProfiler's own native naming like everything else this
+adapter now writes.
+
+Whether `object_id`/`image_set` persist as such in step 3's own *output*
+(`warehouse/ibp/`) was a separate question from whether the adapter should
+rename them on the way in. Confirmed via grep that `object_id` is the
+existing, long-standing convention every stage-4 step *downstream* of step
+3 already expects in these particular files (`6.annotation.py`,
+`7b.single_cell_qc.py`) -- unlike VolumeSizeShape, which was purely a
+naming-convention artifact with no other consumers, `object_id`/`image_set`
+in `*_related.parquet` are the pipeline's own genuine schema for these
+files, not something invented by this pilot. So no un-rename is applied
+before persisting; `warehouse/ibp/`'s output columns are unchanged from
+before this fix.
+
+Re-verified end to end against the real warehouse: same correct results
+(9/9 and 42/42 cells assigned, zero duplicate columns) as before this
+change, and confirmed directly that the scratch input file the adapter
+writes now carries `Metadata_Object_ObjectID` (not `object_id`) with no
+`image_set` column at all, while step 3's internal working copy correctly
+ends up with both (`Nucleocentric profile shape: (0, 2)` in this run's own
+log output, matching the empty placeholder plus the derived `image_set`
+column).
 
 ## New IBP workflow diagram
 
