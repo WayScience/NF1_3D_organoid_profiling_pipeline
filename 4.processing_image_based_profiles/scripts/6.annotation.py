@@ -15,7 +15,7 @@
 # - `data/{patient}/image_based_profiles/2.combined_profiles/sc.parquet`
 # - `data/{patient}/image_based_profiles/2.combined_profiles/organoid.parquet`
 # - `data/{patient}/image_based_profiles/2.combined_profiles/nucleocentric.parquet`
-# - `config/platemaps/{patient}_platemap.csv` — well-level treatment assignments
+# - `config/platemaps/platemap.csv` — well-level treatment assignments
 # - `config/drug_information/drug_information.csv` — drug target, class, therapeutic category
 #
 # ## Outputs
@@ -67,66 +67,129 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0037_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
+
+# ## Combine the metadata into a single annotation file
 
 # In[3]:
 
 
-def annotate_profiles(
-    profile_df: pd.DataFrame,
-    platemap_df: pd.DataFrame,
-    drug_information_df: pd.DataFrame,
-    patient: str,
-) -> pd.DataFrame:
-    """
-    Annotate profiles with treatment, dose, and unit information from the platemap.
+main_annotation_file_output = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/annotation_data/annotation_file.csv"
+).resolve()
 
-        Parameters
-        ----------
-        profile_df : pd.DataFrame
-            Profile DataFrame containing image_set information.
-            Could be either single-cell or organoid profiles.
-        platemap_df : pd.DataFrame
-            Platmap DataFrame containing well_position, treatment, dose, and unit.
-        drug_information_df : pd.DataFrame
-            Drug DataFrame containing drug information.
-        patient : str
-            Patient ID to annotate the profiles with.
+if not main_annotation_file_output.exists():
+    main_annotation_file_output.parent.mkdir(parents=True, exist_ok=True)
 
-        Returns
-        -------
-        pd.DataFrame
-            Annotated profile DataFrame with additional columns for treatment, dose, and unit.
-    """
+    platemap_path = pathlib.Path(
+        f"{root_dir}/config/platemaps/barcode_platemap.csv"
+    ).resolve(strict=True)
+
+    drug_information = pd.read_csv(
+        pathlib.Path(f"{root_dir}/config/drug_information/drug_information.csv")
+    )
+    patient_tumor_type = pd.read_csv(
+        pathlib.Path(
+            f"{root_dir}/config/patient_tumor_information/patient_tumor_information.csv"
+        ),
+    )
+    patient_viabilities = pathlib.Path(f"{root_dir}/config/viabilities")
+    patient_viabilities_paths = list(patient_viabilities.glob("*"))
+    list_of_viabilities_dfs = []
+    for path in patient_viabilities_paths:
+        patient_tumor = path.stem.strip("_Viabilities")
+        df = pd.read_csv(path)
+        df["Metadata_Biology_PatientTumor"] = patient_tumor
+        # replace the dose of DMSO from 0 to 1
+        df.loc[df["Drug"] == "DMSO", "Concentration_uM"] = 1
+        list_of_viabilities_dfs.append(df)
+    viabilities_df = pd.concat(list_of_viabilities_dfs, ignore_index=True)
+    # read platemap
+    platemap = pd.read_csv(platemap_path)
+    if patient == "NF0037_T1_CQ1":
+        platemap = platemap[platemap["patient_tumor_barcode"] == "NF0037_T1"]
+    else:
+        platemap = platemap[platemap["patient_tumor_barcode"] == patient][
+            "platemap_number"
+        ].values[0]
+    platemap = pd.read_csv(pathlib.Path(f"{root_dir}/config/platemaps/{platemap}.csv"))
+    # if % is in Treatment then delete the space leading to %
+    platemap["Treatment"] = platemap["Treatment"].str.replace(r"\s+%", "%", regex=True)
+
+    platemap.head()
     # Work on a copy to avoid mutating the caller's platemap across repeated calls.
-    platemap_df = platemap_df.copy()
+    platemap_df = platemap.copy()
     # Merge strategy:
     #   1. Join platemap with drug_information on the first word of Treatment
     #      (e.g. "ARV-825 1 uM" → join key "ARV-825") to get Target, Class, etc.
     #   2. Join the resulting table onto the profile on Well == WellPosition.
     drug_information_platemap_merged = pd.merge(
         platemap_df,
-        drug_information_df,
+        drug_information,
         left_on="Treatment",
         right_on="Treatment",
     )
-
-    profile_df["Well"] = profile_df["image_set"].str.split("-").str[0]
-    profile_df.insert(2, "Well", profile_df.pop("Well"))
-
-    profile_df = profile_df.merge(
-        drug_information_platemap_merged,
+    drug_information_platemap_viabilities_merged = pd.merge(
+        left=drug_information_platemap_merged,
+        right=viabilities_df,
         how="left",
-        left_on="Well",
-        right_on="WellPosition",
+        left_on=["Treatment", "Dose"],
+        right_on=["Drug", "Concentration_uM"],
     )
-    profile_df.drop(columns=["WellPosition"], inplace=True)
-    for col in ["Treatment"]:
-        profile_df.insert(1, col, profile_df.pop(col))
-    profile_df.insert(0, "patient", patient)
-    return profile_df
+
+    drug_information_platemap_viabilities_tumor_type_merged = pd.merge(
+        left=drug_information_platemap_viabilities_merged,
+        right=patient_tumor_type,
+        how="left",
+        left_on=["Metadata_Biology_PatientTumor"],
+        right_on=["Metadata_Biology_PatientTumor"],
+    )
+    drug_information_platemap_viabilities_tumor_type_merged.drop(
+        columns=[
+            "WellRow",
+            "WellCol",
+            # "WellPosition",
+            # "Treatment",
+            # "Dose",
+            # "Unit",
+            # "Target",
+            "Class",
+            # "TherapeuticCategories",
+            "Drug",
+            "Concentration_uM",
+            # "Viability_percentage",
+            # "Metadata_Biology_PatientTumor",
+            # "Metadata_Biology_TumorType"
+        ],
+        inplace=True,
+    )
+    annotation_df = drug_information_platemap_viabilities_tumor_type_merged.rename(
+        columns={
+            "WellPosition": "Metadata_Experiment_Well",
+            "Treatment": "Metadata_Experiment_Treatment",
+            "Dose": "Metadata_Experiment_Dose",
+            "Unit": "Metadata_Experiment_Unit",
+            "Target": "Metadata_Experiment_Target",
+            "TherapeuticCategories": "Metadata_Experiment_TherapeuticCategories",
+            "Viability_percentage": "Metadata_Experiment_ViabilityPercentage",
+        }
+    )
+    annotation_df.to_csv(main_annotation_file_output, index=False)
+else:
+    annotation_df = pd.read_csv(main_annotation_file_output)
+
+# subset the annotation_df to only include the patient of interest
+# if NF0037_T1_CQ1, then subset to NF0037_T1 metadata
+if patient == "NF0037_T1_CQ1":
+    annotation_df = annotation_df.loc[
+        annotation_df["Metadata_Biology_PatientTumor"] == "NF0037_T1"
+    ]
+else:
+    annotation_df = annotation_df.loc[
+        annotation_df["Metadata_Biology_PatientTumor"] == patient
+    ]
 
 
 # ## Pathing
@@ -143,12 +206,7 @@ organoid_merged_path = pathlib.Path(
 nucleocentric_merged_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/nucleocentric.parquet"
 ).resolve(strict=True)
-platemap_path = pathlib.Path(
-    f"{root_dir}/config/platemaps/{patient}_platemap.csv"
-).resolve(strict=True)
-drug_information = pd.read_csv(
-    pathlib.Path(f"{root_dir}/config/drug_information/drug_information.csv")
-)
+
 # output path
 sc_annotated_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/sc_anno.parquet"
@@ -179,33 +237,35 @@ organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 sc_merged = pd.read_parquet(sc_merged_path)
 organoid_merged = pd.read_parquet(organoid_merged_path)
 nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
-# read platemap
-platemap = pd.read_csv(platemap_path)
-# if % is in Treatment then delete the space leading to %
-platemap["Treatment"] = platemap["Treatment"].str.replace(r"\s+%", "%", regex=True)
-platemap.head()
+
+sc_merged["Well"] = sc_merged["image_set"].str.split("-").str[0]
+organoid_merged["Well"] = organoid_merged["image_set"].str.split("-").str[0]
+nucleocentric_merged["Well"] = nucleocentric_merged["image_set"].str.split("-").str[0]
 
 
 # In[6]:
 
 
-sc_merged = annotate_profiles(
-    profile_df=sc_merged,
-    platemap_df=platemap,
-    drug_information_df=drug_information,
-    patient=patient,
+sc_merged = pd.merge(
+    left=sc_merged,
+    right=annotation_df,
+    how="left",
+    left_on=["Well"],
+    right_on=["Metadata_Experiment_Well"],
 )
-organoid_merged = annotate_profiles(
-    profile_df=organoid_merged,
-    platemap_df=platemap,
-    drug_information_df=drug_information,
-    patient=patient,
+organoid_merged = pd.merge(
+    left=organoid_merged,
+    right=annotation_df,
+    how="left",
+    left_on=["Well"],
+    right_on=["Metadata_Experiment_Well"],
 )
-nucleocentric_merged = annotate_profiles(
-    profile_df=nucleocentric_merged,
-    platemap_df=platemap,
-    drug_information_df=drug_information,
-    patient=patient,
+nucleocentric_merged = pd.merge(
+    left=nucleocentric_merged,
+    right=annotation_df,
+    how="left",
+    left_on=["Well"],
+    right_on=["Metadata_Experiment_Well"],
 )
 # remove redundant columns
 columns_to_drop = [
@@ -493,6 +553,12 @@ nucleocentric_merged = nucleocentric_merged.sort_values(
     ]
 ).reset_index(drop=True)
 
+# find duplicate columns and keep one of the duplicates
+for df in [sc_merged, organoid_merged, nucleocentric_merged]:
+    duplicated_columns = df.columns[df.columns.duplicated()].tolist()
+    if duplicated_columns:
+        df.drop(columns=duplicated_columns, inplace=True)
+
 
 # In[13]:
 
@@ -545,7 +611,7 @@ nucleocentric_morphem_annotated = nucleocentric_merged[
 ]
 
 
-# In[14]:
+# In[ ]:
 
 
 # save annotated profiles
@@ -563,19 +629,13 @@ nucleocentric_morphem_annotated.to_parquet(
 )
 
 
-# In[15]:
+# In[ ]:
 
 
 sc_annotated.head()
 
 
-# In[16]:
+# In[ ]:
 
 
 organoid_annotated.head()
-
-
-# In[17]:
-
-
-nucleocentric_morphem_annotated
