@@ -23,9 +23,9 @@ For each reference image set (manifest/reference_image_sets.yaml):
    convention as `profiles/<compartment>_profiles/`, additive only. Step
    3's nucleocentric_profiles_*_related.parquet output is not copied --
    ZEDProfiler produces no real Nucleocentric data, so that output is
-   always empty and not worth persisting; see
-   build_ibp_inputs_from_warehouse.py for why step 3 still needs an
-   (empty) nucleocentric *input* to run at all.
+   always empty and not worth persisting. Step 3's nucleocentric *input*
+   is optional (falls back to an empty dataframe if absent), so this
+   pilot doesn't touch any nucleocentric file at all, in either direction.
 
 After every image set has landed, (re)creates two convenience DuckDB
 views over the new `ibp/` tables in the warehouse's existing
@@ -131,8 +131,7 @@ def run_one_image_set(
     # nucleocentric_profiles_{well_fov}_related.parquet is intentionally not
     # read or persisted: ZEDProfiler produces no real Nucleocentric data, so
     # step 3's own output for it is always empty -- not a table worth
-    # keeping in warehouse/ibp/. See build_ibp_inputs_from_warehouse.py for
-    # why step 3 still needs an (empty) nucleocentric *input* to run at all.
+    # keeping in warehouse/ibp/.
 
     image_id = str(sc_related["Metadata_Imaging_ImageID"].iloc[0])
 

@@ -2,22 +2,22 @@
 """Build IBP stage 4 step-3 inputs directly from a ZEDProfiler warehouse.
 
 `4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py`
-expects three parquet files per well-FOV under
+expects two required parquet files per well-FOV under
 `data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/`:
-`sc_profiles_{well_fov}.parquet`, `organoid_profiles_{well_fov}.parquet`,
-`nucleocentric_profiles_{well_fov}.parquet`. Those are normally produced by
-IBP steps 00/0a/1/2, which convert old CellProfiler-style per-feature
-parquet files into a merged per-well_fov DuckDB and then merge that into the
-three files above.
+`sc_profiles_{well_fov}.parquet`, `organoid_profiles_{well_fov}.parquet`
+(a third, `nucleocentric_profiles_{well_fov}.parquet`, is optional -- see
+below). Those are normally produced by IBP steps 00/0a/1/2, which convert
+old CellProfiler-style per-feature parquet files into a merged per-well_fov
+DuckDB and then merge that into the files above.
 
 A ZEDProfiler warehouse (3a.nextflow_pilot / 3b.nextflow_production) already
 holds the same information in a different shape: one parquet per compartment
 per image set, joined via warehouse.duckdb's `joined.images_nuclei_cell_cytoplasm`
 (inner join across Nuclei/Cell/Cytoplasm on Metadata_Object_ObjectID -- the
 same object-intersection step 2 computes) and `profiles.organoid_profiles`.
-This script reads those views for one image set and writes the three files
-step 3 expects. Two real differences between ZEDProfiler's native shape and
-what step 3 was originally written for are bridged inside step 3 itself
+This script reads those views for one image set and writes the files step 3
+expects. Real differences between ZEDProfiler's native shape and what step 3
+was originally written for are bridged inside step 3 itself
 (4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py,
 same changes mirrored in the paired notebook), not here -- this script does
 no column renaming at all, and writes ZEDProfiler's own column names through
@@ -34,16 +34,13 @@ unchanged:
   (normalized to `object_id` internally, right after loading) and derives
   `image_set` itself from its own `well_fov` argument, so neither needs to
   be supplied here.
-
-ZEDProfiler does not produce deep-learning Nucleocentric features. Step 3
-(unmodified) still hard-requires a nucleocentric_profiles_{well_fov}.parquet
-to exist -- it strictly resolves that path and crashes immediately if it's
-missing -- so an empty (0 rows, `Metadata_Object_ObjectID` column only)
-placeholder is written *only if nothing is already there*, never
-overwriting real Nucleocentric data from an actual run of IBP steps
-00/0a/1/2 for the same well_fov/subparent_name. Its downstream
-`*_related.parquet` output is not persisted into warehouse/ibp/ -- see
-run_ibp_pilot.py.
+- Nucleocentric data: ZEDProfiler does not produce deep-learning
+  Nucleocentric features. Step 3 originally hard-required a
+  nucleocentric_profiles_{well_fov}.parquet input to exist, so this script
+  used to write an empty placeholder to satisfy that. Step 3 was changed to
+  treat that input as optional (falls back to an empty dataframe if the
+  file doesn't exist), so this script no longer touches any nucleocentric
+  file at all -- neither reading nor writing one.
 """
 
 from __future__ import annotations
@@ -225,36 +222,14 @@ def main() -> int:
     organoid_df.to_parquet(
         outdir / f"organoid_profiles_{args.well_fov}.parquet", index=False
     )
-
-    # Step 3 (unmodified) does a strict path resolve on this file and
-    # crashes immediately if it's missing, so something has to exist here
-    # for step 3 to run at all -- ZEDProfiler has no real Nucleocentric
-    # (deep-learning) features to put in it, hence empty. Only write it if
-    # nothing is there yet: if this same well_fov/subparent_name has real
-    # Nucleocentric data from an actual run of IBP steps 00/0a/1/2, this
-    # placeholder must never clobber it. The exists()-then-write pattern
-    # alone isn't atomic -- a real file could appear in the gap between the
-    # check and the write -- so the empty frame is written to a private
-    # temp file first, then published with os.link(), which fails with
-    # FileExistsError instead of silently overwriting if the destination
-    # exists by the time we get there. Both paths share outdir (the local
-    # repo checkout's own data/ scratch tree, never the PetaLibrary-mounted
-    # warehouse), so the hard link is same-filesystem and safe.
-    nucleocentric_path = outdir / f"nucleocentric_profiles_{args.well_fov}.parquet"
-    if not nucleocentric_path.exists():
-        tmp_path = (
-            outdir / f".nucleocentric_profiles_{args.well_fov}.{os.getpid()}.tmp.parquet"
-        )
-        try:
-            pd.DataFrame(columns=["Metadata_Object_ObjectID"]).to_parquet(
-                tmp_path, index=False
-            )
-            try:
-                os.link(tmp_path, nucleocentric_path)
-            except FileExistsError:
-                pass  # a real file appeared concurrently -- leave it alone
-        finally:
-            tmp_path.unlink(missing_ok=True)
+    # No nucleocentric_profiles_{well_fov}.parquet is written here at all --
+    # ZEDProfiler has no real Nucleocentric (deep-learning) data to put in
+    # it, and step 3 now treats that input as optional (falls back to an
+    # empty dataframe if the file doesn't exist), so there's nothing for
+    # this script to do here. A real Nucleocentric input from an actual run
+    # of IBP steps 00/0a/1/2 for the same well_fov/subparent_name, if one
+    # exists, is picked up by step 3 directly and is never touched by this
+    # script either way.
 
     print(
         "NF1_IBP_PILOT_INPUTS_OK "

@@ -63,14 +63,16 @@ expects, bridging two real differences along the way:
   `object_id`/`image_set`, matching the existing convention every other
   stage-4 step downstream of step 3 already relies on.
 - **No Nucleocentric data**: ZEDProfiler doesn't produce deep-learning
-  nucleocentric features. Step 3 still hard-requires a
-  `nucleocentric_profiles_{well_fov}.parquet` to exist -- it strictly
-  resolves that path and crashes immediately if missing -- so the adapter
-  writes an empty placeholder *only if nothing is already there*, never
-  overwriting real Nucleocentric data from an actual run of IBP steps
-  00/0a/1/2 for the same well_fov. Step 3's resulting (always-empty)
-  `nucleocentric_profiles_*_related.parquet` output is not persisted into
-  `warehouse/ibp/` -- there's nothing in it worth keeping.
+  nucleocentric features. Step 3 originally hard-required a
+  `nucleocentric_profiles_{well_fov}.parquet` input to exist, so the adapter
+  used to write an empty placeholder to satisfy that. Step 3 was changed to
+  treat that input as optional (falls back to an empty dataframe if the
+  file doesn't exist), so this pilot no longer touches any nucleocentric
+  file at all, in either direction -- not reading one, not writing one.
+  Step 3's own resulting (always-empty) `nucleocentric_profiles_*_related.parquet`
+  output is still written (for schema consistency with the other two
+  output files, matching the old pipeline's own convention) but not
+  persisted into `warehouse/ibp/` -- there's nothing in it worth keeping.
 
 `3.organoid_cell_relationship.py`'s own logic (organoid-cell assignment,
 shell/distance calculations) is otherwise unchanged -- the only edit is
@@ -178,11 +180,10 @@ the version reflected in the table above.
 **Nucleocentric**: as expected, both image sets produced an empty
 nucleocentric table (ZEDProfiler has no deep-learning nucleocentric
 features) -- step 3 handled this without incident. Per review feedback,
-this output is no longer persisted into `warehouse/ibp/` at all (see the
-2026-09-09 update below) -- there's nothing in it worth keeping, and always
-writing an empty *input* placeholder for step 3 risked silently clobbering
-real Nucleocentric data if this same well_fov/subparent_name is ever also
-processed by an actual run of IBP steps 00/0a/1/2.
+this output is no longer persisted into `warehouse/ibp/` at all, and (per
+further review feedback, see the 2026-09-10 update below) this pilot no
+longer touches any nucleocentric file at all, in either direction -- step 3
+itself now treats a missing nucleocentric input as optional.
 
 **Data quality, checked directly rather than assumed**: for both image
 sets, all 2,665 feature columns had zero all-null columns; centroid
@@ -360,6 +361,35 @@ writes now carries `Metadata_Object_ObjectID` (not `object_id`) with no
 ends up with both (`Nucleocentric profile shape: (0, 2)` in this run's own
 log output, matching the empty placeholder plus the derived `image_set`
 column).
+
+**Update (review feedback, 2026-09-10), stopped touching nucleocentric
+files entirely:** a reviewer asked, after the earlier fix that stopped
+persisting an empty nucleocentric *output* into `warehouse/ibp/`, why this
+pilot was still touching nucleocentric files at all -- the adapter still
+wrote an empty nucleocentric *input* placeholder, since step 3 hard-required
+that file to exist. Root-caused the same way as the VolumeSizeShape and
+object_id/image_set fixes above: rather than have the adapter manufacture a
+file to satisfy an assumption baked into step 3, step 3 itself
+(`3.organoid_cell_relationship.py` and the paired notebook) was changed to
+treat the nucleocentric input as optional, falling back to an empty
+dataframe when the file doesn't exist. This is backward compatible with the
+older CellProfiler-era pipeline: IBP step 1 (`1.merge_feature_parquets.py`)
+already documents that it always writes a nucleocentric file for every
+well-FOV, even an empty scaffold one when no Nucleocentric features were
+extracted -- so real callers always hit the "file exists" branch unchanged;
+only a caller with no such file at all (this pilot) benefits from the new
+fallback. `build_ibp_inputs_from_warehouse.py` no longer creates, checks
+for, or reasons about any nucleocentric file whatsoever -- the entire
+atomic-placeholder-write mechanism from the earlier fix is deleted outright,
+not just relocated.
+
+Verified directly: after this change, `0.converted_profiles/{well_fov}/`
+(what the adapter actually writes) contains only `sc_profiles_*.parquet`
+and `organoid_profiles_*.parquet` -- no nucleocentric file of any kind.
+Re-ran the full pilot end to end: same correct results (9/9 and 42/42 cells
+assigned, zero duplicate columns) as before, confirming step 3's own
+internal empty-dataframe fallback behaves identically to the placeholder
+file it replaces.
 
 ## New IBP workflow diagram
 

@@ -12,10 +12,12 @@
 # is typically submitted as a child job via the SLURM scheduler.
 #
 # ## Inputs
-# Three parquet files from `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
-# - `sc_profiles_{well_fov}.parquet` — merged Nuclei + Cell + Cytoplasm features
-# - `organoid_profiles_{well_fov}.parquet` — organoid features
-# - `nucleocentric_profiles_{well_fov}.parquet` — nucleocentric features
+# Parquet files from `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
+# - `sc_profiles_{well_fov}.parquet` — merged Nuclei + Cell + Cytoplasm features (required)
+# - `organoid_profiles_{well_fov}.parquet` — organoid features (required)
+# - `nucleocentric_profiles_{well_fov}.parquet` — nucleocentric features (optional --
+#   treated as empty if this file doesn't exist, since not every pipeline that feeds
+#   this script produces deep-learning Nucleocentric data)
 #
 # ## Outputs
 # Three enriched parquet files written to `data/{patient}/image_based_profiles/1.related_profiles/{well_fov}/`:
@@ -40,6 +42,11 @@
 #   `image_set` is set directly from this script's own `well_fov` argument rather
 #   than required as an input column, since every row in a given input file
 #   belongs to the single well-FOV this script is invoked for.
+# - `nucleocentric_profiles_{well_fov}.parquet` is optional: if it doesn't exist,
+#   an empty dataframe is used instead of requiring a caller to manufacture a
+#   placeholder file. The output nucleocentric_profiles_{well_fov}_related.parquet
+#   is still always written (empty, if the input was empty) for schema consistency
+#   with the other two output files.
 
 # In[1]:
 
@@ -98,9 +105,14 @@ sc_profile_path = pathlib.Path(
 organoid_profile_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
+# Not strict=True like the other two inputs: ZEDProfiler produces no
+# Nucleocentric (deep-learning) features at all, so a caller without any
+# real Nucleocentric data has nothing to put here -- see the loading cell
+# below, which falls back to an empty dataframe when this file is absent
+# rather than requiring every caller to manufacture a placeholder file.
 nucleocentric_profile_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/nucleocentric_profiles_{well_fov}.parquet"
-).resolve(strict=True)
+).resolve()
 # output paths
 sc_profile_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
@@ -118,8 +130,17 @@ sc_profile_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 sc_profile_df = pd.read_parquet(sc_profile_path)
-nucleocentric_df = pd.read_parquet(nucleocentric_profile_path)
 organoid_profile_df = pd.read_parquet(organoid_profile_path)
+
+# ZEDProfiler-fed callers have no real Nucleocentric data to provide --
+# fall back to an empty frame rather than requiring one. object_id is
+# set here so the merge further down (which joins on object_id +
+# image_set) has something to join against; image_set is set
+# unconditionally for both dataframes just below regardless.
+if nucleocentric_profile_path.exists():
+    nucleocentric_df = pd.read_parquet(nucleocentric_profile_path)
+else:
+    nucleocentric_df = pd.DataFrame(columns=["object_id"])
 
 # Normalize the object identifier column name: ZEDProfiler's own
 # Metadata_Object_ObjectID is accepted directly, same object concept as
