@@ -16,36 +16,42 @@ Two reference image sets, matching the ones used throughout
 ## Why steps 00/0a/1/2 are skipped
 
 Those steps convert old per-feature parquet files (101 per image set) into a
-merged per-well*fov DuckDB, then merge that into
-`sc_profiles*{well*fov}.parquet`/`organoid_profiles*{well*fov}.parquet`/`nucleocentric_profiles*{well_fov}.parquet`-- exactly what a ZEDProfiler
-warehouse already holds natively via`warehouse.duckdb`'s
-`joined.images_nuclei_cell_cytoplasm`view (an inner join across Nuclei/
-Cell/Cytoplasm on`Metadata_Object_ObjectID`, the same object-intersection
-step 2 computes) and `profiles.organoid_profiles`. Reimplementing steps
-00/0a/1/2 against this data would just reproduce work the warehouse already
-did. `scripts/build_ibp_inputs_from_warehouse.py` reads those views for one
-image set and writes the three files step 3 expects, bridging two real
-differences along the way -- without touching step 3's own code:
+merged per-well_fov DuckDB, then merge that into
+`sc_profiles_{well_fov}.parquet`/`organoid_profiles_{well_fov}.parquet`/`nucleocentric_profiles_{well_fov}.parquet`
+-- exactly what a ZEDProfiler warehouse already holds natively via
+`warehouse.duckdb`'s `joined.images_nuclei_cell_cytoplasm` view (an inner
+join across Nuclei/Cell/Cytoplasm on `Metadata_Object_ObjectID`, the same
+object-intersection step 2 computes) and `profiles.organoid_profiles`.
+Reimplementing steps 00/0a/1/2 against this data would just reproduce work
+the warehouse already did. `scripts/build_ibp_inputs_from_warehouse.py`
+reads those views for one image set and writes the three files step 3
+expects, bridging two real differences along the way:
 
 - **Column names**: step 3 finds centroid/bbox columns by substring-matching
   `"area"` (CellProfiler-era `*_AreaSizeShape_*` naming). ZEDProfiler's own
   naming convention (same `format_morphology_feature_name()` helper,
   different feature-type string) produces `*_VolumeSizeShape_*` instead --
-  `"volumesizeshape"` contains no `"area"` substring, so the match misses
-  silently. `VolumeSizeShape` is this project's preferred naming (ZEDProfiler
-  lets us be opinionated about our own feature names rather than carrying
-  CellProfiler-era conventions forward), so it's never persisted as
-  `AreaSizeShape`: the rename to `AreaSizeShape` is applied only to the
-  scratch files step 3 reads (`build_ibp_inputs_from_warehouse.py`'s
-  `rename_volumesizeshape_to_areasizeshape()`), and undone on step 3's own
-  output (`run_ibp_pilot.py`'s `rename_areasizeshape_to_volumesizeshape()`)
-  before anything is written into `warehouse/ibp/`. Step 3's code itself
-  still isn't touched -- only its input/output at this pilot's own
-  boundary is renamed and un-renamed around it.
+  `"volumesizeshape"` contains no `"area"` substring, so the match originally
+  missed silently. `VolumeSizeShape` is this project's preferred naming
+  (ZEDProfiler lets us be opinionated about our own feature names rather
+  than carrying CellProfiler-era conventions forward), so rather than
+  disguise ZEDProfiler's columns as the older convention, step 3's own
+  matching was widened to accept `"volumesizeshape"` directly (the four
+  `if "area" in x.lower() ...` checks in
+  `4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py`,
+  mirrored in the paired notebook, `.ipynb` being the source of truth --
+  see that folder's own conversion convention). ZEDProfiler's column names
+  flow through completely unchanged, start to finish -- no renaming
+  anywhere in this pilot. (An earlier version of this pilot instead
+  temporarily renamed columns to satisfy step 3's original matching and
+  renamed them back afterward; per review feedback that round-trip was
+  removed in favor of widening step 3's matching, since it's a smaller,
+  more direct fix than disguising and undisguising column names around an
+  unmodified script.)
 - **Identifiers**: step 3 expects `object_id` (ours: `Metadata_Object_ObjectID`)
   and `image_set` (ours: derived from `--well-fov` directly).
 - **No Nucleocentric data**: ZEDProfiler doesn't produce deep-learning
-  nucleocentric features. Step 3 (unmodified) still hard-requires a
+  nucleocentric features. Step 3 still hard-requires a
   `nucleocentric_profiles_{well_fov}.parquet` to exist -- it strictly
   resolves that path and crashes immediately if missing -- so the adapter
   writes an empty placeholder *only if nothing is already there*, never
@@ -54,7 +60,10 @@ differences along the way -- without touching step 3's own code:
   `nucleocentric_profiles_*_related.parquet` output is not persisted into
   `warehouse/ibp/` -- there's nothing in it worth keeping.
 
-`3.organoid_cell_relationship.py` itself is invoked completely unmodified.
+`3.organoid_cell_relationship.py`'s own logic (organoid-cell assignment,
+shell/distance calculations) is otherwise unchanged -- the only edit is
+widening those four column-matching checks to recognize ZEDProfiler's
+naming alongside the original CellProfiler-era one.
 
 ## Environment
 
@@ -191,9 +200,7 @@ same assignments) confirming the pilot doesn't depend on anything
 Alpine-specific.
 
 Not yet checked: behavior at higher object counts (both reference image
-sets are small), and whether the rename/un-rename round-trip needs to be
-applied anywhere outside `sc_profiles`/`organoid_profiles` if this pilot is
-extended to more of stage 4's later steps (5+).
+sets are small).
 
 **Update (review feedback, 2026-09-09):** an earlier version of this pilot
 persisted the `AreaSizeShape` rename into `warehouse/ibp/`'s final output.
@@ -260,6 +267,31 @@ and 42/42 cells assigned) as before this change.
 
 Re-verified the full pilot end to end after both fixes: same correct
 results (9/9 and 42/42 cells assigned, zero duplicate columns) as before.
+
+**Update (review feedback, 2026-09-10), removed the rename round-trip
+entirely:** a reviewer raised a concern about the VolumeSizeShape <->
+AreaSizeShape rename round-trip described above -- confirmed by direct
+before/after comparison against real data that it only ever changed column
+*names* (never values) and only in gitignored scratch files, fully reversed
+before anything was persisted, but the round-trip itself was still an
+unnecessary extra moving part. Per follow-up feedback, removed it entirely:
+`4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py`'s
+four `"area" in x.lower()` column-matching checks (and the paired notebook,
+the actual source of truth) now also accept `"volumesizeshape"` directly, so
+ZEDProfiler's own column names flow through unchanged from warehouse to
+warehouse -- no renaming anywhere in this pilot. Both
+`rename_volumesizeshape_to_areasizeshape()` (`build_ibp_inputs_from_warehouse.py`)
+and `rename_areasizeshape_to_volumesizeshape()` (`run_ibp_pilot.py`) are
+deleted. This is the only change in this PR to a file outside `4a/` and
+`4.processing_image_based_profiles`'s own `3.organoid_cell_relationship.py`/
+`.ipynb` -- step 3's organoid-assignment and shell/distance logic is
+otherwise byte-for-byte unchanged; only the column-name matching was
+widened. Re-verified end to end against the real warehouse: same correct
+results (9/9 and 42/42 cells assigned), and confirmed the bbox-column sort
+order the code depends on (`[MaxX, MaxY, MaxZ, MinX, MinY, MinZ]`) holds
+identically for `VolumeSizeShape` columns as it did for `AreaSizeShape`,
+since sort order is determined only by the trailing Max/Min + axis letter,
+not the family-name prefix.
 
 ## New IBP workflow diagram
 

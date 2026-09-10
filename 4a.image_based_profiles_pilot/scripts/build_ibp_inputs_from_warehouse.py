@@ -22,15 +22,12 @@ own code:
 - Column names: step 3 finds centroid/bbox columns by substring-matching
   "area" (CellProfiler-era `*_AreaSizeShape_*` naming). ZEDProfiler's own
   convention produces `*_VolumeSizeShape_*` instead, which the substring
-  match misses entirely. Every VolumeSizeShape column is renamed to its
-  AreaSizeShape equivalent here -- but only in the scratch files written to
-  `0.converted_profiles/` that feed step 3's own unmodified matching logic.
-  ZEDProfiler's VolumeSizeShape naming is preferred everywhere else,
-  including the *_related.parquet files this pilot actually persists into
-  warehouse/ibp/ -- run_ibp_pilot.py renames those columns back to
-  VolumeSizeShape immediately after step 3 produces them, before they're
-  written anywhere durable. This file's rename is a one-way, step-3-local
-  compatibility shim, not a change to this pilot's preferred naming.
+  match originally missed entirely. Rather than rename ZEDProfiler's
+  columns to disguise them as the older convention, step 3's own matching
+  was widened to accept "volumesizeshape" directly (see
+  4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py,
+  same change mirrored in the paired notebook) -- so ZEDProfiler's own
+  naming flows through unchanged, no renaming anywhere in this pilot.
 - Identifiers: step 3 expects `object_id` (ours: Metadata_Object_ObjectID)
   and `image_set` (ours: implicit, derived from patient/well_fov here).
 
@@ -53,25 +50,6 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
-
-
-def rename_volumesizeshape_to_areasizeshape(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename every `*VolumeSizeShape*` column to its `*AreaSizeShape*` form.
-
-    Step-3-input-only compatibility shim: lets step 3's own unmodified
-    "area" substring matching find ZEDProfiler's centroid/bbox columns.
-    ZEDProfiler's VolumeSizeShape naming is preferred for anything this
-    pilot actually persists -- see run_ibp_pilot.py's
-    rename_areasizeshape_to_volumesizeshape(), which undoes this on step 3's
-    output before it's written into warehouse/ibp/.
-    """
-    return df.rename(
-        columns={
-            column: column.replace("VolumeSizeShape", "AreaSizeShape")
-            for column in df.columns
-            if "VolumeSizeShape" in column
-        }
-    )
 
 
 # Per the project's metadata naming convention
@@ -228,9 +206,6 @@ def main() -> int:
             f"{args.patient}/{args.well_fov} -- check the warehouse actually "
             "contains this image set (profiles/*_profiles/<image_id>.parquet)."
         )
-
-    sc_df = rename_volumesizeshape_to_areasizeshape(sc_df)
-    organoid_df = rename_volumesizeshape_to_areasizeshape(organoid_df)
 
     sc_df = sc_df.rename(columns={"Metadata_Object_ObjectID": "object_id"})
     organoid_df = organoid_df.rename(columns={"Metadata_Object_ObjectID": "object_id"})

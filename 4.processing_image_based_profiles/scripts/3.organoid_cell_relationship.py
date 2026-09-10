@@ -130,7 +130,13 @@ nucleocentric_df
 x_y_z_sc_colnames = [
     x
     for x in sc_profile_df.columns
-    if "area" in x.lower() and "center" in x.lower() and "nuclei" in x.lower()
+    # "area": CellProfiler-era naming (*_AreaSizeShape_*). "volumesizeshape":
+    # ZEDProfiler's own naming (*_VolumeSizeShape_*) for the same measurement
+    # family -- accepted directly so ZEDProfiler-sourced data needs no
+    # column renaming to work with this notebook.
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and "center" in x.lower()
+    and "nuclei" in x.lower()
 ]
 x_y_z_sc_colnames
 
@@ -141,13 +147,20 @@ x_y_z_sc_colnames
 organoid_bbox_colnames = [
     x
     for x in organoid_profile_df.columns
-    if "area" in x.lower() and ("min" in x.lower() or "max" in x.lower())
+    # "area" (CellProfiler) or "volumesizeshape" (ZEDProfiler) -- see the
+    # x_y_z_sc_colnames cell above for why both are accepted.
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and ("min" in x.lower() or "max" in x.lower())
 ]
 organoid_bbox_colnames = sorted(organoid_bbox_colnames)
 
 # When sorted alphabetically, the bbox column names fall in this order:
 #   [0] = *MaxX, [1] = *MaxY, [2] = *MaxZ, [3] = *MinX, [4] = *MinY, [5] = *MinZ
-# This ordering is assumed in the bbox tuple construction below.
+# This ordering is assumed in the bbox tuple construction below. Holds
+# regardless of whether the matched family is AreaSizeShape or
+# VolumeSizeShape: the family name prefix is identical across all six
+# candidates, so sort order is determined only by the trailing Max/Min +
+# axis letter.
 
 
 # In[8]:
@@ -306,12 +319,16 @@ nucleocentric_df
 x_y_z_organoid_centroid_colnames = [
     x
     for x in organoid_profile_df.columns
-    if "area" in x.lower() and "center" in x.lower()
+    # "area" (CellProfiler) or "volumesizeshape" (ZEDProfiler) -- see the
+    # x_y_z_sc_colnames cell above for why both are accepted.
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and "center" in x.lower()
 ]
 x_y_z_organoid_bbox_colnames = [
     x
     for x in organoid_profile_df.columns
-    if "area" in x.lower() and ("min" in x.lower() or "max" in x.lower())
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and ("min" in x.lower() or "max" in x.lower())
 ]
 
 
