@@ -707,7 +707,7 @@ Patient- and dataset-level summary tables are generated under `figures/`:
   well FOV, and channel) with file size and Z-dimension counts; this is the per-file data
   that `table1` aggregates.
 
-Both tables are saved as TSV files (not images) so the underlying data can be diffed,
+Both tables are saved as TSV files so the underlying data can be diffed,
 re-read, and re-aggregated without needing a separate figure-rendering step.
 
 ## Associated repositories
