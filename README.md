@@ -696,27 +696,27 @@ We will have data available at some point on the NF data portal via Synapse.
 ### Summary tables
 
 Patient- and dataset-level summary tables live in the top-level
-[`tables/`](tables) module, kept separate from `figures/` since its outputs are TSV data,
+[`tables/`](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/tree/main/tables) module, kept separate from `figures/` since its outputs are TSV data,
 not images. All tables share one flat structure, rather than each table having its own
 nested `results/` folder, to keep the layout easy to navigate:
 
 - `tables/scripts/` - one `.py` script per table (`table1.py`, `table2.py`)
 - `tables/notebooks/` - the paired notebook for each script (`table1.ipynb`, `table2.ipynb`)
-- `tables/results/` - every table's output, flat, named after the table that produced it
-  (`table1_results.tsv`, `table2_results.tsv`); `table2_file_info.parquet` is an
-  intermediate cache of the raw file scan, not a final result, so it's gitignored
+- `tables/results/table1_file_info.parquet` - an intermediate cache of the raw file scan
+  produced by `table1.py`, consumed by `table2.py`; not a final result
+- `tables/tables/` - the final output of each table, flat (`table1.tsv`, `table2.tsv`)
 
 Table contents:
 
-- **table1** (`tables/results/table1_results.tsv`) - per-patient, per-tumor counts
-  (compounds, treatments, wells, well FOVs, organoids, single cells) merged with
-  per-patient image counts and total storage size. Tumor type diagnoses come from
-  [`config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv`](config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv),
+- **table1** (`tables/tables/table1.tsv`) - a raw scan of every acquired image file (per
+  patient, well FOV, and channel) with file size and Z-dimension counts; this is the
+  per-file data that `table2` aggregates.
+- **table2** (`tables/tables/table2.tsv`) - per-patient, per-tumor counts (treatments,
+  well FOVs, organoids, single cells) merged with per-patient image counts and total
+  storage size. Tumor type diagnoses come from
+  [`config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv`](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/blob/main/config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv),
   which is keyed by patient ID so it can be reviewed and updated independently of the
   generating script.
-- **table2** (`tables/results/table2_results.tsv`) - a raw scan of every acquired image
-  file (per patient, well FOV, and channel) with file size and Z-dimension counts; this is
-  the per-file data that `table1` aggregates.
 
 Both tables are saved as TSV files so the underlying data can be diffed, re-read, and re-aggregated without needing a separate figure-rendering step.
 

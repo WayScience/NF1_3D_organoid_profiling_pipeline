@@ -161,7 +161,9 @@ organoid_counts = (
     .reset_index()
     .rename(columns={0: "count"})
     .drop(columns="count")
-    .loc[sc_df["Metadata_Object_ParentOrganoid"] != -1]
+)
+organoid_counts = (
+    organoid_counts.loc[organoid_counts["Metadata_Object_ParentOrganoid"] != -1]
     .groupby(["Metadata_Biology_PatientTumor"])
     .size()
     .to_frame()
@@ -301,10 +303,6 @@ table2.rename(
 # In[14]:
 
 
-table2["Total size (TB)"] = (
-    table2["Total Size (TB)"] + (table2["Total Size (TB)"] / 5) * 4
-).round(2)
-
 table2 = table2.drop(
     columns=[
         "Compound Count",
@@ -312,7 +310,6 @@ table2 = table2.drop(
         "Theoretical Compound Count",
         "Theoretical Treatment Count",
         "Theoretical Well FOV Count",
-        "Total Size (TB)",
     ]
 )
 
@@ -326,7 +323,7 @@ total_row = pd.DataFrame(
         "Organoid Count": [table2["Organoid Count"].sum()],
         "Single Cell Count": [table2["Single Cell Count"].sum()],
         "Total Image Count": [table2["Total Image Count"].sum()],
-        "Total size (TB)": [table2["Total size (TB)"].sum().round(2)],
+        "Total Size (TB)": [table2["Total Size (TB)"].sum().round(2)],
     }
 )
 table2 = pd.concat([table2, total_row], ignore_index=True)
