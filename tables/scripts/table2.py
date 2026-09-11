@@ -204,27 +204,30 @@ single_cell_counts = (
 # In[10]:
 
 
-table2 = pd.merge(
-    pd.merge(
-        pd.merge(
-            pd.merge(
-                pd.merge(
-                    compounds_counts,
-                    treatments_counts,
-                    on="Metadata_Biology_PatientTumor",
-                ),
-                well_counts,
-                on="Metadata_Biology_PatientTumor",
-            ),
-            well_fov_counts,
-            on="Metadata_Biology_PatientTumor",
-        ),
-        organoid_counts,
-        on="Metadata_Biology_PatientTumor",
-    ),
+patient_counts_dfs = [
+    compounds_counts,
+    treatments_counts,
+    well_counts,
+    well_fov_counts,
+    organoid_counts,
     single_cell_counts,
-    on="Metadata_Biology_PatientTumor",
+]
+patient_keys = pd.DataFrame(
+    {
+        "Metadata_Biology_PatientTumor": sorted(
+            set().union(
+                *(df["Metadata_Biology_PatientTumor"] for df in patient_counts_dfs)
+            )
+        )
+    }
 )
+table2 = patient_keys
+for counts_df in patient_counts_dfs:
+    table2 = pd.merge(table2, counts_df, on="Metadata_Biology_PatientTumor", how="left")
+# patients whose cells are all unassigned (Metadata_Object_ParentOrganoid == -1)
+# have no rows in organoid_counts; treat that as zero organoids rather than
+# dropping the patient from the table
+table2["number_of_organoids"] = table2["number_of_organoids"].fillna(0).astype(int)
 
 table2 = pd.merge(
     table2,
