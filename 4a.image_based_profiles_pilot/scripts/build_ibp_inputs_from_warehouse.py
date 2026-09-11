@@ -52,7 +52,6 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-
 # Per the project's metadata naming convention
 # (docs/RFC-2119-Feature-Naming-Convention.md section 2.2), a metadata
 # column's category -- the `<featurecategory>` in

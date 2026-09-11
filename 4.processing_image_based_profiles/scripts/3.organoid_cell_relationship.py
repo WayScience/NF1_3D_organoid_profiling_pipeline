@@ -367,8 +367,7 @@ x_y_z_organoid_centroid_colnames = [
     for x in organoid_profile_df.columns
     # "area" (CellProfiler) or "volumesizeshape" (ZEDProfiler) -- see the
     # x_y_z_sc_colnames cell above for why both are accepted.
-    if ("area" in x.lower() or "volumesizeshape" in x.lower())
-    and "center" in x.lower()
+    if ("area" in x.lower() or "volumesizeshape" in x.lower()) and "center" in x.lower()
 ]
 x_y_z_organoid_bbox_colnames = [
     x

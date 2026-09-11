@@ -124,7 +124,9 @@ def run_one_image_set(
         / "1.related_profiles"
         / well_fov
     )
-    sc_related = pd.read_parquet(related_dir / f"sc_profiles_{well_fov}_related.parquet")
+    sc_related = pd.read_parquet(
+        related_dir / f"sc_profiles_{well_fov}_related.parquet"
+    )
     organoid_related = pd.read_parquet(
         related_dir / f"organoid_profiles_{well_fov}_related.parquet"
     )
@@ -273,9 +275,7 @@ def main() -> int:
         )
     duckdb_path = warehouse_dir / "warehouse.duckdb"
     if duckdb_path.exists():
-        duckdb_chmod = subprocess.run(
-            ["chmod", "770", str(duckdb_path)], check=False
-        )
+        duckdb_chmod = subprocess.run(["chmod", "770", str(duckdb_path)], check=False)
         if duckdb_chmod.returncode != 0:
             permissions_ok = False
             print(

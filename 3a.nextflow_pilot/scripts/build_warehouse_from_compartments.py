@@ -70,7 +70,9 @@ def main() -> int:
     args = parser.parse_args()
 
     if bool(args.manifests) == bool(args.image_sets_index):
-        raise SystemExit("Provide exactly one of --manifest (repeatable) or --image-sets-index")
+        raise SystemExit(
+            "Provide exactly one of --manifest (repeatable) or --image-sets-index"
+        )
 
     started = time.perf_counter()
     git_revision = git_commit(args.repo_root)
@@ -103,7 +105,9 @@ def main() -> int:
 
     compartments = [
         str(c)
-        for c in (manifests[0][1].get("compartments") or [manifests[0][1]["compartment"]])
+        for c in (
+            manifests[0][1].get("compartments") or [manifests[0][1]["compartment"]]
+        )
     ]
     unknown = sorted(set(compartments) - set(COMPARTMENTS))
     if unknown:
@@ -224,9 +228,7 @@ def main() -> int:
     # permissions failure shouldn't mask a real validation failure -- but it
     # must still fail the run, not be silently swallowed, so the return code
     # is inspected explicitly instead.
-    chmod_result = subprocess.run(
-        ["chmod", "-R", "770", str(args.outdir)], check=False
-    )
+    chmod_result = subprocess.run(["chmod", "-R", "770", str(args.outdir)], check=False)
     if chmod_result.returncode != 0:
         print(
             f"WARNING: chmod -R 770 {args.outdir} exited "
@@ -272,7 +274,9 @@ def main() -> int:
     metadata_dir = args.outdir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
     (metadata_dir / "run_record.json").write_text(json.dumps(run_record, indent=2))
-    (metadata_dir / "validation.json").write_text(json.dumps(validation_report, indent=2))
+    (metadata_dir / "validation.json").write_text(
+        json.dumps(validation_report, indent=2)
+    )
 
     # run_record.json/validation.json are themselves written after the sweep
     # above, so a second, narrower sweep catches just these two new files --
