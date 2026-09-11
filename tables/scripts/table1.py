@@ -63,12 +63,8 @@ patients = pd.read_csv(patients_file_path, header=None)[0].tolist()
 patients.remove("NF0037_T1_CQ1")
 
 table_df_save_path = pathlib.Path(
-    f"{root_dir}/figures/table2/results/table2_info.parquet"
+    f"{root_dir}/tables/results/table1_file_info.parquet"
 ).resolve()
-png_figure_path = pathlib.Path(
-    f"{root_dir}/figures/table2/figures/image_file_counts_and_size.png"
-)
-png_figure_path.parent.mkdir(parents=True, exist_ok=True)
 table_df_save_path.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -85,6 +81,12 @@ file_paths = {
 
 
 # In[5]:
+
+
+table_df_save_path
+
+
+# In[6]:
 
 
 if table_df_save_path.exists():
@@ -144,7 +146,7 @@ else:
     file_paths_df.head()
 
 
-# In[6]:
+# In[7]:
 
 
 total_size = file_paths_df["file_size_bytes"].sum()
@@ -152,7 +154,7 @@ print(f"Total size of all files: {total_size / (1024**3):.2f} GB")
 print(f"Total number of files: {len(file_paths_df)}")
 
 
-# In[7]:
+# In[8]:
 
 
 # sum and average file size by patient and channel
@@ -183,7 +185,7 @@ file_paths_df_grouped["TotalSize(TB)"] = file_paths_df_grouped["TotalSize(TB)"].
 file_paths_df_grouped.drop(columns=["total_size_bytes"], inplace=True)
 
 
-# In[8]:
+# In[9]:
 
 
 file_paths_df_grouped.rename(
@@ -194,19 +196,10 @@ file_paths_df_grouped.rename(
 )
 
 
-# In[9]:
+# In[10]:
 
 
-# save the table as a png
-
-if in_notebook:
-    import matplotlib.pyplot as plt
-    from pandas.plotting import table
-
-    fig, ax = plt.subplots(figsize=(8, 8))  # Set the size of the figure
-    ax.axis("off")  # Hide the axes
-    tbl = table(ax, file_paths_df_grouped, loc="center", cellLoc="center")
-    tbl.auto_set_font_size(False)  # Disable automatic font size
-    tbl.set_fontsize(16)  # Set a fixed font size
-    tbl.scale(1.4, 1.9)  # Scale the table to fit better
-    plt.savefig(png_figure_path, bbox_inches="tight", dpi=300)
+table1_results_path = pathlib.Path(f"{root_dir}/tables/tables/table1.tsv").resolve()
+table1_results_path.parent.mkdir(parents=True, exist_ok=True)
+file_paths_df_grouped.to_csv(table1_results_path, index=False, sep="\t")
+file_paths_df_grouped

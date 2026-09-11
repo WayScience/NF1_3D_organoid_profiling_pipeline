@@ -148,7 +148,7 @@ profile_prep_for_sage/data_for_sage/*
 # ============================================================================
 # Experiment Results
 # ============================================================================
-figures/table2/results/*
+tables/results/table1_file_info.parquet
 *Experiment*.csv
 *Rplots.pdf
 figures/montage/montages/*
