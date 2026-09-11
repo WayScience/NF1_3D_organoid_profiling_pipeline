@@ -13,6 +13,7 @@ title: 3D organoid image-based profiling
 
 readme
 libraries
+future_processing_plan
 ```
 
 ```{toctree}
@@ -26,7 +27,7 @@ features/intensity
 features/neighbors
 features/texture
 features/sammed3d
-features/chammi75
+features/morphem
 ```
 
 ```{toctree}

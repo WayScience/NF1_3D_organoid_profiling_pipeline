@@ -3,6 +3,7 @@
 git_root=$(git rev-parse --show-toplevel)
 
 if [ -d "/scratch/alpine" ]; then
+    echo "Using Alpine environment"
     ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
 elif [ -d "/anvil" ]; then
     ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
@@ -10,9 +11,7 @@ else
     ENV_PATH="$git_root/.venv"
 fi
 
-
-# shellcheck disable=SC1091
-source "$ENV_PATH"/bin/activate
+PYTHON_BIN="$ENV_PATH/bin/python3"
 
 patient=$1
 well_fov=$2
@@ -28,21 +27,21 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
 
 {
     echo "Processing well_fov $well_fov for patient $patient"
-    # uv run python scripts/4.nuclei_segmentation.py \
-    #     --patient "$patient" \
-    #     --well_fov "$well_fov" \
-    #     --input_subparent_name "$input_subparent_name" \
-    #     --mask_subparent_name "$mask_subparent_name" \
-    #     --clip_limit 0.02
+    "$PYTHON_BIN"  scripts/4.nuclei_segmentation.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name" \
+        --clip_limit 0.02
 
-    # uv run python scripts/5.cell_segmentation.py \
-    #     --patient "$patient" \
-    #     --well_fov "$well_fov" \
-    #     --clip_limit 0.03 \
-    #     --input_subparent_name "$input_subparent_name" \
-    #     --mask_subparent_name "$mask_subparent_name"
+    "$PYTHON_BIN"  scripts/5.cell_segmentation.py \
+        --patient "$patient" \
+        --well_fov "$well_fov" \
+        --clip_limit 0.03 \
+        --input_subparent_name "$input_subparent_name" \
+        --mask_subparent_name "$mask_subparent_name"
 
-    uv run python scripts/6.organoid_segmentation.py \
+    "$PYTHON_BIN"  scripts/6.organoid_segmentation.py \
         --patient "$patient" \
         --well_fov "$well_fov" \
         --clip_limit 0.03 \
@@ -52,4 +51,3 @@ log_file="$log_dir/segmentation_child_${patient}_${well_fov}.log"
     echo "Segmentation completed for well_fov $well_fov and patient $patient"
 
 } &> "$log_file"
-

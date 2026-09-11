@@ -1,0 +1,11 @@
+/.nextflow*
+/work/
+/results/
+/environments/.venv/
+__pycache__/
+*.py[cod]
+!/manifest/
+!/manifest/smoke_test_image_set.yaml
+/manifest/image_sets_index.csv
+/manifest/generated_manifest.yaml
+/staging/logs/

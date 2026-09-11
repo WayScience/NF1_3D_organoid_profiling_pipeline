@@ -197,10 +197,10 @@ Metadata_Location_Cell_CentroidX
 ### 3.1 Normative references
 
 - **RFC 2119**: key words for use in rfcs to indicate requirement levels
-  Https://www.ietf.org/rfc/rfc2119.txt
+  https://www.ietf.org/rfc/rfc2119.txt
 
 - **Apache parquet format specification**
-  Https://parquet.apache.org/docs/file-format/
+  https://parquet.apache.org/docs/file-format/
 
 ### 3.2 Informative references
 

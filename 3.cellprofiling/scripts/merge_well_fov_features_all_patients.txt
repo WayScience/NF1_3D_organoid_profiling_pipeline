@@ -1,0 +1,578 @@
+import json
+import os
+import pathlib
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from functools import reduce
+
+import pandas as pd
+import pyarrow.parquet as pq
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+
+root_dir, in_notebook = init_notebook()
+if in_notebook:
+    import tqdm.notebook as tqdm
+else:
+    import tqdm
+
+profile_base_dir = bandicoot_check(
+    pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
+    root_dir,
+)
+profile_base_dir = root_dir  # default to root_dir instead of NAS
+
+output_features_subparent_name = "extracted_features"
+logs_dir = pathlib.Path(f"{root_dir}/3.cellprofiling/logs").resolve(strict=True)
+
+MERGE_KEYS = ["object_id", "image_set"]
+COMPARTMENTS = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
+SINGLE_CELL_COMPARTMENTS = ["Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
+# object_id > 256 is the signature of the "z_slice_global" ID scheme (ids encode a
+# z-slice offset), vs. small sequential ids (1, 2, 3, ...) from the "sequential" scheme.
+OBJECT_ID_SCHEME_THRESHOLD = 256
+N_READ_WORKERS = 16
+
+PATIENTS = pd.read_csv(
+    pathlib.Path(f"{profile_base_dir}/data/patient_IDs.txt").resolve(strict=True),
+    header=None,
+    names=["patient_id"],
+).patient_id.tolist()
+# For a quick test run, uncomment and shorten:
+# PATIENTS = PATIENTS[:1]
+PATIENTS
+
+well_fov_dirs_by_patient = {}
+for patient in PATIENTS:
+    patient_dir = pathlib.Path(
+        f"{profile_base_dir}/data/{patient}/{output_features_subparent_name}"
+    )
+    if not patient_dir.is_dir():
+        print(f"Skipping {patient}: no {output_features_subparent_name} directory")
+        continue
+    well_fov_dirs_by_patient[patient] = sorted(
+        d for d in patient_dir.iterdir() if d.is_dir() and d.name != "run_stats"
+    )
+
+n_well_fovs_total = sum(len(v) for v in well_fov_dirs_by_patient.values())
+print(f"{len(well_fov_dirs_by_patient)} patients, {n_well_fovs_total} well-FOVs total")
+
+def parse_feature_filename(path: pathlib.Path) -> dict:
+    """Expected format: {Compartment}_{Channel}_{FeatureType}_{Processor}_features.parquet"""
+    parts = path.stem.split("_")
+    return {
+        "compartment": parts[0],
+        "channel": parts[1] if len(parts) > 1 else None,
+        "feature_type": parts[2] if len(parts) > 2 else None,
+        "processor": parts[-2] if len(parts) > 1 else None,
+    }
+
+def read_key_columns(task: tuple) -> dict:
+    """Read just object_id/image_set (+ mtime) for one file, capturing any error."""
+    patient, well_fov, path = task
+    result = {
+        "patient": patient,
+        "well_fov": well_fov,
+        "file_name": path.name,
+        "df": None,
+        "mtime": None,
+        "error_kind": None,
+        "error_detail": None,
+    }
+    try:
+        schema_cols = pq.ParquetFile(path).schema.names
+    except Exception as e:
+        result["error_kind"] = "read_error"
+        result["error_detail"] = str(e)
+        return result
+    missing_keys = [k for k in MERGE_KEYS if k not in schema_cols]
+    if missing_keys:
+        result["error_kind"] = "missing_merge_keys"
+        result["error_detail"] = f"missing {missing_keys}"
+        return result
+    try:
+        result["df"] = pd.read_parquet(path, columns=MERGE_KEYS)
+        result["mtime"] = path.stat().st_mtime
+    except Exception as e:
+        result["error_kind"] = "read_error"
+        result["error_detail"] = str(e)
+        result["df"] = None
+    return result
+
+all_tasks = [
+    (patient, well_fov_dir.name, f)
+    for patient, well_fov_dirs in well_fov_dirs_by_patient.items()
+    for well_fov_dir in well_fov_dirs
+    for f in well_fov_dir.glob("*.parquet")
+]
+print(f"{len(all_tasks)} files to read across {len(well_fov_dirs_by_patient)} patients")
+
+with ThreadPoolExecutor(max_workers=N_READ_WORKERS) as pool:
+    file_results = list(
+        tqdm.tqdm(
+            pool.map(read_key_columns, all_tasks),
+            total=len(all_tasks),
+            desc="Reading object_id/image_set columns",
+        )
+    )
+
+files_by_well_fov = defaultdict(list)
+for r in file_results:
+    files_by_well_fov[(r["patient"], r["well_fov"])].append(r)
+
+file_counts_by_patient = defaultdict(list)
+for (patient, well_fov), results in files_by_well_fov.items():
+    file_counts_by_patient[patient].append(len(results))
+
+expected_n_files_by_patient = {
+    patient: (
+        pd.Series([c for c in counts if c > 0]).mode().iloc[0]
+        if any(c > 0 for c in counts)
+        else 0
+    )
+    for patient, counts in file_counts_by_patient.items()
+}
+pd.Series(expected_n_files_by_patient, name="expected_n_files").sort_index()
+
+def process_well_fov(
+    patient: str, well_fov: str, expected_n_files: int
+) -> tuple[dict, list[dict], list[dict]]:
+    """Attempt to merge one well-FOV's cached feature-file reads per compartment."""
+    results = files_by_well_fov[(patient, well_fov)]
+    issues = []
+    rerun_rows = []
+
+    def log_issue(kind, detail):
+        issues.append(
+            {
+                "patient": patient,
+                "well_fov": well_fov,
+                "issue_type": kind,
+                "detail": detail,
+            }
+        )
+
+    if len(results) == 0:
+        log_issue("no_files_found", "0 parquet files found for this well-FOV")
+        return (
+            {
+                "patient": patient,
+                "well_fov": well_fov,
+                "n_files_found": 0,
+                "n_files_expected": expected_n_files,
+                "file_count_mismatch": False,
+                "no_files_found": True,
+                "n_issues": len(issues),
+                "n_read_errors": 0,
+                "n_merge_errors": 0,
+                "n_merge_blowups": 0,
+                "n_duplicate_object_id_files": 0,
+                "n_files_to_rerun": 0,
+                "files_to_rerun": [],
+                "n_recency_vote_conflicts": 0,
+                "object_ids_aligned_across_compartments": None,
+                "compartments_present": [],
+                "compartment_row_counts": {},
+            },
+            issues,
+            rerun_rows,
+        )
+
+    if len(results) != expected_n_files:
+        log_issue(
+            "file_count_mismatch",
+            f"found {len(results)} files, expected {expected_n_files} "
+            f"(this patient's mode)",
+        )
+
+    per_compartment_dfs = {c: [] for c in COMPARTMENTS}
+    for r in results:
+        if r["error_kind"] is not None:
+            log_issue(r["error_kind"], f"{r['file_name']}: {r['error_detail']}")
+            continue
+        meta = parse_feature_filename(pathlib.Path(r["file_name"]))
+        compartment = meta["compartment"]
+        if compartment not in COMPARTMENTS:
+            log_issue(
+                "unknown_compartment", f"{r['file_name']}: compartment '{compartment}'"
+            )
+            continue
+        df = r["df"]
+        if df["object_id"].duplicated().any():
+            n_dupes = int(df["object_id"].duplicated().sum())
+            log_issue(
+                "duplicate_object_id_in_file",
+                f"{r['file_name']}: {n_dupes} duplicate object_id rows",
+            )
+        per_compartment_dfs[compartment].append((r["file_name"], df, r["mtime"]))
+
+    compartment_shapes = {}
+    for compartment, items in per_compartment_dfs.items():
+        if not items:
+            continue
+        names = [n for n, _, _ in items]
+        dfs = [d for _, d, _ in items]
+        union_n_objects = len(set().union(*(set(d["object_id"]) for d in dfs)))
+        try:
+            merged = reduce(
+                lambda left, right: pd.merge(left, right, on=MERGE_KEYS, how="outer"),
+                dfs,
+            )
+        except Exception as e:
+            log_issue("merge_error", f"{compartment} ({names}): {e}")
+            continue
+        compartment_shapes[compartment] = merged.shape
+        if merged.shape[0] > union_n_objects:
+            log_issue(
+                "merge_blowup",
+                f"{compartment}: merged to {merged.shape[0]} rows, but the union of "
+                f"object_id values across its {len(dfs)} input files is only "
+                f"{union_n_objects} — a merge key was duplicated somewhere",
+            )
+
+        id_groups = defaultdict(list)
+        for name, df, mtime in items:
+            id_groups[frozenset(df["object_id"])].append((name, mtime))
+        groups = [
+            {
+                "ids": ids,
+                "files": [n for n, _ in entries],
+                "n_files": len(entries),
+                "n_objects": len(ids),
+                "max_mtime": max(m for _, m in entries),
+            }
+            for ids, entries in id_groups.items()
+        ]
+        if len(groups) > 1:
+            groups_by_recency = sorted(groups, key=lambda g: -g["max_mtime"])
+            reference = groups_by_recency[0]
+            vote_majority = max(groups, key=lambda g: g["n_files"])
+            heuristic_conflict = reference["files"] != vote_majority["files"]
+            if heuristic_conflict:
+                log_issue(
+                    "recency_vs_vote_conflict",
+                    f"{compartment}: the most-recently-regenerated file group "
+                    f"({reference['n_files']} file(s), {reference['n_objects']} objects, "
+                    f"last modified {datetime.fromtimestamp(reference['max_mtime'])}) is "
+                    f"NOT the group with the most files ({vote_majority['n_files']} "
+                    f"file(s), {vote_majority['n_objects']} objects, last modified "
+                    f"{datetime.fromtimestamp(vote_majority['max_mtime'])})",
+                )
+            for group in groups_by_recency[1:]:
+                log_issue(
+                    "file_object_id_group_split",
+                    f"{compartment}: {sorted(group['files'])} have a "
+                    f"{group['n_objects']}-object_id set that is stale relative to the "
+                    f"most-recently-regenerated group of {reference['n_files']} file(s) "
+                    f"with {reference['n_objects']} object_ids",
+                )
+                for name in group["files"]:
+                    # group["ids"] can be empty: a file can legitimately have zero
+                    # detected objects (e.g. no cells passed QC for that channel).
+                    min_object_id = int(min(group["ids"])) if group["ids"] else None
+                    if min_object_id is None:
+                        id_scheme_suspected = "empty_object_id_set"
+                    elif min_object_id > OBJECT_ID_SCHEME_THRESHOLD:
+                        id_scheme_suspected = "z_slice_global"
+                    else:
+                        id_scheme_suspected = "sequential"
+                    rerun_rows.append(
+                        {
+                            "patient": patient,
+                            "well_fov": well_fov,
+                            "compartment": compartment,
+                            "file_name": name,
+                            "group_n_files": group["n_files"],
+                            "group_n_objects": group["n_objects"],
+                            "group_last_modified": datetime.fromtimestamp(
+                                group["max_mtime"]
+                            ).isoformat(),
+                            "reference_n_files": reference["n_files"],
+                            "reference_n_objects": reference["n_objects"],
+                            "reference_last_modified": datetime.fromtimestamp(
+                                reference["max_mtime"]
+                            ).isoformat(),
+                            "vote_majority_would_pick_this_group": (
+                                group["files"] == vote_majority["files"]
+                            ),
+                            "min_object_id": min_object_id,
+                            "id_scheme_suspected": id_scheme_suspected,
+                        }
+                    )
+
+    id_sets = {
+        c: set(pd.concat([d for _, d, _ in per_compartment_dfs[c]])["object_id"])
+        for c in SINGLE_CELL_COMPARTMENTS
+        if per_compartment_dfs[c]
+    }
+    aligned = None
+    if len(id_sets) > 1:
+        reference_compartment, reference_ids = next(iter(id_sets.items()))
+        aligned = True
+        for compartment, ids in id_sets.items():
+            if ids != reference_ids:
+                aligned = False
+                log_issue(
+                    "object_id_misalignment",
+                    f"{compartment} vs {reference_compartment}: "
+                    f"only-in-{compartment}={sorted(ids - reference_ids)[:10]}, "
+                    f"only-in-{reference_compartment}={sorted(reference_ids - ids)[:10]}",
+                )
+
+    summary = {
+        "patient": patient,
+        "well_fov": well_fov,
+        "n_files_found": len(results),
+        "n_files_expected": expected_n_files,
+        "file_count_mismatch": len(results) != expected_n_files,
+        "no_files_found": False,
+        "n_issues": len(issues),
+        "n_read_errors": sum(i["issue_type"] == "read_error" for i in issues),
+        "n_merge_errors": sum(i["issue_type"] == "merge_error" for i in issues),
+        "n_merge_blowups": sum(i["issue_type"] == "merge_blowup" for i in issues),
+        "n_duplicate_object_id_files": sum(
+            i["issue_type"] == "duplicate_object_id_in_file" for i in issues
+        ),
+        "n_files_to_rerun": len(rerun_rows),
+        "files_to_rerun": sorted(r["file_name"] for r in rerun_rows),
+        "n_recency_vote_conflicts": sum(
+            i["issue_type"] == "recency_vs_vote_conflict" for i in issues
+        ),
+        "object_ids_aligned_across_compartments": aligned,
+        "compartments_present": sorted(compartment_shapes.keys()),
+        "compartment_row_counts": {c: s[0] for c, s in compartment_shapes.items()},
+    }
+    return summary, issues, rerun_rows
+
+summaries = []
+all_issues = []
+all_rerun_rows = []
+well_fov_keys = [
+    (patient, well_fov_dir.name)
+    for patient, well_fov_dirs in well_fov_dirs_by_patient.items()
+    for well_fov_dir in well_fov_dirs
+]
+for patient, well_fov in tqdm.tqdm(
+    well_fov_keys, desc="Merging all patients' well-FOVs"
+):
+    summary, issues, rerun_rows = process_well_fov(
+        patient, well_fov, expected_n_files_by_patient[patient]
+    )
+    summaries.append(summary)
+    all_issues.extend(issues)
+    all_rerun_rows.extend(rerun_rows)
+
+summary_df = pd.DataFrame(summaries)
+issues_df = pd.DataFrame(
+    all_issues, columns=["patient", "well_fov", "issue_type", "detail"]
+)
+rerun_df = pd.DataFrame(
+    all_rerun_rows,
+    columns=[
+        "patient",
+        "well_fov",
+        "compartment",
+        "file_name",
+        "group_n_files",
+        "group_n_objects",
+        "group_last_modified",
+        "reference_n_files",
+        "reference_n_objects",
+        "reference_last_modified",
+        "vote_majority_would_pick_this_group",
+        "min_object_id",
+        "id_scheme_suspected",
+    ],
+)
+print(
+    f"{len(summary_df)} well-FOVs processed across {len(PATIENTS)} patients, "
+    f"{len(issues_df)} issues logged, {len(rerun_df)} files flagged to rerun"
+)
+
+summary_out_path = logs_dir / "well_fov_feature_merge_summary_all_patients.csv"
+issues_out_path = logs_dir / "well_fov_feature_merge_issues_all_patients.csv"
+rerun_out_path = logs_dir / "well_fov_files_to_rerun_all_patients.csv"
+
+csv_summary_df = summary_df.copy()
+for col in ["compartments_present", "compartment_row_counts", "files_to_rerun"]:
+    csv_summary_df[col] = csv_summary_df[col].apply(json.dumps)
+csv_summary_df.to_csv(summary_out_path, index=False)
+issues_df.to_csv(issues_out_path, index=False)
+rerun_df.to_csv(rerun_out_path, index=False)
+
+print(f"Wrote {summary_out_path}")
+print(f"Wrote {issues_out_path}")
+print(f"Wrote {rerun_out_path}")
+
+n_well_fovs = len(summary_df)
+n_no_files = int(summary_df["no_files_found"].sum())
+n_file_count_mismatch = int(summary_df["file_count_mismatch"].sum())
+n_with_issues = int((summary_df["n_issues"] > 0).sum())
+n_misaligned = int(
+    (summary_df["object_ids_aligned_across_compartments"] == False).sum()
+)
+n_well_fovs_with_files_to_rerun = int((summary_df["n_files_to_rerun"] > 0).sum())
+n_well_fovs_with_recency_vote_conflicts = int(
+    (summary_df["n_recency_vote_conflicts"] > 0).sum()
+)
+n_read_errors = int(summary_df["n_read_errors"].sum())
+n_merge_errors = int(summary_df["n_merge_errors"].sum())
+n_merge_blowups = int(summary_df["n_merge_blowups"].sum())
+
+issue_type_counts = (
+    issues_df["issue_type"].value_counts() if len(issues_df) else pd.Series(dtype=int)
+)
+
+print(f"Well-FOVs processed:                {n_well_fovs}")
+print(f"Well-FOVs with zero files found:    {n_no_files}")
+print(f"Well-FOVs with >=1 issue:           {n_with_issues}")
+print(f"Well-FOVs with file count mismatch: {n_file_count_mismatch}")
+print(f"Well-FOVs with object-ID misalignment across compartments: {n_misaligned}")
+print(
+    f"Well-FOVs with specific files flagged to rerun: {n_well_fovs_with_files_to_rerun}"
+)
+print(f"Total individual files flagged to rerun: {len(rerun_df)}")
+print(
+    "Well-FOVs where file-count majority-vote would have picked the stale group: "
+    f"{n_well_fovs_with_recency_vote_conflicts}"
+)
+print(f"Total read errors:  {n_read_errors}")
+print(f"Total merge errors: {n_merge_errors}")
+print(f"Total merge blow-ups: {n_merge_blowups}")
+print()
+print("Issue counts by type:")
+issue_type_counts
+
+per_patient_summary = (
+    summary_df.groupby("patient")
+    .agg(
+        n_well_fovs=("well_fov", "count"),
+        n_no_files=("no_files_found", "sum"),
+        n_file_count_mismatch=("file_count_mismatch", "sum"),
+        n_with_issues=("n_issues", lambda s: (s > 0).sum()),
+        n_files_to_rerun=("n_files_to_rerun", "sum"),
+        n_recency_vote_conflicts=("n_recency_vote_conflicts", "sum"),
+    )
+    .reset_index()
+)
+per_patient_summary["expected_n_files"] = per_patient_summary["patient"].map(
+    expected_n_files_by_patient
+)
+per_patient_summary
+
+rerun_df.sort_values(["patient", "well_fov", "compartment", "file_name"]).reset_index(
+    drop=True
+)
+
+summary_df.loc[
+    summary_df["object_ids_aligned_across_compartments"] == False,
+    ["patient", "well_fov", "compartments_present", "compartment_row_counts"],
+]
+
+worst_offenders = summary_df.sort_values("n_issues", ascending=False).loc[
+    summary_df["n_issues"] > 0,
+    [
+        "patient",
+        "well_fov",
+        "n_issues",
+        "file_count_mismatch",
+        "object_ids_aligned_across_compartments",
+        "n_files_to_rerun",
+    ],
+]
+
+conflict_rerun_df = rerun_df.loc[
+    rerun_df["vote_majority_would_pick_this_group"]
+].sort_values(["patient", "well_fov", "compartment", "file_name"])
+
+report_lines = [
+    "# Feature Merge QC Report — All Patients",
+    "",
+    f"Generated across {len(PATIENTS)} patients from "
+    f"`{profile_base_dir}/data/{{patient}}/{output_features_subparent_name}`.",
+    "",
+    "## Summary",
+    "",
+    f"- Well-FOVs processed: **{n_well_fovs}**",
+    f"- Well-FOVs with zero files found: **{n_no_files}**",
+    f"- Well-FOVs with at least one issue: **{n_with_issues}**",
+    f"- Well-FOVs with a file-count mismatch (vs. that patient's own expected count): "
+    f"**{n_file_count_mismatch}**",
+    f"- Well-FOVs with object-ID misalignment across compartments: **{n_misaligned}**",
+    f"- Well-FOVs with specific files flagged to rerun: **{n_well_fovs_with_files_to_rerun}**",
+    f"- Total individual files flagged to rerun: **{len(rerun_df)}**",
+    f"- Well-FOVs where a naive file-count majority vote would have picked the "
+    f"*stale* group instead of the most-recently-regenerated one: "
+    f"**{n_well_fovs_with_recency_vote_conflicts}**",
+    f"- Total read errors: **{n_read_errors}**",
+    f"- Total merge errors: **{n_merge_errors}**",
+    f"- Total merge blow-ups: **{n_merge_blowups}**",
+    "",
+    "## Per-patient breakdown",
+    "",
+    per_patient_summary.to_markdown(index=False),
+    "",
+    "## Issue counts by type",
+    "",
+    issue_type_counts.to_frame("count").to_markdown()
+    if len(issue_type_counts)
+    else "_No issues found._",
+    "",
+    "## Well-FOVs with zero files found",
+    "",
+    summary_df.loc[summary_df["no_files_found"], ["patient", "well_fov"]].to_markdown(
+        index=False
+    )
+    if n_no_files
+    else "_None._",
+    "",
+    "## Files where a file-count majority vote would have picked the stale group",
+    "",
+    conflict_rerun_df[
+        [
+            "patient",
+            "well_fov",
+            "compartment",
+            "file_name",
+            "group_n_files",
+            "group_last_modified",
+            "reference_n_files",
+            "reference_last_modified",
+        ]
+    ].to_markdown(index=False)
+    if len(conflict_rerun_df)
+    else "_None._",
+    "",
+    "## Well-FOVs with the most issues (top 30)",
+    "",
+    worst_offenders.head(30).to_markdown(index=False)
+    if len(worst_offenders)
+    else "_None._",
+    "",
+    "## Notes",
+    "",
+    "- Full per-file rerun detail is in `well_fov_files_to_rerun_all_patients.csv`; full",
+    "  per-issue detail is in `well_fov_feature_merge_issues_all_patients.csv`.",
+    '- The reference ("correct") file group within a compartment is chosen by file',
+    "  recency (mtime), not file count — see the per-patient counts of",
+    "  `recency_vs_vote_conflict` above for where that distinction actually mattered.",
+    "- `Organoid` is excluded from the cross-compartment object-ID alignment check; it's",
+    "  a distinct feature space (one row per whole organoid) with its own object-ID",
+    "  space that isn't expected to match the single-cell compartments.",
+    "- Each patient's expected file count is that patient's own mode file count across",
+    "  its well-FOVs (excluding zero-file well-FOVs) — patients can have different",
+    "  channel/feature-type combinations, so a single global expected count doesn't",
+    "  generalize across patients.",
+]
+
+report_text = "\n".join(report_lines)
+report_out_path = logs_dir / "well_fov_feature_merge_report_all_patients.md"
+report_out_path.write_text(report_text)
+print(f"Wrote {report_out_path}")
+
+from IPython.display import Markdown, display
+
+display(Markdown(report_text))

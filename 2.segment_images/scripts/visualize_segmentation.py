@@ -58,8 +58,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T2"
-    well_fov = "D7-7"
+    patient = "NF0055_T1"
+    well_fov = "G7-2"
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
 image_dir = pathlib.Path(

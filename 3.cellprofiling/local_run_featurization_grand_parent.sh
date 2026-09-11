@@ -6,7 +6,6 @@ if [ -z "$git_root" ]; then
     exit 1
 fi
 
-jupyter nbconvert --to=script --FilesWriter.build_directory=scripts/ notebooks/*.ipynb
 
 txt_file="${git_root}/3.cellprofiling/load_data/load_combinations.txt"
 
@@ -47,7 +46,7 @@ while IFS= read -r line; do
         "$mask_subparent_name" \
         "$output_features_subparent_name"
 
-# done < <(tac "$txt_file")
-done < "$txt_file"
+done < <(tac "$txt_file")
+# done < "$txt_file"
 
 echo "Featurization done"

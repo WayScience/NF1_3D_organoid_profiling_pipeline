@@ -381,7 +381,8 @@ def collapse_labels_from_paths(
     # Relabel each 2D mask
     relabeled_masks = []
     for z, mask in enumerate(input_masks):
-        new_mask = np.zeros_like(mask)
+        # make the new_mask 16-bit to avoid overflow errors
+        new_mask = np.zeros_like(mask, dtype=np.uint16)
 
         unique_ids = np.unique(mask)
         unique_ids = unique_ids[unique_ids > 0]

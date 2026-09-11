@@ -12,6 +12,7 @@ echo "SAMMed3D Deep Learning feature extraction for patient: $patient, WellFOV: 
 git_root=$(git rev-parse --show-toplevel)
 
 if [ -d "/scratch/alpine" ]; then
+    echo "Using Alpine environment"
     ENV_PATH="/projects/mlippincott@xsede.org/software/uv/envs/nf1_uv_env/.venv"
 elif [ -d "/anvil" ]; then
     ENV_PATH="/anvil/projects/x-bio260064/software/uv/envs/nf1_uv_env/.venv"
@@ -19,12 +20,13 @@ else
     ENV_PATH="$git_root/.venv"
 fi
 
+PYTHON_BIN="$ENV_PATH/bin/python3"
 
-# shellcheck disable=SC1091
-source "$ENV_PATH"/bin/activate
+# shellcheck disable=SC2155
+export SSL_CERT_FILE=$("$PYTHON_BIN" -c "import certifi; print(certifi.where())")
+export REQUESTS_CA_BUNDLE=$SSL_CERT_FILE
 
-
-uv run python "$git_root"/3.cellprofiling/scripts/dl_features.py \
+"$PYTHON_BIN" "$git_root"/3.cellprofiling/scripts/dl_features.py \
     --patient "$patient" \
     --well_fov "$well_fov" \
     --compartment "$compartment" \
