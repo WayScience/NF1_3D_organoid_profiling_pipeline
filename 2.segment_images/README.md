@@ -24,9 +24,9 @@ The long answer is the methods used which I will describe in more detail below.
 ## The workflow (what we do, why we do it, and how we do it)
 
 1. Establishing diverging gross morphology segmentation pipelines depending on the whole field of view (FOV) morphology.
-   - We featurize the entire FOV using pre-trained vit models (sammed3d and CHAMMI-75).
+   - We featurize the entire FOV using pre-trained vit models (sammed3d and morphem).
      - Sammed3d returns 384 features per channel, per volumetric FOV.
-     - CHAMMI-75 returns 75 features per channel, per z-maximum projection of the FOV.
+     - morphem returns 75 features per channel, per z-maximum projection of the FOV.
    - We train a logistic regression classifier to classify the fovs into seven (7) morphological classes based on the features extracted from the fovs.
      - The seven classes were manually annotated by looking at the fovs and categorizing them based on their morphology.
      - The seven classes are:

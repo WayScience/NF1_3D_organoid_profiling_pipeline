@@ -1,0 +1,774 @@
+#!/usr/bin/env bash
+#
+# nf1-nextflow-pilot -- single entry point for the 3a ZEDProfiler pilot's
+# non-Nextflow plumbing: environment checks (check/doctor), preflight
+# capacity checks, clearing a run's output, a no-Nextflow synthetic-data
+# smoke test, and running or submitting the real workflow
+# (workflows/featurize_image_set.nf) either directly (`run`) or as a Slurm
+# coordinator job (`submit`, writes and sbatches coordinator.sbatch).
+# `make <target>` wraps every subcommand below with the pilot's default
+# paths/resource knobs -- see the repo-root Makefile.
+#
+# Usage, environment variables, and Make targets: run with no arguments,
+# `--help`, or see usage() just below.
+#
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYENV_VERSION="${PYENV_VERSION:-system}"
+
+PILOT_DB_ROOT=""
+if PILOT_DB_ROOT="$(cd "$ROOT_DIR/../.." 2>/dev/null && pwd)"; then
+  :
+fi
+if [[ -z "${JAVA_HOME:-}" && -n "$PILOT_DB_ROOT" && -x "$PILOT_DB_ROOT/tools/jdk-21/bin/java" ]]; then
+  export JAVA_HOME="$PILOT_DB_ROOT/tools/jdk-21"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+if ! command -v uv >/dev/null 2>&1 && [[ -x "/projects/${USER:-}/software/uv/bin/uv" ]]; then
+  export PATH="/projects/${USER}/software/uv/bin:$PATH"
+fi
+
+usage() {
+  cat <<'USAGE'
+nf1-nextflow-pilot
+
+Usage:
+  bin/nf1-nextflow-pilot check
+  bin/nf1-nextflow-pilot doctor
+  bin/nf1-nextflow-pilot preflight [--run-id ID] [--results-root PATH] [--account NAME] [--partition NAME] [--qos NAME]
+  bin/nf1-nextflow-pilot clear-output --run-id ID [--results-root PATH] [--dry-run]
+  bin/nf1-nextflow-pilot smoke [--run-id ID]
+  bin/nf1-nextflow-pilot run (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--profile PROFILE] [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION]
+  bin/nf1-nextflow-pilot submit (--manifest PATH | --image-sets PATH,PATH,... | --image-sets-index CSV --source-root PATH) [--run-id ID] [--results-root PATH] [--uv-project-environment PATH] [--feature-cpus N] [--feature-memory SIZE] [--feature-time DURATION] [--account NAME] [--partition NAME] [--qos NAME] [--submit-host HOST] [--dry-run]
+
+  --manifest, --image-sets, and --image-sets-index are mutually exclusive.
+  --image-sets takes a comma-separated list of manifest paths, one per
+  image set. --image-sets-index takes a CSV of patient,well_fov rows (see
+  scripts/build_image_sets_index.py) and derives each manifest on the fly
+  via build_manifest() instead of reading one YAML file per image set --
+  the intended path for large batches (hundreds to thousands of image
+  sets), where per-image-set YAML files are mostly duplicate content.
+  Either way, every image set fans out into one shared warehouse.
+
+Common Make targets:
+  make check
+  make doctor
+  make clear-output RUN_ID=<experiment-id>
+  make build-manifest
+  make build-image-sets-index SOURCE_ROOT=<path> INDEX_OUTPUT=<path>
+  make run PROFILE=curc_alpine
+  make submit-dry-run ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+  make submit ACCOUNT=<allocation> SUBMIT_HOST=Persistence1
+
+Environment:
+  NF1_PILOT_NEXTFLOW_MODULE   Optional module loaded in coordinator jobs. Default: none.
+  NF1_PILOT_NEXTFLOW_BIN      Nextflow executable. Default: nextflow or .nextflow/nextflow.
+  NF1_PILOT_ENV_PROJECT       uv project used inside feature tasks. Default: 3a.nextflow_pilot/environments.
+  NF1_PILOT_UV_ENVIRONMENT    Shared uv virtualenv for worker tasks. submit default: <results-parent>/tools/zedprofiler-uv-env.
+  NF1_PILOT_RESULTS_ROOT      Run artifact root. Default: /pl/active/koala/nf1-3d-pilot-workflow-db/results.
+  NF1_PILOT_SCRATCH           Shared scratch root. Default: /scratch/alpine/$USER.
+  NF1_PILOT_PROJECT           Project/cache root. Default: /projects/$USER.
+USAGE
+}
+
+run_id() {
+  date -u +"%Y%m%dT%H%M%SZ"
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+nextflow_cmd() {
+  if [[ -n "${NF1_PILOT_NEXTFLOW_BIN:-}" ]]; then
+    printf '%s\n' "$NF1_PILOT_NEXTFLOW_BIN"
+  elif [[ -x "$ROOT_DIR/.nextflow/nextflow" ]]; then
+    printf '%s\n' "$ROOT_DIR/.nextflow/nextflow"
+  else
+    printf '%s\n' "nextflow"
+  fi
+}
+
+validate_name() {
+  local label="$1"
+  local value="$2"
+  if [[ -n "$value" && ! "$value" =~ ^[A-Za-z0-9_.@:+-]+$ ]]; then
+    echo "$label contains unsupported characters: $value" >&2
+    exit 2
+  fi
+}
+
+validate_positive_int() {
+  local label="$1"
+  local value="$2"
+  local max="$3"
+  if [[ ! "$value" =~ ^[0-9]+$ || "$value" -lt 1 || "$value" -gt "$max" ]]; then
+    echo "$label must be an integer from 1 to $max" >&2
+    exit 2
+  fi
+}
+
+trim() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+# Resolves --manifest, --image-sets, or --image-sets-index (+ --source-root)
+# to absolute paths, validating existence and (for --image-sets)
+# duplicate-slug collisions. Sets exactly one of RESOLVED_MANIFEST /
+# RESOLVED_IMAGE_SETS / RESOLVED_IMAGE_SETS_INDEX (with RESOLVED_SOURCE_ROOT
+# alongside the index case).
+resolve_image_set_source() {
+  local manifest="$1"
+  local image_sets="$2"
+  local image_sets_index="$3"
+  local source_root="$4"
+  RESOLVED_MANIFEST=""
+  RESOLVED_IMAGE_SETS=""
+  RESOLVED_IMAGE_SETS_INDEX=""
+  RESOLVED_SOURCE_ROOT=""
+
+  local given=0
+  [[ -n "$manifest" ]] && given=$((given + 1))
+  [[ -n "$image_sets" ]] && given=$((given + 1))
+  [[ -n "$image_sets_index" ]] && given=$((given + 1))
+  if [[ "$given" -gt 1 ]]; then
+    echo "--manifest, --image-sets, and --image-sets-index are mutually exclusive" >&2
+    exit 2
+  fi
+
+  if [[ -n "$image_sets_index" ]]; then
+    if [[ -z "$source_root" ]]; then
+      echo "--source-root is required with --image-sets-index" >&2
+      exit 2
+    fi
+    if [[ ! -f "$image_sets_index" && ! -f "$ROOT_DIR/$image_sets_index" ]]; then
+      echo "Image-sets index not found: $image_sets_index" >&2
+      exit 2
+    fi
+    if [[ ! -f "$image_sets_index" ]]; then
+      image_sets_index="$ROOT_DIR/$image_sets_index"
+    fi
+    RESOLVED_IMAGE_SETS_INDEX="$image_sets_index"
+    RESOLVED_SOURCE_ROOT="$source_root"
+    return 0
+  fi
+
+  if [[ -n "$image_sets" ]]; then
+    local IFS=','
+    local -a raw_paths=($image_sets)
+    unset IFS
+    local -a resolved=()
+    local -a slugs=()
+    local p slug existing
+    for p in "${raw_paths[@]}"; do
+      p="$(trim "$p")"
+      if [[ -z "$p" ]]; then
+        continue
+      fi
+      if [[ ! -f "$p" && ! -f "$ROOT_DIR/$p" ]]; then
+        echo "Image-set manifest not found: $p" >&2
+        exit 2
+      fi
+      if [[ ! -f "$p" ]]; then
+        p="$ROOT_DIR/$p"
+      fi
+      slug="$(basename "$p")"
+      slug="${slug%.*}"
+      for existing in ${slugs[@]+"${slugs[@]}"}; do
+        if [[ "$existing" == "$slug" ]]; then
+          echo "Duplicate image-set slug derived from manifest filenames: $slug" >&2
+          exit 2
+        fi
+      done
+      slugs+=("$slug")
+      resolved+=("$p")
+    done
+    if [[ "${#resolved[@]}" -eq 0 ]]; then
+      echo "--image-sets given but no valid manifest paths found" >&2
+      exit 2
+    fi
+    RESOLVED_IMAGE_SETS="$(IFS=,; echo "${resolved[*]}")"
+    return 0
+  fi
+
+  if [[ -z "$manifest" ]]; then
+    echo "--manifest, --image-sets, or --image-sets-index is required" >&2
+    exit 2
+  fi
+  if [[ ! -f "$manifest" && ! -f "$ROOT_DIR/$manifest" ]]; then
+    echo "Manifest not found: $manifest" >&2
+    exit 2
+  fi
+  if [[ ! -f "$manifest" ]]; then
+    manifest="$ROOT_DIR/$manifest"
+  fi
+  RESOLVED_MANIFEST="$manifest"
+}
+
+run_capture() {
+  local output="$1"
+  shift
+  {
+    printf '$'
+    printf ' %q' "$@"
+    printf '\n'
+    "$@"
+  } > "$output" 2>&1 || {
+    local status=$?
+    printf '\nexit_status: %s\n' "$status" >> "$output"
+    return 0
+  }
+}
+
+check_repo() {
+  local failed=0
+  local required=(
+    "Makefile"
+    "PLAN.md"
+    "nextflow.config"
+    "bin/nf1-nextflow-pilot"
+    "conf/base.config"
+    "conf/curc_alpine.config"
+    "environments/pyproject.toml"
+    "environments/zedprofiler-uv.md"
+    "README.md"
+    "manifest/nf0055_b10_1_alpine.yaml"
+    "manifest/smoke_test_image_set.yaml"
+    "scripts/build_duckdb_views.py"
+    "scripts/build_image_sets_index.py"
+    "scripts/build_manifest.py"
+    "scripts/build_warehouse_from_compartments.py"
+    "scripts/manifest_io.py"
+    "scripts/run_zedprofiler_image_set.py"
+    "scripts/smoke_synthetic.py"
+    "workflows/featurize_image_set.nf"
+  )
+
+  echo "NF1 Nextflow pilot check"
+  for path in "${required[@]}"; do
+    if [[ -e "$ROOT_DIR/$path" ]]; then
+      echo "ok: $path"
+    else
+      echo "missing: $path" >&2
+      failed=1
+    fi
+  done
+
+  bash -n "$ROOT_DIR/bin/nf1-nextflow-pilot" || failed=1
+  python3 -m py_compile \
+    "$ROOT_DIR/scripts/build_duckdb_views.py" \
+    "$ROOT_DIR/scripts/build_image_sets_index.py" \
+    "$ROOT_DIR/scripts/build_manifest.py" \
+    "$ROOT_DIR/scripts/build_warehouse_from_compartments.py" \
+    "$ROOT_DIR/scripts/manifest_io.py" \
+    "$ROOT_DIR/scripts/run_zedprofiler_image_set.py" \
+    "$ROOT_DIR/scripts/smoke_synthetic.py" || failed=1
+
+  mkdir -p "$ROOT_DIR/results"
+  if [[ -w "$ROOT_DIR/results" ]]; then
+    echo "ok: results directory writable"
+  else
+    echo "not writable: results" >&2
+    failed=1
+  fi
+
+  return "$failed"
+}
+
+default_results_root() {
+  printf '%s\n' "${NF1_PILOT_RESULTS_ROOT:-/pl/active/koala/nf1-3d-pilot-workflow-db/results}"
+}
+
+clear_output() {
+  local id="$1"
+  local results_root="$2"
+  local dry_run="$3"
+  local outdir="$results_root/$id"
+
+  validate_name "run-id" "$id"
+
+  if [[ -z "$results_root" || "$results_root" == "/" ]]; then
+    echo "results-root is too broad: ${results_root:-<empty>}" >&2
+    exit 2
+  fi
+  if [[ -z "$id" ]]; then
+    echo "--run-id is required for clear-output" >&2
+    exit 2
+  fi
+  if [[ "$outdir" == "$results_root" || "$outdir" == "/" ]]; then
+    echo "refusing to clear unsafe output path: $outdir" >&2
+    exit 2
+  fi
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo "Dry run: would remove $outdir"
+    return 0
+  fi
+
+  rm -rf -- "$outdir"
+  mkdir -p "$results_root"
+  echo "Cleared run output: $outdir"
+}
+
+preflight() {
+  local id="$1"
+  local account="$2"
+  local partition="$3"
+  local qos="$4"
+  local results_root="$5"
+  local outdir="$results_root/$id/preflight"
+
+  validate_name "run-id" "$id"
+  validate_name "account" "$account"
+  validate_name "partition" "$partition"
+  validate_name "qos" "$qos"
+
+  mkdir -p "$outdir"
+  {
+    echo "run_id: $id"
+    echo "created_utc: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "repo: $ROOT_DIR"
+    echo "host: $(hostname 2>/dev/null || true)"
+    echo "user: ${USER:-}"
+    echo "pwd: $(pwd)"
+    echo "account: $account"
+    echo "partition: $partition"
+    echo "qos: $qos"
+    echo "git_commit: $(git -C "$ROOT_DIR/.." rev-parse --short HEAD 2>/dev/null || true)"
+  } > "$outdir/summary.txt"
+
+  env | sort > "$outdir/environment.txt"
+  run_capture "$outdir/python-version.txt" python3 --version
+  run_capture "$outdir/nextflow-version.txt" "$(nextflow_cmd)" -version
+  run_capture "$outdir/uv-version.txt" uv --version
+
+  if have sinfo; then
+    run_capture "$outdir/sinfo-target-partition.txt" sinfo -p "$partition" -o "%P|%a|%l|%D|%t|%c|%m|%f|%G"
+  fi
+  if have squeue; then
+    run_capture "$outdir/squeue-user.txt" squeue -u "${USER:-}" -o "%.18i %.9P %.30j %.8u %.2t %.10M %.10l %.6D %R"
+  fi
+  if have sbatch; then
+    run_capture "$outdir/sbatch-version.txt" sbatch --version
+  fi
+  if have sacct; then
+    run_capture "$outdir/sacct-version.txt" sacct --version
+  fi
+  if type module >/dev/null 2>&1; then
+    module -t list > "$outdir/modules-loaded.txt" 2>&1 || true
+    module -t avail nextflow > "$outdir/modules-nextflow.txt" 2>&1 || true
+  fi
+
+  echo "Preflight written to $outdir"
+}
+
+collect_slurm_accounting() {
+  local outdir="$1"
+  local trace="$outdir/trace.tsv"
+  local slurm="$outdir/slurm.tsv"
+
+  if ! have sacct || [[ ! -f "$trace" ]]; then
+    return 0
+  fi
+
+  python3 - "$trace" "$slurm.jobs" <<'PY'
+import csv
+import sys
+
+trace_path, jobs_path = sys.argv[1:3]
+jobs = []
+with open(trace_path, newline="") as handle:
+    reader = csv.DictReader(handle, delimiter="\t")
+    if "native_id" not in (reader.fieldnames or []):
+        raise SystemExit(0)
+    for row in reader:
+        native_id = (row.get("native_id") or "").strip()
+        if native_id and native_id not in jobs:
+            jobs.append(native_id)
+
+with open(jobs_path, "w") as handle:
+    for job in jobs:
+        handle.write(job + "\n")
+PY
+
+  if [[ -s "$slurm.jobs" ]]; then
+    sacct -j "$(paste -sd, "$slurm.jobs")" --parsable2 \
+      --format=JobID,JobName%40,Partition,Account,AllocCPUS,State,ExitCode,Submit,Start,End,Elapsed,ReqMem,MaxRSS,NTasks,NNodes \
+      > "$slurm" || true
+  fi
+  rm -f "$slurm.jobs"
+}
+
+doctor() {
+  echo "NF1 Nextflow pilot doctor"
+  echo "repo: $ROOT_DIR"
+
+  local nextflow
+  nextflow="$(nextflow_cmd)"
+  if [[ -x "$nextflow" ]] || have "$nextflow"; then
+    "$nextflow" -version 2>&1 | sed -n '1,6p' || true
+  else
+    echo "nextflow: missing"
+  fi
+
+  if have uv; then
+    uv --version
+  else
+    echo "uv: missing"
+  fi
+
+  if have sbatch; then
+    echo "sbatch: $(command -v sbatch)"
+  else
+    echo "sbatch: missing"
+  fi
+
+  if have sacct; then
+    echo "sacct: $(command -v sacct)"
+  else
+    echo "sacct: missing"
+  fi
+}
+
+run_nextflow() {
+  local id="$1"
+  local manifest="$2"
+  local profile="$3"
+  local feature_cpus="$4"
+  local feature_memory="$5"
+  local feature_time="$6"
+  local uv_project_environment="$7"
+  local account="$8"
+  local partition="$9"
+  local qos="${10}"
+  local results_root="${11}"
+  local image_sets="${12:-}"
+  local image_sets_index="${13:-}"
+  local source_root="${14:-}"
+  local outdir="$results_root/$id"
+  local nextflow
+  local manifest_or_image_sets_args
+
+  validate_name "run-id" "$id"
+  validate_name "profile" "$profile"
+  validate_positive_int "feature-cpus" "$feature_cpus" 48
+
+  resolve_image_set_source "$manifest" "$image_sets" "$image_sets_index" "$source_root"
+  if [[ -n "$RESOLVED_IMAGE_SETS_INDEX" ]]; then
+    manifest_or_image_sets_args="--image_sets_index $RESOLVED_IMAGE_SETS_INDEX --source_root $RESOLVED_SOURCE_ROOT"
+  elif [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
+    manifest_or_image_sets_args="--image_sets $RESOLVED_IMAGE_SETS"
+  else
+    manifest_or_image_sets_args="--manifest $RESOLVED_MANIFEST"
+  fi
+
+  nextflow="$(nextflow_cmd)"
+  if [[ ! -x "$nextflow" ]] && ! have "$nextflow"; then
+    echo "nextflow is required for runs" >&2
+    exit 127
+  fi
+
+  mkdir -p "$outdir"
+  preflight "$id" "$account" "$partition" "$qos" "$results_root"
+
+  {
+    echo "nextflow run workflows/featurize_image_set.nf -profile $profile --run_id $id --outdir $outdir $manifest_or_image_sets_args --uv_project_environment ${uv_project_environment:-<task-local>}"
+  } > "$outdir/run-command.txt"
+
+  if [[ -n "$uv_project_environment" ]] && have uv; then
+    UV_PROJECT_ENVIRONMENT="$uv_project_environment" UV_LINK_MODE=copy \
+      uv sync --project "$ROOT_DIR/environments" 2>&1 | tee "$outdir/uv-sync.log"
+  fi
+
+  set +e
+  NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \
+    "$nextflow" run "$ROOT_DIR/workflows/featurize_image_set.nf" \
+      -profile "$profile" \
+      -c "$ROOT_DIR/nextflow.config" \
+      --run_id "$id" \
+      --outdir "$outdir" \
+      --pilot_root "$ROOT_DIR" \
+      $manifest_or_image_sets_args \
+      --feature_cpus "$feature_cpus" \
+      --feature_memory "$feature_memory" \
+      --feature_time "$feature_time" \
+      --uv_project_environment "$uv_project_environment" \
+      2>&1 | tee "$outdir/nextflow.log"
+  local nextflow_status="${PIPESTATUS[0]}"
+  set -e
+
+  collect_slurm_accounting "$outdir"
+  echo "nextflow_exit_status: $nextflow_status" > "$outdir/completion_status.txt"
+
+  if [[ "$nextflow_status" -ne 0 ]]; then
+    echo "Run failed; artifacts written to $outdir" >&2
+    exit "$nextflow_status"
+  fi
+
+  echo "Run written to $outdir"
+}
+
+submit_slurm() {
+  local id="$1"
+  local manifest="$2"
+  local feature_cpus="$3"
+  local feature_memory="$4"
+  local feature_time="$5"
+  local uv_project_environment="$6"
+  local account="$7"
+  local partition="$8"
+  local qos="$9"
+  local dry_run="${10}"
+  local submit_host="${11}"
+  local results_root="${12}"
+  local image_sets="${13:-}"
+  local image_sets_index="${14:-}"
+  local source_root="${15:-}"
+  local outdir="$results_root/$id"
+  local script="$outdir/coordinator.sbatch"
+  local tools_root
+  local account_directive=""
+  local qos_directive=""
+  local manifest_or_image_sets_args
+
+  validate_name "run-id" "$id"
+  validate_name "account" "$account"
+  validate_name "partition" "$partition"
+  validate_name "qos" "$qos"
+  validate_name "submit-host" "$submit_host"
+  validate_positive_int "feature-cpus" "$feature_cpus" 48
+
+  resolve_image_set_source "$manifest" "$image_sets" "$image_sets_index" "$source_root"
+  if [[ -n "$RESOLVED_IMAGE_SETS_INDEX" ]]; then
+    manifest_or_image_sets_args="--image-sets-index \"$RESOLVED_IMAGE_SETS_INDEX\" --source-root \"$RESOLVED_SOURCE_ROOT\""
+  elif [[ -n "$RESOLVED_IMAGE_SETS" ]]; then
+    manifest_or_image_sets_args="--image-sets \"$RESOLVED_IMAGE_SETS\""
+  else
+    manifest_or_image_sets_args="--manifest \"$RESOLVED_MANIFEST\""
+  fi
+
+  if [[ "$dry_run" != "true" && -z "$submit_host" ]] && ! have sbatch; then
+    echo "sbatch is required for submit" >&2
+    exit 127
+  fi
+  if [[ "$dry_run" != "true" && -n "$submit_host" ]] && ! have ssh; then
+    echo "ssh is required when --submit-host is used" >&2
+    exit 127
+  fi
+
+  if [[ -n "$account" ]]; then
+    account_directive="#SBATCH --account=$account"
+  fi
+  if [[ -n "$qos" ]]; then
+    qos_directive="#SBATCH --qos=$qos"
+  fi
+
+  tools_root="$(dirname "$results_root")/tools"
+  if [[ -z "$uv_project_environment" ]]; then
+    uv_project_environment="$tools_root/zedprofiler-uv-env"
+  fi
+  mkdir -p "$outdir"
+  preflight "$id" "$account" "$partition" "$qos" "$results_root"
+  cat > "$script" <<EOF
+#!/usr/bin/env bash
+#SBATCH --job-name=nf1-zp-pilot
+#SBATCH --partition=$partition
+$account_directive
+$qos_directive
+#SBATCH --time=03:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+#SBATCH --output=$outdir/coordinator_%j.out
+#SBATCH --error=$outdir/coordinator_%j.err
+
+set -euo pipefail
+
+cd "$ROOT_DIR"
+mkdir -p "$tools_root/nextflow-home" "$tools_root/uv-cache"
+export NXF_HOME="\${NXF_HOME:-$tools_root/nextflow-home}"
+export NF1_PILOT_PROJECT="\${NF1_PILOT_PROJECT:-$tools_root}"
+export NF1_PILOT_UV_ENVIRONMENT="\${NF1_PILOT_UV_ENVIRONMENT:-$uv_project_environment}"
+export UV_CACHE_DIR="\${UV_CACHE_DIR:-$tools_root/uv-cache}"
+export UV_LINK_MODE=copy
+
+if type module >/dev/null 2>&1 && [[ -n "\${NF1_PILOT_NEXTFLOW_MODULE:-}" && "\${NF1_PILOT_NEXTFLOW_MODULE:-}" != "none" ]]; then
+  module purge
+  module load "\${NF1_PILOT_NEXTFLOW_MODULE}"
+fi
+
+NF1_PILOT_ACCOUNT="$account" NF1_PILOT_PARTITION="$partition" NF1_PILOT_QOS="$qos" \\
+  bash bin/nf1-nextflow-pilot run --profile curc_alpine --run-id "$id" $manifest_or_image_sets_args --results-root "$results_root" \\
+    --uv-project-environment "\$NF1_PILOT_UV_ENVIRONMENT" \\
+    --feature-cpus "$feature_cpus" --feature-memory "$feature_memory" --feature-time "$feature_time" \\
+    --account "$account" --partition "$partition" --qos "$qos"
+EOF
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo "Dry run: not submitting to Slurm" | tee "$outdir/slurm-submit.txt"
+  elif [[ -n "$submit_host" ]]; then
+    # shellcheck disable=SC2029
+    ssh "$submit_host" "cd '$ROOT_DIR' && sbatch '$script'" | tee "$outdir/slurm-submit.txt"
+  else
+    sbatch "$script" | tee "$outdir/slurm-submit.txt"
+  fi
+  echo "Coordinator script written to $script"
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  check)
+    check_repo
+    ;;
+  doctor)
+    doctor
+    ;;
+  preflight)
+    id="$(run_id)"
+    account="${NF1_PILOT_ACCOUNT:-}"
+    partition="${NF1_PILOT_PARTITION:-acpu}"
+    qos="${NF1_PILOT_QOS:-cpu-normal}"
+    results_root="$(default_results_root)"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
+        --account) account="$2"; shift 2 ;;
+        --partition) partition="$2"; shift 2 ;;
+        --qos) qos="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    preflight "$id" "$account" "$partition" "$qos" "$results_root"
+    ;;
+  clear-output)
+    id=""
+    results_root="$(default_results_root)"
+    dry_run="false"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
+        --dry-run) dry_run="true"; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    clear_output "$id" "$results_root" "$dry_run"
+    ;;
+  smoke)
+    id="$(run_id)"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    if have uv; then
+      uv run --project "$ROOT_DIR/environments" python "$ROOT_DIR/scripts/smoke_synthetic.py" --outdir "$ROOT_DIR/results/$id/smoke" --run-id "$id"
+    else
+      python3 "$ROOT_DIR/scripts/smoke_synthetic.py" --outdir "$ROOT_DIR/results/$id/smoke" --run-id "$id"
+    fi
+    ;;
+  run)
+    id="$(run_id)"
+    manifest=""
+    image_sets=""
+    image_sets_index=""
+    source_root=""
+    profile="local"
+    feature_cpus=2
+    feature_memory="32 GB"
+    feature_time="2h"
+    uv_project_environment="${NF1_PILOT_UV_ENVIRONMENT:-}"
+    account="${NF1_PILOT_ACCOUNT:-}"
+    partition="${NF1_PILOT_PARTITION:-acpu}"
+    qos="${NF1_PILOT_QOS:-cpu-normal}"
+    results_root="$(default_results_root)"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --manifest) manifest="$2"; shift 2 ;;
+        --image-sets) image_sets="$2"; shift 2 ;;
+        --image-sets-index) image_sets_index="$2"; shift 2 ;;
+        --source-root) source_root="$2"; shift 2 ;;
+        --profile) profile="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
+        --feature-cpus) feature_cpus="$2"; shift 2 ;;
+        --feature-memory) feature_memory="$2"; shift 2 ;;
+        --feature-time) feature_time="$2"; shift 2 ;;
+        --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
+        --account) account="$2"; shift 2 ;;
+        --partition) partition="$2"; shift 2 ;;
+        --qos) qos="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    if [[ -z "$manifest" && -z "$image_sets" && -z "$image_sets_index" ]]; then
+      echo "--manifest, --image-sets, or --image-sets-index is required" >&2
+      exit 2
+    fi
+    run_nextflow "$id" "$manifest" "$profile" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$results_root" "$image_sets" "$image_sets_index" "$source_root"
+    ;;
+  submit)
+    id="$(run_id)"
+    manifest=""
+    image_sets=""
+    image_sets_index=""
+    source_root=""
+    feature_cpus=2
+    feature_memory="32 GB"
+    feature_time="2h"
+    uv_project_environment="${NF1_PILOT_UV_ENVIRONMENT:-}"
+    account="${NF1_PILOT_ACCOUNT:-}"
+    partition="${NF1_PILOT_PARTITION:-acpu}"
+    qos="${NF1_PILOT_QOS:-cpu-normal}"
+    dry_run="false"
+    submit_host="${NF1_PILOT_SUBMIT_HOST:-}"
+    results_root="$(default_results_root)"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --run-id) id="$2"; shift 2 ;;
+        --manifest) manifest="$2"; shift 2 ;;
+        --image-sets) image_sets="$2"; shift 2 ;;
+        --image-sets-index) image_sets_index="$2"; shift 2 ;;
+        --source-root) source_root="$2"; shift 2 ;;
+        --results-root) results_root="$2"; shift 2 ;;
+        --feature-cpus) feature_cpus="$2"; shift 2 ;;
+        --feature-memory) feature_memory="$2"; shift 2 ;;
+        --feature-time) feature_time="$2"; shift 2 ;;
+        --uv-project-environment) uv_project_environment="$2"; shift 2 ;;
+        --account) account="$2"; shift 2 ;;
+        --partition) partition="$2"; shift 2 ;;
+        --qos) qos="$2"; shift 2 ;;
+        --submit-host) submit_host="$2"; shift 2 ;;
+        --dry-run) dry_run="true"; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+      esac
+    done
+    if [[ -z "$manifest" && -z "$image_sets" && -z "$image_sets_index" ]]; then
+      echo "--manifest, --image-sets, or --image-sets-index is required" >&2
+      exit 2
+    fi
+    submit_slurm "$id" "$manifest" "$feature_cpus" "$feature_memory" "$feature_time" "$uv_project_environment" "$account" "$partition" "$qos" "$dry_run" "$submit_host" "$results_root" "$image_sets" "$image_sets_index" "$source_root"
+    ;;
+  -h|--help|"")
+    usage
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage
+    exit 2
+    ;;
+esac

@@ -1,18 +1,48 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # 11. Combine Patients
+#
+# ## Purpose
+# Combine per-patient normalized profiles across all patients into a single
+# cross-patient dataset, then run feature selection and aggregation at the
+# population level.
+#
+# This is **step 11 of Stage 4 (image-based profiling)** and the only notebook
+# that runs **once globally** (not per-patient). It must follow `10.aggregation.ipynb`
+# for all patients.
+#
+# ## Inputs
+# - `data/patient_IDs.txt` — list of all patient IDs (one per line)
+# - Per-patient `5.normalized_profiles/*.parquet` for each of 6 profile types
+#
+# ## Outputs
+#
+# All outputs go to `data/all_patient_profiles/`. For each of 6 profile types,
+# four files are produced:
+#
+# | Suffix | Content |
+# |---|---|
+# | `*_norm_profile.parquet` | All-patient concatenated normalized profiles |
+# | `*_fs_profiles.parquet` | Feature-selected (cross-patient FS) |
+# | `*_sc_agg_profiles.parquet` | Well-level aggregated (median by PatientTumor × Well) |
+# | `*_sc_consensus_profiles.parquet` | Consensus (median by PatientTumor × Treatment) |
+
 # In[1]:
 
 
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
 )
 from pycytominer import aggregate, feature_select
+from pycytominer.cyto_utils import infer_cp_features
 
 root_dir, in_notebook = init_notebook()
 
@@ -20,6 +50,7 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
+profile_base_dir = root_dir
 
 
 # In[2]:
@@ -47,7 +78,7 @@ levels_to_merge_dict = {
     "sammed_sc_norm": [],
     "sammed_organoid_norm": [],
     "sammed_nucleocentric_norm": [],
-    "chammi_nucleocentric_norm": [],
+    "nucleocentric_morphem_norm": [],
 }
 
 
@@ -68,26 +99,51 @@ levels_to_merge_dict
 # In[5]:
 
 
+# Feature selection operations applied in order:
+#   drop_na_columns      — remove features with >na_cutoff fraction of NaN values
+#   blocklist            — remove features on the pycytominer blocklist (known noisy/artifactual)
+#   variance_threshold   — remove near-constant features (low frequency or unique value ratio)
+#   correlation_threshold — remove one feature from each pair with Pearson r > corr_threshold
 feature_select_ops = [
     "drop_na_columns",
     "blocklist",
     "variance_threshold",  # comment out to remove variance thresholding
     "correlation_threshold",  # comment out to remove correlation thresholding
 ]
-na_cutoff = 0.05
-corr_threshold = 0.9
-freq_cut = 0.01
-unique_cut = 0.01
+na_cutoff = 0.05  # drop features with >5% NaN
+corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.95
+freq_cut = 0.05  # variance threshold: most-common / second-most-common value ratio
+unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 
 
 # In[6]:
 
 
-aggregate_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Well"]
-consensus_strata = ["Metadata_Biology_PatientTumor", "Metadata_Experiment_Treatment"]
+# Well-level strata: one row per (patient, well) combination
+aggregate_strata = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_Well",
+    "Metadata_Experiment_Class",
+    "Metadata_Experiment_Dose",
+    "Metadata_Experiment_Target",
+    "Metadata_Experiment_TherapeuticCategories",
+    "Metadata_Experiment_Treatment",
+    "Metadata_Experiment_Unit",
+]
+# Consensus strata: one row per (patient, treatment) combination
+consensus_strata = [
+    "Metadata_Biology_PatientTumor",
+    "Metadata_Experiment_Treatment",
+    "Metadata_Experiment_Dose",
+    "Metadata_Experiment_Class",
+    "Metadata_Experiment_Target",
+    "Metadata_Experiment_TherapeuticCategories",
+    "Metadata_Experiment_Unit",
+]
+potential_compartments = ["Cell", "Cytoplasm", "Nuclei", "Organoid", "Nucleocentric"]
 
 
-# In[7]:
+# In[ ]:
 
 
 for profile_type, files in levels_to_merge_dict.items():
@@ -99,71 +155,82 @@ for profile_type, files in levels_to_merge_dict.items():
     df = pd.concat(list_of_dfs, ignore_index=True)
 
     print(f"Concatenated DataFrame for {profile_type} has the shape: {df.shape}")
+    normalized_profiles_path = pathlib.Path(
+        f"{all_patients_output_path}/0.normalized_profiles/{profile_type}_norm_profile.parquet"
+    )
+    normalized_profiles_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_norm_profile.parquet",
+        normalized_profiles_path,
         index=False,
     )
     ###############################################
     # Feature selection
     ###############################################
-    metadata_cols = [x for x in df.columns if "Metadata" in x]
-    # only perform feature selection on DMSO and staurosporine treatments and apply to rest of profiles
-    all_trt_df = df.copy()
-    df = df.loc[
-        df["Metadata_Experiment_Treatment"].isin(["DMSO 1%", "Staurosporine 10 nM"])
-    ]
-    # feature selection
-    feature_columns = [col for col in df.columns if col not in metadata_cols]
-    fs_profiles = feature_select(
+    feature_columns = infer_cp_features(
+        df, metadata=False, compartments=potential_compartments
+    )
+    df[feature_columns] = df[feature_columns].replace([np.inf, -np.inf], np.nan)
+
+    fs_profile = feature_select(
         df,
         operation=feature_select_ops,
-        features=feature_columns,
+        features=infer_cp_features(
+            df, metadata=False, compartments=potential_compartments
+        ),
         na_cutoff=na_cutoff,
         corr_threshold=corr_threshold,  # comment out to use default value
+        method="standardize",  # comment out to use default value
         freq_cut=freq_cut,  # comment out to use default value
         unique_cut=unique_cut,  # comment out to use default value
+        samples="(Metadata_Experiment_Treatment == 'DMSO' and Metadata_Experiment_Dose == 1) or (Metadata_Experiment_Treatment == 'Staurosporine' and Metadata_Experiment_Dose == 10)",
+        output_file=f"{all_patients_output_path}/1.feature_selected_profiles/{profile_type}_fs_profiles.parquet",
+        output_type="parquet",
     )
-    # apply feature selection to all profiles
-    fs_profiles = all_trt_df[
-        [col for col in all_trt_df.columns if col in fs_profiles.columns]
-    ]
-    fs_profiles.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_fs_profiles.parquet",
-        index=False,
-    )
+
     ###############################################
-    # Aggregation
+    # Aggregation — produces well-level and consensus parquets
     ###############################################
-    feature_columns = [col for col in fs_profiles.columns if col not in metadata_cols]
+    fs_df = pd.read_parquet(fs_profile)
     # aggregate the profiles
-    sc_agg_df = aggregate(
-        population_df=fs_profiles,
+    agg_profile = aggregate(
+        population_df=fs_df,
         strata=aggregate_strata,
-        features=feature_columns,
+        features=infer_cp_features(
+            fs_df, metadata=False, compartments=potential_compartments
+        ),
         operation="median",
+        output_file=f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet",
+        output_type="parquet",
     )
-    sc_agg_df.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_sc_agg_profiles.parquet",
-        index=False,
-    )
+
     ###############################################
     # Consensus profiles
     ###############################################
-    # consensus profiles
-    sc_consensus_df = aggregate(
-        population_df=fs_profiles,
+    consensus_profile = aggregate(
+        population_df=fs_df,
         strata=consensus_strata,
-        features=feature_columns,
+        features=infer_cp_features(
+            fs_df, metadata=False, compartments=potential_compartments
+        ),
         operation="median",
+        output_file=f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet",
+        output_type="parquet",
     )
-    sc_consensus_df.to_parquet(
-        f"{all_patients_output_path}/{profile_type}_sc_consensus_profiles.parquet",
-        index=False,
+
+    ###############################################
+    # print shapes as a sanity check
+    ###############################################
+    fs_pq_file, agg_pq_file, consensus_pq_file = (
+        pq.ParquetFile(fs_profile),
+        pq.ParquetFile(agg_profile),
+        pq.ParquetFile(consensus_profile),
     )
-    print("The number features before feature selection:", df.shape[1])
-    print("The number features after feature selection:", fs_profiles.shape[1])
-    print("The number of profiles after aggregation:", sc_agg_df.shape[0])
-    print(
-        "The number of profiles after consensus profile generation:",
-        sc_consensus_df.shape[0],
+    fs_shape = (fs_pq_file.metadata.num_rows, len(fs_pq_file.schema.names))
+    agg_shape = (agg_pq_file.metadata.num_rows, len(agg_pq_file.schema.names))
+    consensus_shape = (
+        consensus_pq_file.metadata.num_rows,
+        len(consensus_pq_file.schema.names),
     )
+    print(f"  Feature-selected profile shape: {fs_shape}")
+    print(f"  Well-level aggregated profile shape: {agg_shape}")
+    print(f"  Consensus aggregated profile shape: {consensus_shape}")

@@ -101,9 +101,14 @@ def _upsample_3d(
     k, i, j = numpy.mgrid[
         0 : original_shape[0], 0 : original_shape[1], 0 : original_shape[2]
     ].astype(float)
-    k *= float(subsampled_shape[0] - 1) / float(original_shape[0] - 1)
-    i *= float(subsampled_shape[1] - 1) / float(original_shape[1] - 1)
-    j *= float(subsampled_shape[2] - 1) / float(original_shape[2] - 1)
+    # Guard against dim == 1: coordinate grid is already all-zero for that axis,
+    # so scaling would divide by 0. Skip scaling — the result is correct as-is.
+    if original_shape[0] > 1:
+        k *= float(subsampled_shape[0] - 1) / float(original_shape[0] - 1)
+    if original_shape[1] > 1:
+        i *= float(subsampled_shape[1] - 1) / float(original_shape[1] - 1)
+    if original_shape[2] > 1:
+        j *= float(subsampled_shape[2] - 1) / float(original_shape[2] - 1)
     return scipy.ndimage.map_coordinates(data, (k, i, j), order=1)
 
 
@@ -274,9 +279,12 @@ def measure_3D_granularity(
         k, i, j = numpy.mgrid[
             0 : new_shape[0], 0 : new_shape[1], 0 : new_shape[2]
         ].astype(float)
-        k *= float(back_shape[0] - 1) / float(new_shape[0] - 1)
-        i *= float(back_shape[1] - 1) / float(new_shape[1] - 1)
-        j *= float(back_shape[2] - 1) / float(new_shape[2] - 1)
+        if new_shape[0] > 1:
+            k *= float(back_shape[0] - 1) / float(new_shape[0] - 1)
+        if new_shape[1] > 1:
+            i *= float(back_shape[1] - 1) / float(new_shape[1] - 1)
+        if new_shape[2] > 1:
+            j *= float(back_shape[2] - 1) / float(new_shape[2] - 1)
         back_pixels = scipy.ndimage.map_coordinates(back_pixels, (k, i, j), order=1)
 
     # Subtract background
@@ -298,11 +306,12 @@ def measure_3D_granularity(
         "value": [],
     }
 
-    nobjects = int(numpy.max(original_labels)) if numpy.any(original_labels > 0) else 0
+    # fixes any changes in non sequential labels
+    # finds the total number of objects in the image and creates a new label range from 1 to nobjects
+    label_range = numpy.unique(original_labels[original_labels > 0])
+    nobjects = len(label_range)
 
     if nobjects > 0:
-        label_range = numpy.arange(1, nobjects + 1)
-
         # CellProfiler: self.labels[~im.mask] = 0
         masked_labels = original_labels.copy()
         masked_labels[~original_mask] = 0

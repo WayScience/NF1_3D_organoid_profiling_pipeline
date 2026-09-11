@@ -137,10 +137,10 @@ SAMMED3D Featurizer
 .. automodule:: image_analysis_3D.featurization_utils.sammed3d_featurizer
    :members:
 
-CHAMMI-75 Featurizer
+morphem Featurizer
 --------------------
 
-.. automodule:: image_analysis_3D.featurization_utils.chammi75_featurization
+.. automodule:: image_analysis_3D.featurization_utils.morphem_featurization
    :members:
 
 Feature Writing

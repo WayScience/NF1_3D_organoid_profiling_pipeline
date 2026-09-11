@@ -1,0 +1,9 @@
+/.nextflow*
+/work/
+/results/
+/environments/.venv/
+__pycache__/
+*.py[cod]
+!/manifest/
+!/manifest/nf0055_b10_1_alpine.yaml
+!/manifest/smoke_test_image_set.yaml

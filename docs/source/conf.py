@@ -138,3 +138,11 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
 }
+
+# GitHub intermittently rate-limits linkcheck in CI, including both large README
+# media files and ordinary repository links.
+linkcheck_ignore = [
+    r"https://docs\.seqera\.io/nextflow/executor/?",
+    r"https://docs\.rapids\.ai/api/cucim/stable/?",
+    r"https://github\.com/.*",
+]

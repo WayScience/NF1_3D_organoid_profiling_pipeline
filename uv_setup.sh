@@ -37,8 +37,6 @@ rm -rf .venv
 
 uv venv
 uv sync
-# shellcheck disable=SC1091
-source .venv/bin/activate
 
 # shellcheck disable=SC1091
 source .venv/bin/activate
@@ -47,8 +45,10 @@ uv pip install -e ./utils
 uv pip install cosmicqc
 
 if [ "$system" = "alpine" ] || [ "$system" = "anvil" ]; then
-    mv .venv "$ENV_PATH"
+    cp -r .venv "$ENV_PATH"
 else
     # do nothing, we are already using the local .venv
     echo "Using local .venv for $system system"
 fi
+
+
