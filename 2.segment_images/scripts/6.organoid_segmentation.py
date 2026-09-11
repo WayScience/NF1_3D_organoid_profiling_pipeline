@@ -167,7 +167,7 @@ organoid_mask, diag = object_stitching_and_relation(
 
 # ## Remove border objects
 
-# In[ ]:
+# In[9]:
 
 
 organoid_mask = clean_border_objects(organoid_mask, border_width=5)
