@@ -695,20 +695,30 @@ We will have data available at some point on the NF data portal via Synapse.
 
 ### Summary tables
 
-Patient- and dataset-level summary tables are generated under `figures/`:
+Patient- and dataset-level summary tables live in the top-level
+[`tables/`](tables) module, kept separate from `figures/` since its outputs are TSV data,
+not images. All tables share one flat structure, rather than each table having its own
+nested `results/` folder, to keep the layout easy to navigate:
 
-- [`figures/table1`](figures/table1) - per-patient, per-tumor counts (compounds, treatments,
-  wells, well FOVs, organoids, single cells) merged with per-patient image counts and total
-  storage size. Tumor type diagnoses come from
+- `tables/scripts/` - one `.py` script per table (`table1.py`, `table2.py`)
+- `tables/notebooks/` - the paired notebook for each script (`table1.ipynb`, `table2.ipynb`)
+- `tables/results/` - every table's output, flat, named after the table that produced it
+  (`table1_results.tsv`, `table2_results.tsv`); `table2_file_info.parquet` is an
+  intermediate cache of the raw file scan, not a final result, so it's gitignored
+
+Table contents:
+
+- **table1** (`tables/results/table1_results.tsv`) - per-patient, per-tumor counts
+  (compounds, treatments, wells, well FOVs, organoids, single cells) merged with
+  per-patient image counts and total storage size. Tumor type diagnoses come from
   [`config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv`](config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type.tsv),
   which is keyed by patient ID so it can be reviewed and updated independently of the
   generating script.
-- [`figures/table2`](figures/table2) - a raw scan of every acquired image file (per patient,
-  well FOV, and channel) with file size and Z-dimension counts; this is the per-file data
-  that `table1` aggregates.
+- **table2** (`tables/results/table2_results.tsv`) - a raw scan of every acquired image
+  file (per patient, well FOV, and channel) with file size and Z-dimension counts; this is
+  the per-file data that `table1` aggregates.
 
-Both tables are saved as TSV files so the underlying data can be diffed,
-re-read, and re-aggregated without needing a separate figure-rendering step.
+Both tables are saved as TSV files so the underlying data can be diffed, re-read, and re-aggregated without needing a separate figure-rendering step.
 
 ## Associated repositories
 

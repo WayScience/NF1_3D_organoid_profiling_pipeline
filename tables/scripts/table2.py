@@ -13,7 +13,7 @@ from IPython.display import Markdown, display
 root_dir, in_notebook = init_notebook()
 
 
-# In[2]:
+# In[ ]:
 
 
 sc_profiles_path = pathlib.Path(
@@ -30,15 +30,15 @@ patient_extra_metadata_path = pathlib.Path(
     "config/patient_extra_metadata/patient_drug_screen_theoretical_counts_and_tumor_type"
     ".tsv",
 ).resolve(strict=True)
-table2_file_info_path = pathlib.Path(
+table1_file_info_path = pathlib.Path(
     root_dir,
-    "figures/table2/results/table2/file_info_df.parquet",
+    "tables/results/table1_file_info.parquet",
 ).resolve(strict=True)
-table1_results_path = pathlib.Path(
+table2_results_path = pathlib.Path(
     root_dir,
-    "figures/table1/results/table1_results.tsv",
+    "tables/tables/table2.tsv",
 ).resolve()
-table1_results_path.parent.mkdir(parents=True, exist_ok=True)
+table2_results_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 # In[3]:
@@ -48,7 +48,7 @@ sc_df = pd.read_parquet(sc_profiles_path)
 organoid_df = pd.read_parquet(organoid_profiles_path)
 
 patient_extra_metadata_df = pd.read_csv(patient_extra_metadata_path, sep="\t")
-file_info_df = pd.read_parquet(table2_file_info_path)
+file_info_df = pd.read_parquet(table1_file_info_path)
 
 
 # ## Compound, treatment, well, well-FOV, organoid, and single-cell counts per patient
@@ -202,7 +202,7 @@ single_cell_counts = (
 # In[10]:
 
 
-table1 = pd.merge(
+table2 = pd.merge(
     pd.merge(
         pd.merge(
             pd.merge(
@@ -224,8 +224,8 @@ table1 = pd.merge(
     on="Metadata_Biology_PatientTumor",
 )
 
-table1 = pd.merge(
-    table1,
+table2 = pd.merge(
+    table2,
     patient_extra_metadata_df,
     left_on="Metadata_Biology_PatientTumor",
     right_on="patient",
@@ -235,18 +235,18 @@ table1 = pd.merge(
 # remove the NF0037CQ1 patient from the table
 # this is a test patient and we don't want to include it in the analysis
 # different microscope was used
-table1 = table1.loc[
-    table1["Metadata_Biology_PatientTumor"] != "NF0037_T1_CQ1"
+table2 = table2.loc[
+    table2["Metadata_Biology_PatientTumor"] != "NF0037_T1_CQ1"
 ].reset_index(drop=True)
 
 
-# ## Aggregate the raw image file info (from figures/table2) to the patient level
+# ## Aggregate the raw image file info (from table2) to the patient level
 
 # In[11]:
 
 
 file_info_counts = (
-    file_info_df.groupby("patient")
+    file_info_df.groupby("Patient")
     .agg(
         TotalImages=("z_dimension_size", "sum"),
         total_size_bytes=("file_size_bytes", "sum"),
@@ -264,21 +264,21 @@ file_info_counts = file_info_counts.drop(columns=["total_size_bytes"])
 # In[12]:
 
 
-table1 = pd.merge(
-    table1,
+table2 = pd.merge(
+    table2,
     file_info_counts,
     left_on="Metadata_Biology_PatientTumor",
-    right_on="patient",
+    right_on="Patient",
     how="left",
-).drop(columns=["patient"])
+).drop(columns=["Patient"])
 
 
 # In[13]:
 
 
-tumor_type = table1.pop("Tumor_type")
-table1.insert(1, "Tumor_type", tumor_type)
-table1.rename(
+tumor_type = table2.pop("Tumor_type")
+table2.insert(1, "Tumor_type", tumor_type)
+table2.rename(
     columns={
         "Metadata_Biology_PatientTumor": "Patient Tumor ",
         "Tumor_type": "Tumor type ",
@@ -301,11 +301,11 @@ table1.rename(
 # In[14]:
 
 
-table1["Total size (TB)"] = (
-    table1["Total Size (TB)"] + (table1["Total Size (TB)"] / 5) * 4
+table2["Total size (TB)"] = (
+    table2["Total Size (TB)"] + (table2["Total Size (TB)"] / 5) * 4
 ).round(2)
 
-table1 = table1.drop(
+table2 = table2.drop(
     columns=[
         "Compound Count",
         "Well Count",
@@ -321,24 +321,24 @@ total_row = pd.DataFrame(
     {
         "Patient Tumor ": ["Total"],
         "Tumor type ": ["-"],
-        "Treatment Count": [table1["Treatment Count"].sum()],
-        "Well FOV Count": [table1["Well FOV Count"].sum()],
-        "Organoid Count": [table1["Organoid Count"].sum()],
-        "Single Cell Count": [table1["Single Cell Count"].sum()],
-        "Total Image Count": [table1["Total Image Count"].sum()],
-        "Total size (TB)": [table1["Total size (TB)"].sum().round(2)],
+        "Treatment Count": [table2["Treatment Count"].sum()],
+        "Well FOV Count": [table2["Well FOV Count"].sum()],
+        "Organoid Count": [table2["Organoid Count"].sum()],
+        "Single Cell Count": [table2["Single Cell Count"].sum()],
+        "Total Image Count": [table2["Total Image Count"].sum()],
+        "Total size (TB)": [table2["Total size (TB)"].sum().round(2)],
     }
 )
-table1 = pd.concat([table1, total_row], ignore_index=True)
-table1.to_csv(table1_results_path, index=False, sep="\t")
-table1
+table2 = pd.concat([table2, total_row], ignore_index=True)
+table2.to_csv(table2_results_path, index=False, sep="\t")
+table2
 
 
 # In[15]:
 
 
 # convert the table to a markdown table
-table1_md = table1.to_markdown(index=False, tablefmt="pipe")
+table2_md = table2.to_markdown(index=False, tablefmt="pipe")
 
 
 # In[16]:
@@ -346,4 +346,4 @@ table1_md = table1.to_markdown(index=False, tablefmt="pipe")
 
 # Display as formatted markdown
 print("Rendered Table:")
-display(Markdown(table1_md))
+display(Markdown(table2_md))
