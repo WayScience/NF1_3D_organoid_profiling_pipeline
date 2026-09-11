@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -69,7 +70,9 @@ def main() -> int:
     args = parser.parse_args()
 
     if bool(args.manifests) == bool(args.image_sets_index):
-        raise SystemExit("Provide exactly one of --manifest (repeatable) or --image-sets-index")
+        raise SystemExit(
+            "Provide exactly one of --manifest (repeatable) or --image-sets-index"
+        )
 
     started = time.perf_counter()
     git_revision = git_commit(args.repo_root)
@@ -102,7 +105,9 @@ def main() -> int:
 
     compartments = [
         str(c)
-        for c in (manifests[0][1].get("compartments") or [manifests[0][1]["compartment"]])
+        for c in (
+            manifests[0][1].get("compartments") or [manifests[0][1]["compartment"]]
+        )
     ]
     unknown = sorted(set(compartments) - set(COMPARTMENTS))
     if unknown:
@@ -209,6 +214,30 @@ def main() -> int:
     db_path = warehouse_dir / "warehouse.duckdb"
     build_views(warehouse_dir, db_path)
 
+    # Run before run_record.json/validation.json are built below, so their
+    # own exit_status/validation_status reflect this too -- koala is a
+    # shared group allocation, and every file/dir under outdir needs to
+    # stay group-accessible for others on the project, not just readable by
+    # whoever's Slurm job happened to create it. beforeScript = 'umask 007'
+    # (conf/base.config) gets new files/dirs to 660/770 as they're created,
+    # but umask can never grant a file's execute bit, so a run that started
+    # before this fix -- or any file a umask gap slipped through -- would
+    # still land short of the 770 this project actually wants everywhere.
+    # This sweep is the single point that guarantees it, independent of
+    # umask working correctly at every creation site. check=False because a
+    # permissions failure shouldn't mask a real validation failure -- but it
+    # must still fail the run, not be silently swallowed, so the return code
+    # is inspected explicitly instead.
+    chmod_result = subprocess.run(["chmod", "-R", "770", str(args.outdir)], check=False)
+    if chmod_result.returncode != 0:
+        print(
+            f"WARNING: chmod -R 770 {args.outdir} exited "
+            f"{chmod_result.returncode} -- some files/dirs under this run "
+            "may not be group-writable on koala",
+            file=sys.stderr,
+        )
+    run_ok = all_valid and chmod_result.returncode == 0
+
     run_record: dict[str, Any] = {
         "run_id": args.run_id,
         "command": " ".join(sys.argv),
@@ -227,25 +256,45 @@ def main() -> int:
         },
         "duckdb": str(db_path),
         "elapsed_seconds": round(time.perf_counter() - started, 3),
-        "exit_status": 0 if all_valid else 1,
-        "validation_status": "pass" if all_valid else "fail",
+        "exit_status": 0 if run_ok else 1,
+        "validation_status": "pass" if run_ok else "fail",
         "quality_warning_count": total_quality_warnings,
+        "permissions_status": "pass" if chmod_result.returncode == 0 else "fail",
     }
     validation_report: dict[str, Any] = {
-        "valid": all_valid,
+        "valid": run_ok,
         "tables": output_tables,
         "images.image_assets": {
             "valid": assets_valid,
             "row_count": assets_row_count,
         },
+        "permissions_valid": chmod_result.returncode == 0,
     }
 
     metadata_dir = args.outdir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
     (metadata_dir / "run_record.json").write_text(json.dumps(run_record, indent=2))
-    (metadata_dir / "validation.json").write_text(json.dumps(validation_report, indent=2))
+    (metadata_dir / "validation.json").write_text(
+        json.dumps(validation_report, indent=2)
+    )
 
-    if not all_valid:
+    # run_record.json/validation.json are themselves written after the sweep
+    # above, so a second, narrower sweep catches just these two new files --
+    # they can't retroactively record their own permissions outcome, but a
+    # failure here still fails the run rather than being silently swallowed.
+    metadata_chmod_result = subprocess.run(
+        ["chmod", "-R", "770", str(metadata_dir)], check=False
+    )
+    if metadata_chmod_result.returncode != 0:
+        print(
+            f"WARNING: chmod -R 770 {metadata_dir} exited "
+            f"{metadata_chmod_result.returncode} -- run_record.json/"
+            "validation.json may not be group-writable on koala",
+            file=sys.stderr,
+        )
+        run_ok = False
+
+    if not run_ok:
         print(json.dumps(validation_report, indent=2), file=sys.stderr)
         return 1
     print(
