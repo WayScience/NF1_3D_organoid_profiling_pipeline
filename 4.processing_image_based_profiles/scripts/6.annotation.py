@@ -15,7 +15,7 @@
 # - `data/{patient}/image_based_profiles/2.combined_profiles/sc.parquet`
 # - `data/{patient}/image_based_profiles/2.combined_profiles/organoid.parquet`
 # - `data/{patient}/image_based_profiles/2.combined_profiles/nucleocentric.parquet`
-# - `config/platemaps/{patient}_platemap.csv` — well-level treatment assignments
+# - `config/platemaps/platemap.csv` — well-level treatment assignments
 # - `config/drug_information/drug_information.csv` — drug target, class, therapeutic category
 #
 # ## Outputs
@@ -67,66 +67,111 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0037_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
+
+# ## Combine the metadata into a single annotation file
 
 # In[3]:
 
 
-def annotate_profiles(
-    profile_df: pd.DataFrame,
-    platemap_df: pd.DataFrame,
-    drug_information_df: pd.DataFrame,
-    patient: str,
-) -> pd.DataFrame:
-    """
-    Annotate profiles with treatment, dose, and unit information from the platemap.
+main_annotation_file_output = pathlib.Path(
+    f"{root_dir}/4.processing_image_based_profiles/annotation_data/external_platemap_metadata.csv"
+).resolve()
 
-        Parameters
-        ----------
-        profile_df : pd.DataFrame
-            Profile DataFrame containing image_set information.
-            Could be either single-cell or organoid profiles.
-        platemap_df : pd.DataFrame
-            Platmap DataFrame containing well_position, treatment, dose, and unit.
-        drug_information_df : pd.DataFrame
-            Drug DataFrame containing drug information.
-        patient : str
-            Patient ID to annotate the profiles with.
+if not main_annotation_file_output.exists():
+    main_annotation_file_output.parent.mkdir(parents=True, exist_ok=True)
 
-        Returns
-        -------
-        pd.DataFrame
-            Annotated profile DataFrame with additional columns for treatment, dose, and unit.
-    """
-    # Work on a copy to avoid mutating the caller's platemap across repeated calls.
-    platemap_df = platemap_df.copy()
-    # Merge strategy:
-    #   1. Join platemap with drug_information on the first word of Treatment
-    #      (e.g. "ARV-825 1 uM" → join key "ARV-825") to get Target, Class, etc.
-    #   2. Join the resulting table onto the profile on Well == WellPosition.
+    platemap_path = pathlib.Path(
+        f"{root_dir}/config/platemaps/barcode_platemap.csv"
+    ).resolve(strict=True)
+
+    drug_information = pd.read_csv(
+        pathlib.Path(f"{root_dir}/config/drug_information/drug_information.csv")
+    )
+    patient_tumor_type = pd.read_csv(
+        pathlib.Path(
+            f"{root_dir}/config/patient_tumor_information/patient_tumor_information.csv"
+        ),
+    )
+    patient_viabilities = pathlib.Path(
+        f"{root_dir}/config/viabilities/raw_viabilities_combined.csv"
+    ).resolve(strict=True)
+    patient_viabilities_df = pd.read_csv(patient_viabilities)
+    # read platemap
+    barcode_platemap = pd.read_csv(platemap_path)
+    if patient == "NF0037_T1_CQ1":
+        platemap = barcode_platemap[
+            barcode_platemap["patient_tumor_barcode"] == "NF0037_T1"
+        ]
+    else:
+        platemap = barcode_platemap[
+            barcode_platemap["patient_tumor_barcode"] == patient
+        ]["platemap_number"].values[0]
+    platemap_df = pd.read_csv(
+        pathlib.Path(f"{root_dir}/config/platemaps/{platemap}.csv")
+    )
+    # if % is in Treatment then delete the space leading to %
+    platemap_df["Treatment"] = platemap_df["Treatment"].str.replace(
+        r"\s+%", "%", regex=True
+    )
     drug_information_platemap_merged = pd.merge(
         platemap_df,
-        drug_information_df,
+        drug_information,
         left_on="Treatment",
         right_on="Treatment",
     )
-
-    profile_df["Well"] = profile_df["image_set"].str.split("-").str[0]
-    profile_df.insert(2, "Well", profile_df.pop("Well"))
-
-    profile_df = profile_df.merge(
-        drug_information_platemap_merged,
+    drug_information_platemap_viabilities_merged = pd.merge(
+        left=drug_information_platemap_merged,
+        right=patient_viabilities_df,
         how="left",
-        left_on="Well",
-        right_on="WellPosition",
+        left_on=["Treatment", "Dose"],
+        right_on=["Drug", "Concentration_uM"],
     )
-    profile_df.drop(columns=["WellPosition"], inplace=True)
-    for col in ["Treatment"]:
-        profile_df.insert(1, col, profile_df.pop(col))
-    profile_df.insert(0, "patient", patient)
-    return profile_df
+
+    drug_information_platemap_viabilities_tumor_type_merged = pd.merge(
+        left=drug_information_platemap_viabilities_merged,
+        right=patient_tumor_type,
+        how="left",
+        left_on=["Metadata_Biology_PatientTumor"],
+        right_on=["Metadata_Biology_PatientTumor"],
+    )
+    drug_information_platemap_viabilities_tumor_type_merged.drop(
+        columns=[
+            "WellRow",
+            "WellCol",
+            "Class",
+            "Drug",
+            "Concentration_uM",
+        ],
+        inplace=True,
+    )
+    annotation_df = drug_information_platemap_viabilities_tumor_type_merged.rename(
+        columns={
+            "WellPosition": "Metadata_Experiment_Well",
+            "Treatment": "Metadata_Experiment_Treatment",
+            "Dose": "Metadata_Experiment_Dose",
+            "Unit": "Metadata_Experiment_Unit",
+            "Target": "Metadata_Experiment_Target",
+            "TherapeuticCategories": "Metadata_Experiment_TherapeuticCategories",
+            "Viability_percentage": "Metadata_Experiment_ViabilityPercentage",
+        }
+    )
+    annotation_df.to_csv(main_annotation_file_output, index=False)
+else:
+    annotation_df = pd.read_csv(main_annotation_file_output)
+
+# subset the annotation_df to only include the patient of interest
+# if NF0037_T1_CQ1, then subset to NF0037_T1 metadata
+if patient == "NF0037_T1_CQ1":
+    annotation_df = annotation_df.loc[
+        annotation_df["Metadata_Biology_PatientTumor"] == "NF0037_T1"
+    ]
+else:
+    annotation_df = annotation_df.loc[
+        annotation_df["Metadata_Biology_PatientTumor"] == patient
+    ]
 
 
 # ## Pathing
@@ -143,12 +188,7 @@ organoid_merged_path = pathlib.Path(
 nucleocentric_merged_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/nucleocentric.parquet"
 ).resolve(strict=True)
-platemap_path = pathlib.Path(
-    f"{root_dir}/config/platemaps/{patient}_platemap.csv"
-).resolve(strict=True)
-drug_information = pd.read_csv(
-    pathlib.Path(f"{root_dir}/config/drug_information/drug_information.csv")
-)
+
 # output path
 sc_annotated_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/3.annotated_profiles/sc_anno.parquet"
@@ -179,33 +219,35 @@ organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 sc_merged = pd.read_parquet(sc_merged_path)
 organoid_merged = pd.read_parquet(organoid_merged_path)
 nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
-# read platemap
-platemap = pd.read_csv(platemap_path)
-# if % is in Treatment then delete the space leading to %
-platemap["Treatment"] = platemap["Treatment"].str.replace(r"\s+%", "%", regex=True)
-platemap.head()
+
+sc_merged["Well"] = sc_merged["image_set"].str.split("-").str[0]
+organoid_merged["Well"] = organoid_merged["image_set"].str.split("-").str[0]
+nucleocentric_merged["Well"] = nucleocentric_merged["image_set"].str.split("-").str[0]
 
 
 # In[6]:
 
 
-sc_merged = annotate_profiles(
-    profile_df=sc_merged,
-    platemap_df=platemap,
-    drug_information_df=drug_information,
-    patient=patient,
+sc_merged = pd.merge(
+    left=sc_merged,
+    right=annotation_df,
+    how="left",
+    left_on=["Well"],
+    right_on=["Metadata_Experiment_Well"],
 )
-organoid_merged = annotate_profiles(
-    profile_df=organoid_merged,
-    platemap_df=platemap,
-    drug_information_df=drug_information,
-    patient=patient,
+organoid_merged = pd.merge(
+    left=organoid_merged,
+    right=annotation_df,
+    how="left",
+    left_on=["Well"],
+    right_on=["Metadata_Experiment_Well"],
 )
-nucleocentric_merged = annotate_profiles(
-    profile_df=nucleocentric_merged,
-    platemap_df=platemap,
-    drug_information_df=drug_information,
-    patient=patient,
+nucleocentric_merged = pd.merge(
+    left=nucleocentric_merged,
+    right=annotation_df,
+    how="left",
+    left_on=["Well"],
+    right_on=["Metadata_Experiment_Well"],
 )
 # remove redundant columns
 columns_to_drop = [
@@ -407,91 +449,12 @@ nucleocentric_merged = nucleocentric_merged.rename(
 # In[12]:
 
 
-# Sub-categorize all Metadata_* columns into four namespaces:
-#   Biology_    — patient/tumor identity (who the sample came from)
-#   Experiment_ — treatment, well, and drug annotation (what was done)
-#   Object_     — per-object identifiers and counts (what object this row represents)
-#   Microscopy_ — instrument and acquisition parameters (how it was imaged)
-# Metadata_Location_* and Metadata_Neighbors_* were already renamed in earlier cells.
-# After renaming, all Metadata_* columns are moved to the front and rows are sorted.
-biology_features = [
-    "Metadata_PatientTumor",
-    "Metadata_Patient",
-    "Metadata_Tumor",
+# find duplicate columns and keep one of the duplicates
+sc_merged = sc_merged.loc[:, ~sc_merged.columns.duplicated()]
+organoid_merged = organoid_merged.loc[:, ~organoid_merged.columns.duplicated()]
+nucleocentric_merged = nucleocentric_merged.loc[
+    :, ~nucleocentric_merged.columns.duplicated()
 ]
-experiment_features = [
-    "Metadata_Treatment",
-    "Metadata_Dose",
-    "Metadata_Unit",
-    "Metadata_Well",
-    "Metadata_WellFOV",
-    "Metadata_Target",
-    "Metadata_Class",
-    "Metadata_TherapeuticCategories",
-]
-object_features = [
-    "Metadata_ObjectID",
-    "Metadata_ParentOrganoid",
-    "Metadata_SingleCellCount",
-    "Metadata_WellSingleCellCount",
-    "Metadata_OrganoidSingleCellCount",
-]
-microscopy_features = [
-    "Metadata_MicroscopeType",
-    "Metadata_MicroscopeName",
-    "Metadata_Magnification",
-    "Metadata_XResolutionUm",
-    "Metadata_YResolutionUm",
-    "Metadata_ZResolutionUm",
-]
-
-# Build rename mapping once
-rename_map = {}
-for col in biology_features:
-    rename_map[col] = col.replace("Metadata_", "Metadata_Biology_")
-for col in experiment_features:
-    rename_map[col] = col.replace("Metadata_", "Metadata_Experiment_")
-for col in object_features:
-    rename_map[col] = col.replace("Metadata_", "Metadata_Object_")
-for col in microscopy_features:
-    rename_map[col] = col.replace("Metadata_", "Metadata_Microscopy_")
-
-# Apply once to each dataframe
-sc_merged.rename(columns=rename_map, inplace=True)
-organoid_merged.rename(columns=rename_map, inplace=True)
-nucleocentric_merged.rename(columns=rename_map, inplace=True)
-
-# move all metadata columns to the front by sorting columns based on the prefix "Metadata_"
-sc_merged = sc_merged[
-    sorted(sc_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x))
-]
-organoid_merged = organoid_merged[
-    sorted(organoid_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x))
-]
-nucleocentric_merged = nucleocentric_merged[
-    sorted(
-        nucleocentric_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x)
-    )
-]
-
-# sort the dfs by patient, WellFov, and ObjectID (for single-cell)
-sc_merged = sc_merged.sort_values(
-    by=[
-        "Metadata_Biology_PatientTumor",
-        "Metadata_Experiment_WellFOV",
-        "Metadata_Object_ObjectID",
-    ]
-).reset_index(drop=True)
-organoid_merged = organoid_merged.sort_values(
-    by=["Metadata_Biology_PatientTumor", "Metadata_Experiment_WellFOV"]
-).reset_index(drop=True)
-nucleocentric_merged = nucleocentric_merged.sort_values(
-    by=[
-        "Metadata_Biology_PatientTumor",
-        "Metadata_Experiment_WellFOV",
-        "Metadata_Object_ObjectID",
-    ]
-).reset_index(drop=True)
 
 
 # In[13]:
@@ -573,9 +536,3 @@ sc_annotated.head()
 
 
 organoid_annotated.head()
-
-
-# In[17]:
-
-
-nucleocentric_morphem_annotated
