@@ -1,4 +1,4 @@
-Drug,Concentration_uM,Viability_percentage,patient_id
+Drug,Concentration_uM,Viability_percentage,Metadata_Biology_PatientTumor
 Copanlisib,1,34.60582787,NF0014_T2
 Rapamycin,1,59.09193585,NF0014_T2
 Nilotinib,1,77.0725096,NF0014_T2
