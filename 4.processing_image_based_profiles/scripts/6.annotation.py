@@ -77,7 +77,7 @@ else:
 
 
 main_annotation_file_output = pathlib.Path(
-    f"{root_dir}/4.processing_image_based_profiles/annotation_data/annotation_file.csv"
+    f"{root_dir}/4.processing_image_based_profiles/annotation_data/annotation_file_{patient}.csv"
 ).resolve()
 
 if not main_annotation_file_output.exists():
@@ -109,7 +109,9 @@ if not main_annotation_file_output.exists():
     # read platemap
     platemap = pd.read_csv(platemap_path)
     if patient == "NF0037_T1_CQ1":
-        platemap = platemap[platemap["patient_tumor_barcode"] == "NF0037_T1"]
+        platemap = platemap[platemap["patient_tumor_barcode"] == "NF0037_T1"][
+            "platemap_number"
+        ].values[0]
     else:
         platemap = platemap[platemap["patient_tumor_barcode"] == patient][
             "platemap_number"
@@ -554,10 +556,11 @@ nucleocentric_merged = nucleocentric_merged.sort_values(
 ).reset_index(drop=True)
 
 # find duplicate columns and keep one of the duplicates
-for df in [sc_merged, organoid_merged, nucleocentric_merged]:
-    duplicated_columns = df.columns[df.columns.duplicated()].tolist()
-    if duplicated_columns:
-        df.drop(columns=duplicated_columns, inplace=True)
+sc_merged = sc_merged.loc[:, ~sc_merged.columns.duplicated()]
+organoid_merged = organoid_merged.loc[:, ~organoid_merged.columns.duplicated()]
+nucleocentric_merged = nucleocentric_merged.loc[
+    :, ~nucleocentric_merged.columns.duplicated()
+]
 
 
 # In[13]:
