@@ -35,7 +35,7 @@ patient_id_file = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve(stric
 patients = pd.read_csv(
     patient_id_file, header=None, names=["patient_id"]
 ).patient_id.tolist()
-# patients = ["NF0014_T1"]  # --- IGNORE ---
+
 rerun_combinations_path = pathlib.Path(
     f"{root_dir}/2.segment_images/load_data/load_combinations.txt"
 )
@@ -55,8 +55,8 @@ z_stack_testing_patients = [
 patients += z_stack_testing_patients
 
 
-# # Convolution iteration values used for NF0014_T1 / C4-2
-# convolution_iters = list(range(1, 26)) + [50, 75, 100]
+# Convolution iteration values used for NF0014_T1 / C4-2
+convolution_iters = list(range(1, 26)) + [50, 75, 100]
 
 
 # In[3]:
@@ -112,20 +112,20 @@ for patient in tqdm(patients, desc="Patients"):
         add_row(patient, well_fov)
 
         # --- NF0014_T1 / C4-2: convolution iterations + deconvolved images ---
-        # if patient == "NF0014_T1" and well_fov == "C4-2":
-        # for conv_iter in convolution_iters:
-        #     add_row(
-        #         patient,
-        #         well_fov,
-        #         input_subparent_name=f"convolution_{conv_iter}",
-        #         mask_subparent_name=f"convolution_{conv_iter}_segmentation_masks",
-        #     )
-        # add_row(
-        #     patient,
-        #     well_fov,
-        #     input_subparent_name="deconvolved_images",
-        #     mask_subparent_name="deconvolved_segmentation_masks",
-        # )
+        if patient == "NF0014_T1" and well_fov == "C4-2":
+            for conv_iter in convolution_iters:
+                add_row(
+                    patient,
+                    well_fov,
+                    input_subparent_name=f"convolution_{conv_iter}",
+                    mask_subparent_name=f"convolution_{conv_iter}_segmentation_masks",
+                )
+            add_row(
+                patient,
+                well_fov,
+                input_subparent_name="deconvolved_images",
+                mask_subparent_name="deconvolved_segmentation_masks",
+            )
 
         # --- z-stack spacing test patients: extra mask variant ---
         # elif patient in z_stack_testing_patients:
@@ -203,16 +203,4 @@ df_rerun.to_csv(rerun_combinations_path, sep="\t", index=False)
 # In[7]:
 
 
-print(df.groupby("patient").size())
-
-
-# In[8]:
-
-
-print(df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index())
-
-
-# In[9]:
-
-
-df_rerun
+df_rerun.groupby("patient").size().to_frame(name="reruns").reset_index()
