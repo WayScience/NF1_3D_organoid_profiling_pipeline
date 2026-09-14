@@ -27,14 +27,17 @@ the need for any patient/well/field SQL filtering at all: one file already
 *is* one image set. No `warehouse.duckdb` connection is opened by this
 script at all.
 
-`image_id()` below reproduces the exact naming convention
-`3b.nextflow_production/scripts/build_manifest.py`'s own `image_id()`
-already uses for this dataset (plate == patient): confirmed against real
-filenames in the warehouse, e.g. `NF0014_T1__NF0014_T1__C10__F1.parquet`.
-Reimplemented here rather than imported, matching this repo's own
-copy-not-share convention between pilot/production sibling folders (see
-`3b.nextflow_production/README.md`'s own framing of its relationship to
-`3a.nextflow_pilot`).
+`image_id()` and `parse_well_fov()` below reproduce the exact
+conventions `3b.nextflow_production/scripts/build_manifest.py`'s own
+functions of the same names already use for this dataset (plate ==
+patient): confirmed against real filenames in the warehouse, e.g.
+`NF0014_T1__NF0014_T1__C10__F1.parquet`. Reimplemented here rather than
+imported, matching this repo's own copy-not-share convention between
+pilot/production sibling folders (see `3b.nextflow_production/README.md`'s
+own framing of its relationship to `3a.nextflow_pilot`).
+`parse_well_fov()`'s regex-based split (not naive `rsplit("-", 1)`) matters
+here specifically: this dataset has at least one well whose own name
+contains a hyphen (`NF0018_T6`'s "E-3"), which a naive split misparses.
 
 The metadata dedup logic (deciding which of Nuclei/Cell/Cytoplasm's copy
 of a shared or per-compartment metadata column to keep when merging them)
@@ -46,6 +49,7 @@ pandas `.drop()` -- see `_SHARED_METADATA_PREFIXES`/
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -83,6 +87,30 @@ _PER_COMPARTMENT_METADATA_PREFIXES = (
 # it, then naturally collapses the two sides to one copy, equivalent to
 # the SQL joining on columns excluded from its own SELECT list.
 _JOIN_KEYS = ["Metadata_Imaging_ImageID", "Metadata_Object_ObjectID"]
+
+
+def parse_well_fov(well_fov: str) -> tuple[str, str]:
+    """Same convention as build_manifest.py's own parse_well_fov():
+    match a leading "letter + 1-2 digits" well name, treating anything
+    after an optional separator as the field, defaulting to field "1" if
+    the whole string doesn't match that shape.
+
+    Reimplemented here rather than imported, matching this repo's
+    copy-not-share convention between sibling folders. Not just naive
+    `well_fov.rsplit("-", 1)`: at least one real well in this dataset is
+    itself named with a hyphen (`NF0018_T6`'s well "E-3", landed as
+    `NF0018_T6__NF0018_T6__E-3__F1.parquet`), which rsplit misparses as
+    well "E" field "3" -- a combination that doesn't exist -- while this
+    regex correctly falls through to (well_fov, "1") for that one case,
+    since "E-3" has no digit directly after its leading letter. Verified
+    against every row of manifest/image_sets_index.csv: this parses
+    identically to rsplit("-", 1) for all 4,135 other entries, and only
+    differs (correctly) for that one.
+    """
+    match = re.match(r"^([A-Ha-h][0-9]{1,2})[-_]?(.+)$", well_fov)
+    if not match:
+        return well_fov, "1"
+    return match.group(1).upper(), str(match.group(2))
 
 
 def image_id(patient: str, well: str, field: str) -> str:
@@ -156,7 +184,7 @@ def main() -> int:
     parser.add_argument("--image-based-profiles-subparent-name", required=True)
     args = parser.parse_args()
 
-    well, field = args.well_fov.rsplit("-", 1)
+    well, field = parse_well_fov(args.well_fov)
     sc_df, organoid_df = load_from_warehouse(
         args.warehouse_dir.resolve(strict=True), args.patient, well, field
     )

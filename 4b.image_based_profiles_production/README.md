@@ -29,8 +29,9 @@ See `4a.image_based_profiles_pilot/README.md` for the full history behind those 
 ## What's different for production scale
 
 - **Input**: `--image-sets-index manifest/image_sets_index.csv` (a CSV of `patient,well_fov` rows, same format 3b's own index uses) instead of a 2-entry YAML manifest.
-- **Resumability**: before processing an image set, `run_ibp_production.py` skips it if `warehouse/ibp/sc_profiles_related/<image_id>.parquet` already exists -- mirrors `3b.nextflow_production`'s own `PLAN_IMAGE_SETS` skip-already-landed behavior.
+- **Resumability**: before processing an image set, `run_ibp_production.py` skips it if a dedicated completion marker (`ibp/.complete/<image_id>`) already exists -- mirrors `3b.nextflow_production`'s own `PLAN_IMAGE_SETS` skip-already-landed behavior.
   This matters here because a 4,000+-item run is long enough that interruption/resume is a real scenario, not a hypothetical -- and in practice, every verification run below built on the previous one's output rather than redoing it.
+  Both output parquet files are written to temp paths and atomically renamed into place before the marker is created, so a run interrupted mid-write can never be mistaken for complete (see the review-feedback update below for the full story -- this was a real gap, not a hypothetical one, since this script has genuinely been interrupted mid-run during this project's own work).
 - **Light parallelism**: a `ThreadPoolExecutor` (`--workers`, default 8) runs image sets concurrently.
   Threads, not `multiprocessing`, because the actual work happens inside two `subprocess.run()` calls per image set (adapter + step 3), which release the GIL while blocked -- no process-spawn/pickling overhead needed.
   Measured directly against the real warehouse: 4 workers ~1.9s/image-set, 8 workers ~1.15s/image-set, 16 workers ~1.07s/image-set -- 8 is the practical default (subprocess-startup overhead dominates well before 16 cores saturate, so going higher buys little).
@@ -101,4 +102,16 @@ Verified against the real triggering image set (`NF0037_T1_CQ1/B2-17`) both befo
 Row totals for these findings were confirmed by counting files on disk instead (`find ... | wc -l`), not by querying the view.
 
 Not yet checked: whether `NF0014_T1/F11-3` or `SARCO361_T1/D2-3` (the 2 genuine gaps) are needed for a specific downstream analysis -- they'd need to be re-staged and re-extracted through ZEDProfiler first, since this folder can only process what already exists in the warehouse.
-`NF0018_T6/E-3`'s data already exists and just needs a well_fov-parsing fix (or a one-off manual invocation with the right patient/well/field) if it's ever needed -- not a re-staging problem.
+
+**Update (review feedback), `NF0018_T6/E-3` recovered:** per review, `well_fov.rsplit("-", 1)` was replaced with a `parse_well_fov()` regex-based split (same convention `3b.nextflow_production/scripts/build_manifest.py` already uses, reimplemented locally in `build_ibp_inputs_from_warehouse.py`), which correctly falls back to treating the whole string as the well name when it doesn't start with a `letter+digit(s)` pattern.
+Verified against every row of `manifest/image_sets_index.csv` before adopting it: identical to the old parsing for 4,135 of 4,136 rows, and only differs -- correctly -- for `NF0018_T6/E-3`.
+Re-running with the fix in place recovered this image set for real: **4,134 succeed now**, only the 2 genuine gaps remain.
+
+**Update (review feedback), atomic writes + a real completion marker:** `run_one_image_set()` used to write both output parquet files directly to their final paths, and resumability checked only whether `sc_profiles_related/<id>.parquet` existed.
+A process killed mid-write (this script _has_ been interrupted for real during this work) could leave a truncated file at a final path, or leave `sc_profiles_related` written but `organoid_profiles_related` missing for that image set -- either way, indistinguishable from a genuinely complete result to the old resumability check, silently skipped forever on every future run.
+Fixed by writing both outputs to temp paths first, atomically `os.replace()`-ing both into place only once both writes succeed, then creating a dedicated marker file (`ibp/.complete/<image_id>`) that resumability now checks instead of either parquet file directly.
+Verified directly: a simulated failure between the two writes leaves no trace at either final path, no marker, and no leftover temp file.
+The existing 4,133 (now 4,134) already-correct image sets from before this fix don't have markers yet -- backfilled them in one pass (checked both output files exist per image set first; found zero inconsistent pairs) rather than needlessly reprocessing an already-correct hour of output.
+
+**Update (review feedback), `chmod` on the run record itself now affects the exit code:** the final `chmod 770` on `ibp_run_record.json` discarded its return code entirely, unlike the two `chmod` calls just above it for `ibp/` and `warehouse.duckdb`.
+Can't be reflected in the run record's own `permissions_ok` field -- the file has to exist before it can be `chmod`'d -- but a failure here now still flips `permissions_ok` to `False` and fails the script's own exit code, instead of being silently discarded.

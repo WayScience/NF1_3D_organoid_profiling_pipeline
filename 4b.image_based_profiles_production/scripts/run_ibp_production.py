@@ -66,7 +66,7 @@ import pandas as pd
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from build_ibp_inputs_from_warehouse import image_id  # noqa: E402
+from build_ibp_inputs_from_warehouse import image_id, parse_well_fov  # noqa: E402
 
 PROD_ROOT = SCRIPT_DIR.parent
 REPO_ROOT = PROD_ROOT.parent
@@ -83,6 +83,21 @@ def read_image_sets_index(path: Path) -> list[tuple[str, str]]:
     with path.open(newline="") as handle:
         reader = csv.DictReader(handle)
         return [(row["patient"], row["well_fov"]) for row in reader]
+
+
+def _complete_marker_path(warehouse_dir: Path, iid: str) -> Path:
+    # A dedicated marker directory, not either output table itself: judging
+    # completion by whether sc_profiles_related/<iid>.parquet merely exists
+    # doesn't guarantee organoid_profiles_related/<iid>.parquet was ever
+    # written too (a kill between the two), nor that either file finished
+    # writing cleanly rather than being left truncated by an interrupted
+    # process. The marker is only ever created after both real outputs are
+    # atomically in place -- see run_one_image_set().
+    return warehouse_dir / "ibp" / ".complete" / iid
+
+
+def is_complete(warehouse_dir: Path, iid: str) -> bool:
+    return _complete_marker_path(warehouse_dir, iid).exists()
 
 
 def run_one_image_set(
@@ -155,17 +170,43 @@ def run_one_image_set(
     # step 3's own "add an NA placeholder row" fallback sets every column,
     # Metadata_Imaging_ImageID included, to None -- reading it back would
     # silently name the output file "None.parquet" instead of failing loudly.
-    well, field = well_fov.rsplit("-", 1)
+    well, field = parse_well_fov(well_fov)
     iid = image_id(patient, well, field)
 
+    # Write both outputs to temp paths first, and only rename either one
+    # into place once both writes have succeeded -- a process killed
+    # mid-write (this loop has been interrupted for real during this
+    # project's own runs) must never leave a half-written or single-table
+    # parquet file sitting at a final path where a later run's resumability
+    # check could mistake it for a complete, valid result. tmp_paths is
+    # cleared once os.replace() has consumed each one, so the finally block
+    # only ever cleans up files that didn't make it to a successful rename.
     ibp_dir = warehouse_dir / "ibp"
-    for name, df in (
-        ("sc_profiles_related", sc_related),
-        ("organoid_profiles_related", organoid_related),
-    ):
-        table_dir = ibp_dir / name
-        table_dir.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(table_dir / f"{iid}.parquet", index=False)
+    tmp_paths: list[Path] = []
+    final_paths: list[Path] = []
+    try:
+        for name, df in (
+            ("sc_profiles_related", sc_related),
+            ("organoid_profiles_related", organoid_related),
+        ):
+            table_dir = ibp_dir / name
+            table_dir.mkdir(parents=True, exist_ok=True)
+            final_path = table_dir / f"{iid}.parquet"
+            tmp_path = table_dir / f".{iid}.{os.getpid()}.tmp.parquet"
+            df.to_parquet(tmp_path, index=False)
+            tmp_paths.append(tmp_path)
+            final_paths.append(final_path)
+
+        for tmp_path, final_path in zip(tmp_paths, final_paths):
+            os.replace(tmp_path, final_path)  # atomic on the same filesystem
+        tmp_paths = []
+
+        marker_path = _complete_marker_path(warehouse_dir, iid)
+        marker_path.parent.mkdir(parents=True, exist_ok=True)
+        marker_path.touch()
+    finally:
+        for tmp_path in tmp_paths:
+            tmp_path.unlink(missing_ok=True)
 
     # Same placeholder row also has object_id/ParentOrganoid set to None,
     # which `!= -1`/`== -1` would otherwise miscount as "assigned" (None/NaN
@@ -274,10 +315,9 @@ def main() -> int:
     pending: list[tuple[str, str, str]] = []
     skipped = 0
     for patient, well_fov in all_entries:
-        well, field = well_fov.rsplit("-", 1)
+        well, field = parse_well_fov(well_fov)
         iid = image_id(patient, well, field)
-        output_path = warehouse_dir / "ibp" / "sc_profiles_related" / f"{iid}.parquet"
-        if output_path.exists():
+        if is_complete(warehouse_dir, iid):
             skipped += 1
             continue
         pending.append((patient, well_fov, iid))
@@ -397,7 +437,22 @@ def main() -> int:
     }
     run_record_path = warehouse_dir.parent / "ibp_run_record.json"
     run_record_path.write_text(json.dumps(run_record, indent=2))
-    subprocess.run(["chmod", "770", str(run_record_path)], check=False)
+    # Can't be reflected in run_record's own permissions_ok field above --
+    # the file has to exist before it can be chmod'd -- but a failure here
+    # must still fail the run rather than being silently discarded, so it's
+    # folded into the function's own return code below, same as the other
+    # two chmod calls above.
+    run_record_chmod = subprocess.run(
+        ["chmod", "770", str(run_record_path)], check=False
+    )
+    if run_record_chmod.returncode != 0:
+        permissions_ok = False
+        print(
+            f"WARNING: chmod 770 {run_record_path} exited "
+            f"{run_record_chmod.returncode} -- ibp_run_record.json may not "
+            "be group-writable on koala",
+            file=sys.stderr,
+        )
 
     print("\n=== NF1_IBP_PRODUCTION_SUMMARY ===")
     print(
