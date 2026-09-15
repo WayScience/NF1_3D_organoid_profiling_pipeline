@@ -134,13 +134,28 @@ with duckdb.connect() as conn:
     organoid_profile = conn.execute(
         f"SELECT * FROM read_parquet({organoid_profiles}, union_by_name=true)"
     ).df()
-    nucleocentric_profile = conn.execute(
-        f"SELECT * FROM read_parquet({nucleocentric_profiles}, union_by_name=true)"
-    ).df()
+    # DuckDB's read_parquet() errors on an empty file list, and a dataset with
+    # no deep-learning features (e.g. ZEDProfiler) never produces any
+    # nucleocentric_*_related.parquet inputs -- nucleocentric_profiles is
+    # legitimately empty in that case, so skip the query entirely rather than
+    # calling read_parquet([]).
+    nucleocentric_profile = (
+        conn.execute(
+            f"SELECT * FROM read_parquet({nucleocentric_profiles}, union_by_name=true)"
+        ).df()
+        if nucleocentric_profiles
+        else None
+    )
 
 print(f"Single-cell profiles concatenated. Shape: {sc_profile.shape}")
 print(f"Organoid profiles concatenated. Shape: {organoid_profile.shape}")
-print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape}")
+if nucleocentric_profile is not None:
+    print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape}")
+else:
+    print(
+        "No nucleocentric_* input files found -- skipping nucleocentric.parquet "
+        "output (expected for datasets with no deep-learning features)."
+    )
 
 
 # ## Remove all BF channels
@@ -165,11 +180,14 @@ print(
     f"Organoid: dropped {len(bf_cols_organoid)} BF columns. Shape: {organoid_profile.shape}"
 )
 
-bf_cols_nucleocentric = [col for col in nucleocentric_profile.columns if "BF" in col]
-nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric)
-print(
-    f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}"
-)
+if nucleocentric_profile is not None:
+    bf_cols_nucleocentric = [
+        col for col in nucleocentric_profile.columns if "BF" in col
+    ]
+    nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric)
+    print(
+        f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}"
+    )
 
 
 # In[9]:
@@ -177,7 +195,8 @@ print(
 
 sc_profile.to_parquet(sc_merged_output_path, index=False)
 organoid_profile.to_parquet(organoid_merged_output_path, index=False)
-nucleocentric_profile.to_parquet(nucleocentric_profile_output_path, index=False)
+if nucleocentric_profile is not None:
+    nucleocentric_profile.to_parquet(nucleocentric_profile_output_path, index=False)
 
 
 # In[10]:

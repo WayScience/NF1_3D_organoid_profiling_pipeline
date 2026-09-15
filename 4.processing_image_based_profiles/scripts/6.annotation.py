@@ -76,39 +76,56 @@ else:
 # In[3]:
 
 
+barcode_platemap = pd.read_csv(
+    pathlib.Path(f"{root_dir}/config/platemaps/barcode_platemap.csv").resolve(
+        strict=True
+    )
+)
+# NF0037_T1_CQ1 shares NF0037_T1's own plate layout/barcode row -- look up by
+# that name, but keep `patient` itself as "NF0037_T1_CQ1" everywhere else.
+# Previously this branch assigned the whole filtered DataFrame to `platemap`
+# instead of the platemap_number string like the else branch does -- an
+# f-string of a DataFrame produces garbage, so building this file for
+# NF0037_T1_CQ1 first would have failed outright.
+_platemap_lookup_patient = "NF0037_T1" if patient == "NF0037_T1_CQ1" else patient
+platemap = barcode_platemap[
+    barcode_platemap["patient_tumor_barcode"] == _platemap_lookup_patient
+]["platemap_number"].values[0]
+
+# Cache keyed by platemap number, not a single shared filename: multiple
+# patients can use different platemaps (confirmed directly against
+# config/platemaps/barcode_platemap.csv -- NF0037_T1/NF0040_T1/NF0055_T1 use
+# platemap2, everyone else here uses platemap1). A single shared cache file
+# would lock in whichever platemap the first patient to run happened to use,
+# silently leaving every other-platemap patient's annotation_df with zero
+# matching rows.
+#
+# This cache holds ONLY the patient-agnostic plate layout (well -> treatment/
+# dose/target/class/therapeutic category) -- identical for every patient
+# sharing this platemap. Viability and tumor-type were previously baked into
+# this same cached table via a left-merge keyed on (Treatment, Dose), which
+# is patient-specific data disguised as if it were part of the shared plate
+# layout. Confirmed directly this caused silent data loss: viability is
+# fanned out one row per patient who has a measurement for that exact
+# (Treatment, Dose), so any well+treatment where a DIFFERENT patient (not
+# this one) happened to be the one with a recorded viability produced a row
+# whose PatientTumor was that other patient -- excluded entirely once this
+# patient's own subset was filtered down, even though the well/treatment
+# itself applies to this patient's plate too (real measured impact: up to
+# 87% of NF0040_T1's single-cell rows lost their entire annotation this
+# way, not just DMSO). Viability/tumor-type are now looked up fresh per
+# patient below, outside the cache, as optional enrichment that never gates
+# which plate-layout rows survive.
 main_annotation_file_output = pathlib.Path(
-    f"{root_dir}/4.processing_image_based_profiles/annotation_data/external_platemap_metadata.csv"
+    f"{root_dir}/4.processing_image_based_profiles/annotation_data/external_platemap_metadata_{platemap}.csv"
 ).resolve()
 
 if not main_annotation_file_output.exists():
     main_annotation_file_output.parent.mkdir(parents=True, exist_ok=True)
 
-    platemap_path = pathlib.Path(
-        f"{root_dir}/config/platemaps/barcode_platemap.csv"
-    ).resolve(strict=True)
-
     drug_information = pd.read_csv(
         pathlib.Path(f"{root_dir}/config/drug_information/drug_information.csv")
     )
-    patient_tumor_type = pd.read_csv(
-        pathlib.Path(
-            f"{root_dir}/config/patient_tumor_information/patient_tumor_information.csv"
-        ),
-    )
-    patient_viabilities = pathlib.Path(
-        f"{root_dir}/config/viabilities/raw_viabilities_combined.csv"
-    ).resolve(strict=True)
-    patient_viabilities_df = pd.read_csv(patient_viabilities)
-    # read platemap
-    barcode_platemap = pd.read_csv(platemap_path)
-    if patient == "NF0037_T1_CQ1":
-        platemap = barcode_platemap[
-            barcode_platemap["patient_tumor_barcode"] == "NF0037_T1"
-        ]
-    else:
-        platemap = barcode_platemap[
-            barcode_platemap["patient_tumor_barcode"] == patient
-        ]["platemap_number"].values[0]
     platemap_df = pd.read_csv(
         pathlib.Path(f"{root_dir}/config/platemaps/{platemap}.csv")
     )
@@ -122,56 +139,61 @@ if not main_annotation_file_output.exists():
         left_on="Treatment",
         right_on="Treatment",
     )
-    drug_information_platemap_viabilities_merged = pd.merge(
-        left=drug_information_platemap_merged,
-        right=patient_viabilities_df,
-        how="left",
-        left_on=["Treatment", "Dose"],
-        right_on=["Drug", "Concentration_uM"],
-    )
-
-    drug_information_platemap_viabilities_tumor_type_merged = pd.merge(
-        left=drug_information_platemap_viabilities_merged,
-        right=patient_tumor_type,
-        how="left",
-        left_on=["Metadata_Biology_PatientTumor"],
-        right_on=["Metadata_Biology_PatientTumor"],
-    )
-    drug_information_platemap_viabilities_tumor_type_merged.drop(
-        columns=[
-            "WellRow",
-            "WellCol",
-            "Class",
-            "Drug",
-            "Concentration_uM",
-        ],
+    drug_information_platemap_merged.drop(
+        columns=["WellRow", "WellCol"],
         inplace=True,
     )
-    annotation_df = drug_information_platemap_viabilities_tumor_type_merged.rename(
+    annotation_df = drug_information_platemap_merged.rename(
         columns={
             "WellPosition": "Metadata_Experiment_Well",
             "Treatment": "Metadata_Experiment_Treatment",
             "Dose": "Metadata_Experiment_Dose",
             "Unit": "Metadata_Experiment_Unit",
             "Target": "Metadata_Experiment_Target",
+            "Class": "Metadata_Experiment_Class",
             "TherapeuticCategories": "Metadata_Experiment_TherapeuticCategories",
-            "Viability_percentage": "Metadata_Experiment_ViabilityPercentage",
         }
     )
     annotation_df.to_csv(main_annotation_file_output, index=False)
 else:
     annotation_df = pd.read_csv(main_annotation_file_output)
 
-# subset the annotation_df to only include the patient of interest
-# if NF0037_T1_CQ1, then subset to NF0037_T1 metadata
-if patient == "NF0037_T1_CQ1":
-    annotation_df = annotation_df.loc[
-        annotation_df["Metadata_Biology_PatientTumor"] == "NF0037_T1"
-    ]
-else:
-    annotation_df = annotation_df.loc[
-        annotation_df["Metadata_Biology_PatientTumor"] == patient
-    ]
+# Enrich with this specific patient's own identity, tumor type, and (where
+# available) measured viability -- all patient-specific, so applied fresh
+# every run rather than cached. Every plate-layout row from above is kept
+# regardless of whether a viability measurement exists for it: viability is
+# optional metadata, not a gate on which wells belong to this patient.
+annotation_df["Metadata_Biology_PatientTumor"] = _platemap_lookup_patient
+
+patient_tumor_type = pd.read_csv(
+    pathlib.Path(
+        f"{root_dir}/config/patient_tumor_information/patient_tumor_information.csv"
+    ),
+)
+annotation_df = annotation_df.merge(
+    patient_tumor_type,
+    how="left",
+    on="Metadata_Biology_PatientTumor",
+)
+
+patient_viabilities_df = pd.read_csv(
+    pathlib.Path(f"{root_dir}/config/viabilities/raw_viabilities_combined.csv").resolve(
+        strict=True
+    )
+)
+patient_viabilities_df = patient_viabilities_df.loc[
+    patient_viabilities_df["Metadata_Biology_PatientTumor"] == _platemap_lookup_patient,
+    ["Drug", "Concentration_uM", "Viability_percentage"],
+]
+annotation_df = annotation_df.merge(
+    patient_viabilities_df,
+    how="left",
+    left_on=["Metadata_Experiment_Treatment", "Metadata_Experiment_Dose"],
+    right_on=["Drug", "Concentration_uM"],
+).drop(columns=["Drug", "Concentration_uM"])
+annotation_df = annotation_df.rename(
+    columns={"Viability_percentage": "Metadata_Experiment_ViabilityPercentage"}
+)
 
 
 # ## Pathing
@@ -187,7 +209,12 @@ organoid_merged_path = pathlib.Path(
 ).resolve(strict=True)
 nucleocentric_merged_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/nucleocentric.parquet"
-).resolve(strict=True)
+).resolve()
+# Not required: datasets with no deep-learning features (e.g. ZEDProfiler) never
+# have nucleocentric_*_related.parquet inputs, so step 5 doesn't write this file
+# for those patients at all -- treat its absence as "no nucleocentric data" for
+# this patient rather than a hard failure.
+has_nucleocentric = nucleocentric_merged_path.exists()
 
 # output path
 sc_annotated_output_path = pathlib.Path(
@@ -218,15 +245,46 @@ organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 # read data
 sc_merged = pd.read_parquet(sc_merged_path)
 organoid_merged = pd.read_parquet(organoid_merged_path)
-nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
+nucleocentric_merged = (
+    pd.read_parquet(nucleocentric_merged_path) if has_nucleocentric else None
+)
 
 sc_merged["Well"] = sc_merged["image_set"].str.split("-").str[0]
 organoid_merged["Well"] = organoid_merged["image_set"].str.split("-").str[0]
-nucleocentric_merged["Well"] = nucleocentric_merged["image_set"].str.split("-").str[0]
+if has_nucleocentric:
+    nucleocentric_merged["Well"] = (
+        nucleocentric_merged["image_set"].str.split("-").str[0]
+    )
 
 
 # In[6]:
 
+
+# ZEDProfiler-derived input already carries its own Metadata_Biology_*/
+# Metadata_Experiment_* columns, passed straight through from steps 3/5 --
+# confirmed directly against real data: Metadata_Biology_PatientTumor
+# already exists in sc_merged/organoid_merged here. Left un-dropped, that
+# collides with annotation_df's own same-named column below (neither side
+# is the join key, so pandas would otherwise silently suffix both copies
+# _x/_y instead of erroring). Drop the input's copy first so annotation_df's
+# copy is the sole, authoritative one post-merge -- matching this script's
+# original design (written for the older CellProfiler-era pipeline, whose
+# own input never carried any of these columns before this merge).
+_annotation_overlap_cols = [
+    c for c in annotation_df.columns if c != "Metadata_Experiment_Well"
+]
+sc_merged = sc_merged.drop(
+    columns=[c for c in _annotation_overlap_cols if c in sc_merged.columns]
+)
+organoid_merged = organoid_merged.drop(
+    columns=[c for c in _annotation_overlap_cols if c in organoid_merged.columns]
+)
+if has_nucleocentric:
+    nucleocentric_merged = nucleocentric_merged.drop(
+        columns=[
+            c for c in _annotation_overlap_cols if c in nucleocentric_merged.columns
+        ]
+    )
 
 sc_merged = pd.merge(
     left=sc_merged,
@@ -242,13 +300,14 @@ organoid_merged = pd.merge(
     left_on=["Well"],
     right_on=["Metadata_Experiment_Well"],
 )
-nucleocentric_merged = pd.merge(
-    left=nucleocentric_merged,
-    right=annotation_df,
-    how="left",
-    left_on=["Well"],
-    right_on=["Metadata_Experiment_Well"],
-)
+if has_nucleocentric:
+    nucleocentric_merged = pd.merge(
+        left=nucleocentric_merged,
+        right=annotation_df,
+        how="left",
+        left_on=["Well"],
+        right_on=["Metadata_Experiment_Well"],
+    )
 # remove redundant columns
 columns_to_drop = [
     "image_set_1",
@@ -262,10 +321,11 @@ sc_merged.drop(
 organoid_merged.drop(
     columns=[x for x in columns_to_drop if x in organoid_merged.columns], inplace=True
 )
-nucleocentric_merged.drop(
-    columns=[x for x in columns_to_drop if x in nucleocentric_merged.columns],
-    inplace=True,
-)
+if has_nucleocentric:
+    nucleocentric_merged.drop(
+        columns=[x for x in columns_to_drop if x in nucleocentric_merged.columns],
+        inplace=True,
+    )
 
 
 # ### Get single cell counts per well and organoid counts per well
@@ -279,24 +339,41 @@ sc_merged["Metadata_WellSingleCellCount"] = sc_merged.groupby("Well")[
 organoid_merged["Metadata_WellOrganoidCount"] = organoid_merged.groupby("Well")[
     "image_set"
 ].transform("count")
-nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.groupby(
-    "Well"
-)["image_set"].transform("count")
+if has_nucleocentric:
+    nucleocentric_merged["Metadata_WellNucleocentricCount"] = (
+        nucleocentric_merged.groupby("Well")["image_set"].transform("count")
+    )
 
 
 # In[8]:
 
 
+# Rename straight to the fully category-qualified final names (per
+# docs/RFC-2119-Feature-Naming-Convention.md section 2.2) rather than a bare
+# name later blanket-prefixed with "Metadata_" below: 7a/7b/7c all expect
+# Metadata_Object_ObjectID/ParentOrganoid/OrganoidSingleCellCount and
+# Metadata_Experiment_WellFOV specifically, not the flat Metadata_ObjectID/
+# Metadata_WellFOV a plain prefix would produce. object_id/ParentOrganoid/
+# OrganoidSingleCellCount come from step 3's own output; ParentOrganoid is
+# sc/nucleocentric-only and OrganoidSingleCellCount is organoid-only, so
+# .rename() is a no-op wherever a given key isn't present in that profile's
+# columns. "patient" is the older CellProfiler-era pipeline's own bare
+# column name (never present in ZEDProfiler-derived data, which already
+# carries Metadata_Biology_PatientTumor natively) -- kept here as a no-op
+# for that older input shape rather than removed.
 column_rename_mapping = {
-    "patient": "PatientTumor",
-    "image_set": "WellFOV",
-    "object_id": "ObjectID",
+    "patient": "Metadata_Biology_PatientTumor",
+    "image_set": "Metadata_Experiment_WellFOV",
+    "object_id": "Metadata_Object_ObjectID",
+    "ParentOrganoid": "Metadata_Object_ParentOrganoid",
+    "OrganoidSingleCellCount": "Metadata_Object_OrganoidSingleCellCount",
 }
 
 # rename columns for consistency across profiles
 sc_merged.rename(columns=column_rename_mapping, inplace=True)
 organoid_merged.rename(columns=column_rename_mapping, inplace=True)
-nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
+if has_nucleocentric:
+    nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
 
 # In[9]:
@@ -383,20 +460,13 @@ _ = [
 # In[11]:
 
 
+# PatientTumor/ObjectID/WellFOV/ParentOrganoid/OrganoidSingleCellCount/Class
+# are no longer listed here -- they already arrive fully category-qualified,
+# either via column_rename_mapping above or (Class/Treatment/Dose/Unit/
+# Target/TherapeuticCategories) via the annotation_df merge.
 metadata_features_list = [
-    "PatientTumor",
     "Tumor",
-    "ObjectID",
     "Well",
-    "Treatment",
-    "Dose",
-    "Unit",
-    "WellFOV",
-    "ParentOrganoid",
-    "OrganoidSingleCellCount",
-    "Target",
-    "Class",
-    "TherapeuticCategories",
 ]
 # prepend "Metadata_" to metadata features
 sc_merged = sc_merged.rename(
@@ -405,45 +475,23 @@ sc_merged = sc_merged.rename(
 organoid_merged = organoid_merged.rename(
     columns={col: f"Metadata_{col}" for col in metadata_features_list}
 )
-nucleocentric_merged = nucleocentric_merged.rename(
-    columns={col: f"Metadata_{col}" for col in metadata_features_list}
-)
-# add microscope metadata
-(
-    sc_merged["Metadata_MicroscopeType"],
-    organoid_merged["Metadata_MicroscopeType"],
-    nucleocentric_merged["Metadata_MicroscopeType"],
-) = ("spinning disk confocal", "spinning disk confocal", "spinning disk confocal")
-(
-    sc_merged["Metadata_MicroscopeName"],
-    organoid_merged["Metadata_MicroscopeName"],
-    nucleocentric_merged["Metadata_MicroscopeName"],
-) = (
-    "Discover Echo" if "CQ1" not in patient else "Yokogawa CQ1",
-    "Discover Echo" if "CQ1" not in patient else "Yokogawa CQ1",
-    "Discover Echo" if "CQ1" not in patient else "Yokogawa CQ1",
-)
-(
-    sc_merged["Metadata_Magnification"],
-    organoid_merged["Metadata_Magnification"],
-    nucleocentric_merged["Metadata_Magnification"],
-) = ("60x", "60x", "60x")
+if has_nucleocentric:
+    nucleocentric_merged = nucleocentric_merged.rename(
+        columns={col: f"Metadata_{col}" for col in metadata_features_list}
+    )
 
-(
-    sc_merged["Metadata_XResolutionUm"],
-    organoid_merged["Metadata_XResolutionUm"],
-    nucleocentric_merged["Metadata_XResolutionUm"],
-) = (0.101, 0.101, 0.101)
-(
-    sc_merged["Metadata_YResolutionUm"],
-    organoid_merged["Metadata_YResolutionUm"],
-    nucleocentric_merged["Metadata_YResolutionUm"],
-) = (0.101, 0.101, 0.101)
-(
-    sc_merged["Metadata_ZResolutionUm"],
-    organoid_merged["Metadata_ZResolutionUm"],
-    nucleocentric_merged["Metadata_ZResolutionUm"],
-) = (1.0, 1.0, 1.0)
+# add microscope metadata
+_microscope_name = "Discover Echo" if "CQ1" not in patient else "Yokogawa CQ1"
+_dfs_for_microscope_metadata = [sc_merged, organoid_merged] + (
+    [nucleocentric_merged] if has_nucleocentric else []
+)
+for _df in _dfs_for_microscope_metadata:
+    _df["Metadata_MicroscopeType"] = "spinning disk confocal"
+    _df["Metadata_MicroscopeName"] = _microscope_name
+    _df["Metadata_Magnification"] = "60x"
+    _df["Metadata_XResolutionUm"] = 0.101
+    _df["Metadata_YResolutionUm"] = 0.101
+    _df["Metadata_ZResolutionUm"] = 1.0
 
 
 # In[12]:
@@ -452,9 +500,10 @@ nucleocentric_merged = nucleocentric_merged.rename(
 # find duplicate columns and keep one of the duplicates
 sc_merged = sc_merged.loc[:, ~sc_merged.columns.duplicated()]
 organoid_merged = organoid_merged.loc[:, ~organoid_merged.columns.duplicated()]
-nucleocentric_merged = nucleocentric_merged.loc[
-    :, ~nucleocentric_merged.columns.duplicated()
-]
+if has_nucleocentric:
+    nucleocentric_merged = nucleocentric_merged.loc[
+        :, ~nucleocentric_merged.columns.duplicated()
+    ]
 
 
 # In[13]:
@@ -481,49 +530,90 @@ organoid_handcrafted_columns = [
 ]
 organoid_sammed_columns = [x for x in organoid_merged.columns if "sammed" in x.lower()]
 
-nucleocentric_metadata_columns = [
-    x for x in nucleocentric_merged.columns if "Metadata" in x
-]
-nucleocentric_sammed_columns = [
-    x for x in nucleocentric_merged.columns if "sammed" in x.lower()
-]
-nucleocentric_morphem_columns = [
-    x for x in nucleocentric_merged.columns if "chammi" in x.lower()
-]
-
 # split the profiles
 sc_annotated = sc_merged[sc_metadata_columns + sc_handcrafted_columns]
-sc_annotated_sammed = sc_merged[sc_metadata_columns + sc_sammed_columns]
 organoid_annotated = organoid_merged[
     organoid_metadata_columns + organoid_handcrafted_columns
 ]
-organoid_annotated_sammed = organoid_merged[
-    organoid_metadata_columns + organoid_sammed_columns
-]
-nucleocentric_sammed_annotated = nucleocentric_merged[
-    nucleocentric_metadata_columns + nucleocentric_sammed_columns
-]
-nucleocentric_morphem_annotated = nucleocentric_merged[
-    nucleocentric_metadata_columns + nucleocentric_morphem_columns
-]
+
+# A dataset with no deep-learning features (e.g. ZEDProfiler) has zero columns
+# containing "sammed"/"chammi" in every profile type -- not just nucleocentric.
+# Each DL-derived output is only built/saved when its own column list is
+# non-empty, so `4.qc_profiles`/`5.normalized_profiles`/etc. simply have no
+# file for a profile type this dataset never produced (see 8.normalization.py,
+# 9.feature_selection.py, 10.aggregation.py, 11.combine_patients.py,
+# 12.validate_profiles.py, all updated to skip files that don't exist).
+has_sc_sammed = bool(sc_sammed_columns)
+has_organoid_sammed = bool(organoid_sammed_columns)
+if has_sc_sammed:
+    sc_annotated_sammed = sc_merged[sc_metadata_columns + sc_sammed_columns]
+if has_organoid_sammed:
+    organoid_annotated_sammed = organoid_merged[
+        organoid_metadata_columns + organoid_sammed_columns
+    ]
+
+has_nucleocentric_sammed = False
+has_nucleocentric_morphem = False
+if has_nucleocentric:
+    nucleocentric_metadata_columns = [
+        x for x in nucleocentric_merged.columns if "Metadata" in x
+    ]
+    nucleocentric_sammed_columns = [
+        x for x in nucleocentric_merged.columns if "sammed" in x.lower()
+    ]
+    nucleocentric_morphem_columns = [
+        x for x in nucleocentric_merged.columns if "chammi" in x.lower()
+    ]
+    has_nucleocentric_sammed = bool(nucleocentric_sammed_columns)
+    has_nucleocentric_morphem = bool(nucleocentric_morphem_columns)
+    if has_nucleocentric_sammed:
+        nucleocentric_sammed_annotated = nucleocentric_merged[
+            nucleocentric_metadata_columns + nucleocentric_sammed_columns
+        ]
+    if has_nucleocentric_morphem:
+        nucleocentric_morphem_annotated = nucleocentric_merged[
+            nucleocentric_metadata_columns + nucleocentric_morphem_columns
+        ]
 
 
 # In[14]:
 
 
-# save annotated profiles
+# save annotated profiles -- hand-crafted SC/organoid are always produced;
+# each deep-learning profile is only written when this dataset actually has
+# that feature type (see the has_* flags set above).
 sc_annotated.to_parquet(sc_annotated_output_path, index=False)
 organoid_annotated.to_parquet(organoid_annotated_output_path, index=False)
-sc_annotated_sammed.to_parquet(sammed_annotated_sc_profiles_path, index=False)
-organoid_annotated_sammed.to_parquet(
-    sammed_annotated_organoid_profiles_path, index=False
-)
-nucleocentric_sammed_annotated.to_parquet(
-    nucleocentric_annotated_sammed_output_path, index=False
-)
-nucleocentric_morphem_annotated.to_parquet(
-    nucleocentric_annotated_morphem_output_path, index=False
-)
+if has_sc_sammed:
+    sc_annotated_sammed.to_parquet(sammed_annotated_sc_profiles_path, index=False)
+else:
+    print("No SAMMed3D SC columns found -- skipping sammed_sc_anno.parquet output.")
+if has_organoid_sammed:
+    organoid_annotated_sammed.to_parquet(
+        sammed_annotated_organoid_profiles_path, index=False
+    )
+else:
+    print(
+        "No SAMMed3D organoid columns found -- skipping sammed_organoid_anno.parquet output."
+    )
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_annotated.to_parquet(
+        nucleocentric_annotated_sammed_output_path, index=False
+    )
+else:
+    print(
+        "No nucleocentric data (or no SAMMed3D nucleocentric columns) -- "
+        "skipping nucleocentric_sammed_anno.parquet output."
+    )
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_annotated.to_parquet(
+        nucleocentric_annotated_morphem_output_path, index=False
+    )
+else:
+    print(
+        "No nucleocentric data (or no morphem nucleocentric columns) -- "
+        "skipping nucleocentric_morphem_anno.parquet output."
+    )
 
 
 # In[15]:

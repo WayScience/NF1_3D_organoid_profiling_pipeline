@@ -154,9 +154,10 @@ for _df in (sc_profile_df, organoid_profile_df, nucleocentric_df):
 
 # `image_set` is just this well-FOV's own label -- this script already
 # has it as `well_fov`, so set it directly rather than requiring it as an
-# input column. Both dataframes are scoped to this single well-FOV
+# input column. All three dataframes are scoped to this single well-FOV
 # already, so every row gets the same value.
 sc_profile_df["image_set"] = well_fov
+organoid_profile_df["image_set"] = well_fov
 nucleocentric_df["image_set"] = well_fov
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")

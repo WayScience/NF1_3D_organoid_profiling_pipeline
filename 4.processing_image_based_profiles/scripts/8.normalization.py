@@ -123,18 +123,26 @@ sc_annotated_path = pathlib.Path(
 organoid_annotated_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/organoid_flagged_outliers.parquet"
 ).resolve(strict=True)
+# The 4 deep-learning inputs are optional: a dataset with no deep-learning
+# features (e.g. ZEDProfiler-only) never has 7c produce these files, so each
+# is only resolved here if it actually exists -- normalization for that
+# profile type is skipped below rather than crashing on a missing input.
 sc_sammed_annotated_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/sammed_sc_flagged_outliers.parquet"
-).resolve(strict=True)
+).resolve()
 organoid_sc_sammed_annotated_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/sammed_organoid_flagged_outliers.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_sammed_annotated_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/nucleocentric_sammed_flagged_outliers.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_morphem_annotated_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/4.qc_profiles/nucleocentric_morphem_flagged_outliers.parquet"
-).resolve(strict=True)
+).resolve()
+has_sc_sammed = sc_sammed_annotated_path.exists()
+has_organoid_sammed = organoid_sc_sammed_annotated_path.exists()
+has_nucleocentric_sammed = nucleocentric_sammed_annotated_path.exists()
+has_nucleocentric_morphem = nucleocentric_morphem_annotated_path.exists()
 
 
 # output path
@@ -163,16 +171,22 @@ sc_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 sc_annotated_profiles = pd.read_parquet(sc_annotated_path)
-sc_sammed_annotated_profiles = pd.read_parquet(sc_sammed_annotated_path)
+sc_sammed_annotated_profiles = (
+    pd.read_parquet(sc_sammed_annotated_path) if has_sc_sammed else None
+)
 organoid_annotated_profiles = pd.read_parquet(organoid_annotated_path)
-organoid_sc_sammed_annotated_profiles = pd.read_parquet(
-    organoid_sc_sammed_annotated_path
+organoid_sc_sammed_annotated_profiles = (
+    pd.read_parquet(organoid_sc_sammed_annotated_path) if has_organoid_sammed else None
 )
-nucleocentric_sammed_annotated_profiles = pd.read_parquet(
-    nucleocentric_sammed_annotated_path
+nucleocentric_sammed_annotated_profiles = (
+    pd.read_parquet(nucleocentric_sammed_annotated_path)
+    if has_nucleocentric_sammed
+    else None
 )
-nucleocentric_morphem_annotated_profiles = pd.read_parquet(
-    nucleocentric_morphem_annotated_path
+nucleocentric_morphem_annotated_profiles = (
+    pd.read_parquet(nucleocentric_morphem_annotated_path)
+    if has_nucleocentric_morphem
+    else None
 )
 
 
@@ -184,51 +198,83 @@ nucleocentric_morphem_annotated_profiles = pd.read_parquet(
 sc_metadata_cols = [
     col for col in sc_annotated_profiles.columns if col.startswith("Metadata_")
 ]
-sc_sammed_metadata_cols = [
-    col for col in sc_sammed_annotated_profiles.columns if "Metadata" in col
-]
+sc_sammed_metadata_cols = (
+    [col for col in sc_sammed_annotated_profiles.columns if "Metadata" in col]
+    if has_sc_sammed
+    else []
+)
 organoid_metadata_cols = [
     col for col in organoid_annotated_profiles.columns if "Metadata" in col
 ]
-organoid_sc_sammed_metadata_cols = [
-    col for col in organoid_sc_sammed_annotated_profiles.columns if "Metadata" in col
-]
-nucleocentric_sammed_metadata_cols = [
-    col for col in nucleocentric_sammed_annotated_profiles.columns if "Metadata" in col
-]
-nucleocentric_morphem_metadata_cols = [
-    col for col in nucleocentric_morphem_annotated_profiles.columns if "Metadata" in col
-]
+organoid_sc_sammed_metadata_cols = (
+    [col for col in organoid_sc_sammed_annotated_profiles.columns if "Metadata" in col]
+    if has_organoid_sammed
+    else []
+)
+nucleocentric_sammed_metadata_cols = (
+    [
+        col
+        for col in nucleocentric_sammed_annotated_profiles.columns
+        if "Metadata" in col
+    ]
+    if has_nucleocentric_sammed
+    else []
+)
+nucleocentric_morphem_metadata_cols = (
+    [
+        col
+        for col in nucleocentric_morphem_annotated_profiles.columns
+        if "Metadata" in col
+    ]
+    if has_nucleocentric_morphem
+    else []
+)
 
 # get the feature columns by excluding the metadata columns
 sc_feature_cols = [
     col for col in sc_annotated_profiles.columns if col not in sc_metadata_cols
 ]
-sc_sammed_feature_cols = [
-    col
-    for col in sc_sammed_annotated_profiles.columns
-    if col not in sc_sammed_metadata_cols
-]
+sc_sammed_feature_cols = (
+    [
+        col
+        for col in sc_sammed_annotated_profiles.columns
+        if col not in sc_sammed_metadata_cols
+    ]
+    if has_sc_sammed
+    else []
+)
 organoid_feature_cols = [
     col
     for col in organoid_annotated_profiles.columns
     if col not in organoid_metadata_cols
 ]
-organoid_sc_sammed_feature_cols = [
-    col
-    for col in organoid_sc_sammed_annotated_profiles.columns
-    if col not in organoid_sc_sammed_metadata_cols
-]
-nucleocentric_sammed_feature_cols = [
-    col
-    for col in nucleocentric_sammed_annotated_profiles.columns
-    if col not in nucleocentric_sammed_metadata_cols
-]
-nucleocentric_morphem_feature_cols = [
-    col
-    for col in nucleocentric_morphem_annotated_profiles.columns
-    if col not in nucleocentric_morphem_metadata_cols
-]
+organoid_sc_sammed_feature_cols = (
+    [
+        col
+        for col in organoid_sc_sammed_annotated_profiles.columns
+        if col not in organoid_sc_sammed_metadata_cols
+    ]
+    if has_organoid_sammed
+    else []
+)
+nucleocentric_sammed_feature_cols = (
+    [
+        col
+        for col in nucleocentric_sammed_annotated_profiles.columns
+        if col not in nucleocentric_sammed_metadata_cols
+    ]
+    if has_nucleocentric_sammed
+    else []
+)
+nucleocentric_morphem_feature_cols = (
+    [
+        col
+        for col in nucleocentric_morphem_annotated_profiles.columns
+        if col not in nucleocentric_morphem_metadata_cols
+    ]
+    if has_nucleocentric_morphem
+    else []
+)
 
 
 # ## Normalize the profiles
@@ -251,32 +297,36 @@ nucleocentric_morphem_feature_cols = [
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
 sc_annotated_profiles = drop_high_na_rows(sc_annotated_profiles, sc_feature_cols)
 print(f"  SC handcrafted: {len(sc_annotated_profiles)} rows remaining")
-sc_sammed_annotated_profiles = drop_high_na_rows(
-    sc_sammed_annotated_profiles, sc_sammed_feature_cols
-)
-print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
+if has_sc_sammed:
+    sc_sammed_annotated_profiles = drop_high_na_rows(
+        sc_sammed_annotated_profiles, sc_sammed_feature_cols
+    )
+    print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
 organoid_annotated_profiles = drop_high_na_rows(
     organoid_annotated_profiles, organoid_feature_cols
 )
 print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
-organoid_sc_sammed_annotated_profiles = drop_high_na_rows(
-    organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols
-)
-print(
-    f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining"
-)
-nucleocentric_sammed_annotated_profiles = drop_high_na_rows(
-    nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols
-)
-print(
-    f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining"
-)
-nucleocentric_morphem_annotated_profiles = drop_high_na_rows(
-    nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols
-)
-print(
-    f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining"
-)
+if has_organoid_sammed:
+    organoid_sc_sammed_annotated_profiles = drop_high_na_rows(
+        organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols
+    )
+    print(
+        f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining"
+    )
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_annotated_profiles = drop_high_na_rows(
+        nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols
+    )
+    print(
+        f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining"
+    )
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_annotated_profiles = drop_high_na_rows(
+        nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols
+    )
+    print(
+        f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining"
+    )
 
 
 # ## Row-level NaN filter
@@ -295,6 +345,9 @@ print(
 # In[8]:
 
 
+# NOTE: this repeats the same drop_high_na_rows pass as In[7] above (pre-existing
+# duplication in this notebook, not introduced by the deep-learning-optional
+# changes here) -- left as-is since it's idempotent.
 ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
 
 
@@ -317,32 +370,36 @@ def drop_high_na_rows(
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
 sc_annotated_profiles = drop_high_na_rows(sc_annotated_profiles, sc_feature_cols)
 print(f"  SC handcrafted: {len(sc_annotated_profiles)} rows remaining")
-sc_sammed_annotated_profiles = drop_high_na_rows(
-    sc_sammed_annotated_profiles, sc_sammed_feature_cols
-)
-print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
+if has_sc_sammed:
+    sc_sammed_annotated_profiles = drop_high_na_rows(
+        sc_sammed_annotated_profiles, sc_sammed_feature_cols
+    )
+    print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
 organoid_annotated_profiles = drop_high_na_rows(
     organoid_annotated_profiles, organoid_feature_cols
 )
 print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
-organoid_sc_sammed_annotated_profiles = drop_high_na_rows(
-    organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols
-)
-print(
-    f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining"
-)
-nucleocentric_sammed_annotated_profiles = drop_high_na_rows(
-    nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols
-)
-print(
-    f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining"
-)
-nucleocentric_morphem_annotated_profiles = drop_high_na_rows(
-    nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols
-)
-print(
-    f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining"
-)
+if has_organoid_sammed:
+    organoid_sc_sammed_annotated_profiles = drop_high_na_rows(
+        organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols
+    )
+    print(
+        f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining"
+    )
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_annotated_profiles = drop_high_na_rows(
+        nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols
+    )
+    print(
+        f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining"
+    )
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_annotated_profiles = drop_high_na_rows(
+        nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols
+    )
+    print(
+        f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining"
+    )
 
 
 # In[ ]:
@@ -357,33 +414,36 @@ sc_normalized_df = normalize(
     output_file=sc_normalized_output_path,
     output_type="parquet",
 )
-sc_sammed_normalized_df = normalize(
-    profiles=sc_sammed_annotated_profiles,
-    features=sc_sammed_feature_cols,
-    meta_features=sc_sammed_metadata_cols,
-    method="standardize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=sc_sammed_normalized_output_path,
-    output_type="parquet",
-)
-nucleocentric_sammed_normalized_df = normalize(
-    profiles=nucleocentric_sammed_annotated_profiles,
-    features=nucleocentric_sammed_feature_cols,
-    meta_features=nucleocentric_sammed_metadata_cols,
-    method="standardize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=nucleocentric_sammed_normalized_output_path,
-    output_type="parquet",
-)
-nucleocentric_morphem_normalized_df = normalize(
-    profiles=nucleocentric_morphem_annotated_profiles,
-    features=nucleocentric_morphem_feature_cols,
-    meta_features=nucleocentric_morphem_metadata_cols,
-    method="standardize",
-    samples="Metadata_Experiment_Treatment == 'DMSO'",
-    output_file=nucleocentric_morphem_normalized_output_path,
-    output_type="parquet",
-)
+if has_sc_sammed:
+    sc_sammed_normalized_df = normalize(
+        profiles=sc_sammed_annotated_profiles,
+        features=sc_sammed_feature_cols,
+        meta_features=sc_sammed_metadata_cols,
+        method="standardize",
+        samples="Metadata_Experiment_Treatment == 'DMSO'",
+        output_file=sc_sammed_normalized_output_path,
+        output_type="parquet",
+    )
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_normalized_df = normalize(
+        profiles=nucleocentric_sammed_annotated_profiles,
+        features=nucleocentric_sammed_feature_cols,
+        meta_features=nucleocentric_sammed_metadata_cols,
+        method="standardize",
+        samples="Metadata_Experiment_Treatment == 'DMSO'",
+        output_file=nucleocentric_sammed_normalized_output_path,
+        output_type="parquet",
+    )
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_normalized_df = normalize(
+        profiles=nucleocentric_morphem_annotated_profiles,
+        features=nucleocentric_morphem_feature_cols,
+        meta_features=nucleocentric_morphem_metadata_cols,
+        method="standardize",
+        samples="Metadata_Experiment_Treatment == 'DMSO'",
+        output_file=nucleocentric_morphem_normalized_output_path,
+        output_type="parquet",
+    )
 
 # for organoid normalization
 # we will normalize to the whole plate instead of just the DMSO samples,
@@ -395,11 +455,12 @@ nucleocentric_morphem_normalized_df = normalize(
 organoid_annotated_profiles[organoid_feature_cols] = organoid_annotated_profiles[
     organoid_feature_cols
 ].astype("float64")
-organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols] = (
-    organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols].astype(
-        "float64"
+if has_organoid_sammed:
+    organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols] = (
+        organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols].astype(
+            "float64"
+        )
     )
-)
 organoid_normalized_df = normalize(
     profiles=organoid_annotated_profiles,
     features=organoid_feature_cols,
@@ -408,24 +469,26 @@ organoid_normalized_df = normalize(
     output_file=organoid_normalized_output_path,
     output_type="parquet",
 )
-organoid_sc_sammed_normalized_df = normalize(
-    profiles=organoid_sc_sammed_annotated_profiles,
-    features=organoid_sc_sammed_feature_cols,
-    meta_features=organoid_sc_sammed_metadata_cols,
-    method="standardize",
-    output_file=organoid_sc_sammed_normalized_output_path,
-    output_type="parquet",
-)
+if has_organoid_sammed:
+    organoid_sc_sammed_normalized_df = normalize(
+        profiles=organoid_sc_sammed_annotated_profiles,
+        features=organoid_sc_sammed_feature_cols,
+        meta_features=organoid_sc_sammed_metadata_cols,
+        method="standardize",
+        output_file=organoid_sc_sammed_normalized_output_path,
+        output_type="parquet",
+    )
 
 
-output_df_paths = [
-    sc_normalized_output_path,
-    organoid_normalized_output_path,
-    sc_sammed_normalized_output_path,
-    organoid_sc_sammed_normalized_output_path,
-    nucleocentric_sammed_normalized_output_path,
-    nucleocentric_morphem_normalized_output_path,
-]
+output_df_paths = [sc_normalized_output_path, organoid_normalized_output_path]
+if has_sc_sammed:
+    output_df_paths.append(sc_sammed_normalized_output_path)
+if has_organoid_sammed:
+    output_df_paths.append(organoid_sc_sammed_normalized_output_path)
+if has_nucleocentric_sammed:
+    output_df_paths.append(nucleocentric_sammed_normalized_output_path)
+if has_nucleocentric_morphem:
+    output_df_paths.append(nucleocentric_morphem_normalized_output_path)
 for output_path in output_df_paths:
     if not output_path.exists():
         print(f"Error: Normalized output file {output_path} was not created.")

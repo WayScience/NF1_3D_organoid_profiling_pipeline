@@ -185,13 +185,43 @@ qc_dir.mkdir(parents=True, exist_ok=True)
 sc_cqc_path = (qc_dir / "sc_flagged_outliers.parquet").resolve(strict=True)
 organoid_cqc_path = (qc_dir / "organoid_flagged_outliers.parquet").resolve(strict=True)
 
-# DL profiles to annotate
-sammed_sc_path = (anno_dir / "sammed_sc_anno.parquet").resolve(strict=True)
-sammed_organoid_path = (anno_dir / "sammed_organoid_anno.parquet").resolve(strict=True)
-nucleocentric_sammed_path = (anno_dir / "nucleocentric_sammed_anno.parquet").resolve(
-    strict=True
-)
-nucleocentric_morphem_path = (anno_dir / "nucleocentric_morphem_anno.parquet").resolve(
+# DL profiles to annotate. This entire step exists only to propagate flags onto
+# deep-learning profiles, so a dataset with no deep-learning features at all
+# (e.g. ZEDProfiler-only, where 6.annotation.py never writes any of these 4
+# files for any patient) has nothing for this step to do -- skip it cleanly
+# rather than crashing on a missing input.
+_dl_anno_paths = {
+    "sammed_sc": anno_dir / "sammed_sc_anno.parquet",
+    "sammed_organoid": anno_dir / "sammed_organoid_anno.parquet",
+    "nucleocentric_sammed": anno_dir / "nucleocentric_sammed_anno.parquet",
+    "nucleocentric_morphem": anno_dir / "nucleocentric_morphem_anno.parquet",
+}
+_missing_dl_anno = sorted(name for name, p in _dl_anno_paths.items() if not p.exists())
+if len(_missing_dl_anno) == len(_dl_anno_paths):
+    print(
+        f"No deep-learning annotated profiles found under {anno_dir} -- skipping "
+        "7c entirely (this dataset has no deep-learning features to propagate "
+        "CQC flags onto)."
+    )
+    raise SystemExit(0)
+if _missing_dl_anno:
+    # Partial presence is reachable: 6.annotation.py writes each of the four
+    # outputs under its own independent has_* flag (e.g. a dataset with
+    # SAMMed3D SC/organoid features but no nucleocentric data produces only
+    # 2 of the 4 files). This script's downstream logic assumes all four are
+    # present, so fail loudly with the specific missing files rather than
+    # letting resolve(strict=True) below raise an unhelpful bare
+    # FileNotFoundError for whichever one happens first.
+    raise FileNotFoundError(
+        f"Partial deep-learning annotated profiles under {anno_dir}: "
+        f"missing {_missing_dl_anno}. 7c requires all four to be present "
+        "(or none)."
+    )
+
+sammed_sc_path = _dl_anno_paths["sammed_sc"].resolve(strict=True)
+sammed_organoid_path = _dl_anno_paths["sammed_organoid"].resolve(strict=True)
+nucleocentric_sammed_path = _dl_anno_paths["nucleocentric_sammed"].resolve(strict=True)
+nucleocentric_morphem_path = _dl_anno_paths["nucleocentric_morphem"].resolve(
     strict=True
 )
 

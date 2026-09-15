@@ -104,18 +104,25 @@ sc_normalized_path = pathlib.Path(
 organoid_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/organoid_norm.parquet"
 ).resolve(strict=True)
+# The 4 deep-learning inputs are optional: a dataset with no deep-learning
+# features (e.g. ZEDProfiler-only) never has 8.normalization.py produce these
+# files, so each is only resolved here if it actually exists.
 sc_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_sc_norm.parquet"
-).resolve(strict=True)
+).resolve()
 organoid_sc_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_organoid_norm.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_morphem_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/nucleocentric_morphem_norm.parquet"
-).resolve(strict=True)
+).resolve()
+has_sc_sammed = sc_sammed_normalized_path.exists()
+has_organoid_sammed = organoid_sc_sammed_normalized_path.exists()
+has_nucleocentric_sammed = nucleocentric_sammed_normalized_path.exists()
+has_nucleocentric_morphem = nucleocentric_morphem_normalized_path.exists()
 
 
 # output path
@@ -147,29 +154,8 @@ organoid_fs_output_path.parent.mkdir(parents=True, exist_ok=True)
 # read in the data
 sc_normalized = pd.read_parquet(sc_normalized_path)
 organoid_normalized = pd.read_parquet(organoid_normalized_path)
-sc_sammed_normalized = pd.read_parquet(sc_sammed_normalized_path)
-organoid_sc_sammed_normalized = pd.read_parquet(organoid_sc_sammed_normalized_path)
-nucleocentric_sammed_normalized = pd.read_parquet(nucleocentric_sammed_normalized_path)
-nucleocentric_morphem_normalized = pd.read_parquet(
-    nucleocentric_morphem_normalized_path
-)
-
 print(f"SC normalized loaded. Shape: {sc_normalized.shape}")
 print(f"Organoid normalized loaded. Shape: {organoid_normalized.shape}")
-print(f"SAMMed3D SC normalized loaded. Shape: {sc_sammed_normalized.shape}")
-print(
-    f"SAMMed3D organoid normalized loaded. Shape: {organoid_sc_sammed_normalized.shape}"
-)
-print(
-    f"SAMMed3D nucleocentric normalized loaded. Shape: {nucleocentric_sammed_normalized.shape}"
-)
-print(
-    f"morphem nucleocentric normalized loaded. Shape: {nucleocentric_morphem_normalized.shape}"
-)
-
-
-# In[5]:
-
 
 run_dict = {
     "sc_normalized": {
@@ -180,23 +166,52 @@ run_dict = {
         "df": organoid_normalized,
         "output_path": organoid_fs_output_path,
     },
-    "sc_sammed": {
+}
+
+# The 4 deep-learning profile types are only added to run_dict (and therefore
+# feature-selected below) when this dataset actually produced them -- absent
+# for datasets with no deep-learning features (e.g. ZEDProfiler-only).
+if has_sc_sammed:
+    sc_sammed_normalized = pd.read_parquet(sc_sammed_normalized_path)
+    print(f"SAMMed3D SC normalized loaded. Shape: {sc_sammed_normalized.shape}")
+    run_dict["sc_sammed"] = {
         "df": sc_sammed_normalized,
         "output_path": sc_sammed_feature_selected_output_path,
-    },
-    "organoid_sc_sammed": {
+    }
+if has_organoid_sammed:
+    organoid_sc_sammed_normalized = pd.read_parquet(organoid_sc_sammed_normalized_path)
+    print(
+        f"SAMMed3D organoid normalized loaded. Shape: {organoid_sc_sammed_normalized.shape}"
+    )
+    run_dict["organoid_sc_sammed"] = {
         "df": organoid_sc_sammed_normalized,
         "output_path": organoid_sc_sammed_feature_selected_output_path,
-    },
-    "nucleocentric_sammed": {
+    }
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_normalized = pd.read_parquet(
+        nucleocentric_sammed_normalized_path
+    )
+    print(
+        f"SAMMed3D nucleocentric normalized loaded. Shape: {nucleocentric_sammed_normalized.shape}"
+    )
+    run_dict["nucleocentric_sammed"] = {
         "df": nucleocentric_sammed_normalized,
         "output_path": nucleocentric_sammed_feature_selected_output_path,
-    },
-    "nucleocentric_chammi": {
+    }
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_normalized = pd.read_parquet(
+        nucleocentric_morphem_normalized_path
+    )
+    print(
+        f"morphem nucleocentric normalized loaded. Shape: {nucleocentric_morphem_normalized.shape}"
+    )
+    run_dict["nucleocentric_chammi"] = {
         "df": nucleocentric_morphem_normalized,
         "output_path": nucleocentric_morphem_feature_selected_output_path,
-    },
-}
+    }
+
+
+# In[5]:
 
 
 # In[6]:

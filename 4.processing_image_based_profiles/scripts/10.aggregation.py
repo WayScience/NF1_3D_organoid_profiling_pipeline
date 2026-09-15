@@ -89,18 +89,25 @@ sc_fs_path = pathlib.Path(
 organoid_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/organoid_fs.parquet"
 ).resolve(strict=True)
+# The 4 deep-learning inputs are optional: a dataset with no deep-learning
+# features (e.g. ZEDProfiler-only) never has 9.feature_selection.py produce
+# these files, so each is only resolved here if it actually exists.
 sc_sammed_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_sc_fs.parquet"
-).resolve(strict=True)
+).resolve()
 organoid_sammed_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_organoid_fs.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_sammed_sc_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_morphem_sc_fs_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/nucleocentric_morphem_fs.parquet"
-).resolve(strict=True)
+).resolve()
+has_sc_sammed = sc_sammed_fs_path.exists()
+has_organoid_sammed = organoid_sammed_fs_path.exists()
+has_nucleocentric_sammed = nucleocentric_sammed_sc_fs_path.exists()
+has_nucleocentric_morphem = nucleocentric_morphem_sc_fs_path.exists()
 
 
 # output path
@@ -156,25 +163,8 @@ nucleocentric_morphem_consensus_output_path.parent.mkdir(parents=True, exist_ok=
 # read in the data
 sc_fs = pd.read_parquet(sc_fs_path)
 organoid_fs = pd.read_parquet(organoid_fs_path)
-sc_sammed_fs = pd.read_parquet(sc_sammed_fs_path)
-organoid_sammed_fs = pd.read_parquet(organoid_sammed_fs_path)
-nucleocentric_sammed_sc_fs = pd.read_parquet(nucleocentric_sammed_sc_fs_path)
-nucleocentric_morphem_sc_fs = pd.read_parquet(nucleocentric_morphem_sc_fs_path)
-
 print(f"SC feature-selected loaded. Shape: {sc_fs.shape}")
 print(f"Organoid feature-selected loaded. Shape: {organoid_fs.shape}")
-print(f"SAMMed3D SC feature-selected loaded. Shape: {sc_sammed_fs.shape}")
-print(f"SAMMed3D organoid feature-selected loaded. Shape: {organoid_sammed_fs.shape}")
-print(
-    f"SAMMed3D nucleocentric feature-selected loaded. Shape: {nucleocentric_sammed_sc_fs.shape}"
-)
-print(
-    f"morphem nucleocentric feature-selected loaded. Shape: {nucleocentric_morphem_sc_fs.shape}"
-)
-
-
-# In[5]:
-
 
 run_dict = {
     "sc": {
@@ -187,27 +177,52 @@ run_dict = {
         "agg_well_output_path": organoid_agg_well_output_path,
         "consensus_output_path": organoid_consensus_output_path,
     },
-    "sc_sammed": {
+}
+
+# The 4 deep-learning profile types are only added to run_dict (and therefore
+# aggregated below) when this dataset actually produced them -- absent for
+# datasets with no deep-learning features (e.g. ZEDProfiler-only).
+if has_sc_sammed:
+    sc_sammed_fs = pd.read_parquet(sc_sammed_fs_path)
+    print(f"SAMMed3D SC feature-selected loaded. Shape: {sc_sammed_fs.shape}")
+    run_dict["sc_sammed"] = {
         "df": sc_sammed_fs,
         "agg_well_output_path": sc_sammed_agg_well_output_path,
         "consensus_output_path": sc_sammed_consensus_output_path,
-    },
-    "organoid_sammed": {
+    }
+if has_organoid_sammed:
+    organoid_sammed_fs = pd.read_parquet(organoid_sammed_fs_path)
+    print(
+        f"SAMMed3D organoid feature-selected loaded. Shape: {organoid_sammed_fs.shape}"
+    )
+    run_dict["organoid_sammed"] = {
         "df": organoid_sammed_fs,
         "agg_well_output_path": organoid_sammed_agg_well_output_path,
         "consensus_output_path": organoid_sammed_consensus_output_path,
-    },
-    "nucleocentric_sammed_sc": {
+    }
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_sc_fs = pd.read_parquet(nucleocentric_sammed_sc_fs_path)
+    print(
+        f"SAMMed3D nucleocentric feature-selected loaded. Shape: {nucleocentric_sammed_sc_fs.shape}"
+    )
+    run_dict["nucleocentric_sammed_sc"] = {
         "df": nucleocentric_sammed_sc_fs,
         "agg_well_output_path": nucleocentric_sammed_agg_well_output_path,
         "consensus_output_path": nucleocentric_sammed_consensus_output_path,
-    },
-    "nucleocentric_morphem_sc": {
+    }
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_sc_fs = pd.read_parquet(nucleocentric_morphem_sc_fs_path)
+    print(
+        f"morphem nucleocentric feature-selected loaded. Shape: {nucleocentric_morphem_sc_fs.shape}"
+    )
+    run_dict["nucleocentric_morphem_sc"] = {
         "df": nucleocentric_morphem_sc_fs,
         "agg_well_output_path": nucleocentric_morphem_agg_well_output_path,
         "consensus_output_path": nucleocentric_morphem_consensus_output_path,
-    },
-}
+    }
+
+
+# In[5]:
 
 
 # ## Aggregate the profiles
