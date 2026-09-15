@@ -1,0 +1,51 @@
+Metadata_Experiment_Well,Metadata_Experiment_Treatment,Metadata_Experiment_Dose,Metadata_Experiment_Unit,Metadata_Experiment_Target,Metadata_Experiment_Class,Metadata_Experiment_TherapeuticCategories
+C2,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Small Molecule,Cardiac Glycosides
+E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Small Molecule,Cardiac Glycosides
+F2,Onalespib,1,uM,HSP90 inhibitor,Small Molecule,Investigational
+G2,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+C3,Onalespib,1,uM,HSP90 inhibitor,Small Molecule,Investigational
+D3,Copanlisib,1,uM,PI3K inhibitor,Small Molecule,Kinase Inhibitor
+E3,Copanlisib,1,uM,PI3K inhibitor,Small Molecule,Kinase Inhibitor
+F3,Linsitinib,1,uM,IGF-1R inhibitor,Small Molecule,Investigational
+G3,Linsitinib,1,uM,IGF-1R inhibitor,Small Molecule,Investigational
+C4,DMSO,1,%,Control,Control,Control
+D4,DMSO,1,%,Control,Control,Control
+E4,DMSO,1,%,Control,Control,Control
+F4,DMSO,1,%,Control,Control,Control
+G4,Everolimus,1,uM,mTOR inhibitor,Small Molecule,Kinase Inhibitor
+C5,Everolimus,1,uM,mTOR inhibitor,Small Molecule,Kinase Inhibitor
+D5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Small Molecule,Investigational
+E5,Fimepinostat,1,uM,PI3K and HDAC inhibitor,Small Molecule,Investigational
+F5,Rapamycin,1,uM,mTOR inhibitor,Small Molecule,Kinase Inhibitor
+G5,Rapamycin,1,uM,mTOR inhibitor,Small Molecule,Kinase Inhibitor
+C6,Imatinib,1,uM,tyrosine kinase inhibitor,Small Molecule,Kinase Inhibitor
+D6,Imatinib,1,uM,tyrosine kinase inhibitor,Small Molecule,Kinase Inhibitor
+E6,Nilotinib,1,uM,tyrosine kinase inhibitor,Small Molecule,Investigational
+F6,Nilotinib,1,uM,tyrosine kinase inhibitor,Small Molecule,Investigational
+G6,Ketotifen,1,uM,histamine H1 receptor antagonist,Small Molecule,Anti-Allergic Agents
+C7,Ketotifen,1,uM,histamine H1 receptor antagonist,Small Molecule,Anti-Allergic Agents
+D7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Small Molecule,Kinase Inhibitor
+E7,Cabozantinib,1,uM,receptor tyrosine kinase inhibitor,Small Molecule,Kinase Inhibitor
+F7,Binimetinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+G7,Binimetinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+C8,Binimetinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+D8,Binimetinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+E8,Mirdametinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+F8,Mirdametinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+G8,Mirdametinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+C9,Mirdametinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+D9,DMSO,1,%,Control,Control,Control
+E9,DMSO,1,%,Control,Control,Control
+F9,DMSO,1,%,Control,Control,Control
+G9,DMSO,1,%,Control,Control,Control
+C10,Trametinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+D10,Trametinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+E10,Trametinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+F10,Trametinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+G10,Selumetinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+C11,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+D11,Selumetinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+E11,Selumetinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+F11,Selumetinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
+G11,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
