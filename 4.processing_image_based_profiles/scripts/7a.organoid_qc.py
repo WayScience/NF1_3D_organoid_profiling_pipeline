@@ -122,7 +122,7 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_OrganoidSingleCellCount",
-            "Organoid_NoChannel_AreaSizeShape_Volume",
+            "Organoid_NoChannel_VolumeSizeShape_Volume",
         ]
     ]
     .isna()
@@ -164,7 +164,7 @@ small_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small organoids
     },
 )
 
@@ -179,7 +179,7 @@ large_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_AreaSizeShape_Volume": 3,  # Detect very large organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": 3,  # Detect very large organoids
     },
 )
 
@@ -215,26 +215,36 @@ organoid_profiles_df.head()
 # In[8]:
 
 
-sammed_organoid_df = pd.read_parquet(sammed_annotated_organoid_profiles_path)
-original_sammed_shape = sammed_organoid_df.shape
-# set the merge keys to int for both dataframes to ensure they match
-merge_keys = [
-    "Metadata_Biology_PatientTumor",
-    "Metadata_Experiment_WellFOV",
-    "Metadata_Object_ObjectID",
-]
-qc_keys = [col for col in organoid_profiles_df.columns if "Metadata_cqc" in col]
+if sammed_annotated_organoid_profiles_path.exists():
+    sammed_organoid_df = pd.read_parquet(sammed_annotated_organoid_profiles_path)
+    original_sammed_shape = sammed_organoid_df.shape
+    # set the merge keys to int for both dataframes to ensure they match
+    merge_keys = [
+        "Metadata_Biology_PatientTumor",
+        "Metadata_Experiment_WellFOV",
+        "Metadata_Object_ObjectID",
+    ]
+    qc_keys = [col for col in organoid_profiles_df.columns if "Metadata_cqc" in col]
 
-
-# merge the flagged organoid profiles with the sammed annotated organoid profiles
-qc_annotated_sammed_organoid_df = sammed_organoid_df.merge(
-    organoid_profiles_df[qc_keys + merge_keys],
-    on=merge_keys,
-    how="left",
-)
-if qc_annotated_sammed_organoid_df.shape[1] == original_sammed_shape[1]:
-    raise ValueError(
-        f"No new columns were added during the merge. Check that the merge keys {merge_keys} are correct and that the qc keys {qc_keys} are present in the organoid_profiles_df."
+    # merge the flagged organoid profiles with the sammed annotated organoid profiles
+    qc_annotated_sammed_organoid_df = sammed_organoid_df.merge(
+        organoid_profiles_df[qc_keys + merge_keys],
+        on=merge_keys,
+        how="left",
     )
-qc_annotated_sammed_organoid_df.to_parquet(sammed_organoid_qc_output_path, index=False)
-qc_annotated_sammed_organoid_df.head()
+    if qc_annotated_sammed_organoid_df.shape[1] == original_sammed_shape[1]:
+        raise ValueError(
+            f"No new columns were added during the merge. Check that the merge keys {merge_keys} are correct and that the qc keys {qc_keys} are present in the organoid_profiles_df."
+        )
+    qc_annotated_sammed_organoid_df.to_parquet(
+        sammed_organoid_qc_output_path, index=False
+    )
+    qc_annotated_sammed_organoid_df.head()
+else:
+    # No SAMMed3D organoid profile to propagate QC flags onto -- expected
+    # for datasets with no deep-learning features (e.g. ZEDProfiler-only),
+    # where 6.annotation.py never produces sammed_organoid_anno.parquet.
+    print(
+        f"No {sammed_annotated_organoid_profiles_path.name} found -- skipping "
+        "SAMMed3D organoid QC flag propagation."
+    )

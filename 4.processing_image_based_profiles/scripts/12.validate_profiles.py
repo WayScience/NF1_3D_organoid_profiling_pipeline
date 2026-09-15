@@ -4,6 +4,7 @@
 # In[1]:
 
 
+import argparse
 import os
 import pathlib
 from datetime import datetime
@@ -25,6 +26,22 @@ profile_base_dir = root_dir
 
 # In[2]:
 
+
+# This script never accepted a --image_based_profiles_subparent_name argument
+# at all -- it hardcoded "image_based_profiles" in every path below, so it
+# could never see per-patient output written under a different subparent
+# name (e.g. this project's own "image_based_profiles_production_zedprofiler").
+# Default preserves the previous hardcoded behavior for existing callers.
+if not in_notebook:
+    _arg_parser = argparse.ArgumentParser()
+    _arg_parser.add_argument(
+        "--image_based_profiles_subparent_name", default="image_based_profiles"
+    )
+    image_based_profiles_subparent_name = (
+        _arg_parser.parse_args().image_based_profiles_subparent_name
+    )
+else:
+    image_based_profiles_subparent_name = "image_based_profiles"
 
 threshold = 1e5
 
@@ -55,85 +72,66 @@ def log(msg, log_file):
 
 with open(log_path, "w") as log_file:
     for patient in patient_ids:
-        # construct the profile path dict for this patient
+        # construct the profile path dict for this patient. Required (always
+        # produced) hand-crafted entries use resolve(strict=True) so a genuine
+        # gap still fails loudly; the deep-learning entries are only included
+        # if the file actually exists, since a dataset with no deep-learning
+        # features (e.g. ZEDProfiler-only) never produces any of them.
         profile_path_dict = {
             "sc_normalized": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sc_norm.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sc_norm.parquet"
             ).resolve(strict=True),
             "organoid_normalized": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/organoid_norm.parquet"
-            ).resolve(strict=True),
-            "sc_sammed_normalized": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_sc_norm.parquet"
-            ).resolve(strict=True),
-            "organoid_sammed_normalized": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_organoid_norm.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_sammed_normalized": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_morphem_normalized": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/5.normalized_profiles/nucleocentric_morphem_norm.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/organoid_norm.parquet"
             ).resolve(strict=True),
             "sc_fs": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/6.feature_selected_profiles/sc_fs.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sc_fs.parquet"
             ).resolve(strict=True),
             "organoid_fs": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/6.feature_selected_profiles/organoid_fs.parquet"
-            ).resolve(strict=True),
-            "sc_sammed_fs": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/6.feature_selected_profiles/sammed_sc_fs.parquet"
-            ).resolve(strict=True),
-            "organoid_sammed_fs": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/6.feature_selected_profiles/sammed_organoid_fs.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_sammed_fs": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_morphem_fs": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/6.feature_selected_profiles/nucleocentric_morphem_fs.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/organoid_fs.parquet"
             ).resolve(strict=True),
             "sc_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/7.aggregated_profiles/sc_agg_well_level.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sc_agg_well_level.parquet"
             ).resolve(strict=True),
             "organoid_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/7.aggregated_profiles/organoid_agg_well_level.parquet"
-            ).resolve(strict=True),
-            "organoid_sammed_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/7.aggregated_profiles/sammed_organoid_agg_well_level.parquet"
-            ).resolve(strict=True),
-            "sc_sammed_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/7.aggregated_profiles/sammed_sc_agg_well_level.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_sammed_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/7.aggregated_profiles/sammed_nucleocentric_agg_well_level.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_morphem_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/7.aggregated_profiles/nucleocentric_morphem_agg_well_level.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/organoid_agg_well_level.parquet"
             ).resolve(strict=True),
             "sc_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/8.consensus_profiles/sc_consensus.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sc_consensus.parquet"
             ).resolve(strict=True),
             "organoid_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/8.consensus_profiles/organoid_consensus.parquet"
-            ).resolve(strict=True),
-            "organoid_sammed_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/8.consensus_profiles/sammed_organoid_consensus.parquet"
-            ).resolve(strict=True),
-            "sc_sammed_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/8.consensus_profiles/sammed_sc_consensus.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_sammed_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/8.consensus_profiles/sammed_nucleocentric_consensus.parquet"
-            ).resolve(strict=True),
-            "nucleocentric_morphem_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/image_based_profiles/8.consensus_profiles/nucleocentric_morphem_consensus.parquet"
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/organoid_consensus.parquet"
             ).resolve(strict=True),
         }
-
+        optional_dl_paths = {
+            "sc_sammed_normalized": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_sc_norm.parquet",
+            "organoid_sammed_normalized": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_organoid_norm.parquet",
+            "nucleocentric_sammed_normalized": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_nucleocentric_norm.parquet",
+            "nucleocentric_morphem_normalized": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/nucleocentric_morphem_norm.parquet",
+            "sc_sammed_fs": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_sc_fs.parquet",
+            "organoid_sammed_fs": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_organoid_fs.parquet",
+            "nucleocentric_sammed_fs": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet",
+            "nucleocentric_morphem_fs": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/nucleocentric_morphem_fs.parquet",
+            "sc_sammed_agg_well": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sammed_sc_agg_well_level.parquet",
+            "organoid_sammed_agg_well": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sammed_organoid_agg_well_level.parquet",
+            "nucleocentric_sammed_agg_well": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sammed_nucleocentric_agg_well_level.parquet",
+            "nucleocentric_morphem_agg_well": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/nucleocentric_morphem_agg_well_level.parquet",
+            "sc_sammed_agg_treatment": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_sc_consensus.parquet",
+            "organoid_sammed_agg_treatment": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_organoid_consensus.parquet",
+            "nucleocentric_sammed_agg_treatment": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_nucleocentric_consensus.parquet",
+            "nucleocentric_morphem_agg_treatment": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/nucleocentric_morphem_consensus.parquet",
+        }
         log(f"\n{'=' * 60}", log_file)
         log(f"Processing patient: {patient}", log_file)
         log(f"{'=' * 60}", log_file)
+
+        for name, raw_path in optional_dl_paths.items():
+            resolved = pathlib.Path(raw_path).resolve()
+            if resolved.exists():
+                profile_path_dict[name] = resolved
+            else:
+                log(f"  Skipping {name}: {resolved} does not exist.", log_file)
+
         log(
             f"{'name':40} | {'shape':>15} | {'nans':>8} | {'infs':>8} | {'dupes':>8} | {'values_above_threshold':>8}",
             log_file,

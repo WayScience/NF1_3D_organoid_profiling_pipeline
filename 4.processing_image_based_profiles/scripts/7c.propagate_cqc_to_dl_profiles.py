@@ -185,13 +185,29 @@ qc_dir.mkdir(parents=True, exist_ok=True)
 sc_cqc_path = (qc_dir / "sc_flagged_outliers.parquet").resolve(strict=True)
 organoid_cqc_path = (qc_dir / "organoid_flagged_outliers.parquet").resolve(strict=True)
 
-# DL profiles to annotate
-sammed_sc_path = (anno_dir / "sammed_sc_anno.parquet").resolve(strict=True)
-sammed_organoid_path = (anno_dir / "sammed_organoid_anno.parquet").resolve(strict=True)
-nucleocentric_sammed_path = (anno_dir / "nucleocentric_sammed_anno.parquet").resolve(
-    strict=True
-)
-nucleocentric_morphem_path = (anno_dir / "nucleocentric_morphem_anno.parquet").resolve(
+# DL profiles to annotate. This entire step exists only to propagate flags onto
+# deep-learning profiles, so a dataset with no deep-learning features at all
+# (e.g. ZEDProfiler-only, where 6.annotation.py never writes any of these 4
+# files for any patient) has nothing for this step to do -- skip it cleanly
+# rather than crashing on a missing input.
+_dl_anno_paths = {
+    "sammed_sc": anno_dir / "sammed_sc_anno.parquet",
+    "sammed_organoid": anno_dir / "sammed_organoid_anno.parquet",
+    "nucleocentric_sammed": anno_dir / "nucleocentric_sammed_anno.parquet",
+    "nucleocentric_morphem": anno_dir / "nucleocentric_morphem_anno.parquet",
+}
+if not any(p.exists() for p in _dl_anno_paths.values()):
+    print(
+        f"No deep-learning annotated profiles found under {anno_dir} -- skipping "
+        "7c entirely (this dataset has no deep-learning features to propagate "
+        "CQC flags onto)."
+    )
+    raise SystemExit(0)
+
+sammed_sc_path = _dl_anno_paths["sammed_sc"].resolve(strict=True)
+sammed_organoid_path = _dl_anno_paths["sammed_organoid"].resolve(strict=True)
+nucleocentric_sammed_path = _dl_anno_paths["nucleocentric_sammed"].resolve(strict=True)
+nucleocentric_morphem_path = _dl_anno_paths["nucleocentric_morphem"].resolve(
     strict=True
 )
 
