@@ -196,13 +196,27 @@ _dl_anno_paths = {
     "nucleocentric_sammed": anno_dir / "nucleocentric_sammed_anno.parquet",
     "nucleocentric_morphem": anno_dir / "nucleocentric_morphem_anno.parquet",
 }
-if not any(p.exists() for p in _dl_anno_paths.values()):
+_missing_dl_anno = sorted(name for name, p in _dl_anno_paths.items() if not p.exists())
+if len(_missing_dl_anno) == len(_dl_anno_paths):
     print(
         f"No deep-learning annotated profiles found under {anno_dir} -- skipping "
         "7c entirely (this dataset has no deep-learning features to propagate "
         "CQC flags onto)."
     )
     raise SystemExit(0)
+if _missing_dl_anno:
+    # Partial presence is reachable: 6.annotation.py writes each of the four
+    # outputs under its own independent has_* flag (e.g. a dataset with
+    # SAMMed3D SC/organoid features but no nucleocentric data produces only
+    # 2 of the 4 files). This script's downstream logic assumes all four are
+    # present, so fail loudly with the specific missing files rather than
+    # letting resolve(strict=True) below raise an unhelpful bare
+    # FileNotFoundError for whichever one happens first.
+    raise FileNotFoundError(
+        f"Partial deep-learning annotated profiles under {anno_dir}: "
+        f"missing {_missing_dl_anno}. 7c requires all four to be present "
+        "(or none)."
+    )
 
 sammed_sc_path = _dl_anno_paths["sammed_sc"].resolve(strict=True)
 sammed_organoid_path = _dl_anno_paths["sammed_organoid"].resolve(strict=True)

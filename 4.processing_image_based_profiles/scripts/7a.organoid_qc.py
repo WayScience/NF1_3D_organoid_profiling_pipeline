@@ -117,12 +117,33 @@ orig_organoid_profiles_df.head()
 
 
 organoid_profiles_df = orig_organoid_profiles_df.copy()
+# Accept both ZEDProfiler's VolumeSizeShape naming and the legacy
+# CellProfiler-era AreaSizeShape naming for the same underlying volume
+# feature -- same "accept both conventions" approach already established for
+# step 3's own column matching (see 3.organoid_cell_relationship.py, commit
+# 8b2a08a). A hardcoded VolumeSizeShape-only reference here would raise
+# KeyError for legacy data that still reaches this notebook via
+# 1.merge_feature_parquets.py, which preserves the AreaSizeShape name.
+organoid_volume_col = next(
+    (
+        f"Organoid_NoChannel_{suffix}_Volume"
+        for suffix in ("VolumeSizeShape", "AreaSizeShape")
+        if f"Organoid_NoChannel_{suffix}_Volume" in organoid_profiles_df.columns
+    ),
+    None,
+)
+if organoid_volume_col is None:
+    raise KeyError(
+        "Neither Organoid_NoChannel_VolumeSizeShape_Volume nor "
+        "Organoid_NoChannel_AreaSizeShape_Volume found in organoid_profiles_df."
+    )
+
 organoid_profiles_df["Metadata_cqc_nan_detected"] = (
     organoid_profiles_df[
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_OrganoidSingleCellCount",
-            "Organoid_NoChannel_VolumeSizeShape_Volume",
+            organoid_volume_col,
         ]
     ]
     .isna()
@@ -164,7 +185,7 @@ small_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small organoids
+        organoid_volume_col: -1,  # Detect very small organoids
     },
 )
 
@@ -179,7 +200,7 @@ large_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_VolumeSizeShape_Volume": 3,  # Detect very large organoids
+        organoid_volume_col: 3,  # Detect very large organoids
     },
 )
 

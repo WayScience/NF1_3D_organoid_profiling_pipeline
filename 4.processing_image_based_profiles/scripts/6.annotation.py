@@ -76,39 +76,56 @@ else:
 # In[3]:
 
 
+barcode_platemap = pd.read_csv(
+    pathlib.Path(f"{root_dir}/config/platemaps/barcode_platemap.csv").resolve(
+        strict=True
+    )
+)
+# NF0037_T1_CQ1 shares NF0037_T1's own plate layout/barcode row -- look up by
+# that name, but keep `patient` itself as "NF0037_T1_CQ1" everywhere else.
+# Previously this branch assigned the whole filtered DataFrame to `platemap`
+# instead of the platemap_number string like the else branch does -- an
+# f-string of a DataFrame produces garbage, so building this file for
+# NF0037_T1_CQ1 first would have failed outright.
+_platemap_lookup_patient = "NF0037_T1" if patient == "NF0037_T1_CQ1" else patient
+platemap = barcode_platemap[
+    barcode_platemap["patient_tumor_barcode"] == _platemap_lookup_patient
+]["platemap_number"].values[0]
+
+# Cache keyed by platemap number, not a single shared filename: multiple
+# patients can use different platemaps (confirmed directly against
+# config/platemaps/barcode_platemap.csv -- NF0037_T1/NF0040_T1/NF0055_T1 use
+# platemap2, everyone else here uses platemap1). A single shared cache file
+# would lock in whichever platemap the first patient to run happened to use,
+# silently leaving every other-platemap patient's annotation_df with zero
+# matching rows.
+#
+# This cache holds ONLY the patient-agnostic plate layout (well -> treatment/
+# dose/target/class/therapeutic category) -- identical for every patient
+# sharing this platemap. Viability and tumor-type were previously baked into
+# this same cached table via a left-merge keyed on (Treatment, Dose), which
+# is patient-specific data disguised as if it were part of the shared plate
+# layout. Confirmed directly this caused silent data loss: viability is
+# fanned out one row per patient who has a measurement for that exact
+# (Treatment, Dose), so any well+treatment where a DIFFERENT patient (not
+# this one) happened to be the one with a recorded viability produced a row
+# whose PatientTumor was that other patient -- excluded entirely once this
+# patient's own subset was filtered down, even though the well/treatment
+# itself applies to this patient's plate too (real measured impact: up to
+# 87% of NF0040_T1's single-cell rows lost their entire annotation this
+# way, not just DMSO). Viability/tumor-type are now looked up fresh per
+# patient below, outside the cache, as optional enrichment that never gates
+# which plate-layout rows survive.
 main_annotation_file_output = pathlib.Path(
-    f"{root_dir}/4.processing_image_based_profiles/annotation_data/external_platemap_metadata.csv"
+    f"{root_dir}/4.processing_image_based_profiles/annotation_data/external_platemap_metadata_{platemap}.csv"
 ).resolve()
 
 if not main_annotation_file_output.exists():
     main_annotation_file_output.parent.mkdir(parents=True, exist_ok=True)
 
-    platemap_path = pathlib.Path(
-        f"{root_dir}/config/platemaps/barcode_platemap.csv"
-    ).resolve(strict=True)
-
     drug_information = pd.read_csv(
         pathlib.Path(f"{root_dir}/config/drug_information/drug_information.csv")
     )
-    patient_tumor_type = pd.read_csv(
-        pathlib.Path(
-            f"{root_dir}/config/patient_tumor_information/patient_tumor_information.csv"
-        ),
-    )
-    patient_viabilities = pathlib.Path(
-        f"{root_dir}/config/viabilities/raw_viabilities_combined.csv"
-    ).resolve(strict=True)
-    patient_viabilities_df = pd.read_csv(patient_viabilities)
-    # read platemap
-    barcode_platemap = pd.read_csv(platemap_path)
-    if patient == "NF0037_T1_CQ1":
-        platemap = barcode_platemap[
-            barcode_platemap["patient_tumor_barcode"] == "NF0037_T1"
-        ]
-    else:
-        platemap = barcode_platemap[
-            barcode_platemap["patient_tumor_barcode"] == patient
-        ]["platemap_number"].values[0]
     platemap_df = pd.read_csv(
         pathlib.Path(f"{root_dir}/config/platemaps/{platemap}.csv")
     )
@@ -122,37 +139,11 @@ if not main_annotation_file_output.exists():
         left_on="Treatment",
         right_on="Treatment",
     )
-    drug_information_platemap_viabilities_merged = pd.merge(
-        left=drug_information_platemap_merged,
-        right=patient_viabilities_df,
-        how="left",
-        left_on=["Treatment", "Dose"],
-        right_on=["Drug", "Concentration_uM"],
-    )
-
-    drug_information_platemap_viabilities_tumor_type_merged = pd.merge(
-        left=drug_information_platemap_viabilities_merged,
-        right=patient_tumor_type,
-        how="left",
-        left_on=["Metadata_Biology_PatientTumor"],
-        right_on=["Metadata_Biology_PatientTumor"],
-    )
-    # "Class" (drug_information.csv's own field, e.g. "Small Molecule",
-    # "PROTAC") was previously dropped here rather than kept and renamed
-    # like its sibling Target/TherapeuticCategories fields -- confirmed a
-    # real bug: 10.aggregation.py and 11.combine_patients.py's own
-    # aggregate_strata/consensus_strata both group by
-    # "Metadata_Experiment_Class", which as a result never existed.
-    drug_information_platemap_viabilities_tumor_type_merged.drop(
-        columns=[
-            "WellRow",
-            "WellCol",
-            "Drug",
-            "Concentration_uM",
-        ],
+    drug_information_platemap_merged.drop(
+        columns=["WellRow", "WellCol"],
         inplace=True,
     )
-    annotation_df = drug_information_platemap_viabilities_tumor_type_merged.rename(
+    annotation_df = drug_information_platemap_merged.rename(
         columns={
             "WellPosition": "Metadata_Experiment_Well",
             "Treatment": "Metadata_Experiment_Treatment",
@@ -161,41 +152,48 @@ if not main_annotation_file_output.exists():
             "Target": "Metadata_Experiment_Target",
             "Class": "Metadata_Experiment_Class",
             "TherapeuticCategories": "Metadata_Experiment_TherapeuticCategories",
-            "Viability_percentage": "Metadata_Experiment_ViabilityPercentage",
         }
     )
     annotation_df.to_csv(main_annotation_file_output, index=False)
 else:
     annotation_df = pd.read_csv(main_annotation_file_output)
 
-# subset the annotation_df to only include the patient of interest
-# if NF0037_T1_CQ1, then subset to NF0037_T1 metadata
-#
-# Also keep rows with a NaN Metadata_Biology_PatientTumor: that column is
-# populated from the viabilities left-merge above, keyed on
-# (Treatment, Dose) -- a treatment nobody has a recorded viability
-# measurement for (verified directly: DMSO, the plate's own vehicle
-# control, has zero rows in config/viabilities/raw_viabilities_combined.csv
-# for any patient) ends up NaN there regardless of which patient's plate it
-# came from. Since platemap_df was already scoped to this patient's own
-# barcode/platemap above, a NaN-patient row still belongs on this patient's
-# plate -- dropping it here silently removed every DMSO well from every
-# patient's annotation data, which in turn left 8.normalization.py's
-# DMSO-based reference-population query matching zero rows. The one
-# accepted side effect: such rows still carry a NaN
-# Metadata_Biology_TumorType (that column comes from a separate merge keyed
-# on the same PatientTumor value), since there's no per-patient value to
-# recover for them after the fact.
-if patient == "NF0037_T1_CQ1":
-    annotation_df = annotation_df.loc[
-        (annotation_df["Metadata_Biology_PatientTumor"] == "NF0037_T1")
-        | annotation_df["Metadata_Biology_PatientTumor"].isna()
-    ]
-else:
-    annotation_df = annotation_df.loc[
-        (annotation_df["Metadata_Biology_PatientTumor"] == patient)
-        | annotation_df["Metadata_Biology_PatientTumor"].isna()
-    ]
+# Enrich with this specific patient's own identity, tumor type, and (where
+# available) measured viability -- all patient-specific, so applied fresh
+# every run rather than cached. Every plate-layout row from above is kept
+# regardless of whether a viability measurement exists for it: viability is
+# optional metadata, not a gate on which wells belong to this patient.
+annotation_df["Metadata_Biology_PatientTumor"] = _platemap_lookup_patient
+
+patient_tumor_type = pd.read_csv(
+    pathlib.Path(
+        f"{root_dir}/config/patient_tumor_information/patient_tumor_information.csv"
+    ),
+)
+annotation_df = annotation_df.merge(
+    patient_tumor_type,
+    how="left",
+    on="Metadata_Biology_PatientTumor",
+)
+
+patient_viabilities_df = pd.read_csv(
+    pathlib.Path(f"{root_dir}/config/viabilities/raw_viabilities_combined.csv").resolve(
+        strict=True
+    )
+)
+patient_viabilities_df = patient_viabilities_df.loc[
+    patient_viabilities_df["Metadata_Biology_PatientTumor"] == _platemap_lookup_patient,
+    ["Drug", "Concentration_uM", "Viability_percentage"],
+]
+annotation_df = annotation_df.merge(
+    patient_viabilities_df,
+    how="left",
+    left_on=["Metadata_Experiment_Treatment", "Metadata_Experiment_Dose"],
+    right_on=["Drug", "Concentration_uM"],
+).drop(columns=["Drug", "Concentration_uM"])
+annotation_df = annotation_df.rename(
+    columns={"Viability_percentage": "Metadata_Experiment_ViabilityPercentage"}
+)
 
 
 # ## Pathing

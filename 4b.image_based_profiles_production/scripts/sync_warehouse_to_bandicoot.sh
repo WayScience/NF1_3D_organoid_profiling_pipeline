@@ -29,8 +29,15 @@ DRY_RUN=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    --source-warehouse) SOURCE_WAREHOUSE="$2"; shift 2 ;;
-    --dest-warehouse) DEST_WAREHOUSE="$2"; shift 2 ;;
+    --source-warehouse|--dest-warehouse)
+      [[ $# -ge 2 ]] || { echo "Option $1 requires a path" >&2; exit 2; }
+      if [[ "$1" == "--source-warehouse" ]]; then
+        SOURCE_WAREHOUSE="$2"
+      else
+        DEST_WAREHOUSE="$2"
+      fi
+      shift 2
+      ;;
     -h|--help)
       cat <<'USAGE'
 sync_warehouse_to_bandicoot.sh [--dry-run] [--source-warehouse PATH] [--dest-warehouse PATH]
@@ -52,17 +59,49 @@ if [[ ! -d "$SOURCE_WAREHOUSE" ]]; then
   echo "Source warehouse not found: $SOURCE_WAREHOUSE" >&2
   exit 1
 fi
+if [[ ! -d "$SOURCE_WAREHOUSE/ibp/.complete" ]]; then
+  echo "Source ibp/.complete/ marker folder not found: $SOURCE_WAREHOUSE/ibp/.complete" >&2
+  exit 1
+fi
 
 mkdir -p "$DEST_WAREHOUSE"
 
 rsync_args=(-rlD --inplace --no-times --no-perms --no-owner --no-group --partial --info=progress2 --exclude=".DS_Store" --exclude="._*")
 [[ "$DRY_RUN" -eq 1 ]] && rsync_args+=(-n)
 
-echo "Syncing $SOURCE_WAREHOUSE/ -> $DEST_WAREHOUSE/"
+echo "Syncing $SOURCE_WAREHOUSE/ -> $DEST_WAREHOUSE/ (excluding ibp/, synced separately below)"
 [[ "$DRY_RUN" -eq 1 ]] && echo "Dry run: no files will be copied"
 
 rsync "${rsync_args[@]}" \
-  --exclude="ibp/.complete/" \
+  --exclude="/ibp/" \
   "$SOURCE_WAREHOUSE/" "$DEST_WAREHOUSE/"
+
+# ibp/ gets its own pass, filtered by completion marker: run_one_image_set()
+# (run_ibp_production.py) renames sc_profiles_related and
+# organoid_profiles_related sequentially via two separate os.replace()
+# calls, creating the ibp/.complete/<image_id> marker only after both
+# succeed. An interruption between the two renames can leave one final
+# parquet on disk without its pair -- a plain recursive rsync of ibp/ would
+# publish that incomplete, half-written image set to bandicoot. Building
+# the transfer list from the completion markers instead means only image
+# sets confirmed to have both files land on bandicoot.
+file_list="$(mktemp)"
+trap 'rm -f "$file_list"' EXIT
+while IFS= read -r -d '' marker; do
+  image_id="$(basename "$marker")"
+  printf 'sc_profiles_related/%s.parquet\n' "$image_id"
+  printf 'organoid_profiles_related/%s.parquet\n' "$image_id"
+done < <(find "$SOURCE_WAREHOUSE/ibp/.complete" -mindepth 1 -maxdepth 1 -type f -print0) \
+  > "$file_list"
+
+marker_count=$(($(wc -l < "$file_list") / 2))
+echo "Found $marker_count completed image set(s) via ibp/.complete/ markers"
+
+ibp_rsync_args=(-rlD --inplace --no-times --no-perms --no-owner --no-group --partial --info=progress2 --files-from="$file_list")
+[[ "$DRY_RUN" -eq 1 ]] && ibp_rsync_args+=(-n)
+
+echo "Syncing $SOURCE_WAREHOUSE/ibp/ -> $DEST_WAREHOUSE/ibp/ (completion-marker-backed image sets only)"
+mkdir -p "$DEST_WAREHOUSE/ibp"
+rsync "${ibp_rsync_args[@]}" "$SOURCE_WAREHOUSE/ibp/" "$DEST_WAREHOUSE/ibp/"
 
 echo "Sync finished."
