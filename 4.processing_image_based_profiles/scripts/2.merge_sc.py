@@ -180,9 +180,34 @@ except Exception as e:
             ]
         )
 
-        merged_df.to_parquet(destination_sc_parquet_file, index=False)
+        sc_sammed_columns = [x for x in merged_df.columns if "sammed" in x.lower()]
+        sc_sammed_columns += ["object_id", "image_set"]
+        organoid_sammed_columns = [
+            x for x in organoid_df.columns if "sammed" in x.lower()
+        ]
+        organoid_sammed_columns += ["object_id", "image_set"]
+
+        single_cell_handcrafted_columns = [
+            x for x in merged_df.columns if "sammed" not in x.lower()
+        ]
+        organoid_handcrafted_columns = [
+            x for x in organoid_df.columns if "sammed" not in x.lower()
+        ]
+
+        sc_handcrafted_df = merged_df[single_cell_handcrafted_columns].copy()
+        sc_sammed_df = merged_df[sc_sammed_columns].copy()
+        organoid_handcrafted_df = organoid_df[organoid_handcrafted_columns].copy()
+        organoid_sammed_df = organoid_df[organoid_sammed_columns].copy()
+
+        sc_handcrafted_df.to_parquet(destination_sc_parquet_file, index=False)
+        sc_sammed_df.to_parquet(destination_sc_sammed_parquet_file, index=False)
+        organoid_handcrafted_df.to_parquet(
+            destination_organoid_parquet_file, index=False
+        )
+        organoid_sammed_df.to_parquet(
+            destination_organoid_sammed_parquet_file, index=False
+        )
         nucleocentric_df.to_parquet(destination_nucleocentric_parquet_file, index=False)
-        organoid_df.to_parquet(destination_organoid_parquet_file, index=False)
     # exit the script after writing the empty DataFrames
     sys.exit(0)
 
