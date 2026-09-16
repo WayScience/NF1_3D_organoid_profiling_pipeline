@@ -118,7 +118,7 @@ flowchart TD
 
 The input data are located at:
 
-`/home/lippincm/mnt/bandicoot/NF1_organoid_data/data`
+`~/mnt/bandicoot/NF1_organoid_data/data`
 
 The directory is organized by processing stage and profile type showing one patient as an example.
 
