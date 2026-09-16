@@ -93,3 +93,35 @@ flowchart TD
 | Nucleocentric 3D | 1                 | 4             | 4                             |
 | Nucleocentric 2D | 1                 | 4             | 4                             |
 | Total            |                   |               | 101                           |
+
+## Reading/writing data on bandicoot
+
+Steps 5 through 12 all call `bandicoot_check()`, which uses
+`~/mnt/bandicoot/NF1_organoid_data` as `profile_base_dir` whenever that
+mount is present, falling back to this repo's own `data/` only when it
+isn't. **Bandicoot/Isilon is the team's go-to primary data source** --
+running these scripts with bandicoot mounted reads and writes there
+directly, not just as an archival copy.
+
+Each script's own `data/{patient}/{subparent_name}/{stage}/{file}` path
+shape doesn't change based on where `profile_base_dir` points -- only the
+`{subparent_name}` segment (passed via `--image_based_profiles_subparent_name`,
+or `--output_subdir` for step 11's cross-patient output) identifies which
+pipeline run's data you're reading. Because more than one run can produce
+files with the same names, **each production run uses its own
+version-stamped subparent name** (`<subparent-name>_v<date>_<short-git-hash>`)
+instead of overwriting a shared unversioned name -- see
+`scripts/sync_pipeline_output_to_bandicoot.sh` for how a local run's
+output gets synced to bandicoot under that versioned name.
+
+The current production run (ZEDProfiler, all 13 patients, PR #172) lives
+on bandicoot as:
+
+```
+--image_based_profiles_subparent_name image_based_profiles_production_zedprofiler_v20260915_f5a6f16   # steps 5-10, 12
+--output_subdir all_patient_profiles_zedprofiler_v20260915_f5a6f16                                      # step 11
+```
+
+Do not hardcode a version string directly into a notebook's own path
+construction -- pass it via these existing CLI/interactive arguments
+instead, so the same notebook keeps working as new versions land.
