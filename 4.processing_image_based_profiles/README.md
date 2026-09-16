@@ -93,3 +93,60 @@ flowchart TD
 | Nucleocentric 3D | 1                 | 4             | 4                             |
 | Nucleocentric 2D | 1                 | 4             | 4                             |
 | Total            |                   |               | 101                           |
+
+## New flow of data given ZEDProfiler nextflow runs
+
+```mermaid
+flowchart TD
+    A[ZEDProfiler feature warehouse] --> B[3.organoid_cell_relationships.ipynb]
+    C[DL features] --> D[1.merge_feature_parquets.ipynb]
+    D --> E[2.merge_sc.ipynb]
+    E --> B
+    B --> F[5.combining_profiles.ipynb]
+    F --> G[6.annotation.ipynb]
+    G --> H[7a.organoid_qc.ipynb]
+    H --> I[7b.single_cell_qc.ipynb]
+    I --> J[7c.propagate_cqc_to_dl_profiles.ipynb]
+    J --> K[8.normalization.ipynb]
+    K --> L[9.feature_selection.ipynb]
+    L --> M[10.aggregation.ipynb]
+    M --> N[11.combine_patients.ipynb]
+    N --> O[12.validate_profiles.ipynb]
+```
+
+## Data structure
+
+The input data are located at:
+
+`/home/lippincm/mnt/bandicoot/NF1_organoid_data/data`
+
+The directory is organized by processing stage and profile type showing one patient as an example.
+
+```text
+├── NF0014_T1
+│   ├── extracted_features
+│   ├── image_based_profiles
+│   │   ├── 0.converted_profiles
+│   │   ├── 1.related_profiles
+│   │   ├── 2.combined_profiles
+│   │   ├── 3.annotated_profiles
+│   │   ├── 4.qc_profiles
+│   │   ├── 5.normalized_profiles
+│   │   ├── 6.feature_selected_profiles
+│   │   ├── 7.aggregated_profiles
+│   │   └── 8.consensus_profiles
+│   ├── zstack_images
+│   └── segmentation_masks
+├── NF0014_T2
+├── NF0016_T1
+├── NF0018_T6
+├── NF0021_T1
+├── NF0030_T1
+├── NF0035_T1
+├── NF0037_T1
+├── NF0037_T1_CQ1
+├── NF0040_T1
+├── NF0055_T1
+├── SARCO219_T2
+└── SARCO361_T1
+```
