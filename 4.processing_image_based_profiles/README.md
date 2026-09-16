@@ -94,34 +94,59 @@ flowchart TD
 | Nucleocentric 2D | 1                 | 4             | 4                             |
 | Total            |                   |               | 101                           |
 
-## Reading/writing data on bandicoot
+## New flow of data given ZEDProfiler nextflow runs
 
-Steps 5 through 12 all call `bandicoot_check()`, which uses
-`~/mnt/bandicoot/NF1_organoid_data` as `profile_base_dir` whenever that
-mount is present, falling back to this repo's own `data/` only when it
-isn't. **Bandicoot/Isilon is the team's go-to primary data source** --
-running these scripts with bandicoot mounted reads and writes there
-directly, not just as an archival copy.
-
-Each script's own `data/{patient}/{subparent_name}/{stage}/{file}` path
-shape doesn't change based on where `profile_base_dir` points -- only the
-`{subparent_name}` segment (passed via `--image_based_profiles_subparent_name`,
-or `--output_subdir` for step 11's cross-patient output) identifies which
-pipeline run's data you're reading. Because more than one run can produce
-files with the same names, **each production run uses its own
-version-stamped subparent name** (`<subparent-name>_v<date>_<short-git-hash>`)
-instead of overwriting a shared unversioned name -- see
-`scripts/sync_pipeline_output_to_bandicoot.sh` for how a local run's
-output gets synced to bandicoot under that versioned name.
-
-The current production run (ZEDProfiler, all 13 patients, PR #172) lives
-on bandicoot as:
-
-```
---image_based_profiles_subparent_name image_based_profiles_production_zedprofiler_v20260915_f5a6f16   # steps 5-10, 12
---output_subdir all_patient_profiles_zedprofiler_v20260915_f5a6f16                                      # step 11
+```mermaid
+flowchart TD
+    A[ZEDProfiler feature warehouse] --> B[3.organoid_cell_relationships.ipynb]
+    C[DL features] --> D[1.merge_feature_parquets.ipynb]
+    D --> E[2.merge_sc.ipynb]
+    E --> B
+    B --> F[5.combining_profiles.ipynb]
+    F --> G[6.annotation.ipynb]
+    G --> H[7a.organoid_qc.ipynb]
+    H --> I[7b.single_cell_qc.ipynb]
+    I --> J[7c.propagate_cqc_to_dl_profiles.ipynb]
+    J --> K[8.normalization.ipynb]
+    K --> L[9.feature_selection.ipynb]
+    L --> M[10.aggregation.ipynb]
+    M --> N[11.combine_patients.ipynb]
+    N --> O[12.validate_profiles.ipynb]
 ```
 
-Do not hardcode a version string directly into a notebook's own path
-construction -- pass it via these existing CLI/interactive arguments
-instead, so the same notebook keeps working as new versions land.
+## Data structure
+
+The input data are located at:
+
+`~/mnt/bandicoot/NF1_organoid_data/data`
+
+The directory is organized by processing stage and profile type showing one patient as an example.
+
+```text
+├── NF0014_T1
+│   ├── extracted_features
+│   ├── image_based_profiles
+│   │   ├── 0.converted_profiles
+│   │   ├── 1.related_profiles
+│   │   ├── 2.combined_profiles
+│   │   ├── 3.annotated_profiles
+│   │   ├── 4.qc_profiles
+│   │   ├── 5.normalized_profiles
+│   │   ├── 6.feature_selected_profiles
+│   │   ├── 7.aggregated_profiles
+│   │   └── 8.consensus_profiles
+│   ├── zstack_images
+│   └── segmentation_masks
+├── NF0014_T2
+├── NF0016_T1
+├── NF0018_T6
+├── NF0021_T1
+├── NF0030_T1
+├── NF0035_T1
+├── NF0037_T1
+├── NF0037_T1_CQ1
+├── NF0040_T1
+├── NF0055_T1
+├── SARCO219_T2
+└── SARCO361_T1
+```
