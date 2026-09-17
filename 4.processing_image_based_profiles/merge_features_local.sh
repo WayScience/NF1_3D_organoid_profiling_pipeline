@@ -28,6 +28,8 @@ mkdir -p "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" #
 
 "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/generate_load_data.py
 
+warehouse_dir="$HOME/mnt/bandicoot/NF1_organoid_data/data/results-zedprofiler-0.1.4/nf1-production-full-run-2/warehouse"
+
 while IFS= read -r line; do
 
     IFS=$'\t' read -r -a parts <<< "$line"
@@ -40,6 +42,7 @@ while IFS= read -r line; do
     {
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/1.merge_feature_parquets.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2.merge_sc.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2a.write_warehouse_views_to_parquet.py --patient "$patient" --well_fov "$well_fov" --warehouse-dir "$warehouse_dir" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
     } >> "$log_file" 2>&1
 done < "$load_data_file_path"

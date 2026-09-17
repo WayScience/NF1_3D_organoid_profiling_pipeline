@@ -97,7 +97,7 @@ else:
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# In[3]:
+# In[ ]:
 
 
 ## Pathing
@@ -151,7 +151,7 @@ nucleocentric_morphem_feature_selected_output_path = pathlib.Path(
 organoid_fs_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[ ]:
 
 
 # read in the data
@@ -212,9 +212,6 @@ if has_nucleocentric_morphem:
         "df": nucleocentric_morphem_normalized,
         "output_path": nucleocentric_morphem_feature_selected_output_path,
     }
-
-
-# In[5]:
 
 
 # In[6]:

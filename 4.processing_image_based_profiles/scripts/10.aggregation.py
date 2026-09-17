@@ -82,7 +82,7 @@ else:
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# In[3]:
+# In[ ]:
 
 
 ## Pathing
@@ -160,7 +160,7 @@ nucleocentric_morphem_agg_well_output_path.parent.mkdir(parents=True, exist_ok=T
 nucleocentric_morphem_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[ ]:
 
 
 # read in the data
@@ -223,9 +223,6 @@ if has_nucleocentric_morphem:
         "agg_well_output_path": nucleocentric_morphem_agg_well_output_path,
         "consensus_output_path": nucleocentric_morphem_consensus_output_path,
     }
-
-
-# In[5]:
 
 
 # ## Aggregate the profiles

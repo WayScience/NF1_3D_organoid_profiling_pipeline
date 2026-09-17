@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -27,7 +27,7 @@ profile_base_dir = bandicoot_check(
 # takes effect.
 
 
-# In[2]:
+# In[ ]:
 
 
 # This script never accepted a --image_based_profiles_subparent_name argument
@@ -58,7 +58,7 @@ patient_ids_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve
 patient_ids = pd.read_csv(patient_ids_file_path, header=None).iloc[:, 0].tolist()
 
 
-# In[4]:
+# In[ ]:
 
 
 # set up log file
@@ -124,6 +124,7 @@ with open(log_path, "w") as log_file:
             "nucleocentric_sammed_agg_treatment": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_nucleocentric_consensus.parquet",
             "nucleocentric_morphem_agg_treatment": f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/nucleocentric_morphem_consensus.parquet",
         }
+
         log(f"\n{'=' * 60}", log_file)
         log(f"Processing patient: {patient}", log_file)
         log(f"{'=' * 60}", log_file)

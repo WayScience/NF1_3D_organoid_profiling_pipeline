@@ -28,7 +28,7 @@
 # | `*_sc_agg_profiles.parquet` | Well-level aggregated (median by PatientTumor × Well) |
 # | `*_sc_consensus_profiles.parquet` | Consensus (median by PatientTumor × Treatment) |
 
-# In[1]:
+# In[ ]:
 
 
 import argparse
@@ -57,7 +57,7 @@ profile_base_dir = bandicoot_check(
 # takes effect.
 
 
-# In[2]:
+# In[ ]:
 
 
 # Unlike the other per-patient steps, this script never accepted a
@@ -116,7 +116,7 @@ levels_to_merge_dict = {
 }
 
 
-# In[4]:
+# In[ ]:
 
 
 for patient in patients:

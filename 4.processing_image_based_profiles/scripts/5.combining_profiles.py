@@ -143,7 +143,7 @@ for x in nucleocentric_profiles:
 print(df.shape)
 
 
-# In[7]:
+# In[ ]:
 
 
 # Concatenate per-FOV parquets for each profile type using DuckDB.
@@ -170,19 +170,13 @@ with duckdb.connect() as conn:
 
 print(f"Single-cell profiles concatenated. Shape: {sc_profile.shape}")
 print(f"Organoid profiles concatenated. Shape: {organoid_profile.shape}")
-if nucleocentric_profile is not None:
-    print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape}")
-else:
-    print(
-        "No nucleocentric_* input files found -- skipping nucleocentric.parquet "
-        "output (expected for datasets with no deep-learning features)."
-    )
+print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape}")
 
 
 # ## Remove all BF channels
 #
 
-# In[8]:
+# In[ ]:
 
 
 # Remove brightfield (BF) channel features from all three profile types.
@@ -213,17 +207,14 @@ print(
     f"Organoid Sammed: dropped {len(bf_cols_organoid_sammed)} BF columns. Shape: {organoid_sammed_profile.shape}"
 )
 
-if nucleocentric_profile is not None:
-    bf_cols_nucleocentric = [
-        col for col in nucleocentric_profile.columns if "BF" in col
-    ]
-    nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric)
-    print(
-        f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}"
-    )
+bf_cols_nucleocentric = [col for col in nucleocentric_profile.columns if "BF" in col]
+nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric)
+print(
+    f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}"
+)
 
 
-# In[9]:
+# In[ ]:
 
 
 sc_profile.to_parquet(sc_merged_handcrafted_output_path, index=False)

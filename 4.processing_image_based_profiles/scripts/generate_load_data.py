@@ -19,7 +19,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
 
 
 # In[2]:
@@ -78,7 +77,7 @@ df = pd.DataFrame(rows)
 print(f"Total patient/well_fov combinations: {df.shape[0]}")
 
 
-# In[5]:
+# In[ ]:
 
 
 # Build expected .duckdb paths with vectorized string ops
@@ -118,7 +117,7 @@ for patient, well_fov in tqdm(
 df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 
 
-# In[6]:
+# In[ ]:
 
 
 # check each well fov to search for the number of extracted feature parquet files
@@ -126,7 +125,7 @@ df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 df["num_parquets"] = df.apply(count_parquets, axis=1)
 
 
-# In[7]:
+# In[ ]:
 
 
 total = len(df)
@@ -137,7 +136,7 @@ print(f"Present              : {present}")
 print(f"Missing              : {total - present}")
 
 
-# In[8]:
+# In[ ]:
 
 
 # Write missing combinations to load_file.txt
@@ -148,13 +147,7 @@ df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
 print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
-# In[9]:
-
-
-df.loc[df["duckdb_exists"] == False]
-
-
-# In[10]:
+# In[ ]:
 
 
 # Summary by patient
@@ -166,15 +159,15 @@ summary_df = (
 summary_df.reset_index()
 
 
-# In[11]:
+# In[ ]:
 
 
 # send to df
 df = pd.DataFrame(
     list(
-        pathlib.Path(
-            "/home/lippincm/Documents/NF1_3D_organoid_profiling_pipeline/data/NF0014_T1/extracted_features/C4-2"
-        ).glob("*.parquet")
+        pathlib.Path(f"{profile_base_dir}/data/NF0014_T1/extracted_features/C4-2").glob(
+            "*.parquet"
+        )
     )
 )
 df.rename(columns={0: "file_path"}, inplace=True)
@@ -185,19 +178,19 @@ df["FeatureType"] = df["file_name"].apply(lambda s: s.split("_")[2])
 df.head()
 
 
-# In[12]:
+# In[ ]:
 
 
 df["Compatment"].value_counts()
 
 
-# In[13]:
+# In[ ]:
 
 
 df["Channel"].value_counts()
 
 
-# In[14]:
+# In[ ]:
 
 
 df["FeatureType"].value_counts()

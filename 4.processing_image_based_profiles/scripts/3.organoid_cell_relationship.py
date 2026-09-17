@@ -77,7 +77,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[2]:
+# In[4]:
 
 
 if not in_notebook:
@@ -88,13 +88,13 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C4-1"
+    well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # ### Pathing
 
-# In[3]:
+# In[5]:
 
 
 # input paths
@@ -138,7 +138,7 @@ nucleocentric_profile_output_path = pathlib.Path(
 sc_profile_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[4]:
+# In[6]:
 
 
 sc_profile_df = pd.read_parquet(sc_profile_handcrafted_path)
@@ -167,10 +167,9 @@ for _df in (sc_profile_df, organoid_profile_df, nucleocentric_df):
 
 # `image_set` is just this well-FOV's own label -- this script already
 # has it as `well_fov`, so set it directly rather than requiring it as an
-# input column. All three dataframes are scoped to this single well-FOV
+# input column. Both dataframes are scoped to this single well-FOV
 # already, so every row gets the same value.
 sc_profile_df["image_set"] = well_fov
-organoid_profile_df["image_set"] = well_fov
 nucleocentric_df["image_set"] = well_fov
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")

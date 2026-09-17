@@ -66,10 +66,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    # patient = "NF0055_T1"
-    # well_fov = "D5-1"
+    well_fov = "C10-1"
     patient = "NF0014_T1"
-    well_fov = "C4-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -270,9 +268,9 @@ sc_sammed_df = merged_df[sc_sammed_columns].copy()
 organoid_handcrafted_df = organoid_table[organoid_handcrafted_columns].copy()
 organoid_sammed_df = organoid_table[organoid_sammed_columns].copy()
 
-sc_handcrafted_df.to_parquet(destination_sc_parquet_file, index=False)
+# sc_handcrafted_df.to_parquet(destination_sc_parquet_file, index=False)
 sc_sammed_df.to_parquet(destination_sc_sammed_parquet_file, index=False)
-organoid_handcrafted_df.to_parquet(destination_organoid_parquet_file, index=False)
+# organoid_handcrafted_df.to_parquet(destination_organoid_parquet_file, index=False)
 organoid_sammed_df.to_parquet(destination_organoid_sammed_parquet_file, index=False)
 nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
 print(

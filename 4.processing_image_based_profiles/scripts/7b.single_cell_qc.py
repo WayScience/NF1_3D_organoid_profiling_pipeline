@@ -142,39 +142,16 @@ print(orig_sc_profiles_df.shape)
 orig_sc_profiles_df
 
 
-# In[4]:
+# In[ ]:
 
 
 sc_profiles_df = orig_sc_profiles_df.copy()
-
-
-# Accept both ZEDProfiler's VolumeSizeShape naming and the legacy
-# CellProfiler-era AreaSizeShape naming for the same underlying volume
-# feature -- same "accept both conventions" approach already established for
-# step 3's own column matching (see 3.organoid_cell_relationship.py, commit
-# 8b2a08a). A hardcoded VolumeSizeShape-only reference here would raise
-# KeyError for legacy data that still reaches this notebook via
-# 1.merge_feature_parquets.py, which preserves the AreaSizeShape name.
-def _resolve_volume_column(df: pd.DataFrame, prefix: str) -> str:
-    for suffix in ("VolumeSizeShape", "AreaSizeShape"):
-        candidate = f"{prefix}_{suffix}_Volume"
-        if candidate in df.columns:
-            return candidate
-    raise KeyError(
-        f"Neither {prefix}_VolumeSizeShape_Volume nor {prefix}_AreaSizeShape_Volume "
-        "found in columns."
-    )
-
-
-cell_volume_col = _resolve_volume_column(sc_profiles_df, "Cell_NoChannel")
-nuclei_volume_col = _resolve_volume_column(sc_profiles_df, "Nuclei_NoChannel")
-
 sc_profiles_df["Metadata_cqc_nan_detected"] = (
     sc_profiles_df[
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_ParentOrganoid",
-            cell_volume_col,
+            "Cell_NoChannel_AreaSizeShape_Volume",
         ]
     ]
     .isna()
@@ -187,7 +164,7 @@ print(f"Number of organoids flagged: {flagged_count}")
 sc_profiles_df.head()
 
 
-# In[5]:
+# In[ ]:
 
 
 # Round 2: propagate organoid-level QC flags to single cells.
@@ -198,7 +175,11 @@ sc_profiles_df.head()
 # Default QC flags
 sc_profiles_df["Metadata_cqc_organoid_flagged"] = False
 sc_profiles_df["Metadata_cqc_nan_detected"] = (
-    sc_profiles_df[["Metadata_Object_ObjectID", nuclei_volume_col]].isna().any(axis=1)
+    sc_profiles_df[
+        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_AreaSizeShape_Volume"]
+    ]
+    .isna()
+    .any(axis=1)
 )
 sc_profiles_df["Metadata_cqc_missing_parent_organoid"] = (
     sc_profiles_df["Metadata_Object_ParentOrganoid"] == -1
@@ -231,10 +212,10 @@ print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
 
-# In[6]:
+# In[ ]:
 
 
-sc_profiles_df[nuclei_volume_col].describe()
+sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
@@ -251,7 +232,7 @@ sc_profiles_df[nuclei_volume_col].describe()
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
 
 
-# In[8]:
+# In[ ]:
 
 
 # Round 3: nucleus-based outlier detection using z-score thresholds.
@@ -273,7 +254,7 @@ small_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        nuclei_volume_col: -1,  # Detect very small nuclei
+        "Nuclei_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small nuclei
     },
 )
 
@@ -288,7 +269,7 @@ large_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        nuclei_volume_col: 2,  # Detect very large nuclei
+        "Nuclei_NoChannel_AreaSizeShape_Volume": 2,  # Detect very large nuclei
     },
 )
 
@@ -341,7 +322,7 @@ sc_profiles_df.head()
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[10]:
+# In[ ]:
 
 
 # Each deep-learning profile is only added to df_dict (and therefore QC-flag

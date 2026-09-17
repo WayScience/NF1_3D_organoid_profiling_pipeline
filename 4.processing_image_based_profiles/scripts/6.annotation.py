@@ -55,10 +55,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-# NOTE: previously this line unconditionally overrode bandicoot_check()
-# with root_dir, meaning bandicoot was never actually used even when
-# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
-# takes effect.
 
 
 # In[2]:
@@ -76,7 +72,7 @@ else:
 
 # ## Combine the metadata into a single annotation file
 
-# In[3]:
+# In[ ]:
 
 
 barcode_platemap = pd.read_csv(
@@ -218,12 +214,7 @@ organoid_sammed_merged_path = pathlib.Path(
 ).resolve(strict=True)
 nucleocentric_merged_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/nucleocentric.parquet"
-).resolve()
-# Not required: datasets with no deep-learning features (e.g. ZEDProfiler) never
-# have nucleocentric_*_related.parquet inputs, so step 5 doesn't write this file
-# for those patients at all -- treat its absence as "no nucleocentric data" for
-# this patient rather than a hard failure.
-has_nucleocentric = nucleocentric_merged_path.exists()
+).resolve(strict=True)
 
 # output path
 sc_annotated_output_path = pathlib.Path(
@@ -269,32 +260,6 @@ nucleocentric_merged["Well"] = nucleocentric_merged["image_set"].str.split("-").
 
 # In[7]:
 
-
-# ZEDProfiler-derived input already carries its own Metadata_Biology_*/
-# Metadata_Experiment_* columns, passed straight through from steps 3/5 --
-# confirmed directly against real data: Metadata_Biology_PatientTumor
-# already exists in sc_merged/organoid_merged here. Left un-dropped, that
-# collides with annotation_df's own same-named column below (neither side
-# is the join key, so pandas would otherwise silently suffix both copies
-# _x/_y instead of erroring). Drop the input's copy first so annotation_df's
-# copy is the sole, authoritative one post-merge -- matching this script's
-# original design (written for the older CellProfiler-era pipeline, whose
-# own input never carried any of these columns before this merge).
-_annotation_overlap_cols = [
-    c for c in annotation_df.columns if c != "Metadata_Experiment_Well"
-]
-sc_merged = sc_merged.drop(
-    columns=[c for c in _annotation_overlap_cols if c in sc_merged.columns]
-)
-organoid_merged = organoid_merged.drop(
-    columns=[c for c in _annotation_overlap_cols if c in organoid_merged.columns]
-)
-if has_nucleocentric:
-    nucleocentric_merged = nucleocentric_merged.drop(
-        columns=[
-            c for c in _annotation_overlap_cols if c in nucleocentric_merged.columns
-        ]
-    )
 
 sc_merged = pd.merge(
     left=sc_merged,
@@ -382,25 +347,10 @@ nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.g
 # In[10]:
 
 
-# Rename straight to the fully category-qualified final names (per
-# docs/RFC-2119-Feature-Naming-Convention.md section 2.2) rather than a bare
-# name later blanket-prefixed with "Metadata_" below: 7a/7b/7c all expect
-# Metadata_Object_ObjectID/ParentOrganoid/OrganoidSingleCellCount and
-# Metadata_Experiment_WellFOV specifically, not the flat Metadata_ObjectID/
-# Metadata_WellFOV a plain prefix would produce. object_id/ParentOrganoid/
-# OrganoidSingleCellCount come from step 3's own output; ParentOrganoid is
-# sc/nucleocentric-only and OrganoidSingleCellCount is organoid-only, so
-# .rename() is a no-op wherever a given key isn't present in that profile's
-# columns. "patient" is the older CellProfiler-era pipeline's own bare
-# column name (never present in ZEDProfiler-derived data, which already
-# carries Metadata_Biology_PatientTumor natively) -- kept here as a no-op
-# for that older input shape rather than removed.
 column_rename_mapping = {
-    "patient": "Metadata_Biology_PatientTumor",
-    "image_set": "Metadata_Experiment_WellFOV",
-    "object_id": "Metadata_Object_ObjectID",
-    "ParentOrganoid": "Metadata_Object_ParentOrganoid",
-    "OrganoidSingleCellCount": "Metadata_Object_OrganoidSingleCellCount",
+    "patient": "PatientTumor",
+    "image_set": "WellFOV",
+    "object_id": "ObjectID",
 }
 
 # rename columns for consistency across profiles
@@ -495,13 +445,20 @@ _ = [
 # In[13]:
 
 
-# PatientTumor/ObjectID/WellFOV/ParentOrganoid/OrganoidSingleCellCount/Class
-# are no longer listed here -- they already arrive fully category-qualified,
-# either via column_rename_mapping above or (Class/Treatment/Dose/Unit/
-# Target/TherapeuticCategories) via the annotation_df merge.
 metadata_features_list = [
+    "PatientTumor",
     "Tumor",
+    "ObjectID",
     "Well",
+    "Treatment",
+    "Dose",
+    "Unit",
+    "WellFOV",
+    "ParentOrganoid",
+    "OrganoidSingleCellCount",
+    "Target",
+    "Class",
+    "TherapeuticCategories",
 ]
 # prepend "Metadata_" to metadata features
 sc_merged = sc_merged.rename(

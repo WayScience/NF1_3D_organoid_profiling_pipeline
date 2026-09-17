@@ -23,7 +23,7 @@
 #      scripts (5-12) actually look for on disk
 #      (data/{patient}/{subparent_name}/{stage}/{file} -- patient first,
 #      then subparent name), because those scripts each had their own bug:
-#      a `profile_base_dir = root_dir` line that unconditionally discarded
+#      a `` line that unconditionally discarded
 #      bandicoot_check()'s result, so they never actually read from
 #      bandicoot in the first place. Once that override bug is fixed (see
 #      the stage-4 scripts themselves), a version-first layout can never

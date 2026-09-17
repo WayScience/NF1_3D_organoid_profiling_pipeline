@@ -63,8 +63,8 @@ if not in_notebook:
 
 
 else:
-    well_fov = "G8-3"
-    patient = "NF0014_T2"
+    well_fov = "C10-1"
+    patient = "NF0014_T1"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
 
@@ -93,13 +93,7 @@ print(len(parquet_files), "parquet files found")
 
 # create the nested dictionary to hold the feature types and compartments
 feature_types = [
-    "AreaSizeShape",
-    "Colocalization",
-    "Intensity",
-    "Granularity",
-    "Neighbors",
     "SAMMed3D",
-    "Texture",
     "CHAMMI75",
 ]
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
@@ -132,6 +126,10 @@ output_dict
 #   [1] = channel      (e.g. "ER", "DNA"; multi-channel names use hyphens: "ER-Mito")
 #   [2] = feature type (e.g. "Granularity", "SAMMed3D")
 files = list(result_path.rglob("*.parquet"))
+# filter the files to only include those that match the expected filename pattern
+files = [f for f in files if "sammed" in f.name.lower() or "chammi75" in f.name.lower()]
+# skip files that do not start with a compartments in the expected list
+files = [f for f in files if f.name.split("_")[0] in compartments]
 files_df = pd.DataFrame({"file_path": files})
 files_df["file_name"] = files_df["file_path"].apply(lambda x: x.name)
 files_df["compartment"] = files_df["file_name"].apply(lambda x: x.split("_")[0])
