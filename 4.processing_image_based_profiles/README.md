@@ -98,7 +98,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[ZEDProfiler feature warehouse] --> B[3.organoid_cell_relationships.ipynb]
+    A[ZEDProfiler feature warehouse] --> A1[2a.write_warehouse_views_to_parquet.ipynb]
+    A1 --> B[3.organoid_cell_relationships.ipynb]
     C[DL features] --> D[1.merge_feature_parquets.ipynb]
     D --> E[2.merge_sc.ipynb]
     E --> B
@@ -150,3 +151,13 @@ The directory is organized by processing stage and profile type showing one pati
 ├── SARCO219_T2
 └── SARCO361_T1
 ```
+
+notebookes 1-2 write files to the dir:
+
+```
+├── image_based_profiles
+│   ├── 0.converted_profiles
+```
+
+Notebook `3.organoid_cell_relationships.ipynb` reads from the above dir:
+and continues through the ibp pipeline.
