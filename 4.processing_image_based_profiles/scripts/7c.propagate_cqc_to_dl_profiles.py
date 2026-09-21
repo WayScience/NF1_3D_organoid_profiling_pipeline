@@ -85,13 +85,35 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # ## Functions
 
 # In[3]:
+
+
+def assert_unique_key(df, name, cols=None):
+    """Raise if JOIN_KEY is not unique in df, reporting the offending keys and
+    which columns differ between the duplicated rows."""
+    df = df if cols is None else df[cols]
+    dup_mask = df.duplicated(subset=JOIN_KEY, keep=False)
+    if not dup_mask.any():
+        return
+    dups = df[dup_mask].sort_values(JOIN_KEY)
+    differing = [
+        c
+        for c in dups.columns
+        if c not in JOIN_KEY
+        and dups.groupby(JOIN_KEY, dropna=False)[c].nunique(dropna=False).gt(1).any()
+    ]
+    raise AssertionError(
+        f"{name}: join key is not unique — {df.duplicated(subset=JOIN_KEY).sum()} "
+        f"extra rows across {dups.groupby(JOIN_KEY, dropna=False).ngroups} keys. "
+        f"Columns differing between duplicates: {differing or 'none (exact duplicates)'}.\n"
+        f"{dups[JOIN_KEY + differing[:5]].head(10).to_string()}"
+    )
 
 
 def propagate_cqc(
@@ -122,18 +144,9 @@ def propagate_cqc(
     """
     source_key_df = source_df[JOIN_KEY + cqc_cols].copy()
 
-    # Assert join key is unique in source (no duplicate object IDs)
-    dupes = source_key_df.duplicated(subset=JOIN_KEY)
-    assert not dupes.any(), (
-        f"{source_name}: join key is not unique — {dupes.sum()} duplicate rows found. "
-        f"CQC propagation requires a 1:1 key."
-    )
-
-    # Assert join key is unique in target
-    dupes_target = target_df.duplicated(subset=JOIN_KEY)
-    assert not dupes_target.any(), (
-        f"{target_name}: join key is not unique — {dupes_target.sum()} duplicate rows found."
-    )
+    # Assert join key is unique (1:1) in both source and target
+    assert_unique_key(source_df, source_name, cols=JOIN_KEY + cqc_cols)
+    assert_unique_key(target_df, target_name)
 
     merged = target_df.merge(
         source_key_df,
@@ -171,7 +184,7 @@ def propagate_cqc(
 
 # ## Paths
 
-# In[ ]:
+# In[4]:
 
 
 base = (
@@ -333,7 +346,7 @@ nucleocentric_morphem_flagged = propagate_cqc(
 # were filtered by CellProfiler QC upstream but are retained in the SAM-Med
 # embeddings. They will have NaN CQC flags in the output.
 
-# In[8]:
+# In[ ]:
 
 
 sammed_organoid_flagged = propagate_cqc(
@@ -358,7 +371,7 @@ if unmatched_mask.any():
 
 # ## Write outputs
 
-# In[9]:
+# In[ ]:
 
 
 sammed_sc_flagged.to_parquet(sammed_sc_output_path, index=False)

@@ -116,7 +116,7 @@ orig_organoid_profiles_df.head()
 # - A NaN `ObjectID` means the object does not exist and all features will be NaN.
 # - A NaN `Volume` means the core morphology feature is missing.
 
-# In[ ]:
+# In[4]:
 
 
 organoid_profiles_df = orig_organoid_profiles_df.copy()
@@ -125,7 +125,7 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_OrganoidSingleCellCount",
-            "Organoid_NoChannel_AreaSizeShape_Volume",
+            "Organoid_NoChannel_VolumeSizeShape_Volume",
         ]
     ]
     .isna()
@@ -147,7 +147,7 @@ organoid_profiles_df.head()
 metadata_columns = [x for x in organoid_profiles_df.columns if "Metadata" in x]
 
 
-# In[ ]:
+# In[6]:
 
 
 ## Round 2 QC: size-based outlier detection
@@ -161,13 +161,13 @@ filtered_profile_df = organoid_profiles_df[
     ~organoid_profiles_df["Metadata_cqc_nan_detected"]
 ]
 
-# Find outlier organoids based on the 'Area.Size.Shape_Organoid_VOLUME' column
+# Find outlier organoids based on the 'Volume.Size.Shape_Organoid_VOLUME' column
 print("Finding small organoid outliers...")
 small_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small organoids
     },
 )
 
@@ -182,7 +182,7 @@ large_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_AreaSizeShape_Volume": 3,  # Detect very large organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": 3,  # Detect very large organoids
     },
 )
 
@@ -215,7 +215,7 @@ organoid_profiles_df.head()
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[ ]:
+# In[8]:
 
 
 sammed_organoid_df = pd.read_parquet(sammed_annotated_organoid_profiles_path)

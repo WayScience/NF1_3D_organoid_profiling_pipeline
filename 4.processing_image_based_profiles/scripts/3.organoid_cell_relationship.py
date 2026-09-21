@@ -77,7 +77,7 @@ profile_base_dir = bandicoot_check(
 )
 
 
-# In[4]:
+# In[2]:
 
 
 if not in_notebook:
@@ -94,7 +94,7 @@ else:
 
 # ### Pathing
 
-# In[5]:
+# In[3]:
 
 
 # input paths
@@ -138,7 +138,7 @@ nucleocentric_profile_output_path = pathlib.Path(
 sc_profile_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[6]:
+# In[4]:
 
 
 sc_profile_df = pd.read_parquet(sc_profile_handcrafted_path)

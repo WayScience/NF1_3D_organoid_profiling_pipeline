@@ -80,10 +80,11 @@
 #   (SLURM/batch) invocation.
 #
 
-# In[30]:
+# In[1]:
 
 
 import argparse
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -98,7 +99,7 @@ image_base_dir = image_base_dir / "NF1_organoid_data"
 IBP_SUBPARENT_NAME = "image_based_profiles"
 
 
-# In[31]:
+# In[2]:
 
 
 if not in_notebook:
@@ -106,15 +107,15 @@ if not in_notebook:
         description="Run IBP stage 4 step 3 against a ZEDProfiler warehouse."
     )
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--warehouse-dir", required=True, type=Path)
+    parser.add_argument("--warehouse_dir", required=True, type=Path)
     parser.add_argument("--patient", required=True)
-    parser.add_argument("--well-fov", required=True, help="e.g. 'B10-1'")
-    parser.add_argument("--image-based-profiles-subparent-name", required=True)
+    parser.add_argument("--well_fov", required=True, help="e.g. 'B10-1'")
+    parser.add_argument("--image_based_profiles_subparent_name", required=True)
     args = parser.parse_args()
     warehouse_dir = args.warehouse_dir
     patient = args.patient
     well_fov = args.well_fov
-    ibp_subparent_name = args.image_based_profiles_subparent_name
+    image_based_profiles_subparent_name = args.image_based_profiles_subparent_name
 
 else:
     # Bandicoot mirror of the production ZEDProfiler warehouse (same
@@ -131,13 +132,13 @@ else:
         / "warehouse"
     ).resolve(strict=True)
     patient = "NF0014_T1"
-    well_fov = "C10-1"
+    well_fov = "C11-2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 image_sets_index = PROD_ROOT / "manifest" / "image_sets_index.csv"
 
 
-# In[32]:
+# In[3]:
 
 
 # Per the project's metadata naming convention
@@ -261,7 +262,7 @@ def load_from_warehouse(
     return sc_df, organoid_df
 
 
-# In[38]:
+# In[4]:
 
 
 well, field = parse_well_fov(well_fov)

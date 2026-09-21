@@ -78,11 +78,11 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
-# In[ ]:
+# In[3]:
 
 
 ## Pathing
@@ -160,7 +160,7 @@ nucleocentric_morphem_agg_well_output_path.parent.mkdir(parents=True, exist_ok=T
 nucleocentric_morphem_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 # read in the data
@@ -234,7 +234,7 @@ if has_nucleocentric_morphem:
 #    grouped by `PatientTumor x Treatment`. Collapses replicates for treatment-level
 #    comparisons.
 
-# In[6]:
+# In[5]:
 
 
 # Well-level strata: one row per (patient, well) combination
@@ -260,7 +260,7 @@ consensus_strata = [
 ]
 
 
-# In[7]:
+# In[6]:
 
 
 for profile_name in run_dict.keys():

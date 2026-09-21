@@ -18,6 +18,7 @@ load_data_file_path="$git_root/4.processing_image_based_profiles/load_data/load_
 patient_ids_file_path="$git_root/data/patient_IDs.txt"
 # read the patient IDs into an array
 mapfile -t patient_array < "$patient_ids_file_path"
+patient_array=("NF0037_T1_CQ1")
 # setup the logs dir
 if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ]; then
     rm -rf "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/"
@@ -40,9 +41,9 @@ while IFS= read -r line; do
     log_file="$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/${patient}_${well_fov}.log"
     touch "$log_file"  # create the log file if it doesn't exist
     {
-        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/1.merge_feature_parquets.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/1.merge_DL_feature_parquets.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2.merge_sc.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
-        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2a.write_warehouse_views_to_parquet.py --patient "$patient" --well_fov "$well_fov" --warehouse-dir "$warehouse_dir" --image_based_profiles_subparent_name "image_based_profiles"
+        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/2a.write_warehouse_views_to_parquet.py --patient "$patient" --well_fov "$well_fov" --warehouse_dir "$warehouse_dir" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py --patient "$patient" --well_fov "$well_fov" --output_features_subparent_name "extracted_features" --image_based_profiles_subparent_name "image_based_profiles"
     } >> "$log_file" 2>&1
 done < "$load_data_file_path"

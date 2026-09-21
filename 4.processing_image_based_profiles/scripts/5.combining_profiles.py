@@ -143,7 +143,7 @@ for x in nucleocentric_profiles:
 print(df.shape)
 
 
-# In[ ]:
+# In[7]:
 
 
 # Concatenate per-FOV parquets for each profile type using DuckDB.
@@ -176,7 +176,7 @@ print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape
 # ## Remove all BF channels
 #
 
-# In[ ]:
+# In[8]:
 
 
 # Remove brightfield (BF) channel features from all three profile types.
@@ -214,7 +214,7 @@ print(
 )
 
 
-# In[ ]:
+# In[9]:
 
 
 sc_profile.to_parquet(sc_merged_handcrafted_output_path, index=False)

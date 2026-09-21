@@ -77,7 +77,7 @@ df = pd.DataFrame(rows)
 print(f"Total patient/well_fov combinations: {df.shape[0]}")
 
 
-# In[ ]:
+# In[5]:
 
 
 # Build expected .duckdb paths with vectorized string ops
@@ -117,7 +117,7 @@ for patient, well_fov in tqdm(
 df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 
 
-# In[ ]:
+# In[6]:
 
 
 # check each well fov to search for the number of extracted feature parquet files
@@ -125,7 +125,7 @@ df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 df["num_parquets"] = df.apply(count_parquets, axis=1)
 
 
-# In[ ]:
+# In[7]:
 
 
 total = len(df)
@@ -136,18 +136,18 @@ print(f"Present              : {present}")
 print(f"Missing              : {total - present}")
 
 
-# In[ ]:
+# In[8]:
 
 
 # Write missing combinations to load_file.txt
-df_missing = df.loc[
-    ~df["duckdb_exists"] & (df["num_parquets"] == 101), ["patient", "well_fov"]
-].reset_index(drop=True)
+df_missing = df.loc[~df["duckdb_exists"], ["patient", "well_fov"]].reset_index(
+    drop=True
+)
 df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
 print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
-# In[ ]:
+# In[9]:
 
 
 # Summary by patient
@@ -159,7 +159,7 @@ summary_df = (
 summary_df.reset_index()
 
 
-# In[ ]:
+# In[10]:
 
 
 # send to df
@@ -178,19 +178,19 @@ df["FeatureType"] = df["file_name"].apply(lambda s: s.split("_")[2])
 df.head()
 
 
-# In[ ]:
+# In[11]:
 
 
 df["Compatment"].value_counts()
 
 
-# In[ ]:
+# In[12]:
 
 
 df["Channel"].value_counts()
 
 
-# In[ ]:
+# In[13]:
 
 
 df["FeatureType"].value_counts()

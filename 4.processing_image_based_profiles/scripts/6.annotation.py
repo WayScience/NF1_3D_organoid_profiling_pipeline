@@ -66,13 +66,13 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # ## Combine the metadata into a single annotation file
 
-# In[ ]:
+# In[3]:
 
 
 barcode_platemap = pd.read_csv(
@@ -193,11 +193,22 @@ annotation_df = annotation_df.merge(
 annotation_df = annotation_df.rename(
     columns={"Viability_percentage": "Metadata_Experiment_ViabilityPercentage"}
 )
+if patient == "NF0037_T1_CQ1":
+    # NF0037_T1_CQ1 shares NF0037_T1's own plate layout/barcode row -- look up by
+    # that name, but keep `patient` itself as "NF0037_T1_CQ1" everywhere else.
+    annotation_df = annotation_df.loc[
+        annotation_df["Metadata_Biology_PatientTumor"] == "NF0037_T1"
+    ]
+    annotation_df["Metadata_Biology_PatientTumor"] = patient
+else:
+    annotation_df = annotation_df.loc[
+        annotation_df["Metadata_Biology_PatientTumor"] == patient
+    ]
 
 
 # ## Pathing
 
-# In[5]:
+# In[4]:
 
 
 sc_merged_path = pathlib.Path(
@@ -239,7 +250,7 @@ sammed_annotated_organoid_profiles_path = pathlib.Path(
 organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[6]:
+# In[5]:
 
 
 # read data
@@ -248,6 +259,21 @@ organoid_merged = pd.read_parquet(organoid_merged_path)
 sc_sammed_merged = pd.read_parquet(sc_sammed_merged_path)
 organoid_sammed_merged = pd.read_parquet(organoid_sammed_merged_path)
 nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
+
+
+# In[6]:
+
+
+sc_merged["image_set"] = (
+    sc_merged["Metadata_Experiment_WellID"].astype(str)
+    + "_"
+    + sc_merged["Metadata_Imaging_FieldID"].astype(str)
+)
+organoid_merged["image_set"] = (
+    organoid_merged["Metadata_Experiment_WellID"].astype(str)
+    + "_"
+    + organoid_merged["Metadata_Imaging_FieldID"].astype(str)
+)
 
 sc_merged["Well"] = sc_merged["image_set"].str.split("-").str[0]
 organoid_merged["Well"] = organoid_merged["image_set"].str.split("-").str[0]
@@ -265,15 +291,15 @@ sc_merged = pd.merge(
     left=sc_merged,
     right=annotation_df,
     how="left",
-    left_on=["Well"],
-    right_on=["Metadata_Experiment_Well"],
+    left_on=["Metadata_Experiment_WellID", "Metadata_Biology_PatientTumor"],
+    right_on=["Metadata_Experiment_Well", "Metadata_Biology_PatientTumor"],
 )
 organoid_merged = pd.merge(
     left=organoid_merged,
     right=annotation_df,
     how="left",
-    left_on=["Well"],
-    right_on=["Metadata_Experiment_Well"],
+    left_on=["Metadata_Experiment_WellID", "Metadata_Biology_PatientTumor"],
+    right_on=["Metadata_Experiment_Well", "Metadata_Biology_PatientTumor"],
 )
 sc_sammed_merged = pd.merge(
     left=sc_sammed_merged,
@@ -344,7 +370,7 @@ nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.g
 )["image_set"].transform("count")
 
 
-# In[10]:
+# In[9]:
 
 
 column_rename_mapping = {
@@ -361,7 +387,7 @@ organoid_sammed_merged.rename(columns=column_rename_mapping, inplace=True)
 nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
 
-# In[11]:
+# In[10]:
 
 
 # Promote spatial coordinate columns to Metadata_Location_* so they are excluded
@@ -428,21 +454,21 @@ _ = [
 ]
 
 
-# In[12]:
+# In[11]:
 
 
 sc_neighbors_features = [col for col in sc_merged.columns if "neighbors" in col.lower()]
 # replace "Object_Channel with Metadata_"
 _ = [
     sc_merged.rename(
-        columns={feature: f"Metadata_Neighbors_{feature.split('_')[-1]}"},
+        columns={feature: f"Metadata_Neighbors_{feature.replace('_', '')}"},
         inplace=True,
     )
     for feature in sc_neighbors_features
 ]
 
 
-# In[13]:
+# In[12]:
 
 
 metadata_features_list = [
@@ -462,19 +488,39 @@ metadata_features_list = [
 ]
 # prepend "Metadata_" to metadata features
 sc_merged = sc_merged.rename(
-    columns={col: f"Metadata_{col}" for col in metadata_features_list}
+    columns={
+        col: f"Metadata_{col}"
+        for col in metadata_features_list
+        if not f"Metadata_{col}" in sc_merged.columns
+    }
 )
 organoid_merged = organoid_merged.rename(
-    columns={col: f"Metadata_{col}" for col in metadata_features_list}
+    columns={
+        col: f"Metadata_{col}"
+        for col in metadata_features_list
+        if not f"Metadata_{col}" in organoid_merged.columns
+    }
 )
 sc_sammed_merged = sc_sammed_merged.rename(
-    columns={col: f"Metadata_{col}" for col in metadata_features_list}
+    columns={
+        col: f"Metadata_{col}"
+        for col in metadata_features_list
+        if not f"Metadata_{col}" in sc_sammed_merged.columns
+    }
 )
 organoid_sammed_merged = organoid_sammed_merged.rename(
-    columns={col: f"Metadata_{col}" for col in metadata_features_list}
+    columns={
+        col: f"Metadata_{col}"
+        for col in metadata_features_list
+        if not f"Metadata_{col}" in organoid_sammed_merged.columns
+    }
 )
 nucleocentric_merged = nucleocentric_merged.rename(
-    columns={col: f"Metadata_{col}" for col in metadata_features_list}
+    columns={
+        col: f"Metadata_{col}"
+        for col in metadata_features_list
+        if not f"Metadata_{col}" in nucleocentric_merged.columns
+    }
 )
 # add microscope metadata
 (
@@ -534,22 +580,151 @@ nucleocentric_merged = nucleocentric_merged.rename(
 ) = (1.0, 1.0, 1.0, 1.0, 1.0)
 
 
-# In[14]:
+# In[13]:
 
 
-# find duplicate columns and keep one of the duplicates
+# Sub-categorize all Metadata_* columns into four namespaces:
+#   Biology_    — patient/tumor identity (who the sample came from)
+#   Experiment_ — treatment, well, and drug annotation (what was done)
+#   Object_     — per-object identifiers and counts (what object this row represents)
+#   Microscopy_ — instrument and acquisition parameters (how it was imaged)
+# Metadata_Location_* and Metadata_Neighbors_* were already renamed in earlier cells.
+# After renaming, all Metadata_* columns are moved to the front and rows are sorted.
+biology_features = [
+    "Metadata_PatientTumor",
+    "Metadata_Patient",
+    "Metadata_Tumor",
+]
+experiment_features = [
+    "Metadata_Treatment",
+    "Metadata_Dose",
+    "Metadata_Unit",
+    "Metadata_Well",
+    "Metadata_WellFOV",
+    "Metadata_Target",
+    "Metadata_Class",
+    "Metadata_TherapeuticCategories",
+]
+object_features = [
+    "Metadata_ObjectID",
+    "Metadata_ParentOrganoid",
+    "Metadata_SingleCellCount",
+    "Metadata_WellSingleCellCount",
+    "Metadata_OrganoidSingleCellCount",
+]
+microscopy_features = [
+    "Metadata_MicroscopeType",
+    "Metadata_MicroscopeName",
+    "Metadata_Magnification",
+    "Metadata_XResolutionUm",
+    "Metadata_YResolutionUm",
+    "Metadata_ZResolutionUm",
+]
+
+# Build rename mapping once
+rename_map = {}
+for col in biology_features:
+    rename_map[col] = col.replace("Metadata_", "Metadata_Biology_")
+for col in experiment_features:
+    rename_map[col] = col.replace("Metadata_", "Metadata_Experiment_")
+for col in object_features:
+    rename_map[col] = col.replace("Metadata_", "Metadata_Object_")
+for col in microscopy_features:
+    rename_map[col] = col.replace("Metadata_", "Metadata_Microscopy_")
+
+# if columns already have the new prefix, then drop the old prefix from the rename_map to avoid double renaming
+rename_map = {
+    k: v
+    for k, v in rename_map.items()
+    if not k.startswith("Metadata_Biology_")
+    and not k.startswith("Metadata_Experiment_")
+    and not k.startswith("Metadata_Object_")
+    and not k.startswith("Metadata_Microscopy_")
+}
+
+
+# Apply once to each dataframe
+sc_merged.rename(columns=rename_map, inplace=True)
+organoid_merged.rename(columns=rename_map, inplace=True)
+nucleocentric_merged.rename(columns=rename_map, inplace=True)
+organoid_sammed_merged.rename(columns=rename_map, inplace=True)
+sc_sammed_merged.rename(columns=rename_map, inplace=True)
+
+# move all metadata columns to the front by sorting columns based on the prefix "Metadata_"
+sc_merged = sc_merged[
+    sorted(sc_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x))
+]
+organoid_merged = organoid_merged[
+    sorted(organoid_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x))
+]
+nucleocentric_merged = nucleocentric_merged[
+    sorted(
+        nucleocentric_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x)
+    )
+]
+organoid_sammed_merged = organoid_sammed_merged[
+    sorted(
+        organoid_sammed_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x)
+    )
+]
+sc_sammed_merged = sc_sammed_merged[
+    sorted(sc_sammed_merged.columns, key=lambda x: (not x.startswith("Metadata_"), x))
+]
+# if old prefix columns exist, drop them
+old_prefixes = [
+    "Metadata_PatientTumor",
+    "Metadata_Treatment",
+    "Metadata_Dose",
+    "Metadata_Unit",
+    "Metadata_Well",
+    "Metadata_WellFOV",
+    "Metadata_Target",
+    "Metadata_Class",
+    "Metadata_TherapeuticCategories",
+    "Metadata_ObjectID",
+    "Metadata_ParentOrganoid",
+    "Metadata_SingleCellCount",
+    "Metadata_WellSingleCellCount",
+    "Metadata_OrganoidSingleCellCount",
+    "Metadata_MicroscopeType",
+    "Metadata_MicroscopeName",
+    "Metadata_Magnification",
+    "Metadata_XResolutionUm",
+    "Metadata_YResolutionUm",
+    "Metadata_ZResolutionUm",
+]
+sc_merged.drop(
+    columns=[col for col in old_prefixes if col in sc_merged.columns], inplace=True
+)
+organoid_merged.drop(
+    columns=[col for col in old_prefixes if col in organoid_merged.columns],
+    inplace=True,
+)
+nucleocentric_merged.drop(
+    columns=[col for col in old_prefixes if col in nucleocentric_merged.columns],
+    inplace=True,
+)
+organoid_sammed_merged.drop(
+    columns=[col for col in old_prefixes if col in organoid_sammed_merged.columns],
+    inplace=True,
+)
+sc_sammed_merged.drop(
+    columns=[col for col in old_prefixes if col in sc_sammed_merged.columns],
+    inplace=True,
+)
+# drop duplicate columns if they exist
 sc_merged = sc_merged.loc[:, ~sc_merged.columns.duplicated()]
 organoid_merged = organoid_merged.loc[:, ~organoid_merged.columns.duplicated()]
-sc_sammed_merged = sc_sammed_merged.loc[:, ~sc_sammed_merged.columns.duplicated()]
-organoid_sammed_merged = organoid_sammed_merged.loc[
-    :, ~organoid_sammed_merged.columns.duplicated()
-]
 nucleocentric_merged = nucleocentric_merged.loc[
     :, ~nucleocentric_merged.columns.duplicated()
 ]
+organoid_sammed_merged = organoid_sammed_merged.loc[
+    :, ~organoid_sammed_merged.columns.duplicated()
+]
+sc_sammed_merged = sc_sammed_merged.loc[:, ~sc_sammed_merged.columns.duplicated()]
 
 
-# In[15]:
+# In[14]:
 
 
 # Split each profile into feature subsets by column name pattern:
@@ -578,7 +753,7 @@ nucleocentric_morphem_annotated = nucleocentric_merged[
 ]
 
 
-# In[16]:
+# In[15]:
 
 
 # save annotated profiles
@@ -594,7 +769,7 @@ nucleocentric_morphem_annotated.to_parquet(
 )
 
 
-# In[17]:
+# In[16]:
 
 
 shapes_dict = {

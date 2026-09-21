@@ -116,7 +116,7 @@ def drop_high_na_rows(
     return df.loc[mask].reset_index(drop=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 ## Pathing
@@ -170,7 +170,7 @@ nucleocentric_morphem_normalized_output_path = pathlib.Path(
 sc_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 sc_annotated_profiles = pd.read_parquet(sc_annotated_path)
@@ -191,9 +191,11 @@ nucleocentric_morphem_annotated_profiles = (
     if has_nucleocentric_morphem
     else None
 )
+if "well_fov" in sc_annotated_profiles.columns:
+    sc_annotated_profiles.drop(columns=["well_fov"], inplace=True)
 
 
-# In[ ]:
+# In[6]:
 
 
 # Metadata columns start with "Metadata_". Use startswith for precision
@@ -294,7 +296,7 @@ nucleocentric_morphem_feature_cols = (
 # For deep-learning profiles, the reference is all DMSO-treated samples (no QC
 # filter exists for these profiles).
 
-# In[ ]:
+# In[7]:
 
 
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
@@ -345,7 +347,7 @@ if has_nucleocentric_morphem:
 # incomplete observations do not influence the normalization reference distribution.
 # The pre-filter row counts are logged for traceability.
 
-# In[ ]:
+# In[8]:
 
 
 # NOTE: this repeats the same drop_high_na_rows pass as In[7] above (pre-existing
@@ -405,7 +407,7 @@ if has_nucleocentric_morphem:
     )
 
 
-# In[ ]:
+# In[10]:
 
 
 sc_normalized_df = normalize(

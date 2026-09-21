@@ -142,7 +142,7 @@ print(orig_sc_profiles_df.shape)
 orig_sc_profiles_df
 
 
-# In[ ]:
+# In[4]:
 
 
 sc_profiles_df = orig_sc_profiles_df.copy()
@@ -151,7 +151,7 @@ sc_profiles_df["Metadata_cqc_nan_detected"] = (
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_ParentOrganoid",
-            "Cell_NoChannel_AreaSizeShape_Volume",
+            "Cell_NoChannel_VolumeSizeShape_Volume",
         ]
     ]
     .isna()
@@ -164,7 +164,7 @@ print(f"Number of organoids flagged: {flagged_count}")
 sc_profiles_df.head()
 
 
-# In[ ]:
+# In[5]:
 
 
 # Round 2: propagate organoid-level QC flags to single cells.
@@ -176,7 +176,7 @@ sc_profiles_df.head()
 sc_profiles_df["Metadata_cqc_organoid_flagged"] = False
 sc_profiles_df["Metadata_cqc_nan_detected"] = (
     sc_profiles_df[
-        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_AreaSizeShape_Volume"]
+        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_VolumeSizeShape_Volume"]
     ]
     .isna()
     .any(axis=1)
@@ -212,10 +212,10 @@ print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
 
-# In[ ]:
+# In[6]:
 
 
-sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
+sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
@@ -232,7 +232,7 @@ sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
 
 
-# In[ ]:
+# In[8]:
 
 
 # Round 3: nucleus-based outlier detection using z-score thresholds.
@@ -254,7 +254,7 @@ small_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small nuclei
     },
 )
 
@@ -269,7 +269,7 @@ large_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_AreaSizeShape_Volume": 2,  # Detect very large nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": 2,  # Detect very large nuclei
     },
 )
 
@@ -322,7 +322,7 @@ sc_profiles_df.head()
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[ ]:
+# In[10]:
 
 
 # Each deep-learning profile is only added to df_dict (and therefore QC-flag
@@ -378,3 +378,9 @@ for profile_name in df_dict:
             f"No new columns were added during the merge. Check that the merge keys {merge_keys} are correct and that the qc keys {qc_keys} are present in the sc_profiles_df."
         )
     qc_annotated_df.to_parquet(df_dict[profile_name]["qc_output_path"], index=False)
+
+
+# In[12]:
+
+
+qc_annotated_df
