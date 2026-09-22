@@ -6,78 +6,37 @@
 # The production run takes the place of `4.processing_image_based_profiles/notebooks/1.merge_feature_parquets.ipynb` and `4.processing_image_based_profiles/notebooks/2.merge_sc.ipynb`.
 # After converting, this notebook's written files will feed into the `4.processing_image_based_profiles/notebooks/3.organoid_cell_relationship.ipynb` module.
 
-# # Write warehouse views to parquet (production driver)
+# # Write warehouse views to parquet (single image set)
 #
 # ## Purpose
-# Production driver: run IBP stage 4 step 3 against a ZEDProfiler warehouse for
-# the full staged dataset (4,134+ image sets), not just the pilot's 2 reference
-# image sets.
+# Convert one image set (`patient`, `well_fov`) from a ZEDProfiler warehouse
+# into the per-well_fov parquet files that step 3
+# (`3.organoid_cell_relationship`) expects, in place of steps 1 and 2.
 #
-# For each image set in the image-sets index (a CSV of `patient,well_fov` rows,
-# same format `3b.nextflow_production`'s own index uses):
+# 1. Read the image set's Nuclei/Cell/Cytoplasm/Organoid compartment parquet
+#    files directly by path from `warehouse_dir/profiles/`.
+# 2. Merge Nuclei/Cell/Cytoplasm into one single-cell table on
+#    `Metadata_Imaging_ImageID` + `Metadata_Object_ObjectID`, dropping
+#    duplicated shared and per-compartment metadata.
+# 3. Write `sc_profiles_<well_fov>.parquet` and
+#    `organoid_profiles_<well_fov>.parquet`. No nucleocentric file is written;
+#    step 3 treats it as optional.
 #
-# 1. Skip if `warehouse/ibp/sc_profiles_related/<image_id>.parquet` already
-#    exists -- resumability, mirroring `3b.nextflow_production`'s own
-#    `PLAN_IMAGE_SETS` skip-already-landed behavior. Matters here because a
-#    4,000+-item run is long enough that interruption/resume is a real
-#    scenario, not a hypothetical.
-# 2. Build step 3's expected input parquet files directly from the warehouse
-#    (`build_ibp_inputs_from_warehouse.py`) -- production-scale version, reads
-#    each image set's own parquet files directly by path rather than through a
-#    glob-based DuckDB view (see that script's own docstring for why: the view
-#    approach was measured at 35GB RAM / 9+ minutes per image-set query at this
-#    scale, vs. 0.8s reading files directly).
-# 3. Run `4.processing_image_based_profiles/scripts/3.organoid_cell_relationship.py`
-#    as a subprocess, exactly as the pilot does -- unmodified, with `utils/src`
-#    on `PYTHONPATH`.
-# 4. Copy step 3's `sc_profiles`/`organoid_profiles` `*_related.parquet` outputs
-#    into the source warehouse's own directory, under `ibp/`, same
-#    one-file-per-image-set convention as `profiles/<compartment>_profiles/`.
-#    Nucleocentric output is not copied -- ZEDProfiler produces no real
-#    Nucleocentric data, so that output is always empty.
-#
-# Unlike the pilot (2 image sets, no formal run record needed), this notebook:
-#
-# - Runs image sets concurrently via a `ThreadPoolExecutor` (`workers`, default
-#   8 -- measured as a good throughput/predictability tradeoff on a 16-core
-#   machine) rather than sequentially. Threads, not `multiprocessing`, because
-#   the actual work happens inside two `subprocess.run()` calls per image set
-#   (adapter + step 3), which release the GIL while blocked -- no
-#   process-spawn/pickling overhead needed.
-# - Prints one line per failure immediately, plus a periodic progress line
-#   (every `progress_every`, default 100) rather than one line per success --
-#   thousands of pilot-style per-image lines would flood the output.
-# - Writes `run_record.json` next to (not inside) `warehouse/ibp/`, so it isn't
-#   picked up by the `ibp.*` DuckDB views' own glob -- summarizes
-#   attempted/succeeded/failed/skipped counts and the full list of failures,
-#   matching `3b.nextflow_production`'s own `run_record.json` convention for a
-#   real production artifact.
-# - Accepts a `limit` to process only the first N pending image sets -- for a
-#   small dry run before committing to the full index.
+# This runs one image set per invocation (called per well_fov from
+# `merge_features_local.sh`). For full-index processing (concurrency,
+# resumability, run record), use
+# `4b.image_based_profiles_production/scripts/run_ibp_production.py`.
 #
 # ## Inputs
-# - `warehouse_dir` -- a ZEDProfiler warehouse directory (contains
-#   `warehouse.duckdb`, `profiles/`, `images/`).
-# - `image_sets_index` -- CSV of `patient,well_fov` rows
-#   (`manifest/image_sets_index.csv` by default).
+# - `warehouse_dir` -- a ZEDProfiler warehouse directory (contains `profiles/`).
+# - `patient`, `well_fov` -- the image set to convert.
+# - `image_based_profiles_subparent_name` -- output subparent directory name.
 #
 # ## Outputs
-# Written into `warehouse_dir`:
-# - `ibp/sc_profiles_related/<image_id>.parquet`
-# - `ibp/organoid_profiles_related/<image_id>.parquet`
-# - `ibp/.complete/<image_id>` -- empty marker files for resumability
-# - `ibp.sc_profiles_related` / `ibp.organoid_profiles_related` views
-#   (re)created in `warehouse.duckdb`
-#
-# Written next to `warehouse_dir` (i.e. its parent):
-# - `ibp_run_record.json`
-#
-# ## Notes
-# - This notebook is a straight conversion of
-#   `4b.image_based_profiles_production/scripts/run_ibp_production.py` --
-#   same behavior, cell-by-cell, so it can be run/iterated on interactively.
-#   The CLI-only entrypoint still exists as that script for non-interactive
-#   (SLURM/batch) invocation.
+# Written to
+# `<NF1_organoid_data>/data/<patient>/<image_based_profiles_subparent_name>/0.converted_profiles/<well_fov>/`:
+# - `sc_profiles_<well_fov>.parquet`
+# - `organoid_profiles_<well_fov>.parquet`
 #
 
 # In[1]:
@@ -134,8 +93,6 @@ else:
     patient = "NF0014_T1"
     well_fov = "C11-2"
     image_based_profiles_subparent_name = "image_based_profiles"
-
-image_sets_index = PROD_ROOT / "manifest" / "image_sets_index.csv"
 
 
 # In[3]:

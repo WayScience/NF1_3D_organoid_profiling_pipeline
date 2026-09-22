@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 git_root=$(git rev-parse --show-toplevel)
 
 if [ -d "/scratch/alpine" ]; then
@@ -18,7 +20,6 @@ load_data_file_path="$git_root/4.processing_image_based_profiles/load_data/load_
 patient_ids_file_path="$git_root/data/patient_IDs.txt"
 # read the patient IDs into an array
 mapfile -t patient_array < "$patient_ids_file_path"
-patient_array=("NF0037_T1_CQ1")
 # setup the logs dir
 if [ -d "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/" ]; then
     rm -rf "$git_root/4.processing_image_based_profiles/logs/patient_well_fovs/"

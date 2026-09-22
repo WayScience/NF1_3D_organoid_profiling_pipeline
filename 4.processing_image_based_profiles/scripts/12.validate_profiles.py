@@ -40,11 +40,13 @@ if not in_notebook:
     _arg_parser.add_argument(
         "--image_based_profiles_subparent_name", default="image_based_profiles"
     )
-    image_based_profiles_subparent_name = (
-        _arg_parser.parse_args().image_based_profiles_subparent_name
-    )
+    _arg_parser.add_argument("--output_subdir", default="all_patient_profiles")
+    _args = _arg_parser.parse_args()
+    image_based_profiles_subparent_name = _args.image_based_profiles_subparent_name
+    output_subdir = _args.output_subdir
 else:
     image_based_profiles_subparent_name = "image_based_profiles"
+    output_subdir = "all_patient_profiles"
 
 threshold = 1e5
 
@@ -155,7 +157,12 @@ with open(log_path, "w") as log_file:
             )
             shape = df.shape
             # rows/columns that are entirely NaN are candidates to drop
-            all_nan_rows = int(df.isna().all(axis=1).sum())
+            all_nan_rows = int(
+                df[[c for c in df.columns if not c.startswith("Metadata_")]]
+                .isna()
+                .all(axis=1)
+                .sum()
+            )
             all_nan_cols = int(df.isna().all(axis=0).sum())
             drop_flag = "YES" if (all_nan_rows or all_nan_cols) else "no"
 
@@ -171,7 +178,7 @@ print(f"\nLog written to: {log_path}")
 
 
 combined_patient_profiles_path = pathlib.Path(
-    f"{profile_base_dir}/data/all_patient_profiles/"
+    f"{profile_base_dir}/data/{output_subdir}/"
 ).resolve(strict=True)
 with open(log_path, "a") as log_file:
     log("= " * 30, log_file)
@@ -202,7 +209,12 @@ with open(log_path, "a") as log_file:
             )
             shape = df.shape
             # rows/columns that are entirely NaN are candidates to drop
-            all_nan_rows = int(df.isna().all(axis=1).sum())
+            all_nan_rows = int(
+                df[[c for c in df.columns if not c.startswith("Metadata_")]]
+                .isna()
+                .all(axis=1)
+                .sum()
+            )
             all_nan_cols = int(df.isna().all(axis=0).sum())
             drop_flag = "YES" if (all_nan_rows or all_nan_cols) else "no"
 

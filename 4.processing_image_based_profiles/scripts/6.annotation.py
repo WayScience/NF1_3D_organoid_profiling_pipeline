@@ -87,9 +87,16 @@ barcode_platemap = pd.read_csv(
 # f-string of a DataFrame produces garbage, so building this file for
 # NF0037_T1_CQ1 first would have failed outright.
 _platemap_lookup_patient = "NF0037_T1" if patient == "NF0037_T1_CQ1" else patient
-platemap = barcode_platemap[
+_platemap_matches = barcode_platemap[
     barcode_platemap["patient_tumor_barcode"] == _platemap_lookup_patient
-]["platemap_number"].values[0]
+]["platemap_number"]
+if len(_platemap_matches) != 1:
+    raise ValueError(
+        f"Expected exactly one platemap_number for patient {patient} "
+        f"(looked up as {_platemap_lookup_patient}) in "
+        f"config/platemaps/barcode_platemap.csv, found {len(_platemap_matches)}"
+    )
+platemap = _platemap_matches.iloc[0]
 
 # Cache keyed by platemap number, not a single shared filename: multiple
 # patients can use different platemaps (confirmed directly against
@@ -632,23 +639,25 @@ for col in object_features:
 for col in microscopy_features:
     rename_map[col] = col.replace("Metadata_", "Metadata_Microscopy_")
 
-# if columns already have the new prefix, then drop the old prefix from the rename_map to avoid double renaming
-rename_map = {
-    k: v
-    for k, v in rename_map.items()
-    if not k.startswith("Metadata_Biology_")
-    and not k.startswith("Metadata_Experiment_")
-    and not k.startswith("Metadata_Object_")
-    and not k.startswith("Metadata_Microscopy_")
-}
 
-
-# Apply once to each dataframe
-sc_merged.rename(columns=rename_map, inplace=True)
-organoid_merged.rename(columns=rename_map, inplace=True)
-nucleocentric_merged.rename(columns=rename_map, inplace=True)
-organoid_sammed_merged.rename(columns=rename_map, inplace=True)
-sc_sammed_merged.rename(columns=rename_map, inplace=True)
+# Apply once to each dataframe, keeping only renames whose source column exists
+# in that dataframe and whose target name is not already present (e.g. don't
+# rename Metadata_Well into an existing Metadata_Experiment_Well)
+for _df in (
+    sc_merged,
+    organoid_merged,
+    nucleocentric_merged,
+    organoid_sammed_merged,
+    sc_sammed_merged,
+):
+    _df.rename(
+        columns={
+            k: v
+            for k, v in rename_map.items()
+            if k in _df.columns and v not in _df.columns
+        },
+        inplace=True,
+    )
 
 # move all metadata columns to the front by sorting columns based on the prefix "Metadata_"
 sc_merged = sc_merged[

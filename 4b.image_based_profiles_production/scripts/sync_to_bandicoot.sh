@@ -97,7 +97,7 @@ echo "Found $marker_count completed image set(s) via ibp/.complete/ markers"
 # times"/Operation not permitted error from this share rejecting utime()
 # metadata calls it doesn't support over SMB (data content is unaffected
 # either way -- confirmed by comparing transferred file sizes to source).
-rsync_args=(-rlD --inplace --no-times --no-perms --no-owner --no-group --partial --info=progress2 --files-from="$file_list")
+rsync_args=(-rlD --inplace --checksum --no-times --no-perms --no-owner --no-group --partial --info=progress2 --files-from="$file_list")
 [[ "$DRY_RUN" -eq 1 ]] && rsync_args+=(-n)
 
 echo "Syncing $SOURCE_WAREHOUSE/ibp/ -> $DEST_ROOT/ibp/ (completion-marker-backed image sets only)"

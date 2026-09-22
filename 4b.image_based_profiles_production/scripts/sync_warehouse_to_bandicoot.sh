@@ -66,7 +66,7 @@ fi
 
 mkdir -p "$DEST_WAREHOUSE"
 
-rsync_args=(-rlD --inplace --no-times --no-perms --no-owner --no-group --partial --info=progress2 --exclude=".DS_Store" --exclude="._*")
+rsync_args=(-rlD --inplace --checksum --no-times --no-perms --no-owner --no-group --partial --info=progress2 --exclude=".DS_Store" --exclude="._*")
 [[ "$DRY_RUN" -eq 1 ]] && rsync_args+=(-n)
 
 echo "Syncing $SOURCE_WAREHOUSE/ -> $DEST_WAREHOUSE/ (excluding ibp/, synced separately below)"
@@ -97,7 +97,7 @@ done < <(find "$SOURCE_WAREHOUSE/ibp/.complete" -mindepth 1 -maxdepth 1 -type f 
 marker_count=$(($(wc -l < "$file_list") / 2))
 echo "Found $marker_count completed image set(s) via ibp/.complete/ markers"
 
-ibp_rsync_args=(-rlD --inplace --no-times --no-perms --no-owner --no-group --partial --info=progress2 --files-from="$file_list")
+ibp_rsync_args=(-rlD --inplace --checksum --no-times --no-perms --no-owner --no-group --partial --info=progress2 --files-from="$file_list")
 [[ "$DRY_RUN" -eq 1 ]] && ibp_rsync_args+=(-n)
 
 echo "Syncing $SOURCE_WAREHOUSE/ibp/ -> $DEST_WAREHOUSE/ibp/ (completion-marker-backed image sets only)"

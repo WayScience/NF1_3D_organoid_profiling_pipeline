@@ -378,9 +378,3 @@ for profile_name in df_dict:
             f"No new columns were added during the merge. Check that the merge keys {merge_keys} are correct and that the qc keys {qc_keys} are present in the sc_profiles_df."
         )
     qc_annotated_df.to_parquet(df_dict[profile_name]["qc_output_path"], index=False)
-
-
-# In[12]:
-
-
-qc_annotated_df

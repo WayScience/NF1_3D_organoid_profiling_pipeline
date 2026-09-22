@@ -96,8 +96,10 @@ else:
 
 def assert_unique_key(df, name, cols=None):
     """Raise if JOIN_KEY is not unique in df, reporting the offending keys and
-    which columns differ between the duplicated rows."""
+    which columns differ between the duplicated rows. Rows with a null in any
+    JOIN_KEY column can't join to anything, so they're excluded from the check."""
     df = df if cols is None else df[cols]
+    df = df.dropna(subset=JOIN_KEY)
     dup_mask = df.duplicated(subset=JOIN_KEY, keep=False)
     if not dup_mask.any():
         return
@@ -142,9 +144,11 @@ def propagate_cqc(
         If True, assert that every target row has a matching source row.
         Set to False for sammed_organoid where unmatched rows are expected.
     """
-    source_key_df = source_df[JOIN_KEY + cqc_cols].copy()
+    # Null-key source rows can't be joined (pandas would otherwise match NaN to NaN)
+    source_key_df = source_df[JOIN_KEY + cqc_cols].dropna(subset=JOIN_KEY).copy()
 
-    # Assert join key is unique (1:1) in both source and target
+    # Assert join key is unique (1:1) among non-null keys in both source and target;
+    # null-key target rows are kept and end up unmatched (NaN CQC flags)
     assert_unique_key(source_df, source_name, cols=JOIN_KEY + cqc_cols)
     assert_unique_key(target_df, target_name)
 
@@ -152,7 +156,7 @@ def propagate_cqc(
         source_key_df,
         on=JOIN_KEY,
         how="left",
-        validate="1:1",
+        validate="m:1",
     )
 
     # Check for rows in target with no matching source row
