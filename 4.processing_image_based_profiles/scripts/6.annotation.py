@@ -409,7 +409,9 @@ organoid_location_features = [
         ("area" in (xl := x.lower()) and any(k in xl for k in ("max", "min", "center")))
         or (
             "intensity" in xl
-            and any(k in xl for k in ("maxx", "minx", "maxy", "miny", "maxz", "minz"))
+            and any(
+                k in xl for k in ("maxx", "minx", "maxy", "miny", "maxz", "minz", "cmi")
+            )
         )
     )
 ]
@@ -421,7 +423,9 @@ sc_location_features = [
         ("area" in (xl := x.lower()) and any(k in xl for k in ("max", "min", "center")))
         or (
             "intensity" in xl
-            and any(k in xl for k in ("maxx", "minx", "maxy", "miny", "maxz", "minz"))
+            and any(
+                k in xl for k in ("maxx", "minx", "maxy", "miny", "maxz", "minz", "cmi")
+            )
         )
     )
 ]

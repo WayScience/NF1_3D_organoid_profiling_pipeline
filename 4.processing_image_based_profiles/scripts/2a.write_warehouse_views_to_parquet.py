@@ -6,7 +6,7 @@
 # The production run takes the place of `4.processing_image_based_profiles/notebooks/1.merge_feature_parquets.ipynb` and `4.processing_image_based_profiles/notebooks/2.merge_sc.ipynb`.
 # After converting, this notebook's written files will feed into the `4.processing_image_based_profiles/notebooks/3.organoid_cell_relationship.ipynb` module.
 
-# # Write warehouse views to parquet (single image set)
+# # # Write warehouse views to parquet (single image set)
 #
 # ## Purpose
 # Convert one image set (`patient`, `well_fov`) from a ZEDProfiler warehouse
@@ -37,7 +37,6 @@
 # `<NF1_organoid_data>/data/<patient>/<image_based_profiles_subparent_name>/0.converted_profiles/<well_fov>/`:
 # - `sc_profiles_<well_fov>.parquet`
 # - `organoid_profiles_<well_fov>.parquet`
-#
 
 # In[1]:
 

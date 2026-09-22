@@ -48,7 +48,7 @@ else:
     image_based_profiles_subparent_name = "image_based_profiles"
     output_subdir = "all_patient_profiles"
 
-threshold = 1e5
+threshold = 1e3
 
 
 # In[3]:
@@ -174,7 +174,7 @@ with open(log_path, "w") as log_file:
 print(f"\nLog written to: {log_path}")
 
 
-# In[6]:
+# In[5]:
 
 
 combined_patient_profiles_path = pathlib.Path(
