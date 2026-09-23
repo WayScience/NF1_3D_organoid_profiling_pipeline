@@ -47,7 +47,8 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
+# profile_base_dir = root_dir
+print(profile_base_dir)
 
 
 # In[2]:
@@ -59,8 +60,38 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "SARCO361_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
+
+
+# In[3]:
+
+
+import json
+
+# Per-patient single-cell outlier z-score thresholds. Patients are tuned individually
+# by visually inspecting flagged nuclei and adjusting their entry in this file.
+sc_outlier_thresholds_path = (
+    root_dir
+    / "4.processing_image_based_profiles"
+    / "data"
+    / "qc_thresholds"
+    / "single_cell_outlier_thresholds.json"
+).resolve(strict=True)
+with open(sc_outlier_thresholds_path) as f:
+    sc_outlier_thresholds = json.load(f)
+
+if patient not in sc_outlier_thresholds:
+    raise ValueError(
+        f"No single-cell outlier thresholds configured for patient '{patient}' in "
+        f"{sc_outlier_thresholds_path}. Add an entry for this patient before running QC."
+    )
+
+patient_sc_thresholds = sc_outlier_thresholds[patient]
+small_nuclei_threshold = patient_sc_thresholds["small_nuclei_volume"]
+large_nuclei_threshold = patient_sc_thresholds["large_nuclei_volume"]
+high_mass_displacement_threshold = patient_sc_thresholds["high_mass_displacement"]
+print(f"Using single-cell outlier thresholds for {patient}: {patient_sc_thresholds}")
 
 
 # ## Load profiles and initialize QC flags
@@ -71,43 +102,48 @@ else:
 #    — cells whose parent organoid failed QC in 7a, or have no parent organoid at all
 # 3. **Nucleus outliers** — applied only to cells that passed rounds 1 and 2
 
-# In[3]:
+# In[4]:
 
 
 sc_file = pathlib.Path(
     profile_base_dir
     / "data"
+    / "image_based_profiles_production_zedprofiler_pipeline_20260915_f5a6f16"
     / f"{patient}"
-    / f"{image_based_profiles_subparent_name}"
+    # / f"{image_based_profiles_subparent_name}"
     / "3.annotated_profiles/sc_anno.parquet"
 )
 organoid_file = pathlib.Path(
     profile_base_dir
     / "data"
+    / "image_based_profiles_production_zedprofiler_pipeline_20260915_f5a6f16"
     / f"{patient}"
-    / f"{image_based_profiles_subparent_name}"
+    # / f"{image_based_profiles_subparent_name}"
     / "4.qc_profiles/organoid_flagged_outliers.parquet"
 )
 
 nucleocentric_annotated_sammed_path = pathlib.Path(
     profile_base_dir
     / "data"
+    / "image_based_profiles_production_zedprofiler_pipeline_20260915_f5a6f16"
     / f"{patient}"
-    / f"{image_based_profiles_subparent_name}"
+    # / f"{image_based_profiles_subparent_name}"
     / "3.annotated_profiles/nucleocentric_sammed_anno.parquet"
 ).resolve()
 nucleocentric_annotated_morphem_output_path = pathlib.Path(
     profile_base_dir
     / "data"
+    / "image_based_profiles_production_zedprofiler_pipeline_20260915_f5a6f16"
     / f"{patient}"
-    / f"{image_based_profiles_subparent_name}"
+    # / f"{image_based_profiles_subparent_name}"
     / "3.annotated_profiles/nucleocentric_morphem_anno.parquet"
 ).resolve()
 sammed_annotated_sc_profiles_path = pathlib.Path(
     profile_base_dir
     / "data"
+    / "image_based_profiles_production_zedprofiler_pipeline_20260915_f5a6f16"
     / f"{patient}"
-    / f"{image_based_profiles_subparent_name}"
+    # / f"{image_based_profiles_subparent_name}"
     / "3.annotated_profiles/sammed_sc_anno.parquet"
 ).resolve()
 
@@ -115,8 +151,9 @@ sammed_annotated_sc_profiles_path = pathlib.Path(
 output_dir = pathlib.Path(
     profile_base_dir
     / "data"
+    / "image_based_profiles_production_zedprofiler_pipeline_20260915_f5a6f16"
     / f"{patient}"
-    / f"{image_based_profiles_subparent_name}"
+    # / f"{image_based_profiles_subparent_name}"
     / "4.qc_profiles"
 )
 output_dir.mkdir(parents=True, exist_ok=True)
@@ -139,7 +176,7 @@ print(orig_sc_profiles_df.shape)
 orig_sc_profiles_df
 
 
-# In[4]:
+# In[5]:
 
 
 sc_profiles_df = orig_sc_profiles_df.copy()
@@ -148,7 +185,7 @@ sc_profiles_df["Metadata_cqc_nan_detected"] = (
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_ParentOrganoid",
-            "Cell_NoChannel_AreaSizeShape_Volume",
+            "Cell_NoChannel_VolumeSizeShape_Volume",
         ]
     ]
     .isna()
@@ -161,7 +198,7 @@ print(f"Number of organoids flagged: {flagged_count}")
 sc_profiles_df.head()
 
 
-# In[5]:
+# In[6]:
 
 
 # Round 2: propagate organoid-level QC flags to single cells.
@@ -173,7 +210,7 @@ sc_profiles_df.head()
 sc_profiles_df["Metadata_cqc_organoid_flagged"] = False
 sc_profiles_df["Metadata_cqc_nan_detected"] = (
     sc_profiles_df[
-        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_AreaSizeShape_Volume"]
+        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_VolumeSizeShape_Volume"]
     ]
     .isna()
     .any(axis=1)
@@ -209,10 +246,10 @@ print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
 
-# In[6]:
+# In[7]:
 
 
-sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
+sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
@@ -222,14 +259,14 @@ sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
-# In[7]:
+# In[8]:
 
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
 
 
-# In[8]:
+# In[9]:
 
 
 # Round 3: nucleus-based outlier detection using z-score thresholds.
@@ -251,7 +288,7 @@ small_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": small_nuclei_threshold,  # Detect very small nuclei
     },
 )
 
@@ -261,12 +298,29 @@ sc_profiles_df.loc[small_nuclei_outliers.index, "Metadata_cqc_small_nuclei_outli
     True
 )
 
+# Print number of outliers (only in filtered rows)
+small_count = filtered_plate_df.index.intersection(small_nuclei_outliers.index).shape[0]
+print(f"Small nuclei outliers found: {small_count}")
+
+display(
+    small_nuclei_outliers[
+        [
+            "Metadata_Experiment_PlateID",
+            "Metadata_Experiment_WellFOV",
+            "Nuclei_NoChannel_VolumeSizeShape_Volume",
+            "Metadata_Object_ObjectID",
+        ]
+    ]
+    .sort_values("Nuclei_NoChannel_VolumeSizeShape_Volume", ascending=False)
+    .head()
+)
+
 print("Finding large nuclei outliers...")
 large_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_AreaSizeShape_Volume": 2,  # Detect very large nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": large_nuclei_threshold,  # Detect very large nuclei
     },
 )
 
@@ -276,13 +330,30 @@ sc_profiles_df.loc[large_nuclei_outliers.index, "Metadata_cqc_large_nuclei_outli
     True
 )
 
+# Print number of outliers (only in filtered rows)
+large_count = filtered_plate_df.index.intersection(large_nuclei_outliers.index).shape[0]
+print(f"Large nuclei outliers found: {large_count}")
+
+display(
+    large_nuclei_outliers[
+        [
+            "Metadata_Experiment_PlateID",
+            "Metadata_Experiment_WellFOV",
+            "Nuclei_NoChannel_VolumeSizeShape_Volume",
+            "Metadata_Object_ObjectID",
+        ]
+    ]
+    .sort_values("Nuclei_NoChannel_VolumeSizeShape_Volume", ascending=True)
+    .head()
+)
+
 # --- Find mass displacement based nuclei outliers ---
 print("Finding high mass displacement outliers...")
 high_mass_displacement_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_DNA_Intensity_MassDisplacement": 2,  # Detect high mass displacement
+        "Nuclei_DNA_Intensity_MassDisplacement": high_mass_displacement_threshold,  # Detect high mass displacement
     },
 )
 
@@ -293,21 +364,29 @@ sc_profiles_df.loc[
 ] = True
 
 # Print number of outliers (only in filtered rows)
-small_count = filtered_plate_df.index.intersection(small_nuclei_outliers.index).shape[0]
-large_count = filtered_plate_df.index.intersection(large_nuclei_outliers.index).shape[0]
 high_mass_count = filtered_plate_df.index.intersection(
     high_mass_displacement_outliers.index
 ).shape[0]
-
-print(f"Small nuclei outliers found: {small_count}")
-print(f"Large nuclei outliers found: {large_count}")
 print(f"High mass displacement outliers found: {high_mass_count}")
+
+display(
+    high_mass_displacement_outliers[
+        [
+            "Metadata_Experiment_PlateID",
+            "Metadata_Experiment_WellFOV",
+            "Nuclei_DNA_Intensity_MassDisplacement",
+            "Metadata_Object_ObjectID",
+        ]
+    ]
+    .sort_values("Nuclei_DNA_Intensity_MassDisplacement", ascending=True)
+    .head()
+)
 
 # Save updated plate_df with flag columns included
 sc_profiles_df.to_parquet(sc_qc_output_path, index=False)
 
 
-# In[9]:
+# In[10]:
 
 
 sc_profiles_df.head()
@@ -319,7 +398,7 @@ sc_profiles_df.head()
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[10]:
+# In[11]:
 
 
 nucleocentric_annotated_sammed_df = pd.read_parquet(nucleocentric_annotated_sammed_path)
@@ -343,7 +422,7 @@ df_dict = {
 }
 
 
-# In[11]:
+# In[ ]:
 
 
 # set the merge keys to int for both dataframes to ensure they match
