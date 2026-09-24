@@ -52,8 +52,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-# profile_base_dir = root_dir
-print(profile_base_dir)
 
 
 # In[2]:
@@ -683,25 +681,31 @@ if in_notebook:
 # In[16]:
 
 
-nucleocentric_annotated_sammed_df = pd.read_parquet(nucleocentric_annotated_sammed_path)
-nucleocentric_annotated_morphem_df = pd.read_parquet(
-    nucleocentric_annotated_morphem_output_path
-)
-sammed_annotated_sc_profiles_df = pd.read_parquet(sammed_annotated_sc_profiles_path)
-df_dict = {
-    "nulceocentric_sammed": {
-        "df": nucleocentric_annotated_sammed_df,
+# Each deep-learning profile is only added to df_dict (and therefore QC-flag
+# propagated below) when this dataset actually produced it -- absent for
+# datasets with no deep-learning features (e.g. ZEDProfiler-only), where
+# 6.annotation.py never writes any of these 3 files.
+df_dict = {}
+if nucleocentric_annotated_sammed_path.exists():
+    df_dict["nulceocentric_sammed"] = {
+        "df": pd.read_parquet(nucleocentric_annotated_sammed_path),
         "qc_output_path": nucleocentric_sammed_qc_output_path,
-    },
-    "nucleocentric_chammi": {
-        "df": nucleocentric_annotated_morphem_df,
+    }
+if nucleocentric_annotated_morphem_output_path.exists():
+    df_dict["nucleocentric_chammi"] = {
+        "df": pd.read_parquet(nucleocentric_annotated_morphem_output_path),
         "qc_output_path": nucleocentric_morphem_qc_output_path,
-    },
-    "sammed_sc_profiles": {
-        "df": sammed_annotated_sc_profiles_df,
+    }
+if sammed_annotated_sc_profiles_path.exists():
+    df_dict["sammed_sc_profiles"] = {
+        "df": pd.read_parquet(sammed_annotated_sc_profiles_path),
         "qc_output_path": sammed_sc_qc_output_path,
-    },
-}
+    }
+if not df_dict:
+    print(
+        "No deep-learning annotated profiles found -- skipping DL QC flag "
+        "propagation entirely (this dataset has no deep-learning features)."
+    )
 
 
 # In[17]:

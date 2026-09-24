@@ -75,7 +75,6 @@ root_dir, in_notebook = init_notebook()
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
-profile_base_dir = root_dir
 
 
 # In[2]:
@@ -89,7 +88,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C10-2"
+    well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -99,11 +98,18 @@ else:
 
 
 # input paths
-sc_profile_path = pathlib.Path(
+sc_profile_handcrafted_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
-organoid_profile_path = pathlib.Path(
+organoid_profile_handcrafted_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
+).resolve(strict=True)
+
+sc_profile_sammed_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_sammed_profiles_{well_fov}.parquet"
+).resolve(strict=True)
+organoid_profile_sammed_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_sammed_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
 # Not strict=True like the other two inputs: ZEDProfiler produces no
 # Nucleocentric (deep-learning) features at all, so a caller without any
@@ -114,24 +120,31 @@ nucleocentric_profile_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/nucleocentric_profiles_{well_fov}.parquet"
 ).resolve()
 # output paths
-sc_profile_output_path = pathlib.Path(
+sc_profile_handcrafted_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
 ).resolve()
-organoid_profile_output_path = pathlib.Path(
+organoid_profile_handcrafted_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/organoid_profiles_{well_fov}_related.parquet"
+).resolve()
+sc_profile_sammed_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/sc_profiles_{well_fov}_sammed_related.parquet"
+).resolve()
+organoid_profile_sammed_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/organoid_profiles_{well_fov}_sammed_related.parquet"
 ).resolve()
 nucleocentric_profile_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/nucleocentric_profiles_{well_fov}_related.parquet"
 ).resolve()
-sc_profile_output_path.parent.mkdir(parents=True, exist_ok=True)
+sc_profile_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 # In[4]:
 
 
-sc_profile_df = pd.read_parquet(sc_profile_path)
-organoid_profile_df = pd.read_parquet(organoid_profile_path)
-
+sc_profile_df = pd.read_parquet(sc_profile_handcrafted_path)
+organoid_profile_df = pd.read_parquet(organoid_profile_handcrafted_path)
+sc_profile_sammed_df = pd.read_parquet(sc_profile_sammed_path)
+organoid_profile_sammed_df = pd.read_parquet(organoid_profile_sammed_path)
 # ZEDProfiler-fed callers have no real Nucleocentric data to provide --
 # fall back to an empty frame rather than requiring one. object_id is
 # set here so the merge further down (which joins on object_id +
@@ -160,17 +173,13 @@ sc_profile_df["image_set"] = well_fov
 nucleocentric_df["image_set"] = well_fov
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
-print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 print(f"Organoid profile shape: {organoid_profile_df.shape}")
+print(f"Single-cell sammed profile shape: {sc_profile_sammed_df.shape}")
+print(f"Organoid sammed profile shape: {organoid_profile_sammed_df.shape}")
+print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 
 
 # In[5]:
-
-
-nucleocentric_df
-
-
-# In[6]:
 
 
 x_y_z_sc_colnames = [
@@ -187,7 +196,7 @@ x_y_z_sc_colnames = [
 x_y_z_sc_colnames
 
 
-# In[7]:
+# In[6]:
 
 
 organoid_bbox_colnames = [
@@ -209,7 +218,7 @@ organoid_bbox_colnames = sorted(organoid_bbox_colnames)
 # axis letter.
 
 
-# In[8]:
+# In[7]:
 
 
 # Initialize ParentOrganoid to -1 (sentinel for unassigned cells).
@@ -268,7 +277,7 @@ print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
 
 # ### Add single-cell counts for each organoid
 
-# In[9]:
+# In[8]:
 
 
 organoid_sc_counts = (
@@ -289,12 +298,36 @@ sc_count = organoid_profile_df.pop("OrganoidSingleCellCount")
 organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 
 
+# ### Carry the `ParentOrganoid` assignment and spatial features over to the sammed profiles, so that the same cells are assigned to the same organoids in both the
+
+# In[9]:
+
+
+organoid_profile_sammed_df = organoid_profile_sammed_df.merge(
+    organoid_profile_df[["object_id", "OrganoidSingleCellCount"]],
+    left_on="object_id",
+    right_on="object_id",
+    how="left",
+)
+
+
+# In[10]:
+
+
+sc_profile_sammed_df = sc_profile_sammed_df.merge(
+    sc_profile_df[["object_id", "ParentOrganoid"]],
+    left_on="object_id",
+    right_on="object_id",
+    how="left",
+)
+
+
 # ### Empty dataframe fallbacks
 #
 # If either the organoid or SC profile is empty for this well-FOV, a placeholder row
 # is inserted so that downstream merges always find consistent columns.
 
-# In[10]:
+# In[11]:
 
 
 # replace NaN with 0 for organoids that have no assigned cells
@@ -304,7 +337,7 @@ organoid_profile_df["OrganoidSingleCellCount"] = (
 organoid_profile_df.head()
 
 
-# In[11]:
+# In[12]:
 
 
 if organoid_profile_df.empty:
@@ -316,13 +349,13 @@ if organoid_profile_df.empty:
     pass
 
 
-# In[12]:
+# In[13]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
 
-# In[13]:
+# In[14]:
 
 
 if sc_profile_df.empty:
@@ -331,13 +364,13 @@ if sc_profile_df.empty:
     sc_profile_df["image_set"] = well_fov
 
 
-# In[14]:
+# In[15]:
 
 
 nucleocentric_df
 
 
-# In[15]:
+# In[16]:
 
 
 # Propagate ParentOrganoid to nucleocentric profiles.
@@ -349,12 +382,6 @@ nucleocentric_df = pd.merge(
     on=["object_id", "image_set"],
     how="left",
 )
-
-
-# In[16]:
-
-
-nucleocentric_df
 
 
 # ## Get single cell and organoid relationships and spatial distributions
@@ -503,14 +530,14 @@ sc_profile_with_shells_df = pd.merge(
 # In[21]:
 
 
-organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
+organoid_profile_df.to_parquet(organoid_profile_handcrafted_output_path, index=False)
 organoid_profile_df.head()
 
 
 # In[22]:
 
 
-sc_profile_with_shells_df.to_parquet(sc_profile_output_path, index=False)
+sc_profile_with_shells_df.to_parquet(sc_profile_handcrafted_output_path, index=False)
 sc_profile_with_shells_df.head()
 
 
@@ -519,3 +546,17 @@ sc_profile_with_shells_df.head()
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
 nucleocentric_df.head()
+
+
+# In[24]:
+
+
+sc_profile_sammed_df.to_parquet(sc_profile_sammed_output_path, index=False)
+sc_profile_sammed_df.head()
+
+
+# In[25]:
+
+
+organoid_profile_sammed_df.to_parquet(organoid_profile_sammed_output_path, index=False)
+organoid_profile_sammed_df.head()

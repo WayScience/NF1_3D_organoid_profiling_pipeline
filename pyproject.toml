@@ -12,6 +12,7 @@ extra-index-url = ["https://pypi.org/simple"]
 torch = { index = "pytorch-cu118" }
 torchvision = { index = "pytorch-cu118" }
 torchaudio = { index = "pytorch-cu118" }
+nas-path-package = { git = "https://github.com/WayScience/playbooks.git", subdirectory = "internal/nas_path_package" }
 
 [project]
 name = "nf1-3d-organoid-profiling-pipeline"
@@ -31,7 +32,6 @@ dependencies = [
     "napari[pyside6]>=0.6.5; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "matplotlib>=3.10.8",
     "numpy>=2.4.2",
-    "cupy-cuda11x<14; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "cucim; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "pandas>=3.0.1",
     "pip>=26.0.1",

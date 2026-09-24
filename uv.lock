@@ -472,8 +472,16 @@ wheels = [
 ]
 
 [[package]]
-name = "cupy-cuda11x"
-version = "13.6.0"
+name = "cuda-pathfinder"
+version = "1.8.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/e6/22df83f82f9bc26cb1c42265cf14d34d4908dba2a0f261bd7b28244acb00/cuda_pathfinder-1.8.1-py3-none-any.whl", hash = "sha256:ae0137ff9e56ea97499bcbf54f5f2778ec25f3266715ac86da192a795af982a8", size = 62552, upload-time = "2026-09-02T16:55:28.64Z" },
+]
+
+[[package]]
+name = "cupy-cuda12x"
+version = "14.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastrlock" },
@@ -1619,6 +1627,11 @@ wheels = [
 ]
 
 [[package]]
+name = "nas-path-package"
+version = "0.1.0"
+source = { git = "https://github.com/WayScience/playbooks.git?subdirectory=internal%2Fnas_path_package#95a882631dc8fa6da1b3f8baebf2b6380d16893d" }
+
+[[package]]
 name = "natsort"
 version = "8.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1696,6 +1709,7 @@ requires-dist = [
     { name = "moviepy", specifier = ">=2.2.1" },
     { name = "napari", extras = ["pyside6"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=0.6.5" },
     { name = "napari-animation", specifier = ">=0.0.9" },
+    { name = "nas-path-package", git = "https://github.com/WayScience/playbooks.git?subdirectory=internal%2Fnas_path_package" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "pip", specifier = ">=26.0.1" },
