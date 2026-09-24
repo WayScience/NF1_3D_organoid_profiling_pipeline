@@ -37,25 +37,18 @@
 # In[1]:
 
 
-import os
 import pathlib
 from functools import reduce
 
 import duckdb
 import pandas as pd
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
-from image_analysis_3D.file_utils.notebook_init_utils import (
-    bandicoot_check,
-    init_notebook,
-)
+from nas_path_package.core import init_notebook, nas_path_check
 
 root_dir, in_notebook = init_notebook()
 
-profile_base_dir = bandicoot_check(
-    pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
-    root_dir,
-)
-profile_base_dir = root_dir
+profile_base_dir = nas_path_check(root_dir, nas_name="bandicoot")
+profile_base_dir = profile_base_dir / "NF1_organoid_data"
 
 
 # In[2]:
@@ -70,8 +63,8 @@ if not in_notebook:
 
 
 else:
-    well_fov = "D5-1"
-    patient = "NF0055_T1"
+    well_fov = "C10-1"
+    patient = "NF0014_T2"
     output_features_subparent_name = "extracted_features"
     image_based_profiles_subparent_name = "image_based_profiles"
 
@@ -100,13 +93,7 @@ print(len(parquet_files), "parquet files found")
 
 # create the nested dictionary to hold the feature types and compartments
 feature_types = [
-    "AreaSizeShape",
-    "Colocalization",
-    "Intensity",
-    "Granularity",
-    "Neighbors",
     "SAMMed3D",
-    "Texture",
     "CHAMMI75",
 ]
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
@@ -139,6 +126,10 @@ output_dict
 #   [1] = channel      (e.g. "ER", "DNA"; multi-channel names use hyphens: "ER-Mito")
 #   [2] = feature type (e.g. "Granularity", "SAMMed3D")
 files = list(result_path.rglob("*.parquet"))
+# filter the files to only include those that match the expected filename pattern
+files = [f for f in files if "sammed" in f.name.lower() or "chammi75" in f.name.lower()]
+# skip files that do not start with a compartments in the expected list
+files = [f for f in files if f.name.split("_")[0] in compartments]
 files_df = pd.DataFrame({"file_path": files})
 files_df["file_name"] = files_df["file_path"].apply(lambda x: x.name)
 files_df["compartment"] = files_df["file_name"].apply(lambda x: x.split("_")[0])

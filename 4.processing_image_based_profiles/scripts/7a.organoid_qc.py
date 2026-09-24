@@ -43,7 +43,10 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
+# NOTE: previously this line unconditionally overrode bandicoot_check()
+# with root_dir, meaning bandicoot was never actually used even when
+# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
+# takes effect.
 
 
 # In[2]:
@@ -122,7 +125,7 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_OrganoidSingleCellCount",
-            "Organoid_NoChannel_AreaSizeShape_Volume",
+            "Organoid_NoChannel_VolumeSizeShape_Volume",
         ]
     ]
     .isna()
@@ -158,13 +161,13 @@ filtered_profile_df = organoid_profiles_df[
     ~organoid_profiles_df["Metadata_cqc_nan_detected"]
 ]
 
-# Find outlier organoids based on the 'Area.Size.Shape_Organoid_VOLUME' column
+# Find outlier organoids based on the 'Volume.Size.Shape_Organoid_VOLUME' column
 print("Finding small organoid outliers...")
 small_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small organoids
     },
 )
 
@@ -179,7 +182,7 @@ large_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_AreaSizeShape_Volume": 3,  # Detect very large organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": 3,  # Detect very large organoids
     },
 )
 

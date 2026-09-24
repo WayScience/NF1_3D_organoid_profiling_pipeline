@@ -47,7 +47,10 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
+# NOTE: previously this line unconditionally overrode bandicoot_check()
+# with root_dir, meaning bandicoot was never actually used even when
+# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
+# takes effect.
 
 
 # In[2]:
@@ -148,7 +151,7 @@ sc_profiles_df["Metadata_cqc_nan_detected"] = (
         [
             "Metadata_Object_ObjectID",
             "Metadata_Object_ParentOrganoid",
-            "Cell_NoChannel_AreaSizeShape_Volume",
+            "Cell_NoChannel_VolumeSizeShape_Volume",
         ]
     ]
     .isna()
@@ -173,7 +176,7 @@ sc_profiles_df.head()
 sc_profiles_df["Metadata_cqc_organoid_flagged"] = False
 sc_profiles_df["Metadata_cqc_nan_detected"] = (
     sc_profiles_df[
-        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_AreaSizeShape_Volume"]
+        ["Metadata_Object_ObjectID", "Nuclei_NoChannel_VolumeSizeShape_Volume"]
     ]
     .isna()
     .any(axis=1)
@@ -212,7 +215,7 @@ sc_profiles_df.head()
 # In[6]:
 
 
-sc_profiles_df["Nuclei_NoChannel_AreaSizeShape_Volume"].describe()
+sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
 
 
 # ## Detect outlier single-cells using the non-flagged data
@@ -251,7 +254,7 @@ small_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_AreaSizeShape_Volume": -1,  # Detect very small nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small nuclei
     },
 )
 
@@ -266,7 +269,7 @@ large_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_AreaSizeShape_Volume": 2,  # Detect very large nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": 2,  # Detect very large nuclei
     },
 )
 
@@ -322,25 +325,31 @@ sc_profiles_df.head()
 # In[10]:
 
 
-nucleocentric_annotated_sammed_df = pd.read_parquet(nucleocentric_annotated_sammed_path)
-nucleocentric_annotated_morphem_df = pd.read_parquet(
-    nucleocentric_annotated_morphem_output_path
-)
-sammed_annotated_sc_profiles_df = pd.read_parquet(sammed_annotated_sc_profiles_path)
-df_dict = {
-    "nulceocentric_sammed": {
-        "df": nucleocentric_annotated_sammed_df,
+# Each deep-learning profile is only added to df_dict (and therefore QC-flag
+# propagated below) when this dataset actually produced it -- absent for
+# datasets with no deep-learning features (e.g. ZEDProfiler-only), where
+# 6.annotation.py never writes any of these 3 files.
+df_dict = {}
+if nucleocentric_annotated_sammed_path.exists():
+    df_dict["nulceocentric_sammed"] = {
+        "df": pd.read_parquet(nucleocentric_annotated_sammed_path),
         "qc_output_path": nucleocentric_sammed_qc_output_path,
-    },
-    "nucleocentric_chammi": {
-        "df": nucleocentric_annotated_morphem_df,
+    }
+if nucleocentric_annotated_morphem_output_path.exists():
+    df_dict["nucleocentric_chammi"] = {
+        "df": pd.read_parquet(nucleocentric_annotated_morphem_output_path),
         "qc_output_path": nucleocentric_morphem_qc_output_path,
-    },
-    "sammed_sc_profiles": {
-        "df": sammed_annotated_sc_profiles_df,
+    }
+if sammed_annotated_sc_profiles_path.exists():
+    df_dict["sammed_sc_profiles"] = {
+        "df": pd.read_parquet(sammed_annotated_sc_profiles_path),
         "qc_output_path": sammed_sc_qc_output_path,
-    },
-}
+    }
+if not df_dict:
+    print(
+        "No deep-learning annotated profiles found -- skipping DL QC flag "
+        "propagation entirely (this dataset has no deep-learning features)."
+    )
 
 
 # In[11]:

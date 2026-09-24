@@ -88,7 +88,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C4-1"
+    well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
