@@ -27,14 +27,19 @@
 # - The `Metadata_cqc_organoid_flagged` column propagates organoid-level flags down
 #   to all cells belonging to that organoid, linking 7a and 7b outputs.
 
-# In[1]:
+# In[ ]:
 
 
+import json
 import os
 import pathlib
+import re
+import tempfile
 
 import pandas as pd
+import pyvista as pv
 from cosmicqc import find_outliers
+from cytodataframe import CytoDataFrame
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -47,10 +52,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-# NOTE: previously this line unconditionally overrode bandicoot_check()
-# with root_dir, meaning bandicoot was never actually used even when
-# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
-# takes effect.
 
 
 # In[2]:
@@ -62,8 +63,250 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "SARCO361_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
+
+
+# In[3]:
+
+
+# Per-patient single-cell outlier z-score thresholds. Patients are tuned individually
+# by visually inspecting flagged nuclei and adjusting their entry in this file.
+sc_outlier_thresholds_path = (
+    root_dir
+    / "4.processing_image_based_profiles"
+    / "data"
+    / "qc_thresholds"
+    / "single_cell_outlier_thresholds.json"
+).resolve(strict=True)
+with open(sc_outlier_thresholds_path) as f:
+    sc_outlier_thresholds = json.load(f)
+
+if patient not in sc_outlier_thresholds:
+    raise ValueError(
+        f"No single-cell outlier thresholds configured for patient '{patient}' in "
+        f"{sc_outlier_thresholds_path}. Add an entry for this patient before running QC."
+    )
+
+patient_sc_thresholds = sc_outlier_thresholds[patient]
+small_nuclei_threshold = patient_sc_thresholds["small_nuclei_volume"]
+large_nuclei_threshold = patient_sc_thresholds["large_nuclei_volume"]
+high_mass_displacement_threshold = patient_sc_thresholds["high_mass_displacement"]
+print(f"Using single-cell outlier thresholds for {patient}: {patient_sc_thresholds}")
+
+
+# ## Set up 3D voxel views of nuclei with `CytoDataFrame`
+#
+# Same setup as `7a.organoid_qc.ipynb`, using the nuclei masks and the DNA channel.
+#
+# - There are no `Image_FileName_*` columns, so each row's raw image path is built from
+#   the patient and well-FOV metadata.
+# - Every well-FOV's mask file has the same generic name (`nuclei_mask.tiff`), but
+#   `data_mask_context_dir` only matches masks by filename pattern within one directory.
+#   `stage_mask` fills a scratch directory with per-well-FOV symlinks to the real masks,
+#   renamed to embed each well-FOV's identifier, so matching works.
+# - `backend="server"` renders server-side and streams images (the hybrid `"trame"`
+#   backend's client-side geometry sync drops arrays when a table has many views), so
+#   the in-view "Mask" checkbox toggles the overlay on/off; a red dot marks each object's center and a scale bar gives size in um.
+#   Views stay blank unless port 8687 is forwarded to the same local port.
+
+# In[4]:
+
+
+# Serve the interactive trame views on a fixed port so VS Code Remote-SSH can
+# forward it to the same local port (see .vscode/settings.json). This must be
+# set before the first view renders; restart the kernel if it was already started.
+# 7a uses 8686, so a different port lets both notebooks' kernels run at once.
+pv.global_theme.trame.jupyter_server_port = 8687
+
+# The TIFFs carry no voxel-size metadata, so the 3D views take voxel size (um) from
+# the profiles' Metadata_Microscopy_*ResolutionUm columns (set in 6.annotation), which
+# keeps the scale bar consistent with the um-based features.
+RESOLUTION_COLUMNS = [f"Metadata_Microscopy_{axis}ResolutionUm" for axis in "XYZ"]
+SCALE_BAR_LENGTHS_UM = (1, 2, 5, 10, 20, 50, 100)
+
+
+# Nucleus QC is driven by DNA-channel features, so view nuclei in the DNA channel
+CHANNEL = "DNA"
+CHANNEL_CODE = "405"
+COMPARTMENT = "Nuclei"
+# CytoDataFrame's `scale_bar` display option only draws on 2D crops, so wrap the hook
+# that adds the mask overlay to each 3D plotter (interactive view and static snapshot)
+# to also draw a scale bar. Keep the original on the class so re-running this cell
+# does not stack wrappers.
+if not hasattr(CytoDataFrame, "_orig_add_label_overlay_to_plotter"):
+    CytoDataFrame._orig_add_label_overlay_to_plotter = (
+        CytoDataFrame._add_label_overlay_to_plotter
+    )
+
+
+def add_label_overlay_and_scale_bar(self, plotter, volume, spacing, **kwargs):
+    """Add the mask overlay, then an XY scale bar in um below the crop."""
+    overlay_actors = CytoDataFrame._orig_add_label_overlay_to_plotter(
+        self, plotter=plotter, volume=volume, spacing=spacing, **kwargs
+    )
+    # volume is (z, y, x) and the plotter's world units are um via volume_spacing,
+    # so the bar stays true to scale when the view is rotated or zoomed
+    n_z, n_y, n_x = volume.shape
+    width_um = (n_x - 1) * spacing[0]
+    length_um = max(
+        (length for length in SCALE_BAR_LENGTHS_UM if length <= width_um / 2),
+        default=SCALE_BAR_LENGTHS_UM[0],
+    )
+    # draw on the top z-plane, just outside the crop, so the volume does not hide it
+    bar_y_um = -0.1 * (n_y - 1) * spacing[1]
+    bar_z_um = (n_z - 1) * spacing[2]
+    plotter.add_mesh(
+        pv.Line((0.0, bar_y_um, bar_z_um), (length_um, bar_y_um, bar_z_um)),
+        color="white",
+        line_width=6,
+        render_lines_as_tubes=True,
+    )
+    plotter.add_point_labels(
+        [(length_um / 2, 2 * bar_y_um, bar_z_um)],
+        [f"{length_um} µm"],
+        show_points=False,
+        shape=None,
+        text_color="white",
+        font_size=12,
+        always_visible=True,
+    )
+    return overlay_actors
+
+
+CytoDataFrame._add_label_overlay_to_plotter = add_label_overlay_and_scale_bar
+
+
+bbox_column_map = {
+    "x_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinX",
+    "x_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxX",
+    "y_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinY",
+    "y_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxY",
+    "z_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinZ",
+    "z_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxZ",
+}
+center_columns = [
+    f"{COMPARTMENT}_NoChannel_VolumeSizeShape_Center{axis}" for axis in "XYZ"
+]
+
+mask_name = f"{COMPARTMENT.lower()}_mask.tiff"
+# scratch directory (not part of the repo) holding per-well-FOV mask symlinks
+mask_link_dir = (
+    pathlib.Path(tempfile.gettempdir())
+    / "cytodataframe_nf1_3d_mask_links"
+    / patient
+    / COMPARTMENT
+)
+mask_link_dir.mkdir(parents=True, exist_ok=True)
+
+
+def stage_mask(well_fov: str) -> pathlib.Path:
+    """
+    Description
+    -----------
+    Symlink a well-FOV's mask into mask_link_dir under a unique name.
+
+    Parameters
+    ----------
+    well_fov : str
+        The well-FOV for which to stage the mask.
+
+    Returns
+    -------
+    pathlib.Path
+        The path to the staged mask.
+    """
+    channel_path = pathlib.Path(
+        profile_base_dir
+        / "data"
+        / f"{patient}"
+        / "zstack_images"
+        / f"{well_fov}"
+        / f"{well_fov}_{CHANNEL_CODE}.tif"
+    )
+    mask_path = pathlib.Path(
+        profile_base_dir
+        / "data"
+        / f"{patient}"
+        / "segmentation_masks"
+        / f"{well_fov}"
+        / mask_name
+    ).resolve(strict=True)
+    link = mask_link_dir / f"{channel_path.stem}__{mask_name}"
+    if not link.exists():
+        link.symlink_to(mask_path)
+    return link
+
+
+def make_voxel_view(
+    profiles_df: pd.DataFrame, list_of_columns_to_include: list
+) -> CytoDataFrame:
+    """
+    Description
+    -----------
+    Build a CytoDataFrame 3D voxel view (with mask overlay) of nucleus rows.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+        The DataFrame containing the single-cell profiles.
+    list_of_columns_to_include : list
+        The list of columns to include in the CytoDataFrame.
+
+    Returns
+    -------
+    CytoDataFrame
+        The CytoDataFrame with the 3D voxel view.
+    """
+    profiles_df = profiles_df.copy()
+    # metadata stores well-FOV as e.g. C11_4, directories on disk use C11-4
+    well_fovs = profiles_df["Metadata_Experiment_WellFOV"].str.replace("_", "-")
+    profiles_df[f"Image_FileName_{CHANNEL}"] = [
+        str(
+            profile_base_dir
+            / "data"
+            / f"{patient}"
+            / "zstack_images"
+            / f"{well_fov}"
+            / f"{well_fov}_{CHANNEL_CODE}.tif"
+        )
+        for well_fov in well_fovs
+    ]
+    for well_fov in well_fovs.unique():
+        stage_mask(well_fov)
+
+    resolutions = profiles_df[RESOLUTION_COLUMNS].drop_duplicates()
+    if len(resolutions) != 1:
+        raise ValueError(
+            f"Expected one voxel size across rows, found:\n{resolutions.to_string()}"
+        )
+    voxel_spacing = tuple(float(value) for value in resolutions.iloc[0])
+
+    return CytoDataFrame(
+        data=profiles_df[list_of_columns_to_include],
+        data_bounding_box=profiles_df[list(bbox_column_map.values())],
+        compartment_center_xy=profiles_df[center_columns],
+        data_mask_context_dir=str(mask_link_dir),
+        segmentation_file_regex={rf"__{re.escape(mask_name)}$": r"_\d+\.tif$"},
+        display_options={
+            "width": 260,
+            "height": 260,
+            "table_max_height": "580px",
+            "label_overlay_mode": "filled",
+            # Voxel size (x, y, z) in um; also sets the scale bar's units.
+            "volume_spacing": voxel_spacing,
+            "volume_bbox_column_map": bbox_column_map,
+            "label_overlay_color": (128, 128, 128),  # grey
+            "label_overlay_opacity": 0.2,
+            "label_overlay_toggle": True,
+            "label_overlay_toggle_position": "top-right",
+            "label_overlay_toggle_vertical_offset": 10,
+            "label_overlay_toggle_label": "Mask",
+            "label_overlay_toggle_font_size": 9,
+            "label_overlay_toggle_label_gap": 24,
+            "label_overlay_toggle_label_shift_left": 212,
+        },
+    )
 
 
 # ## Load profiles and initialize QC flags
@@ -74,7 +317,7 @@ else:
 #    — cells whose parent organoid failed QC in 7a, or have no parent organoid at all
 # 3. **Nucleus outliers** — applied only to cells that passed rounds 1 and 2
 
-# In[3]:
+# In[5]:
 
 
 sc_file = pathlib.Path(
@@ -142,7 +385,7 @@ print(orig_sc_profiles_df.shape)
 orig_sc_profiles_df
 
 
-# In[4]:
+# In[6]:
 
 
 sc_profiles_df = orig_sc_profiles_df.copy()
@@ -164,7 +407,7 @@ print(f"Number of organoids flagged: {flagged_count}")
 sc_profiles_df.head()
 
 
-# In[5]:
+# In[7]:
 
 
 # Round 2: propagate organoid-level QC flags to single cells.
@@ -212,7 +455,7 @@ print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
 
-# In[6]:
+# In[8]:
 
 
 sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
@@ -225,14 +468,14 @@ sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
 # 1. Abnormally small or large nuclei using `Volume`
 # 2. Abnormally high `mass displacement` in the nuclei for instances of mis-segmentation of background/no longer in-focus
 
-# In[7]:
+# In[9]:
 
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
 
 
-# In[8]:
+# In[10]:
 
 
 # Round 3: nucleus-based outlier detection using z-score thresholds.
@@ -254,7 +497,7 @@ small_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": small_nuclei_threshold,  # Detect very small nuclei
     },
 )
 
@@ -264,12 +507,16 @@ sc_profiles_df.loc[small_nuclei_outliers.index, "Metadata_cqc_small_nuclei_outli
     True
 )
 
+# Print number of outliers (only in filtered rows)
+small_count = filtered_plate_df.index.intersection(small_nuclei_outliers.index).shape[0]
+print(f"Small nuclei outliers found: {small_count}")
+
 print("Finding large nuclei outliers...")
 large_nuclei_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_NoChannel_VolumeSizeShape_Volume": 2,  # Detect very large nuclei
+        "Nuclei_NoChannel_VolumeSizeShape_Volume": large_nuclei_threshold,  # Detect very large nuclei
     },
 )
 
@@ -279,13 +526,17 @@ sc_profiles_df.loc[large_nuclei_outliers.index, "Metadata_cqc_large_nuclei_outli
     True
 )
 
+# Print number of outliers (only in filtered rows)
+large_count = filtered_plate_df.index.intersection(large_nuclei_outliers.index).shape[0]
+print(f"Large nuclei outliers found: {large_count}")
+
 # --- Find mass displacement based nuclei outliers ---
 print("Finding high mass displacement outliers...")
 high_mass_displacement_outliers = find_outliers(
     df=filtered_plate_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Nuclei_DNA_Intensity_MassDisplacement": 2,  # Detect high mass displacement
+        "Nuclei_DNA_Intensity_MassDisplacement": high_mass_displacement_threshold,  # Detect high mass displacement
     },
 )
 
@@ -296,24 +547,129 @@ sc_profiles_df.loc[
 ] = True
 
 # Print number of outliers (only in filtered rows)
-small_count = filtered_plate_df.index.intersection(small_nuclei_outliers.index).shape[0]
-large_count = filtered_plate_df.index.intersection(large_nuclei_outliers.index).shape[0]
 high_mass_count = filtered_plate_df.index.intersection(
     high_mass_displacement_outliers.index
 ).shape[0]
-
-print(f"Small nuclei outliers found: {small_count}")
-print(f"Large nuclei outliers found: {large_count}")
 print(f"High mass displacement outliers found: {high_mass_count}")
 
 # Save updated plate_df with flag columns included
 sc_profiles_df.to_parquet(sc_qc_output_path, index=False)
 
 
-# In[9]:
+# In[11]:
 
 
 sc_profiles_df.head()
+
+
+# ## Visualize nuclei in 3D to tune this patient's thresholds
+
+# ### Visualize the small nuclei outliers
+
+# In[12]:
+
+
+# Each view is a live server-side render, so show a random sample of each group
+N_NUCLEI_TO_VIEW = 10
+
+if in_notebook:
+    display(
+        make_voxel_view(
+            sc_profiles_df.loc[
+                sc_profiles_df["Metadata_cqc_small_nuclei_outlier"]
+            ].sample(
+                n=min(
+                    N_NUCLEI_TO_VIEW,
+                    int(sc_profiles_df["Metadata_cqc_small_nuclei_outlier"].sum()),
+                ),
+                random_state=0,
+            ),
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_Object_ObjectID",
+                "Nuclei_NoChannel_VolumeSizeShape_Volume",
+                f"Image_FileName_{CHANNEL}",
+            ],
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
+
+
+# ### Visualize the large nuclei outliers
+
+# In[13]:
+
+
+if in_notebook:
+    display(
+        make_voxel_view(
+            sc_profiles_df.loc[
+                sc_profiles_df["Metadata_cqc_large_nuclei_outlier"]
+            ].sample(
+                n=min(
+                    N_NUCLEI_TO_VIEW,
+                    int(sc_profiles_df["Metadata_cqc_large_nuclei_outlier"].sum()),
+                ),
+                random_state=0,
+            ),
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_Object_ObjectID",
+                "Nuclei_NoChannel_VolumeSizeShape_Volume",
+                f"Image_FileName_{CHANNEL}",
+            ],
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
+
+
+# ### Visualize the high mass displacement outliers
+
+# In[14]:
+
+
+if in_notebook:
+    display(
+        make_voxel_view(
+            sc_profiles_df.loc[
+                sc_profiles_df["Metadata_cqc_mass_displacement_outlier"]
+            ].sample(
+                n=min(
+                    N_NUCLEI_TO_VIEW,
+                    int(sc_profiles_df["Metadata_cqc_mass_displacement_outlier"].sum()),
+                ),
+                random_state=0,
+            ),
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_Object_ObjectID",
+                "Nuclei_DNA_Intensity_MassDisplacement",
+                f"Image_FileName_{CHANNEL}",
+            ],
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
+
+
+# ### Visualize a random selection of nuclei
+
+# In[15]:
+
+
+if in_notebook:
+    display(
+        make_voxel_view(
+            sc_profiles_df.sample(
+                n=min(N_NUCLEI_TO_VIEW, len(sc_profiles_df)), random_state=0
+            ),
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_Object_ObjectID",
+                "Metadata_cqc_small_nuclei_outlier",
+                "Metadata_cqc_large_nuclei_outlier",
+                "Metadata_cqc_mass_displacement_outlier",
+                "Nuclei_NoChannel_VolumeSizeShape_Volume",
+                f"Image_FileName_{CHANNEL}",
+            ],
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
 
 
 # ### Merge the qc flags to the deep learning-based profiles and save the output
@@ -322,7 +678,7 @@ sc_profiles_df.head()
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[10]:
+# In[16]:
 
 
 # Each deep-learning profile is only added to df_dict (and therefore QC-flag
@@ -352,7 +708,7 @@ if not df_dict:
     )
 
 
-# In[11]:
+# In[17]:
 
 
 # set the merge keys to int for both dataframes to ensure they match
