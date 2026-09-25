@@ -174,11 +174,11 @@ with open(log_path, "w") as log_file:
 print(f"\nLog written to: {log_path}")
 
 
-# In[8]:
+# In[5]:
 
 
 combined_patient_profiles_path = pathlib.Path(
-    f"{profile_base_dir}/data/all_patient_profiles/"
+    f"{profile_base_dir}/data/{output_subdir}/"
 ).resolve(strict=True)
 with open(log_path, "a") as log_file:
     log("= " * 30, log_file)
@@ -188,11 +188,11 @@ with open(log_path, "a") as log_file:
     # log(f"Processing patient: {name}", log_file)
     # log(f"{'=' * 60}", log_file)
     log(
-        f"{'name':40} | {'shape':>15} | {'nans':>8} | {'infs':>8} | {'dupes':>8} | {'values_above_threshold':>8}",
+        f"{'name':40} | {'shape':>15} | {'nans':>8} | {'infs':>8} | {'dupes':>8} | {'values_above_threshold':>8} | {'all_nan_rows':>12} | {'all_nan_cols':>12} | {'drop?':>6}",
         log_file,
     )
     log(
-        f"{'-' * 40} | {'-' * 15} | {'-' * 8} | {'-' * 8} | {'-' * 8} | {'-' * 8}",
+        f"{'-' * 40} | {'-' * 15} | {'-' * 8} | {'-' * 8} | {'-' * 8} | {'-' * 8} | {'-' * 12} | {'-' * 12} | {'-' * 6}",
         log_file,
     )
 

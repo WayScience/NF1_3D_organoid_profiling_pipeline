@@ -27,7 +27,7 @@
 # - The `Metadata_cqc_organoid_flagged` column propagates organoid-level flags down
 #   to all cells belonging to that organoid, linking 7a and 7b outputs.
 
-# In[1]:
+# In[ ]:
 
 
 import json
