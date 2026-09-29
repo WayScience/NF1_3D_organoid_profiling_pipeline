@@ -27,13 +27,12 @@
 # - The `Metadata_cqc_organoid_flagged` column propagates organoid-level flags down
 #   to all cells belonging to that organoid, linking 7a and 7b outputs.
 
-# In[ ]:
+# In[1]:
 
 
 import json
 import os
 import pathlib
-import re
 import tempfile
 
 import pandas as pd
@@ -44,6 +43,11 @@ from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
+)
+from image_analysis_3D.visualization_utils.cytodataframe_utils import (
+    CdfDataClass,
+    add_label_overlay_and_scale_bar,
+    make_voxel_view,
 )
 
 root_dir, in_notebook = init_notebook()
@@ -139,41 +143,6 @@ if not hasattr(CytoDataFrame, "_orig_add_label_overlay_to_plotter"):
         CytoDataFrame._add_label_overlay_to_plotter
     )
 
-
-def add_label_overlay_and_scale_bar(self, plotter, volume, spacing, **kwargs):
-    """Add the mask overlay, then an XY scale bar in um below the crop."""
-    overlay_actors = CytoDataFrame._orig_add_label_overlay_to_plotter(
-        self, plotter=plotter, volume=volume, spacing=spacing, **kwargs
-    )
-    # volume is (z, y, x) and the plotter's world units are um via volume_spacing,
-    # so the bar stays true to scale when the view is rotated or zoomed
-    n_z, n_y, n_x = volume.shape
-    width_um = (n_x - 1) * spacing[0]
-    length_um = max(
-        (length for length in SCALE_BAR_LENGTHS_UM if length <= width_um / 2),
-        default=SCALE_BAR_LENGTHS_UM[0],
-    )
-    # draw on the top z-plane, just outside the crop, so the volume does not hide it
-    bar_y_um = -0.1 * (n_y - 1) * spacing[1]
-    bar_z_um = (n_z - 1) * spacing[2]
-    plotter.add_mesh(
-        pv.Line((0.0, bar_y_um, bar_z_um), (length_um, bar_y_um, bar_z_um)),
-        color="white",
-        line_width=6,
-        render_lines_as_tubes=True,
-    )
-    plotter.add_point_labels(
-        [(length_um / 2, 2 * bar_y_um, bar_z_um)],
-        [f"{length_um} µm"],
-        show_points=False,
-        shape=None,
-        text_color="white",
-        font_size=12,
-        always_visible=True,
-    )
-    return overlay_actors
-
-
 CytoDataFrame._add_label_overlay_to_plotter = add_label_overlay_and_scale_bar
 
 
@@ -199,114 +168,19 @@ mask_link_dir = (
 )
 mask_link_dir.mkdir(parents=True, exist_ok=True)
 
-
-def stage_mask(well_fov: str) -> pathlib.Path:
-    """
-    Description
-    -----------
-    Symlink a well-FOV's mask into mask_link_dir under a unique name.
-
-    Parameters
-    ----------
-    well_fov : str
-        The well-FOV for which to stage the mask.
-
-    Returns
-    -------
-    pathlib.Path
-        The path to the staged mask.
-    """
-    channel_path = pathlib.Path(
-        profile_base_dir
-        / "data"
-        / f"{patient}"
-        / "zstack_images"
-        / f"{well_fov}"
-        / f"{well_fov}_{CHANNEL_CODE}.tif"
-    )
-    mask_path = pathlib.Path(
-        profile_base_dir
-        / "data"
-        / f"{patient}"
-        / "segmentation_masks"
-        / f"{well_fov}"
-        / mask_name
-    ).resolve(strict=True)
-    link = mask_link_dir / f"{channel_path.stem}__{mask_name}"
-    if not link.exists():
-        link.symlink_to(mask_path)
-    return link
-
-
-def make_voxel_view(
-    profiles_df: pd.DataFrame, list_of_columns_to_include: list
-) -> CytoDataFrame:
-    """
-    Description
-    -----------
-    Build a CytoDataFrame 3D voxel view (with mask overlay) of nucleus rows.
-
-    Parameters
-    ----------
-    profiles_df : pd.DataFrame
-        The DataFrame containing the single-cell profiles.
-    list_of_columns_to_include : list
-        The list of columns to include in the CytoDataFrame.
-
-    Returns
-    -------
-    CytoDataFrame
-        The CytoDataFrame with the 3D voxel view.
-    """
-    profiles_df = profiles_df.copy()
-    # metadata stores well-FOV as e.g. C11_4, directories on disk use C11-4
-    well_fovs = profiles_df["Metadata_Experiment_WellFOV"].str.replace("_", "-")
-    profiles_df[f"Image_FileName_{CHANNEL}"] = [
-        str(
-            profile_base_dir
-            / "data"
-            / f"{patient}"
-            / "zstack_images"
-            / f"{well_fov}"
-            / f"{well_fov}_{CHANNEL_CODE}.tif"
-        )
-        for well_fov in well_fovs
-    ]
-    for well_fov in well_fovs.unique():
-        stage_mask(well_fov)
-
-    resolutions = profiles_df[RESOLUTION_COLUMNS].drop_duplicates()
-    if len(resolutions) != 1:
-        raise ValueError(
-            f"Expected one voxel size across rows, found:\n{resolutions.to_string()}"
-        )
-    voxel_spacing = tuple(float(value) for value in resolutions.iloc[0])
-
-    return CytoDataFrame(
-        data=profiles_df[list_of_columns_to_include],
-        data_bounding_box=profiles_df[list(bbox_column_map.values())],
-        compartment_center_xy=profiles_df[center_columns],
-        data_mask_context_dir=str(mask_link_dir),
-        segmentation_file_regex={rf"__{re.escape(mask_name)}$": r"_\d+\.tif$"},
-        display_options={
-            "width": 260,
-            "height": 260,
-            "table_max_height": "580px",
-            "label_overlay_mode": "filled",
-            # Voxel size (x, y, z) in um; also sets the scale bar's units.
-            "volume_spacing": voxel_spacing,
-            "volume_bbox_column_map": bbox_column_map,
-            "label_overlay_color": (128, 128, 128),  # grey
-            "label_overlay_opacity": 0.2,
-            "label_overlay_toggle": True,
-            "label_overlay_toggle_position": "top-right",
-            "label_overlay_toggle_vertical_offset": 10,
-            "label_overlay_toggle_label": "Mask",
-            "label_overlay_toggle_font_size": 9,
-            "label_overlay_toggle_label_gap": 24,
-            "label_overlay_toggle_label_shift_left": 212,
-        },
-    )
+cdf_params = CdfDataClass(
+    profile_base_dir=profile_base_dir,
+    patient=patient,
+    well_fov=None,
+    channel_code=CHANNEL_CODE,
+    channel=CHANNEL,
+    mask_link_dir=mask_link_dir,
+    scale_bar_lengths_um=SCALE_BAR_LENGTHS_UM,
+    mask_name=mask_name,
+    resolution_columns=RESOLUTION_COLUMNS,
+    bbox_column_map=bbox_column_map,
+    center_columns=center_columns,
+)
 
 
 # ## Load profiles and initialize QC flags
@@ -590,6 +464,7 @@ if in_notebook:
                 "Nuclei_NoChannel_VolumeSizeShape_Volume",
                 f"Image_FileName_{CHANNEL}",
             ],
+            cdf_params,
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
@@ -617,6 +492,7 @@ if in_notebook:
                 "Nuclei_NoChannel_VolumeSizeShape_Volume",
                 f"Image_FileName_{CHANNEL}",
             ],
+            cdf_params,
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
@@ -644,6 +520,7 @@ if in_notebook:
                 "Nuclei_DNA_Intensity_MassDisplacement",
                 f"Image_FileName_{CHANNEL}",
             ],
+            cdf_params,
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
@@ -668,6 +545,7 @@ if in_notebook:
                 "Nuclei_NoChannel_VolumeSizeShape_Volume",
                 f"Image_FileName_{CHANNEL}",
             ],
+            cdf_params,
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 

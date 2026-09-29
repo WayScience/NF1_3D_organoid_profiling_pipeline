@@ -45,7 +45,7 @@
 # - Deep-learning profiles (`sammed_*`, `morphem_*`) do not have corresponding QC
 #   outputs and are normalized using all DMSO samples as the reference.
 
-# In[ ]:
+# In[1]:
 
 
 import os
@@ -403,7 +403,7 @@ if has_nucleocentric_morphem:
     )
 
 
-# In[10]:
+# In[9]:
 
 
 sc_normalized_df = normalize(
