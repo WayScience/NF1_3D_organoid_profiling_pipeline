@@ -1,0 +1,67 @@
+{
+  "NF0014_T1": {
+    "small_nuclei_volume": -1.0,
+    "large_nuclei_volume": 2.1,
+    "high_mass_displacement": 2.2
+  },
+  "NF0014_T2": {
+    "small_nuclei_volume": -0.5,
+    "large_nuclei_volume": 2,
+    "high_mass_displacement": 2
+  },
+  "NF0016_T1": {
+    "small_nuclei_volume": -0.8,
+    "large_nuclei_volume": 2,
+    "high_mass_displacement": 2
+  },
+  "NF0018_T6": {
+    "small_nuclei_volume": -0.8,
+    "large_nuclei_volume": 2,
+    "high_mass_displacement": 2
+  },
+  "NF0021_T1": {
+    "small_nuclei_volume": -0.8,
+    "large_nuclei_volume": 2.2,
+    "high_mass_displacement": 2
+  },
+  "NF0030_T1": {
+    "small_nuclei_volume": -1.2,
+    "large_nuclei_volume": 2,
+    "high_mass_displacement": 2
+  },
+  "NF0035_T1": {
+    "small_nuclei_volume": -0.8,
+    "large_nuclei_volume": 2.2,
+    "high_mass_displacement": 2
+  },
+  "NF0037_T1": {
+    "small_nuclei_volume": -0.7,
+    "large_nuclei_volume": 2.2,
+    "high_mass_displacement": 2
+  },
+  "NF0037_T1_CQ1": {
+    "small_nuclei_volume": -1.2,
+    "large_nuclei_volume": 2.8,
+    "high_mass_displacement": 3
+  },
+  "NF0040_T1": {
+    "small_nuclei_volume": -0.9,
+    "large_nuclei_volume": 2.3,
+    "high_mass_displacement": 2.4
+  },
+  "NF0055_T1": {
+    "small_nuclei_volume": -0.7,
+    "large_nuclei_volume": 2,
+    "high_mass_displacement": 2
+  },
+  "SARCO219_T2": {
+    "small_nuclei_volume": -0.5,
+    "large_nuclei_volume": 2.2,
+    "high_mass_displacement": 2
+  },
+  "SARCO361_T1": {
+    "small_nuclei_volume": -0.5,
+    "large_nuclei_volume": 2,
+    "high_mass_displacement": 2
+  }
+}

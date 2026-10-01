@@ -26,15 +26,24 @@
 # In[1]:
 
 
+import json
 import os
 import pathlib
+import tempfile
 
 import pandas as pd
+import pyvista as pv
 from cosmicqc import find_outliers
+from cytodataframe import CytoDataFrame
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
+)
+from image_analysis_3D.visualization_utils.cytodataframe_utils import (
+    CdfDataClass,
+    add_label_overlay_and_scale_bar,
+    make_voxel_view,
 )
 
 root_dir, in_notebook = init_notebook()
@@ -59,12 +68,104 @@ if not in_notebook:
 
 else:
     image_based_profiles_subparent_name = "image_based_profiles"
-    patient = "NF0037_T1_CQ1"
+    patient = "SARCO361_T1"
+
+
+# In[3]:
+
+
+# Serve the interactive trame views on a fixed port so VS Code Remote-SSH can
+# forward it to the same local port (see .vscode/settings.json). This must be
+# set before the first view renders; restart the kernel if it was already started.
+pv.global_theme.trame.jupyter_server_port = 8686
+
+# The TIFFs carry no voxel-size metadata, so the 3D views take voxel size (um) from
+# the profiles' Metadata_Microscopy_*ResolutionUm columns (set in 6.annotation), which
+# keeps the scale bar consistent with the um-based features.
+RESOLUTION_COLUMNS = [f"Metadata_Microscopy_{axis}ResolutionUm" for axis in "XYZ"]
+SCALE_BAR_LENGTHS_UM = (1, 2, 5, 10, 20, 50, 100)
+
+
+CHANNEL = "AGP"
+CHANNEL_CODE = "555"
+COMPARTMENT = "Organoid"
+# CytoDataFrame's `scale_bar` display option only draws on 2D crops, so wrap the hook
+# that adds the mask overlay to each 3D plotter (interactive view and static snapshot)
+# to also draw a scale bar. Keep the original on the class so re-running this cell
+# does not stack wrappers.
+if not hasattr(CytoDataFrame, "_orig_add_label_overlay_to_plotter"):
+    CytoDataFrame._orig_add_label_overlay_to_plotter = (
+        CytoDataFrame._add_label_overlay_to_plotter
+    )
+
+
+CytoDataFrame._add_label_overlay_to_plotter = add_label_overlay_and_scale_bar
+
+
+bbox_column_map = {
+    "x_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinX",
+    "x_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxX",
+    "y_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinY",
+    "y_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxY",
+    "z_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinZ",
+    "z_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxZ",
+}
+center_columns = [
+    f"{COMPARTMENT}_NoChannel_VolumeSizeShape_Center{axis}" for axis in "XYZ"
+]
+
+mask_name = f"{COMPARTMENT.lower()}_mask.tiff"
+# scratch directory (not part of the repo) holding per-well-FOV mask symlinks
+mask_link_dir = (
+    pathlib.Path(tempfile.gettempdir()) / "cytodataframe_nf1_3d_mask_links" / patient
+)
+mask_link_dir.mkdir(parents=True, exist_ok=True)
+
+cdf_params = CdfDataClass(
+    profile_base_dir=profile_base_dir,
+    patient=patient,
+    well_fov=None,
+    channel_code=CHANNEL_CODE,
+    channel=CHANNEL,
+    mask_link_dir=mask_link_dir,
+    scale_bar_lengths_um=SCALE_BAR_LENGTHS_UM,
+    mask_name=mask_name,
+    resolution_columns=RESOLUTION_COLUMNS,
+    bbox_column_map=bbox_column_map,
+    center_columns=center_columns,
+)
+
+
+# In[4]:
+
+
+# Per-patient small-organoid outlier z-score thresholds. Patients are tuned individually
+# by visually inspecting flagged organoids and adjusting their entry in this file.
+small_outlier_thresholds_path = (
+    root_dir
+    / "4.processing_image_based_profiles"
+    / "data"
+    / "qc_thresholds"
+    / "organoid_small_outlier_thresholds.json"
+).resolve(strict=True)
+with open(small_outlier_thresholds_path) as f:
+    small_outlier_thresholds = json.load(f)
+
+if patient not in small_outlier_thresholds:
+    raise ValueError(
+        f"No small organoid outlier threshold configured for patient '{patient}' in "
+        f"{small_outlier_thresholds_path}. Add an entry for this patient before running QC."
+    )
+
+small_outlier_threshold = small_outlier_thresholds[patient]
+print(
+    f"Using small organoid outlier threshold for {patient}: {small_outlier_threshold}"
+)
 
 
 # ## Load in all the organoid profiles and concat together
 
-# In[3]:
+# In[5]:
 
 
 organoid_file = pathlib.Path(
@@ -106,7 +207,7 @@ print(orig_organoid_profiles_df.shape)
 orig_organoid_profiles_df.head()
 
 
-# ## Round 1 QC: flag rows with NaN in key columns
+# ## (Sanity check) Round 1 QC: flag rows with NaN in key columns
 #
 # `Metadata_cqc_*` columns are boolean flags added by this notebook. A value of `True`
 # means the organoid failed that criterion. Multiple flags can be True simultaneously.
@@ -116,7 +217,7 @@ orig_organoid_profiles_df.head()
 # - A NaN `ObjectID` means the object does not exist and all features will be NaN.
 # - A NaN `Volume` means the core morphology feature is missing.
 
-# In[4]:
+# In[6]:
 
 
 organoid_profiles_df = orig_organoid_profiles_df.copy()
@@ -135,19 +236,17 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
 flagged_count = organoid_profiles_df["Metadata_cqc_nan_detected"].sum()
 print(f"Number of organoids flagged: {flagged_count}")
 
-organoid_profiles_df.head()
-
 
 # ## Process non-NaN rows to detect abnormally small and large organoids and flag them
 
-# In[5]:
+# In[7]:
 
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in organoid_profiles_df.columns if "Metadata" in x]
 
 
-# In[6]:
+# In[8]:
 
 
 ## Round 2 QC: size-based outlier detection
@@ -167,46 +266,22 @@ small_size_outliers = find_outliers(
     df=filtered_profile_df,
     metadata_columns=metadata_columns,
     feature_thresholds={
-        "Organoid_NoChannel_VolumeSizeShape_Volume": -1,  # Detect very small organoids
+        "Organoid_NoChannel_VolumeSizeShape_Volume": small_outlier_threshold,
     },
 )
-
 # Ensure the column exists before assignment
 organoid_profiles_df["Metadata_cqc_small_organoid_outlier"] = False
 organoid_profiles_df.loc[
     small_size_outliers.index, "Metadata_cqc_small_organoid_outlier"
 ] = True
 
-print("Finding large organoid outliers...")
-large_size_outliers = find_outliers(
-    df=filtered_profile_df,
-    metadata_columns=metadata_columns,
-    feature_thresholds={
-        "Organoid_NoChannel_VolumeSizeShape_Volume": 3,  # Detect very large organoids
-    },
-)
-
-# Ensure the column exists before assignment
-organoid_profiles_df["Metadata_cqc_large_organoid_outlier"] = False
-organoid_profiles_df.loc[
-    large_size_outliers.index, "Metadata_cqc_large_organoid_outlier"
-] = True
-
 # Print number of outliers (only in filtered rows)
 small_count = filtered_profile_df.index.intersection(small_size_outliers.index).shape[0]
-large_count = filtered_profile_df.index.intersection(large_size_outliers.index).shape[0]
 print(f"Small organoid outliers found: {small_count}")
-print(f"Large organoid outliers found: {large_count}")
-
+small_organoid_profiles = organoid_profiles_df.loc[
+    organoid_profiles_df["Metadata_cqc_small_organoid_outlier"]
+]
 organoid_profiles_df.to_parquet(organoid_qc_output_path, index=False)
-
-
-# In[7]:
-
-
-# Print example output of the flagged organoid profiles
-print(organoid_profiles_df.shape)
-organoid_profiles_df.head()
 
 
 # ## Merge the qc flags to the deep learning-based profiles and save the output
@@ -215,7 +290,7 @@ organoid_profiles_df.head()
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[8]:
+# In[9]:
 
 
 sammed_organoid_df = pd.read_parquet(sammed_annotated_organoid_profiles_path)
@@ -240,4 +315,60 @@ if qc_annotated_sammed_organoid_df.shape[1] == original_sammed_shape[1]:
         f"No new columns were added during the merge. Check that the merge keys {merge_keys} are correct and that the qc keys {qc_keys} are present in the organoid_profiles_df."
     )
 qc_annotated_sammed_organoid_df.to_parquet(sammed_organoid_qc_output_path, index=False)
-qc_annotated_sammed_organoid_df.head()
+
+
+# ## Set up 3D voxel views of organoids with `CytoDataFrame`
+#
+# Adapted from the CytoDataFrame NF1 3D pilot verification example, using this notebook's pathing.
+#
+# - There are no `Image_FileName_*` columns, so each row's raw image path is built from
+#   the patient and well-FOV metadata.
+# - Every well-FOV's mask file has the same generic name (`organoid_mask.tiff`), but
+#   `data_mask_context_dir` only matches masks by filename pattern within one directory.
+#   `stage_mask` fills a scratch directory with per-well-FOV symlinks to the real masks,
+#   renamed to embed each well-FOV's identifier, so matching works.
+
+# ### Visualize the small organoids
+
+# In[10]:
+
+
+# backend="server" renders server-side and streams images (no client-side geometry
+# sync, which fails with many views per table), so the in-view "Mask" checkbox
+# toggles the overlay on/off; a red dot marks each object's center. Views stay blank
+# unless port 8686 is forwarded to the same local port.
+if in_notebook:
+    display(
+        make_voxel_view(
+            small_organoid_profiles,
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_cqc_small_organoid_outlier",
+                f"Image_FileName_{CHANNEL}",
+            ],
+            cdf_params,
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
+
+
+# ### Visualize a random selection of organoids
+
+# In[11]:
+
+
+# backend="server" renders server-side and streams images (no client-side geometry
+# sync, which fails with many views per table), so the in-view "Mask" checkbox
+# toggles the overlay on/off; a red dot marks each object's center. Views stay blank
+# unless port 8686 is forwarded to the same local port.
+if in_notebook:
+    display(
+        make_voxel_view(
+            organoid_profiles_df,
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_cqc_small_organoid_outlier",
+                f"Image_FileName_{CHANNEL}",
+            ],
+            cdf_params,
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
