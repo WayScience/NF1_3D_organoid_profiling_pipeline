@@ -247,6 +247,7 @@ aggregate_strata = [
     "Metadata_Experiment_TherapeuticCategories",
     "Metadata_Experiment_Treatment",
     "Metadata_Experiment_Unit",
+    "Metadata_Experiment_ViabilityPercentage",
 ]
 # Consensus strata: one row per (patient, treatment) combination
 consensus_strata = [
@@ -257,6 +258,7 @@ consensus_strata = [
     "Metadata_Experiment_Target",
     "Metadata_Experiment_TherapeuticCategories",
     "Metadata_Experiment_Unit",
+    "Metadata_Experiment_ViabilityPercentage",
 ]
 
 
