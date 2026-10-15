@@ -180,7 +180,7 @@ for patient, well_fov in tqdm(
             output_1_0_file_path,
         ]:
             output_file_path.parent.mkdir(parents=True, exist_ok=True)
-
+        # Generate new z-stack steps
         zstack_0_2 = zstack_01[::2, :, :].copy()  # 0.1um to 0.2um
         zstack_0_5 = zstack_01[::5, :, :].copy()  # 0.1um to 0.5um
         zstack_1_0 = zstack_01[::10, :, :].copy()  # 0.1um to 1.0um
