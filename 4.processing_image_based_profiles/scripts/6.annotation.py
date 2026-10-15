@@ -66,7 +66,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0018_T6"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -400,13 +400,16 @@ nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 # Promote spatial coordinate columns to Metadata_Location_* so they are excluded
 # from normalization and feature selection in downstream steps.
 # Intensity-based location columns (MinX/MaxX etc. from intensity measurements)
-# are dropped entirely — only AreaSizeShape-derived coordinates are kept.
+# are dropped entirely — only VolumeSizeShape-derived coordinates are kept.
 
 organoid_location_features = [
     x
     for x in organoid_merged.columns
     if (
-        ("area" in (xl := x.lower()) and any(k in xl for k in ("max", "min", "center")))
+        (
+            "volume" in (xl := x.lower())
+            and any(k in xl for k in ("max", "min", "center"))
+        )
         or (
             "intensity" in xl
             and any(
@@ -420,7 +423,10 @@ sc_location_features = [
     x
     for x in sc_merged.columns
     if (
-        ("area" in (xl := x.lower()) and any(k in xl for k in ("max", "min", "center")))
+        (
+            "volume" in (xl := x.lower())
+            and any(k in xl for k in ("max", "min", "center"))
+        )
         or (
             "intensity" in xl
             and any(
@@ -769,6 +775,45 @@ nucleocentric_morphem_annotated = nucleocentric_merged[
 # In[15]:
 
 
+sc_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+organoid_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+sc_sammed_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+organoid_sammed_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+nucleocentric_sammed_annotated["Metadata_Experiment_WellFOV"].replace(
+    "_", "-", inplace=True
+)
+nucleocentric_morphem_annotated["Metadata_Experiment_WellFOV"].replace(
+    "_", "-", inplace=True
+)
+
+
+# In[16]:
+
+
+sc_merged
+
+
+# In[17]:
+
+
+# drop "well_fov" column if it exists - merge errors
+if "well_fov" in sc_merged.columns:
+    sc_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in organoid_merged.columns:
+    organoid_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in sc_sammed_merged.columns:
+    sc_sammed_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in organoid_sammed_merged.columns:
+    organoid_sammed_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in nucleocentric_sammed_annotated.columns:
+    nucleocentric_sammed_annotated.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in nucleocentric_morphem_annotated.columns:
+    nucleocentric_morphem_annotated.drop(columns=["well_fov"], inplace=True)
+
+
+# In[19]:
+
+
 # save annotated profiles
 sc_merged.to_parquet(sc_annotated_output_path, index=False)
 organoid_merged.to_parquet(organoid_annotated_output_path, index=False)
@@ -780,19 +825,3 @@ nucleocentric_sammed_annotated.to_parquet(
 nucleocentric_morphem_annotated.to_parquet(
     nucleocentric_annotated_morphem_output_path, index=False
 )
-
-
-# In[16]:
-
-
-shapes_dict = {
-    "sc_merged": sc_merged.shape,
-    "organoid_merged": organoid_merged.shape,
-    "sc_sammed_merged": sc_sammed_merged.shape,
-    "organoid_sammed_merged": organoid_sammed_merged.shape,
-    "nucleocentric_merged": nucleocentric_merged.shape,
-    "nucleocentric_sammed_annotated": nucleocentric_sammed_annotated.shape,
-    "nucleocentric_morphem_annotated": nucleocentric_morphem_annotated.shape,
-}
-for key, value in shapes_dict.items():
-    print(f"{key}: {value}")
