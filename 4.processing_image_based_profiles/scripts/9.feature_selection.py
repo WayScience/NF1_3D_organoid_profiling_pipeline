@@ -46,6 +46,15 @@
 #   feature set is applied back to the full (all-treatment) dataset. This ensures
 #   feature selection is not biased by the full treatment distribution.
 # - QC-flagged rows are not filtered here; that is left to downstream analysis.
+# - `drop_outliers` (`outlier_cutoff=100`) was added per
+#   [#163](https://github.com/WayScience/NF1_3D_organoid_profiling_pipeline/issues/163).
+# - `variance_threshold` and `frequency_threshold` are two distinct pycytominer
+#   operations (pycytominer>=1.7): `variance_threshold` only uses `min_variance`
+#   (left at pycytominer's own default), while `freq_cut`/`unique_cut` are consumed
+#   by `frequency_threshold` specifically. The previous operation list included only
+#   `"variance_threshold"`, so `freq_cut`/`unique_cut` were silently unused --
+#   confirmed directly (a synthetic low-frequency feature survived feature selection
+#   under the old config). `"frequency_threshold"` is now included explicitly.
 
 # In[1]:
 
@@ -69,7 +78,10 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
+# NOTE: previously this line unconditionally overrode bandicoot_check()
+# with root_dir, meaning bandicoot was never actually used even when
+# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
+# takes effect.
 
 
 # In[2]:
@@ -81,7 +93,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0014_T1"
+    patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -95,18 +107,25 @@ sc_normalized_path = pathlib.Path(
 organoid_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/organoid_norm.parquet"
 ).resolve(strict=True)
+# The 4 deep-learning inputs are optional: a dataset with no deep-learning
+# features (e.g. ZEDProfiler-only) never has 8.normalization.py produce these
+# files, so each is only resolved here if it actually exists.
 sc_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_sc_norm.parquet"
-).resolve(strict=True)
+).resolve()
 organoid_sc_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_organoid_norm.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_sammed_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/sammed_nucleocentric_norm.parquet"
-).resolve(strict=True)
+).resolve()
 nucleocentric_morphem_normalized_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/5.normalized_profiles/nucleocentric_morphem_norm.parquet"
-).resolve(strict=True)
+).resolve()
+has_sc_sammed = sc_sammed_normalized_path.exists()
+has_organoid_sammed = organoid_sc_sammed_normalized_path.exists()
+has_nucleocentric_sammed = nucleocentric_sammed_normalized_path.exists()
+has_nucleocentric_morphem = nucleocentric_morphem_normalized_path.exists()
 
 
 # output path
@@ -138,29 +157,8 @@ organoid_fs_output_path.parent.mkdir(parents=True, exist_ok=True)
 # read in the data
 sc_normalized = pd.read_parquet(sc_normalized_path)
 organoid_normalized = pd.read_parquet(organoid_normalized_path)
-sc_sammed_normalized = pd.read_parquet(sc_sammed_normalized_path)
-organoid_sc_sammed_normalized = pd.read_parquet(organoid_sc_sammed_normalized_path)
-nucleocentric_sammed_normalized = pd.read_parquet(nucleocentric_sammed_normalized_path)
-nucleocentric_morphem_normalized = pd.read_parquet(
-    nucleocentric_morphem_normalized_path
-)
-
 print(f"SC normalized loaded. Shape: {sc_normalized.shape}")
 print(f"Organoid normalized loaded. Shape: {organoid_normalized.shape}")
-print(f"SAMMed3D SC normalized loaded. Shape: {sc_sammed_normalized.shape}")
-print(
-    f"SAMMed3D organoid normalized loaded. Shape: {organoid_sc_sammed_normalized.shape}"
-)
-print(
-    f"SAMMed3D nucleocentric normalized loaded. Shape: {nucleocentric_sammed_normalized.shape}"
-)
-print(
-    f"morphem nucleocentric normalized loaded. Shape: {nucleocentric_morphem_normalized.shape}"
-)
-
-
-# In[5]:
-
 
 run_dict = {
     "sc_normalized": {
@@ -171,43 +169,79 @@ run_dict = {
         "df": organoid_normalized,
         "output_path": organoid_fs_output_path,
     },
-    "sc_sammed": {
-        "df": sc_sammed_normalized,
-        "output_path": sc_sammed_feature_selected_output_path,
-    },
-    "organoid_sc_sammed": {
-        "df": organoid_sc_sammed_normalized,
-        "output_path": organoid_sc_sammed_feature_selected_output_path,
-    },
-    "nucleocentric_sammed": {
-        "df": nucleocentric_sammed_normalized,
-        "output_path": nucleocentric_sammed_feature_selected_output_path,
-    },
-    "nucleocentric_chammi": {
-        "df": nucleocentric_morphem_normalized,
-        "output_path": nucleocentric_morphem_feature_selected_output_path,
-    },
 }
 
+# The 4 deep-learning profile types are only added to run_dict (and therefore
+# feature-selected below) when this dataset actually produced them -- absent
+# for datasets with no deep-learning features (e.g. ZEDProfiler-only).
+if has_sc_sammed:
+    sc_sammed_normalized = pd.read_parquet(sc_sammed_normalized_path)
+    print(f"SAMMed3D SC normalized loaded. Shape: {sc_sammed_normalized.shape}")
+    run_dict["sc_sammed"] = {
+        "df": sc_sammed_normalized,
+        "output_path": sc_sammed_feature_selected_output_path,
+    }
+if has_organoid_sammed:
+    organoid_sc_sammed_normalized = pd.read_parquet(organoid_sc_sammed_normalized_path)
+    print(
+        f"SAMMed3D organoid normalized loaded. Shape: {organoid_sc_sammed_normalized.shape}"
+    )
+    run_dict["organoid_sc_sammed"] = {
+        "df": organoid_sc_sammed_normalized,
+        "output_path": organoid_sc_sammed_feature_selected_output_path,
+    }
+if has_nucleocentric_sammed:
+    nucleocentric_sammed_normalized = pd.read_parquet(
+        nucleocentric_sammed_normalized_path
+    )
+    print(
+        f"SAMMed3D nucleocentric normalized loaded. Shape: {nucleocentric_sammed_normalized.shape}"
+    )
+    run_dict["nucleocentric_sammed"] = {
+        "df": nucleocentric_sammed_normalized,
+        "output_path": nucleocentric_sammed_feature_selected_output_path,
+    }
+if has_nucleocentric_morphem:
+    nucleocentric_morphem_normalized = pd.read_parquet(
+        nucleocentric_morphem_normalized_path
+    )
+    print(
+        f"morphem nucleocentric normalized loaded. Shape: {nucleocentric_morphem_normalized.shape}"
+    )
+    run_dict["nucleocentric_chammi"] = {
+        "df": nucleocentric_morphem_normalized,
+        "output_path": nucleocentric_morphem_feature_selected_output_path,
+    }
 
-# In[6]:
+
+# In[5]:
 
 
 # Feature selection operations applied in order:
-#   drop_na_columns      — remove features with >na_cutoff fraction of NaN values
-#   blocklist            — remove features on the pycytominer blocklist (known noisy/artifactual)
+#   drop_na_columns       — remove features with >na_cutoff fraction of NaN values
+#   drop_outliers         — remove features whose min or max absolute value exceeds
+#                         outlier_cutoff (see WayScience/NF1_3D_organoid_profiling_pipeline#163)
+#   blocklist             — remove features on the pycytominer blocklist (known noisy/artifactual)
+#   variance_threshold    — remove near-constant features (variance below pycytominer's
+#                         own min_variance default; not overridden here)
+#   frequency_threshold   — remove features with a large most-common/second-most-common
+#                         value gap (freq_cut) or too few unique values relative to
+#                         sample count (unique_cut, left at pycytominer's own default)
 #   correlation_threshold — remove one feature from each pair with Pearson r > corr_threshold
-#   variance_threshold   — remove near-constant features (low frequency or unique value ratio)
 feature_select_ops = [
     "drop_na_columns",
+    "drop_outliers",
     "blocklist",
+    "variance_threshold",
+    "frequency_threshold",
     "correlation_threshold",  # comment out to remove correlation thresholding
-    "variance_threshold",  # comment out to remove variance thresholding
 ]
 na_cutoff = 0.05  # drop features with >5% NaN
-corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.95
-freq_cut = 0.05  # variance threshold: most-common / second-most-common value ratio
-unique_cut = 0.05  # variance threshold: minimum fraction of unique values
+outlier_cutoff = 100  # drop features whose min/max absolute value exceeds this
+corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.90
+freq_cut = 0.05  # frequency threshold: most-common / second-most-common value ratio
+# unique_cut (frequency_threshold) and min_variance (variance_threshold) are
+# intentionally left at pycytominer's own defaults (0.01 and 1e-6) -- not overridden.
 
 
 # ## Feature select the profiles
@@ -218,7 +252,7 @@ unique_cut = 0.05  # variance threshold: minimum fraction of unique values
 # 2. The retained feature set is applied back to the **full dataset** (all treatments),
 #    so no treatment rows are dropped from the output.
 
-# In[7]:
+# In[6]:
 
 
 for profile_name in run_dict.keys():
@@ -237,9 +271,9 @@ for profile_name in run_dict.keys():
         operation=feature_select_ops,
         features=features_columns,
         na_cutoff=na_cutoff,
+        outlier_cutoff=outlier_cutoff,
         corr_threshold=corr_threshold,
         freq_cut=freq_cut,
-        unique_cut=unique_cut,
         samples="(Metadata_Experiment_Treatment == 'DMSO' and Metadata_Experiment_Dose == 1) or (Metadata_Experiment_Treatment == 'Staurosporine' and Metadata_Experiment_Dose == 10)",
         output_file=output_path,
         output_type="parquet",

@@ -25,7 +25,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
 
 
 # In[2]:

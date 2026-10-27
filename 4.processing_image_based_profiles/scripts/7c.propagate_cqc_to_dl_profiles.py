@@ -70,7 +70,10 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
+# NOTE: previously this line unconditionally overrode bandicoot_check()
+# with root_dir, meaning bandicoot was never actually used even when
+# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
+# takes effect.
 
 
 # In[2]:
@@ -82,13 +85,37 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T2"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
 # ## Functions
 
 # In[3]:
+
+
+def assert_unique_key(df, name, cols=None):
+    """Raise if JOIN_KEY is not unique in df, reporting the offending keys and
+    which columns differ between the duplicated rows. Rows with a null in any
+    JOIN_KEY column can't join to anything, so they're excluded from the check."""
+    df = df if cols is None else df[cols]
+    df = df.dropna(subset=JOIN_KEY)
+    dup_mask = df.duplicated(subset=JOIN_KEY, keep=False)
+    if not dup_mask.any():
+        return
+    dups = df[dup_mask].sort_values(JOIN_KEY)
+    differing = [
+        c
+        for c in dups.columns
+        if c not in JOIN_KEY
+        and dups.groupby(JOIN_KEY, dropna=False)[c].nunique(dropna=False).gt(1).any()
+    ]
+    raise AssertionError(
+        f"{name}: join key is not unique — {df.duplicated(subset=JOIN_KEY).sum()} "
+        f"extra rows across {dups.groupby(JOIN_KEY, dropna=False).ngroups} keys. "
+        f"Columns differing between duplicates: {differing or 'none (exact duplicates)'}.\n"
+        f"{dups[JOIN_KEY + differing[:5]].head(10).to_string()}"
+    )
 
 
 def propagate_cqc(
@@ -117,26 +144,19 @@ def propagate_cqc(
         If True, assert that every target row has a matching source row.
         Set to False for sammed_organoid where unmatched rows are expected.
     """
-    source_key_df = source_df[JOIN_KEY + cqc_cols].copy()
+    # Null-key source rows can't be joined (pandas would otherwise match NaN to NaN)
+    source_key_df = source_df[JOIN_KEY + cqc_cols].dropna(subset=JOIN_KEY).copy()
 
-    # Assert join key is unique in source (no duplicate object IDs)
-    dupes = source_key_df.duplicated(subset=JOIN_KEY)
-    assert not dupes.any(), (
-        f"{source_name}: join key is not unique — {dupes.sum()} duplicate rows found. "
-        f"CQC propagation requires a 1:1 key."
-    )
-
-    # Assert join key is unique in target
-    dupes_target = target_df.duplicated(subset=JOIN_KEY)
-    assert not dupes_target.any(), (
-        f"{target_name}: join key is not unique — {dupes_target.sum()} duplicate rows found."
-    )
+    # Assert join key is unique (1:1) among non-null keys in both source and target;
+    # null-key target rows are kept and end up unmatched (NaN CQC flags)
+    assert_unique_key(source_df, source_name, cols=JOIN_KEY + cqc_cols)
+    assert_unique_key(target_df, target_name)
 
     merged = target_df.merge(
         source_key_df,
         on=JOIN_KEY,
         how="left",
-        validate="1:1",
+        validate="m:1",
     )
 
     # Check for rows in target with no matching source row
@@ -185,13 +205,43 @@ qc_dir.mkdir(parents=True, exist_ok=True)
 sc_cqc_path = (qc_dir / "sc_flagged_outliers.parquet").resolve(strict=True)
 organoid_cqc_path = (qc_dir / "organoid_flagged_outliers.parquet").resolve(strict=True)
 
-# DL profiles to annotate
-sammed_sc_path = (anno_dir / "sammed_sc_anno.parquet").resolve(strict=True)
-sammed_organoid_path = (anno_dir / "sammed_organoid_anno.parquet").resolve(strict=True)
-nucleocentric_sammed_path = (anno_dir / "nucleocentric_sammed_anno.parquet").resolve(
-    strict=True
-)
-nucleocentric_morphem_path = (anno_dir / "nucleocentric_morphem_anno.parquet").resolve(
+# DL profiles to annotate. This entire step exists only to propagate flags onto
+# deep-learning profiles, so a dataset with no deep-learning features at all
+# (e.g. ZEDProfiler-only, where 6.annotation.py never writes any of these 4
+# files for any patient) has nothing for this step to do -- skip it cleanly
+# rather than crashing on a missing input.
+_dl_anno_paths = {
+    "sammed_sc": anno_dir / "sammed_sc_anno.parquet",
+    "sammed_organoid": anno_dir / "sammed_organoid_anno.parquet",
+    "nucleocentric_sammed": anno_dir / "nucleocentric_sammed_anno.parquet",
+    "nucleocentric_morphem": anno_dir / "nucleocentric_morphem_anno.parquet",
+}
+_missing_dl_anno = sorted(name for name, p in _dl_anno_paths.items() if not p.exists())
+if len(_missing_dl_anno) == len(_dl_anno_paths):
+    print(
+        f"No deep-learning annotated profiles found under {anno_dir} -- skipping "
+        "7c entirely (this dataset has no deep-learning features to propagate "
+        "CQC flags onto)."
+    )
+    raise SystemExit(0)
+if _missing_dl_anno:
+    # Partial presence is reachable: 6.annotation.py writes each of the four
+    # outputs under its own independent has_* flag (e.g. a dataset with
+    # SAMMed3D SC/organoid features but no nucleocentric data produces only
+    # 2 of the 4 files). This script's downstream logic assumes all four are
+    # present, so fail loudly with the specific missing files rather than
+    # letting resolve(strict=True) below raise an unhelpful bare
+    # FileNotFoundError for whichever one happens first.
+    raise FileNotFoundError(
+        f"Partial deep-learning annotated profiles under {anno_dir}: "
+        f"missing {_missing_dl_anno}. 7c requires all four to be present "
+        "(or none)."
+    )
+
+sammed_sc_path = _dl_anno_paths["sammed_sc"].resolve(strict=True)
+sammed_organoid_path = _dl_anno_paths["sammed_organoid"].resolve(strict=True)
+nucleocentric_sammed_path = _dl_anno_paths["nucleocentric_sammed"].resolve(strict=True)
+nucleocentric_morphem_path = _dl_anno_paths["nucleocentric_morphem"].resolve(
     strict=True
 )
 
@@ -300,7 +350,7 @@ nucleocentric_morphem_flagged = propagate_cqc(
 # were filtered by CellProfiler QC upstream but are retained in the SAM-Med
 # embeddings. They will have NaN CQC flags in the output.
 
-# In[8]:
+# In[ ]:
 
 
 sammed_organoid_flagged = propagate_cqc(
@@ -325,7 +375,7 @@ if unmatched_mask.any():
 
 # ## Write outputs
 
-# In[9]:
+# In[ ]:
 
 
 sammed_sc_flagged.to_parquet(sammed_sc_output_path, index=False)
