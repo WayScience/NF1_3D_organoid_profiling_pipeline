@@ -54,7 +54,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
 
 
 # In[2]:
@@ -67,10 +66,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    # patient = "NF0055_T1"
-    # well_fov = "D5-1"
+    well_fov = "C10-1"
     patient = "NF0014_T1"
-    well_fov = "C4-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -86,6 +83,13 @@ destination_sc_parquet_file = pathlib.Path(
 destination_organoid_parquet_file = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
 ).resolve()
+destination_sc_sammed_parquet_file = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_sammed_profiles_{well_fov}.parquet"
+).resolve()
+destination_organoid_sammed_parquet_file = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_sammed_profiles_{well_fov}.parquet"
+).resolve()
+
 destination_nucleocentric_parquet_file = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/nucleocentric_profiles_{well_fov}.parquet"
 ).resolve()
@@ -174,9 +178,34 @@ except Exception as e:
             ]
         )
 
-        merged_df.to_parquet(destination_sc_parquet_file, index=False)
+        sc_sammed_columns = [x for x in merged_df.columns if "sammed" in x.lower()]
+        sc_sammed_columns += ["object_id", "image_set"]
+        organoid_sammed_columns = [
+            x for x in organoid_df.columns if "sammed" in x.lower()
+        ]
+        organoid_sammed_columns += ["object_id", "image_set"]
+
+        single_cell_handcrafted_columns = [
+            x for x in merged_df.columns if "sammed" not in x.lower()
+        ]
+        organoid_handcrafted_columns = [
+            x for x in organoid_df.columns if "sammed" not in x.lower()
+        ]
+
+        sc_handcrafted_df = merged_df[single_cell_handcrafted_columns].copy()
+        sc_sammed_df = merged_df[sc_sammed_columns].copy()
+        organoid_handcrafted_df = organoid_df[organoid_handcrafted_columns].copy()
+        organoid_sammed_df = organoid_df[organoid_sammed_columns].copy()
+
+        sc_handcrafted_df.to_parquet(destination_sc_parquet_file, index=False)
+        sc_sammed_df.to_parquet(destination_sc_sammed_parquet_file, index=False)
+        organoid_handcrafted_df.to_parquet(
+            destination_organoid_parquet_file, index=False
+        )
+        organoid_sammed_df.to_parquet(
+            destination_organoid_sammed_parquet_file, index=False
+        )
         nucleocentric_df.to_parquet(destination_nucleocentric_parquet_file, index=False)
-        organoid_df.to_parquet(destination_organoid_parquet_file, index=False)
     # exit the script after writing the empty DataFrames
     sys.exit(0)
 
@@ -219,34 +248,40 @@ with duckdb.connect() as con:
     """).df()
 
 
-# In[7]:
+# In[ ]:
 
 
-# save the organoid data as parquet
-print(f"Final organoid data shape: {organoid_table.shape}")
-organoid_table.to_parquet(destination_organoid_parquet_file, index=False)
-organoid_table.head()
+sc_sammed_columns = [x for x in merged_df.columns if "sammed" in x.lower()]
+sc_sammed_columns += ["object_id", "image_set"]
+organoid_sammed_columns = [x for x in organoid_table.columns if "sammed" in x.lower()]
+organoid_sammed_columns += ["object_id", "image_set"]
+
+single_cell_handcrafted_columns = [
+    x for x in merged_df.columns if "sammed" not in x.lower()
+]
+organoid_handcrafted_columns = [
+    x for x in organoid_table.columns if "sammed" not in x.lower()
+]
+
+sc_handcrafted_df = merged_df[single_cell_handcrafted_columns].copy()
+sc_sammed_df = merged_df[sc_sammed_columns].copy()
+organoid_handcrafted_df = organoid_table[organoid_handcrafted_columns].copy()
+organoid_sammed_df = organoid_table[organoid_sammed_columns].copy()
+
+sc_sammed_df.to_parquet(destination_sc_sammed_parquet_file, index=False)
+organoid_sammed_df.to_parquet(destination_organoid_sammed_parquet_file, index=False)
+nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
+print(
+    f"Successfully merged and saved single-cell and organoid profiles for {well_fov} of {patient}."
+)
+print(f"Single cell handcrafted profiles shape: {sc_handcrafted_df.shape}")
+print(f"Single cell sammed profiles shape: {sc_sammed_df.shape}")
+print(f"Organoid handcrafted profiles shape: {organoid_handcrafted_df.shape}")
+print(f"Organoid sammed profiles shape: {organoid_sammed_df.shape}")
+print(f"Nucleocentric profiles shape: {nucleocentric_table.shape}")
 
 
 # In[8]:
-
-
-print(f"Final merged single cell dataframe shape: {merged_df.shape}")
-# save the sc data as parquet
-merged_df.to_parquet(destination_sc_parquet_file, index=False)
-merged_df.head()
-
-
-# In[9]:
-
-
-print(f"Final nucleocentric dataframe shape: {nucleocentric_table.shape}")
-# save the nucleocentric data as parquet
-nucleocentric_table.to_parquet(destination_nucleocentric_parquet_file, index=False)
-nucleocentric_table.head()
-
-
-# In[10]:
 
 
 # if patient=NF0014_T1 and well_fov=C4-1, then output zero's out dfs to DB_structures

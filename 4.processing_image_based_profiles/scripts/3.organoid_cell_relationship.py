@@ -12,10 +12,12 @@
 # is typically submitted as a child job via the SLURM scheduler.
 #
 # ## Inputs
-# Three parquet files from `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
-# - `sc_profiles_{well_fov}.parquet` — merged Nuclei + Cell + Cytoplasm features
-# - `organoid_profiles_{well_fov}.parquet` — organoid features
-# - `nucleocentric_profiles_{well_fov}.parquet` — nucleocentric features
+# Parquet files from `data/{patient}/image_based_profiles/0.converted_profiles/{well_fov}/`:
+# - `sc_profiles_{well_fov}.parquet` — merged Nuclei + Cell + Cytoplasm features (required)
+# - `organoid_profiles_{well_fov}.parquet` — organoid features (required)
+# - `nucleocentric_profiles_{well_fov}.parquet` — nucleocentric features (optional --
+#   treated as empty if this file doesn't exist, since not every pipeline that feeds
+#   this script produces deep-learning Nucleocentric data)
 #
 # ## Outputs
 # Three enriched parquet files written to `data/{patient}/image_based_profiles/1.related_profiles/{well_fov}/`:
@@ -33,6 +35,18 @@
 #   matrix (applied automatically when cell count is low).
 # - Shell classification divides cells into 4 concentric shells from organoid centroid
 #   outward, requiring at least 3 cells per shell.
+# - Object identifiers: accepts either the older CellProfiler-era pipeline's own
+#   `object_id` column (produced by IBP steps 00/0a/1/2) or ZEDProfiler's native
+#   `Metadata_Object_ObjectID`, normalized to `object_id` right after loading (see
+#   the data-loading cell below) rather than requiring a caller to rename it first.
+#   `image_set` is set directly from this script's own `well_fov` argument rather
+#   than required as an input column, since every row in a given input file
+#   belongs to the single well-FOV this script is invoked for.
+# - `nucleocentric_profiles_{well_fov}.parquet` is optional: if it doesn't exist,
+#   an empty dataframe is used instead of requiring a caller to manufacture a
+#   placeholder file. The output nucleocentric_profiles_{well_fov}_related.parquet
+#   is still always written (empty, if the input was empty) for schema consistency
+#   with the other two output files.
 
 # In[1]:
 
@@ -61,7 +75,6 @@ root_dir, in_notebook = init_notebook()
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
-profile_base_dir = root_dir
 
 
 # In[2]:
@@ -75,7 +88,7 @@ if not in_notebook:
 
 else:
     patient = "NF0014_T1"
-    well_fov = "C10-2"
+    well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -85,72 +98,127 @@ else:
 
 
 # input paths
-sc_profile_path = pathlib.Path(
+sc_profile_handcrafted_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
-organoid_profile_path = pathlib.Path(
+organoid_profile_handcrafted_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_profiles_{well_fov}.parquet"
 ).resolve(strict=True)
+
+sc_profile_sammed_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/sc_sammed_profiles_{well_fov}.parquet"
+).resolve(strict=True)
+organoid_profile_sammed_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/organoid_sammed_profiles_{well_fov}.parquet"
+).resolve(strict=True)
+# Not strict=True like the other two inputs: ZEDProfiler produces no
+# Nucleocentric (deep-learning) features at all, so a caller without any
+# real Nucleocentric data has nothing to put here -- see the loading cell
+# below, which falls back to an empty dataframe when this file is absent
+# rather than requiring every caller to manufacture a placeholder file.
 nucleocentric_profile_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/0.converted_profiles/{well_fov}/nucleocentric_profiles_{well_fov}.parquet"
-).resolve(strict=True)
+).resolve()
 # output paths
-sc_profile_output_path = pathlib.Path(
+sc_profile_handcrafted_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/sc_profiles_{well_fov}_related.parquet"
 ).resolve()
-organoid_profile_output_path = pathlib.Path(
+organoid_profile_handcrafted_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/organoid_profiles_{well_fov}_related.parquet"
+).resolve()
+sc_profile_sammed_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/sc_profiles_{well_fov}_sammed_related.parquet"
+).resolve()
+organoid_profile_sammed_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/organoid_profiles_{well_fov}_sammed_related.parquet"
 ).resolve()
 nucleocentric_profile_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles/{well_fov}/nucleocentric_profiles_{well_fov}_related.parquet"
 ).resolve()
-sc_profile_output_path.parent.mkdir(parents=True, exist_ok=True)
+sc_profile_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 # In[4]:
 
 
-sc_profile_df = pd.read_parquet(sc_profile_path)
-nucleocentric_df = pd.read_parquet(nucleocentric_profile_path)
-organoid_profile_df = pd.read_parquet(organoid_profile_path)
+sc_profile_df = pd.read_parquet(sc_profile_handcrafted_path)
+organoid_profile_df = pd.read_parquet(organoid_profile_handcrafted_path)
+sc_profile_sammed_df = pd.read_parquet(sc_profile_sammed_path)
+organoid_profile_sammed_df = pd.read_parquet(organoid_profile_sammed_path)
+# ZEDProfiler-fed callers have no real Nucleocentric data to provide --
+# fall back to an empty frame rather than requiring one. object_id is
+# set here so the merge further down (which joins on object_id +
+# image_set) has something to join against; image_set is set
+# unconditionally for both dataframes just below regardless.
+if nucleocentric_profile_path.exists():
+    nucleocentric_df = pd.read_parquet(nucleocentric_profile_path)
+else:
+    nucleocentric_df = pd.DataFrame(columns=["object_id"])
+
+# Normalize the object identifier column name: ZEDProfiler's own
+# Metadata_Object_ObjectID is accepted directly, same object concept as
+# the older CellProfiler-era pipeline's own `object_id` -- renamed once,
+# here, rather than requiring a caller to disguise ZEDProfiler's column
+# as the older convention before handoff. A no-op wherever `object_id`
+# is already present.
+for _df in (sc_profile_df, organoid_profile_df, nucleocentric_df):
+    if "object_id" not in _df.columns and "Metadata_Object_ObjectID" in _df.columns:
+        _df.rename(columns={"Metadata_Object_ObjectID": "object_id"}, inplace=True)
+
+# `image_set` is just this well-FOV's own label -- this script already
+# has it as `well_fov`, so set it directly rather than requiring it as an
+# input column. Both dataframes are scoped to this single well-FOV
+# already, so every row gets the same value.
+sc_profile_df["image_set"] = well_fov
+nucleocentric_df["image_set"] = well_fov
+
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
-print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 print(f"Organoid profile shape: {organoid_profile_df.shape}")
+print(f"Single-cell sammed profile shape: {sc_profile_sammed_df.shape}")
+print(f"Organoid sammed profile shape: {organoid_profile_sammed_df.shape}")
+print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 
 
 # In[5]:
 
 
-nucleocentric_df
+x_y_z_sc_colnames = [
+    x
+    for x in sc_profile_df.columns
+    # "area": CellProfiler-era naming (*_AreaSizeShape_*). "volumesizeshape":
+    # ZEDProfiler's own naming (*_VolumeSizeShape_*) for the same measurement
+    # family -- accepted directly so ZEDProfiler-sourced data needs no
+    # column renaming to work with this notebook.
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and "center" in x.lower()
+    and "nuclei" in x.lower()
+]
+x_y_z_sc_colnames
 
 
 # In[6]:
 
 
-x_y_z_sc_colnames = [
-    x
-    for x in sc_profile_df.columns
-    if "area" in x.lower() and "center" in x.lower() and "nuclei" in x.lower()
-]
-x_y_z_sc_colnames
-
-
-# In[7]:
-
-
 organoid_bbox_colnames = [
     x
     for x in organoid_profile_df.columns
-    if "area" in x.lower() and ("min" in x.lower() or "max" in x.lower())
+    # "area" (CellProfiler) or "volumesizeshape" (ZEDProfiler) -- see the
+    # x_y_z_sc_colnames cell above for why both are accepted.
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and ("min" in x.lower() or "max" in x.lower())
 ]
 organoid_bbox_colnames = sorted(organoid_bbox_colnames)
 
 # When sorted alphabetically, the bbox column names fall in this order:
 #   [0] = *MaxX, [1] = *MaxY, [2] = *MaxZ, [3] = *MinX, [4] = *MinY, [5] = *MinZ
-# This ordering is assumed in the bbox tuple construction below.
+# This ordering is assumed in the bbox tuple construction below. Holds
+# regardless of whether the matched family is AreaSizeShape or
+# VolumeSizeShape: the family name prefix is identical across all six
+# candidates, so sort order is determined only by the trailing Max/Min +
+# axis letter.
 
 
-# In[8]:
+# In[7]:
 
 
 # Initialize ParentOrganoid to -1 (sentinel for unassigned cells).
@@ -209,7 +277,7 @@ print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
 
 # ### Add single-cell counts for each organoid
 
-# In[9]:
+# In[8]:
 
 
 organoid_sc_counts = (
@@ -230,12 +298,36 @@ sc_count = organoid_profile_df.pop("OrganoidSingleCellCount")
 organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 
 
+# ### Carry the `ParentOrganoid` assignment and spatial features over to the sammed profiles, so that the same cells are assigned to the same organoids in both the
+
+# In[9]:
+
+
+organoid_profile_sammed_df = organoid_profile_sammed_df.merge(
+    organoid_profile_df[["object_id", "OrganoidSingleCellCount"]],
+    left_on="object_id",
+    right_on="object_id",
+    how="left",
+)
+
+
+# In[10]:
+
+
+sc_profile_sammed_df = sc_profile_sammed_df.merge(
+    sc_profile_df[["object_id", "ParentOrganoid"]],
+    left_on="object_id",
+    right_on="object_id",
+    how="left",
+)
+
+
 # ### Empty dataframe fallbacks
 #
 # If either the organoid or SC profile is empty for this well-FOV, a placeholder row
 # is inserted so that downstream merges always find consistent columns.
 
-# In[10]:
+# In[11]:
 
 
 # replace NaN with 0 for organoids that have no assigned cells
@@ -245,7 +337,7 @@ organoid_profile_df["OrganoidSingleCellCount"] = (
 organoid_profile_df.head()
 
 
-# In[11]:
+# In[12]:
 
 
 if organoid_profile_df.empty:
@@ -257,13 +349,13 @@ if organoid_profile_df.empty:
     pass
 
 
-# In[12]:
+# In[13]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
 
 
-# In[13]:
+# In[14]:
 
 
 if sc_profile_df.empty:
@@ -272,13 +364,13 @@ if sc_profile_df.empty:
     sc_profile_df["image_set"] = well_fov
 
 
-# In[14]:
+# In[15]:
 
 
 nucleocentric_df
 
 
-# In[15]:
+# In[16]:
 
 
 # Propagate ParentOrganoid to nucleocentric profiles.
@@ -292,12 +384,6 @@ nucleocentric_df = pd.merge(
 )
 
 
-# In[16]:
-
-
-nucleocentric_df
-
-
 # ## Get single cell and organoid relationships and spatial distributions
 
 # In[17]:
@@ -306,12 +392,15 @@ nucleocentric_df
 x_y_z_organoid_centroid_colnames = [
     x
     for x in organoid_profile_df.columns
-    if "area" in x.lower() and "center" in x.lower()
+    # "area" (CellProfiler) or "volumesizeshape" (ZEDProfiler) -- see the
+    # x_y_z_sc_colnames cell above for why both are accepted.
+    if ("area" in x.lower() or "volumesizeshape" in x.lower()) and "center" in x.lower()
 ]
 x_y_z_organoid_bbox_colnames = [
     x
     for x in organoid_profile_df.columns
-    if "area" in x.lower() and ("min" in x.lower() or "max" in x.lower())
+    if ("area" in x.lower() or "volumesizeshape" in x.lower())
+    and ("min" in x.lower() or "max" in x.lower())
 ]
 
 
@@ -441,14 +530,14 @@ sc_profile_with_shells_df = pd.merge(
 # In[21]:
 
 
-organoid_profile_df.to_parquet(organoid_profile_output_path, index=False)
+organoid_profile_df.to_parquet(organoid_profile_handcrafted_output_path, index=False)
 organoid_profile_df.head()
 
 
 # In[22]:
 
 
-sc_profile_with_shells_df.to_parquet(sc_profile_output_path, index=False)
+sc_profile_with_shells_df.to_parquet(sc_profile_handcrafted_output_path, index=False)
 sc_profile_with_shells_df.head()
 
 
@@ -457,3 +546,17 @@ sc_profile_with_shells_df.head()
 
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
 nucleocentric_df.head()
+
+
+# In[24]:
+
+
+sc_profile_sammed_df.to_parquet(sc_profile_sammed_output_path, index=False)
+sc_profile_sammed_df.head()
+
+
+# In[25]:
+
+
+organoid_profile_sammed_df.to_parquet(organoid_profile_sammed_output_path, index=False)
+organoid_profile_sammed_df.head()

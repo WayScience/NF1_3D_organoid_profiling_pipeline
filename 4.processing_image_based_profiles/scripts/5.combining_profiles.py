@@ -52,7 +52,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-profile_base_dir = root_dir
 
 
 # In[2]:
@@ -64,7 +63,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0030_T1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -76,16 +75,22 @@ profiles_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/1.related_profiles"
 ).resolve(strict=True)
 # output_paths
-sc_merged_output_path = pathlib.Path(
+sc_merged_handcrafted_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/sc.parquet"
 ).resolve()
-organoid_merged_output_path = pathlib.Path(
+organoid_merged_handcrafted_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/organoid.parquet"
+).resolve()
+sc_merged_sammed_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/sc_sammed.parquet"
+).resolve()
+organoid_merged_sammed_output_path = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/organoid_sammed.parquet"
 ).resolve()
 nucleocentric_profile_output_path = pathlib.Path(
     f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/2.combined_profiles/nucleocentric.parquet"
 ).resolve()
-organoid_merged_output_path.parent.mkdir(parents=True, exist_ok=True)
+organoid_merged_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 # In[4]:
@@ -102,11 +107,30 @@ profiles = list(profiles_path.rglob("*/*.parquet"))
 
 # Split files by profile type using filename prefix.
 # Expected prefixes: 'sc_', 'organoid_', 'nucleocentric_'.
-sc_profiles = [str(x) for x in profiles if x.name.startswith("sc_")]
-organoid_profiles = [str(x) for x in profiles if x.name.startswith("organoid_")]
+sc_profiles = [
+    str(x) for x in profiles if x.name.startswith("sc_") and "sammed" not in x.name
+]
+organoid_profiles = [
+    str(x)
+    for x in profiles
+    if x.name.startswith("organoid_") and "sammed" not in x.name
+]
+sc_sammed_profiles = [
+    str(x) for x in profiles if x.name.startswith("sc_") and "sammed" in x.name
+]
+organoid_sammed_profiles = [
+    str(x) for x in profiles if x.name.startswith("organoid_") and "sammed" in x.name
+]
 nucleocentric_profiles = [
     str(x) for x in profiles if x.name.startswith("nucleocentric_")
 ]
+print(
+    len(sc_profiles),
+    len(organoid_profiles),
+    len(sc_sammed_profiles),
+    len(organoid_sammed_profiles),
+    len(nucleocentric_profiles),
+)
 
 
 # In[6]:
@@ -116,7 +140,7 @@ for x in nucleocentric_profiles:
     df = pd.read_parquet(x)
     if df.isnull().any().any():
         print(f"Null values found in {x}")
-df
+print(df.shape)
 
 
 # In[7]:
@@ -136,6 +160,12 @@ with duckdb.connect() as conn:
     ).df()
     nucleocentric_profile = conn.execute(
         f"SELECT * FROM read_parquet({nucleocentric_profiles}, union_by_name=true)"
+    ).df()
+    sc_sammed_profile = conn.execute(
+        f"SELECT * FROM read_parquet({sc_sammed_profiles}, union_by_name=true)"
+    ).df()
+    organoid_sammed_profile = conn.execute(
+        f"SELECT * FROM read_parquet({organoid_sammed_profiles}, union_by_name=true)"
     ).df()
 
 print(f"Single-cell profiles concatenated. Shape: {sc_profile.shape}")
@@ -164,6 +194,18 @@ organoid_profile = organoid_profile.drop(columns=bf_cols_organoid)
 print(
     f"Organoid: dropped {len(bf_cols_organoid)} BF columns. Shape: {organoid_profile.shape}"
 )
+bf_cols_sc_sammed = [col for col in sc_sammed_profile.columns if "BF" in col]
+sc_sammed_profile = sc_sammed_profile.drop(columns=bf_cols_sc_sammed)
+print(
+    f"SC Sammed: dropped {len(bf_cols_sc_sammed)} BF columns. Shape: {sc_sammed_profile.shape}"
+)
+bf_cols_organoid_sammed = [
+    col for col in organoid_sammed_profile.columns if "BF" in col
+]
+organoid_sammed_profile = organoid_sammed_profile.drop(columns=bf_cols_organoid_sammed)
+print(
+    f"Organoid Sammed: dropped {len(bf_cols_organoid_sammed)} BF columns. Shape: {organoid_sammed_profile.shape}"
+)
 
 bf_cols_nucleocentric = [col for col in nucleocentric_profile.columns if "BF" in col]
 nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric)
@@ -175,12 +217,8 @@ print(
 # In[9]:
 
 
-sc_profile.to_parquet(sc_merged_output_path, index=False)
-organoid_profile.to_parquet(organoid_merged_output_path, index=False)
+sc_profile.to_parquet(sc_merged_handcrafted_output_path, index=False)
+organoid_profile.to_parquet(organoid_merged_handcrafted_output_path, index=False)
+sc_sammed_profile.to_parquet(sc_merged_sammed_output_path, index=False)
+organoid_sammed_profile.to_parquet(organoid_merged_sammed_output_path, index=False)
 nucleocentric_profile.to_parquet(nucleocentric_profile_output_path, index=False)
-
-
-# In[10]:
-
-
-nucleocentric_profile
