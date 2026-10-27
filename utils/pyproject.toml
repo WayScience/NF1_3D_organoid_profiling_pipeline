@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [[tool.uv.index]]
-name = "pytorch-cu118"
-url = "https://download.pytorch.org/whl/cu118"
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
 explicit = true
 
 [[tool.uv.index]]
@@ -17,15 +17,14 @@ environments = [
 ]
 
 [tool.uv.sources]
-torch = { index = "pytorch-cu118" }
-torchvision = { index = "pytorch-cu118" }
-torchaudio = { index = "pytorch-cu118" }
+torch = { index = "pytorch-cu132" }
+torchvision = { index = "pytorch-cu132" }
 
 [project]
 name = "image-analysis-3d"
 version = "0.0.1"
 description = "Utility modules for the NF1 3D organoid profiling pipeline"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 authors = [{ name = "Michael J. Lippincott" }]
 license = { text = "BSD 3-Clause License" }
 dependencies = [
@@ -42,9 +41,8 @@ dependencies = [
     "napari[pyside6]>=0.6.5; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "mahotas>=1.4",
     # PyTorch stack (keep these aligned)
-    "torch>=2.4",
+    "torch>=2.4; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "torchvision>=0.19",
-    "torchaudio>=2.4",
     # Utilities
     "tomli>=2.0; python_version < '3.11'",
     "moviepy>=1.0.3",
