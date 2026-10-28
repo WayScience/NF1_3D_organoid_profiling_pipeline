@@ -18,16 +18,22 @@ import matplotlib.pyplot as plt
 # Import dependencies
 import pandas as pd
 import seaborn as sns
-from file_reading import read_zstack_image
-from notebook_init_utils import bandicoot_check, init_notebook
-from technical_analysis_segmentation_utils import extract_IOU
+from image_analysis_3D.file_utils.file_reading import read_zstack_image
+from image_analysis_3D.file_utils.notebook_init_utils import (
+    bandicoot_check,
+    init_notebook,
+)
+from image_analysis_3D.file_utils.technical_analysis_segmentation_utils import (
+    convert_indexed_mask_to_binary_mask,
+    extract_IOU,
+)
 
 root_dir, in_notebook = init_notebook()
 
 if in_notebook:
-    pass
+    import tqdm.notebook as tqdm
 else:
-    pass
+    import tqdm
 
 image_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
@@ -37,27 +43,31 @@ image_base_dir = bandicoot_check(
 # In[2]:
 
 
-well_fovs = ["F4-2", "F4-3"]
+# z-slice steps to compare, and the stride needed to down-sample each one
+# to match the finest (T1Z1) resolution
+z_steps = ["1", "0.5", "0.2", "0.1"]
+z_step_strides = {
+    "1": 1,
+    "0.5": 2,
+    "0.2": 5,
+    "0.1": 10,
+}
 
-NF0037_T1Z1_path = pathlib.Path(
-    f"{image_base_dir}/data/NF0037_T1-Z-1/segmentation_masks/"
-).resolve(strict=True)
-NF0037_T1Z0_5_path = pathlib.Path(
-    f"{image_base_dir}/data/NF0037_T1-Z-0.5/segmentation_masks/"
-).resolve(strict=True)
-NF0037_T1Z0_2_path = pathlib.Path(
-    f"{image_base_dir}/data/NF0037_T1-Z-0.2/segmentation_masks/"
-).resolve(strict=True)
-NF0037_T1Z0_1_path = pathlib.Path(
-    f"{image_base_dir}/data/NF0037_T1-Z-0.1/segmentation_masks/"
-).resolve(strict=True)
+# map each patient to the well_fovs that were imaged for it, so that results
+# can be aggregated and compared across patients
+patient_well_fovs = {
+    "NF0037": ["F4-2", "F4-3"],
+    "NF0055": ["E4-1-0", "E4-5-0", "G5-2-0", "E4-3-0", "G5-1-0", "G5-5-0"],
+}
 
 
 # In[3]:
 
 
-# set up output dictionary for IOU results
+# set up output dictionaries for IOU and volume results, keyed by patient so
+# that results can be compared across patients
 iou_results = {
+    "patient": [],
     "well_fov": [],
     "z_comparison": [],
     "IOU": [],
@@ -66,6 +76,7 @@ iou_results = {
 }
 
 per_compartment_volume = {
+    "patient": [],
     "well_fov": [],
     "z_slice_step": [],
     "compartment": [],
@@ -77,114 +88,71 @@ per_compartment_volume = {
 
 
 # set eps to avoid division by zero
-for well_fov in well_fovs:
-    for compartment in ["nuclei", "cell", "cytoplasm", "organoid"]:
-        # parse for the correct files
-        Z1_files = list(pathlib.Path(f"{NF0037_T1Z1_path}/{well_fov}").glob("*.tif*"))
-        Z0_5_files = list(
-            pathlib.Path(f"{NF0037_T1Z0_5_path}/{well_fov}").glob("*.tif*")
-        )
-        Z0_2_files = list(
-            pathlib.Path(f"{NF0037_T1Z0_2_path}/{well_fov}").glob("*.tif*")
-        )
-        Z0_1_files = list(
-            pathlib.Path(f"{NF0037_T1Z0_1_path}/{well_fov}").glob("*.tif*")
-        )
+for patient, well_fovs in tqdm.tqdm(
+    patient_well_fovs.items(), desc="Patients", total=len(patient_well_fovs)
+):
+    for well_fov in well_fovs:
+        for compartment in ["nuclei", "cell", "cytoplasm", "organoid"]:
+            # load the mask for each z-slice step and sample it down to the
+            # same number of z-slices as the finest (T1Z1) step
+            mask_dict = {}
+            for z_step in z_steps:
+                if z_step == "0.1":
+                    segmentation_sub_dir_name = "segmentation_masks_from_0_1um"
+                else:
+                    segmentation_sub_dir_name = "segmentation_masks"
+                segmentation_dir = (
+                    image_base_dir
+                    / "data"
+                    / f"{patient}_T1-Z-{z_step}"
+                    / segmentation_sub_dir_name
+                    / well_fov
+                )
+                mask_file = next(
+                    file
+                    for file in segmentation_dir.glob("*.tif*")
+                    if compartment in str(file)
+                )
+                mask = read_zstack_image(mask_file)
+                stride = z_step_strides[z_step]
+                mask_dict[f"T1Z{z_step}"] = mask[::stride, :, :].copy()
 
-        # load the images
-        for file in Z1_files:
-            if compartment in str(file):
-                mask_T1Z1 = read_zstack_image(file)
-        for file in Z0_5_files:
-            if compartment in str(file):
-                mask_T1Z0_5 = read_zstack_image(file)
-        for file in Z0_2_files:
-            if compartment in str(file):
-                mask_T1Z0_2 = read_zstack_image(file)
-        for file in Z0_1_files:
-            if compartment in str(file):
-                mask_T1Z0_1 = read_zstack_image(file)
+            z_slice_counts = {name: mask.shape[0] for name, mask in mask_dict.items()}
+            if len(set(z_slice_counts.values())) != 1:
+                raise ValueError(
+                    "Sampled masks do not have the same number of z-slices in "
+                    f"{patient} {well_fov} for {compartment}: {z_slice_counts}"
+                )
 
-        # --- sample the masks to have the same number of z-slices
-        mask_T1Z1_sampled = mask_T1Z1.copy()
-        mask_T1Z0_5_sampled = mask_T1Z0_5[::2, :, :].copy()
-        mask_T1Z0_2_sampled = mask_T1Z0_2[::5, :, :].copy()
-        mask_T1Z0_1_sampled = mask_T1Z0_1[::10, :, :].copy()
-        if (
-            mask_T1Z1_sampled.shape[0] != mask_T1Z0_5_sampled.shape[0]
-            or mask_T1Z1_sampled.shape[0] != mask_T1Z0_2_sampled.shape[0]
-            or mask_T1Z1_sampled.shape[0] != mask_T1Z0_1_sampled.shape[0]
-        ):
-            raise ValueError(
-                f"Sampled masks do not have the same number of z-slices in {well_fov} for {compartment}"
-            )
+            # pairwise IOU and volume-ratio comparison across z-slice steps
+            for (name1, mask1), (name2, mask2) in combinations(mask_dict.items(), 2):
+                iou = extract_IOU(mask1, mask2)
+                volume_ratio = mask1.sum() / mask2.sum() if mask2.sum() != 0 else 0
+                iou_results["patient"].append(patient)
+                iou_results["well_fov"].append(well_fov)
+                iou_results["z_comparison"].append(f"{name1} vs {name2}")
+                iou_results["IOU"].append(iou)
+                iou_results["compartment"].append(compartment)
+                iou_results["volume_ratio"].append(volume_ratio)
 
-        # set the masks in a dictionary for pairwise comparison
-        mask_dict = {
-            "T1Z1": mask_T1Z1_sampled,
-            "T1Z0.5": mask_T1Z0_5_sampled,
-            "T1Z0.2": mask_T1Z0_2_sampled,
-            "T1Z0.1": mask_T1Z0_1_sampled,
-        }
+            # show the masks compared at a representative z-slice
+            slice_to_plot = mask_dict["T1Z1"].shape[0] // 2
+            # fig, axes = plt.subplots(1, len(mask_dict), figsize=(4 * len(mask_dict), 4))
+            # for ax, (name, mask) in zip(axes, mask_dict.items()):
+            #     ax.set_title(f"{name}\n{compartment}")
+            #     ax.imshow(mask[slice_to_plot, :, :], cmap="nipy_spectral")
+            #     ax.axis("off")
+            # fig.suptitle(f"Comparison of {compartment} segmentation in {patient} {well_fov}")
+            # plt.show()
 
-        for (name1, mask1), (name2, mask2) in combinations(mask_dict.items(), 2):
-            iou = extract_IOU(
-                mask1,
-                mask2,
-            )
-            volume_ratio = mask1.sum() / mask2.sum() if mask2.sum() != 0 else 0
-            iou_results["well_fov"].append(well_fov)
-            iou_results["z_comparison"].append(f"{name1} vs {name2}")
-            iou_results["IOU"].append(iou)
-            iou_results["compartment"].append(compartment)
-            iou_results["volume_ratio"].append(volume_ratio)
-
-        # show the masks compared
-        if well_fov == "F4-2":
-            slice_to_plot = mask_T1Z1_sampled.shape[0] // 2
-        elif well_fov == "F4-3":
-            slice_to_plot = mask_T1Z1_sampled.shape[0] - 1
-        plt.figure(figsize=(16, 4))
-        plt.subplot(1, 4, 1)
-        plt.title(f"T1Z1\n{compartment}")
-        plt.imshow(mask_T1Z1_sampled[slice_to_plot, :, :], cmap="nipy_spectral")
-        plt.axis("off")
-        plt.subplot(1, 4, 2)
-        plt.title(f"T1Z0.5\n{compartment}")
-        plt.imshow(mask_T1Z0_5_sampled[slice_to_plot, :, :], cmap="nipy_spectral")
-        plt.axis("off")
-        plt.subplot(1, 4, 3)
-        plt.title(f"T1Z0.2\n{compartment}")
-        plt.imshow(mask_T1Z0_2_sampled[slice_to_plot, :, :], cmap="nipy_spectral")
-        plt.axis("off")
-        plt.subplot(1, 4, 4)
-        plt.title(f"T1Z0.1\n{compartment}")
-        plt.imshow(mask_T1Z0_1_sampled[slice_to_plot, :, :], cmap="nipy_spectral")
-        plt.axis("off")
-        plt.suptitle(f"Comparison of {compartment} segmentation in {well_fov}")
-        plt.show()
-
-        mask_T1Z1_sampled[mask_T1Z1_sampled > 0] = 1
-        mask_T1Z0_5_sampled[mask_T1Z0_5_sampled > 0] = 1
-        mask_T1Z0_2_sampled[mask_T1Z0_2_sampled > 0] = 1
-        mask_T1Z0_1_sampled[mask_T1Z0_1_sampled > 0] = 1
-
-        per_compartment_volume["well_fov"].append(well_fov)
-        per_compartment_volume["z_slice_step"].append("T1Z1")
-        per_compartment_volume["compartment"].append(compartment)
-        per_compartment_volume["volume"].append(mask_T1Z1_sampled.sum())
-        per_compartment_volume["well_fov"].append(well_fov)
-        per_compartment_volume["z_slice_step"].append("T1Z0.5")
-        per_compartment_volume["compartment"].append(compartment)
-        per_compartment_volume["volume"].append(mask_T1Z0_5_sampled.sum())
-        per_compartment_volume["well_fov"].append(well_fov)
-        per_compartment_volume["z_slice_step"].append("T1Z0.2")
-        per_compartment_volume["compartment"].append(compartment)
-        per_compartment_volume["volume"].append(mask_T1Z0_2_sampled.sum())
-        per_compartment_volume["well_fov"].append(well_fov)
-        per_compartment_volume["z_slice_step"].append("T1Z0.1")
-        per_compartment_volume["compartment"].append(compartment)
-        per_compartment_volume["volume"].append(mask_T1Z0_1_sampled.sum())
+            # record binarized volume per z-slice step for this compartment
+            for name, mask in mask_dict.items():
+                binary_mask = convert_indexed_mask_to_binary_mask(mask)
+                per_compartment_volume["patient"].append(patient)
+                per_compartment_volume["well_fov"].append(well_fov)
+                per_compartment_volume["z_slice_step"].append(name)
+                per_compartment_volume["compartment"].append(compartment)
+                per_compartment_volume["volume"].append(binary_mask.sum())
 
 
 # In[5]:
@@ -203,38 +171,46 @@ iou_results_df["compartment"] = pd.Categorical(
 # In[6]:
 
 
-# plot the IOU across z-slice comparisons
-plt.figure(figsize=(10, 6))
-sns.barplot(
+# plot the IOU across z-slice comparisons, faceted by patient to compare
+# segmentation stability across patients
+g = sns.catplot(
     data=iou_results_df,
     x="z_comparison",
     y="IOU",
     hue="compartment",
+    col="patient",
+    kind="bar",
+    height=6,
+    aspect=1.2,
 )
-plt.title("IOU of Segmentations Across Different Z-Slice Numbers")
-plt.ylabel("Intersection over Union (IOU)")
-plt.xlabel("Z-Slice Comparison")
-plt.ylim(0, 1)
-plt.legend(title="Compartment")
+g.set_axis_labels("Z-Slice Comparison", "Intersection over Union (IOU)")
+g.set(ylim=(0, 1))
+g.fig.suptitle("IOU of Segmentations Across Different Z-Slice Numbers")
+for ax in g.axes.flat:
+    ax.tick_params(axis="x", rotation=45)
 plt.show()
 
 
 # In[7]:
 
 
-# plot the IOU across z-slice comparisons
-plt.figure(figsize=(10, 6))
-sns.barplot(
+# plot the volume ratio across z-slice comparisons, faceted by patient to
+# compare segmentation stability across patients
+g = sns.catplot(
     data=iou_results_df,
     x="z_comparison",
     y="volume_ratio",
     hue="compartment",
+    col="patient",
+    kind="bar",
+    height=6,
+    aspect=1.2,
 )
-plt.title("Volume Ratio of Segmentations Across Different Z-Slice Numbers")
-plt.ylabel("Volume Ratio")
-plt.xlabel("Z-Slice Comparison")
-plt.ylim(0, 3)
-plt.legend(title="Compartment", bbox_to_anchor=(1.05, 1), loc="upper left")
+g.set_axis_labels("Z-Slice Comparison", "Volume Ratio")
+# g.set(ylim=(0, 3))
+g.fig.suptitle("Volume Ratio of Segmentations Across Different Z-Slice Numbers")
+for ax in g.axes.flat:
+    ax.tick_params(axis="x", rotation=45)
 plt.show()
 
 
@@ -242,24 +218,27 @@ plt.show()
 
 
 per_compartment_volume_df
-# normalize per compartment volumes (min-max normalization)
+# normalize per patient and compartment (min-max normalization), since
+# absolute volume scales differ across patients
 per_compartment_volume_df["normalized_volume"] = per_compartment_volume_df.groupby(
-    "compartment"
+    ["patient", "compartment"]
 )["volume"].transform(lambda x: (x - x.min()) / (x.max() - x.min()))
 
 
 # In[9]:
 
 
-plt.figure(figsize=(10, 6))
-sns.boxplot(
+# volume stability across z-slice steps, faceted by patient
+g = sns.catplot(
     data=per_compartment_volume_df,
     x="compartment",
     y="normalized_volume",
     hue="z_slice_step",
+    col="patient",
+    kind="box",
+    height=6,
+    aspect=1.2,
 )
-plt.title("Volume of Segmentations Across Different Z-Slice Numbers")
-plt.ylabel("Volume")
-plt.xlabel("Z-Slice Step")
-plt.legend(title="Compartment", bbox_to_anchor=(1.05, 1), loc="upper left")
+g.set_axis_labels("Compartment", "Normalized Volume")
+g.fig.suptitle("Volume of Segmentations Across Different Z-Slice Numbers")
 plt.show()
