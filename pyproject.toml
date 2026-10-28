@@ -48,6 +48,7 @@ dependencies = [
     "zedprofiler>=0.1.1",
     "synapseclient>=4.13.0",
     "cytodataframe>=0.3.5",
+    "microfilm>=0.3.0",
 ]
 
 
