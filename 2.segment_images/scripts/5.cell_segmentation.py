@@ -84,8 +84,8 @@ if not in_notebook:
     )
 else:
     print("Running in a notebook")
-    patient = "NF0014_T2"
-    well_fov = "D8-4"
+    patient = "NF0037_T1-Z-1"
+    well_fov = "F4-2"
     clip_limit = 0.03
     input_subparent_name = "zstack_images"
     mask_subparent_name = "segmentation_masks"
@@ -102,7 +102,7 @@ mask_path.mkdir(exist_ok=True, parents=True)
 channel_dict = retrieve_channel_mapping(f"{root_dir}/config/channel_mapping.toml")
 
 
-# In[5]:
+# In[10]:
 
 
 # look up the morphology of the organoid from json file
@@ -122,6 +122,8 @@ if not morphology_class.empty and len(morphology_class) == 1:
     morphology_class = morphology_class.iloc[0]
 elif morphology_class.empty:
     print(f"No morphology label found for {well_fov} in {patient}.")
+    print("Defaulting to 'globular'.")
+    morphology_class = "globular"
 elif len(morphology_class) > 1:
     print(f"Multiple morphology labels found for {well_fov} in {patient}.")
     # pick one at random
@@ -131,7 +133,7 @@ elif len(morphology_class) > 1:
 print(f"Organoid morphology for {well_fov}: {morphology_class}")
 
 
-# In[6]:
+# In[11]:
 
 
 return_dict = read_in_channels(
@@ -152,7 +154,7 @@ del cyto2_raw
 
 # ## Segment the cells
 
-# In[7]:
+# In[ ]:
 
 
 # call the morphology dependent segmentation function with the appropriate parameters based on morphology class
@@ -165,7 +167,7 @@ cell_mask = perform_morphology_dependent_segmentation(
 )
 
 
-# In[8]:
+# In[ ]:
 
 
 if in_notebook:
@@ -188,7 +190,7 @@ if in_notebook:
 # ## run the mask reassignment function (post-hoc)
 # ### This needs to occur after both nuclei and cell segmentations are done
 
-# In[9]:
+# In[ ]:
 
 
 cell_df = get_labels_for_post_hoc_reassignment(
@@ -199,7 +201,7 @@ nuclei_df = get_labels_for_post_hoc_reassignment(
 )
 
 
-# In[10]:
+# In[ ]:
 
 
 # refine the cell masks
@@ -213,7 +215,7 @@ cell_mask = run_post_hoc_refinement(
 
 # ## Cytoplasm Segmentation
 
-# In[11]:
+# In[ ]:
 
 
 cytoplasm_mask = create_cytoplasm_masks(
@@ -224,7 +226,7 @@ cytoplasm_mask = create_cytoplasm_masks(
 
 # ## Remove border objects
 
-# In[12]:
+# In[ ]:
 
 
 # nuclei should already have objects removed at the border from the previous notebook,
@@ -234,7 +236,7 @@ cell_mask = clean_border_objects(cell_mask, border_width=5)
 cytoplasm_mask = clean_border_objects(cytoplasm_mask, border_width=5)
 
 
-# In[13]:
+# In[ ]:
 
 
 if in_notebook:
@@ -257,7 +259,7 @@ if in_notebook:
 
 # ## Save the segmented masks
 
-# In[14]:
+# In[ ]:
 
 
 nuclei_mask_output = pathlib.Path(f"{mask_path}/nuclei_mask.tiff")
@@ -268,7 +270,7 @@ tifffile.imwrite(cell_mask_output, cell_mask)
 tifffile.imwrite(cytoplasm_mask_output, cytoplasm_mask)
 
 
-# In[15]:
+# In[ ]:
 
 
 stop_profiling(
@@ -289,7 +291,7 @@ stop_profiling(
 # Note for an image of the pixel size (20, 1500, 1500) (Z,Y,X).
 # This runs in under 1 minute on a CPU and uses less than 1GB of RAM.
 
-# In[16]:
+# In[ ]:
 
 
 print(np.unique(nuclei_mask))
@@ -297,7 +299,7 @@ print(np.unique(cell_mask))
 print(np.unique(cytoplasm_mask))
 
 
-# In[17]:
+# In[ ]:
 
 
 nuclei_mask = tifffile.imread(
