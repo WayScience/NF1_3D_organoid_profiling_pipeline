@@ -28,13 +28,20 @@ profile_base_dir = bandicoot_check(
 # In[2]:
 
 
-DEL_DIR_AFTER_ZIP = False
+DEL_DIR_AFTER_ZIP = True
 OVERWRITE = True
 
 
 # In[3]:
 
 
+if OVERWRITE:
+    # del the shippable directory
+    shippable_dir = pathlib.Path(f"{root_dir}/data/shippable_dir/").resolve()
+    if shippable_dir.exists():
+        shutil.rmtree(shippable_dir)
+
+# define the sub shipping directories
 output_dir_3D = pathlib.Path(f"{root_dir}/data/shippable_dir/profiles_3D/").resolve()
 output_dir_2D = pathlib.Path(f"{root_dir}/data/shippable_dir/profiles_2D/").resolve()
 output_dir_3D_all_patients = pathlib.Path(
@@ -150,8 +157,20 @@ shippable_dir = pathlib.Path(f"{root_dir}/data/shippable_dir").resolve()
 shippable_dir_zip = shippable_dir.with_suffix(".zip")
 if shippable_dir_zip.exists() and OVERWRITE:
     shippable_dir_zip.unlink()  # Remove the existing zip file
+    # write the new zip file
+    shutil.make_archive(str(shippable_dir), "zip", str(shippable_dir))
 elif not shippable_dir_zip.exists() or OVERWRITE:
     shutil.make_archive(str(shippable_dir), "zip", str(shippable_dir))
 # then delete the copy of the data in the shippable_dir to save space
 if DEL_DIR_AFTER_ZIP:
     shutil.rmtree(shippable_dir)
+
+
+# In[8]:
+
+
+# send a copy of the shippable dir to the NAS if it exists
+path_to_send = pathlib.Path(f"{root_dir}/data/shippable_dir.zip").resolve()
+landing_dir = pathlib.Path(f"{profile_base_dir}/data/shippable_dir.zip").resolve()
+if path_to_send.exists():
+    shutil.copy(path_to_send, landing_dir)
