@@ -51,6 +51,7 @@
 import os
 import pathlib
 
+import numpy as np
 import pandas as pd
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
@@ -76,7 +77,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0018_T6"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -86,6 +87,44 @@ else:
 
 
 ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
+SC_QC_COLS = [
+    "Metadata_cqc_nan_detected",
+    "Metadata_cqc_organoid_flagged",
+    "Metadata_cqc_small_nuclei_outlier",
+    "Metadata_cqc_large_nuclei_outlier",
+    "Metadata_cqc_mass_displacement_outlier",
+]
+ORGANOID_SC_COLS = ["Metadata_cqc_nan_detected", "Metadata_cqc_small_organoid_outlier"]
+
+
+def _drop_qc_samples(
+    df: pd.DataFrame, qc_cols: list[str], verbose: bool = False
+) -> pd.DataFrame:
+    """
+    If the sample has at least one true in the qc columns, then drop
+    that sample
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        annotated sample df
+    qc_cols : list[str]
+        List of quality control columns to check
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with quality control samples dropped
+    """
+    start_shape = df.shape
+    df = df[~df[qc_cols].any(axis=1)]
+    end_shape = df.shape
+    if verbose:
+        print(
+            f"  Dropped {start_shape[0] - end_shape[0]} rows ({(start_shape[0] - end_shape[0]) / start_shape[0]:.1%}) with quality control issues"
+        )
+
+    return df
 
 
 def _dmso_qc_samples_query(df: pd.DataFrame) -> str:
@@ -94,6 +133,23 @@ def _dmso_qc_samples_query(df: pd.DataFrame) -> str:
     qc_filter = " and ".join(f"`{col}` == False" for col in cqc_cols)
     base = "Metadata_Experiment_Treatment == 'DMSO'"
     return f"{base} and {qc_filter}" if qc_filter else base
+
+
+ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
+
+
+def infs_to_nans(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
+    """Replace infinite values with NaN in the specified feature columns."""
+    df = df.replace([np.inf, -np.inf], np.nan)
+    return df
+
+
+def drop_rows_with_na_in_features(
+    df: pd.DataFrame, feature_cols: list[str]
+) -> pd.DataFrame:
+    """Drop rows where the fraction of NaN feature values exceeds cutoff."""
+    df.dropna(subset=feature_cols, how="any", inplace=True)
+    return df
 
 
 def drop_high_na_rows(
@@ -110,6 +166,14 @@ def drop_high_na_rows(
     else:
         print(f"  No rows dropped (all rows have <={cutoff:.0%} NaN features)")
     return df.loc[mask].reset_index(drop=True)
+
+
+def call_both_na_filters(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
+    """Apply both metadata and feature NaN filters."""
+    df = infs_to_nans(df, feature_cols)
+    df = drop_rows_with_na_in_features(df, feature_cols)
+    df = drop_high_na_rows(df, feature_cols)
+    return df
 
 
 # In[4]:
@@ -174,7 +238,7 @@ sc_sammed_annotated_profiles = (
     pd.read_parquet(sc_sammed_annotated_path) if has_sc_sammed else None
 )
 organoid_annotated_profiles = pd.read_parquet(organoid_annotated_path)
-organoid_sc_sammed_annotated_profiles = (
+organoid_sammed_annotated_profiles = (
     pd.read_parquet(organoid_sc_sammed_annotated_path) if has_organoid_sammed else None
 )
 nucleocentric_sammed_annotated_profiles = (
@@ -194,6 +258,30 @@ if "well_fov" in sc_annotated_profiles.columns:
 # In[6]:
 
 
+# drop the qc samples
+sc_annotated_profiles = _drop_qc_samples(
+    df=sc_annotated_profiles, qc_cols=SC_QC_COLS, verbose=True
+)
+organoid_annotated_profiles = _drop_qc_samples(
+    df=organoid_annotated_profiles, qc_cols=ORGANOID_SC_COLS, verbose=True
+)
+sc_sammed_annotated_profiles = _drop_qc_samples(
+    df=sc_sammed_annotated_profiles, qc_cols=SC_QC_COLS, verbose=True
+)
+organoid_sammed_annotated_profiles = _drop_qc_samples(
+    df=organoid_sammed_annotated_profiles, qc_cols=ORGANOID_SC_COLS, verbose=True
+)
+nucleocentric_sammed_annotated_profiles = _drop_qc_samples(
+    df=nucleocentric_sammed_annotated_profiles, qc_cols=SC_QC_COLS, verbose=True
+)
+nucleocentric_morphem_annotated_profiles = _drop_qc_samples(
+    df=nucleocentric_morphem_annotated_profiles, qc_cols=SC_QC_COLS, verbose=True
+)
+
+
+# In[7]:
+
+
 # Metadata columns start with "Metadata_". Use startswith for precision
 # to avoid matching feature columns that happen to contain the word "Metadata".
 sc_metadata_cols = [
@@ -208,7 +296,7 @@ organoid_metadata_cols = [
     col for col in organoid_annotated_profiles.columns if "Metadata" in col
 ]
 organoid_sc_sammed_metadata_cols = (
-    [col for col in organoid_sc_sammed_annotated_profiles.columns if "Metadata" in col]
+    [col for col in organoid_sammed_annotated_profiles.columns if "Metadata" in col]
     if has_organoid_sammed
     else []
 )
@@ -252,7 +340,7 @@ organoid_feature_cols = [
 organoid_sc_sammed_feature_cols = (
     [
         col
-        for col in organoid_sc_sammed_annotated_profiles.columns
+        for col in organoid_sammed_annotated_profiles.columns
         if col not in organoid_sc_sammed_metadata_cols
     ]
     if has_organoid_sammed
@@ -292,116 +380,21 @@ nucleocentric_morphem_feature_cols = (
 # For deep-learning profiles, the reference is all DMSO-treated samples (no QC
 # filter exists for these profiles).
 
-# In[7]:
-
-
-print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
-sc_annotated_profiles = drop_high_na_rows(sc_annotated_profiles, sc_feature_cols)
-print(f"  SC handcrafted: {len(sc_annotated_profiles)} rows remaining")
-if has_sc_sammed:
-    sc_sammed_annotated_profiles = drop_high_na_rows(
-        sc_sammed_annotated_profiles, sc_sammed_feature_cols
-    )
-    print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
-organoid_annotated_profiles = drop_high_na_rows(
-    organoid_annotated_profiles, organoid_feature_cols
-)
-print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
-if has_organoid_sammed:
-    organoid_sc_sammed_annotated_profiles = drop_high_na_rows(
-        organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols
-    )
-    print(
-        f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining"
-    )
-if has_nucleocentric_sammed:
-    nucleocentric_sammed_annotated_profiles = drop_high_na_rows(
-        nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols
-    )
-    print(
-        f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining"
-    )
-if has_nucleocentric_morphem:
-    nucleocentric_morphem_annotated_profiles = drop_high_na_rows(
-        nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols
-    )
-    print(
-        f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining"
-    )
-
-
-# ## Row-level NaN filter
-#
-# Before normalization, drop any row where more than `ROW_NA_CUTOFF` (20%) of its
-# feature columns are NaN. This removes:
-#
-# - Cells/organoids where the deep learning model was never run
-# - Cells with near-complete Nuclei feature dropout due to missing image planes
-# - Extreme outlier cells where nucleus segmentation produced too few pixels to measure
-#
-# Rows are dropped from all six profiles before `normalize()` is called so that these
-# incomplete observations do not influence the normalization reference distribution.
-# The pre-filter row counts are logged for traceability.
-
 # In[8]:
 
 
-# NOTE: this repeats the same drop_high_na_rows pass as In[7] above (pre-existing
-# duplication in this notebook, not introduced by the deep-learning-optional
-# changes here) -- left as-is since it's idempotent.
-ROW_NA_CUTOFF = 0.20  # drop rows with >20% NaN across feature columns
-
-
-def drop_high_na_rows(
-    df: pd.DataFrame, feature_cols: list[str], cutoff: float = ROW_NA_CUTOFF
-) -> pd.DataFrame:
-    """Drop rows where the fraction of NaN feature values exceeds cutoff."""
-    row_na_frac = df[feature_cols].isnull().mean(axis=1)
-    mask = row_na_frac <= cutoff
-    n_dropped = (~mask).sum()
-    if n_dropped > 0:
-        print(
-            f"  Dropped {n_dropped} rows ({n_dropped / len(df):.1%}) with >{cutoff:.0%} NaN features"
-        )
-    else:
-        print(f"  No rows dropped (all rows have <={cutoff:.0%} NaN features)")
-    return df.loc[mask].reset_index(drop=True)
-
-
 print(f"Row-level NaN filter (cutoff: >{ROW_NA_CUTOFF:.0%} NaN per row)")
-sc_annotated_profiles = drop_high_na_rows(sc_annotated_profiles, sc_feature_cols)
+sc_annotated_profiles = call_both_na_filters(sc_annotated_profiles, sc_feature_cols)
 print(f"  SC handcrafted: {len(sc_annotated_profiles)} rows remaining")
-if has_sc_sammed:
-    sc_sammed_annotated_profiles = drop_high_na_rows(
-        sc_sammed_annotated_profiles, sc_sammed_feature_cols
-    )
-    print(f"  SC SAMMed3D: {len(sc_sammed_annotated_profiles)} rows remaining")
-organoid_annotated_profiles = drop_high_na_rows(
+print("  --------------")
+organoid_annotated_profiles = call_both_na_filters(
     organoid_annotated_profiles, organoid_feature_cols
 )
 print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
-if has_organoid_sammed:
-    organoid_sc_sammed_annotated_profiles = drop_high_na_rows(
-        organoid_sc_sammed_annotated_profiles, organoid_sc_sammed_feature_cols
-    )
-    print(
-        f"  Organoid SAMMed3D: {len(organoid_sc_sammed_annotated_profiles)} rows remaining"
-    )
-if has_nucleocentric_sammed:
-    nucleocentric_sammed_annotated_profiles = drop_high_na_rows(
-        nucleocentric_sammed_annotated_profiles, nucleocentric_sammed_feature_cols
-    )
-    print(
-        f"  Nucleocentric SAMMed3D: {len(nucleocentric_sammed_annotated_profiles)} rows remaining"
-    )
-if has_nucleocentric_morphem:
-    nucleocentric_morphem_annotated_profiles = drop_high_na_rows(
-        nucleocentric_morphem_annotated_profiles, nucleocentric_morphem_feature_cols
-    )
-    print(
-        f"  Nucleocentric morphem: {len(nucleocentric_morphem_annotated_profiles)} rows remaining"
-    )
+print("  --------------")
 
+
+# ## Run normalization
 
 # In[9]:
 
@@ -457,8 +450,8 @@ organoid_annotated_profiles[organoid_feature_cols] = organoid_annotated_profiles
     organoid_feature_cols
 ].astype("float64")
 if has_organoid_sammed:
-    organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols] = (
-        organoid_sc_sammed_annotated_profiles[organoid_sc_sammed_feature_cols].astype(
+    organoid_sammed_annotated_profiles[organoid_sc_sammed_feature_cols] = (
+        organoid_sammed_annotated_profiles[organoid_sc_sammed_feature_cols].astype(
             "float64"
         )
     )
@@ -472,7 +465,7 @@ organoid_normalized_df = normalize(
 )
 if has_organoid_sammed:
     organoid_sc_sammed_normalized_df = normalize(
-        profiles=organoid_sc_sammed_annotated_profiles,
+        profiles=organoid_sammed_annotated_profiles,
         features=organoid_sc_sammed_feature_cols,
         meta_features=organoid_sc_sammed_metadata_cols,
         method="standardize",
