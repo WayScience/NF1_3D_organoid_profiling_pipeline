@@ -51,6 +51,8 @@ dependencies = [
     "scipy>=1.17.1",
     "zedprofiler>=0.1.1",
     "synapseclient>=4.13.0",
+    "cytodataframe>=0.3.5",
+    "jupyter>=1.1.1",
     "cellpose>=4.2.1.1",
 ]
 
