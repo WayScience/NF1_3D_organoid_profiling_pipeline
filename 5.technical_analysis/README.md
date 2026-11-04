@@ -8,7 +8,7 @@ This analysis is intended to help inform future acquisition parameters for the 3
 We test in a few well-fovs for a few patients how the z-step size affects the segmentation and the featurization.
 We do this by computationally downsampling the z-slices of the original images to simulate larger z-step sizes.
 We then segment the downsampled images and compare the segmentation results to the original segmentation results.
-We also compute features on the downsampled images and compare them to the features computed on the original images.
+We also compute features on the downsampled images (using the full z-step segmentation mask to ensure apples to apples comparison of step size on featurization) and compare them to the features computed on the original images.
 
 ### Table of z-step sizes tested
 
