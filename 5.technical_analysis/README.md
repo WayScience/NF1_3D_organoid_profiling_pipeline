@@ -1,4 +1,4 @@
-# Technical analysis
+# Technical analyses
 
 We perform a series of technical analyses to help inform future image acquisition parameters for the 3D organoid profiling pipeline.
 These analyses include comparing trade-offs between the number and step-size of z-slices and pixel size.
