@@ -35,7 +35,7 @@ repos:
         types_or: [markdown, yaml, json, html, css, python, r]
 
   - repo: https://github.com/hadialqattan/pycln
-    rev: v2.6.0
+    rev: v2.6.1
     hooks:
       - id: pycln
         args: [--config=pyproject.toml]
