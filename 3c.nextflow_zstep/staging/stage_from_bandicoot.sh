@@ -42,11 +42,27 @@
 #
 # bandicoot is NOT reachable from Alpine (confirmed Nov 2026: no ~/mnt on
 # login/compute/persistence1 nodes). It is reachable from a lab Mac, so
-# this script runs ON THE MAC with both shares mounted:
+# this script runs ON THE MAC with bandicoot mounted and Alpine reachable
+# over plain SSH:
 #   ~/mnt/bandicoot   (Isilon, via mount_isilon)
-#   ~/mnt/alpine      (sshfs: sshfs alpine:/pl/active ~/mnt/alpine/active)
-# See staging/README.md for the full sequence and the post-run copy of
-# results back to bandicoot.
+#   ssh alpine        (SSH config alias; see ~/.ssh/config)
+#
+# Writes go straight over `rsync -e ssh` to Alpine, NOT through an
+# sshfs/macfuse mount of koala. An earlier version of this script wrote
+# through ~/mnt/alpine (sshfs) and hit two real failure modes on
+# 2026-11-05: (1) the sshfs mount silently dropped mid-session, leaving an
+# ordinary local directory in its place, so rsync "succeeded" while
+# writing ~75 GB to the Mac's own disk instead of koala; (2) even after
+# fixing that, transfers reproducibly died with "Socket is not
+# connected" / "Device not configured" at almost exactly 3.68 GB into a
+# session (8 x 494 MB files) -- a macFUSE/sshfs boundary bug, not a data
+# problem (confirmed: the exact same file transferred fine via direct
+# `rsync -e ssh`, bypassing the FUSE layer entirely). Going straight over
+# SSH sidesteps both: there is no local mount to drop, and no FUSE layer
+# to hit the boundary bug in.
+#
+# See staging/README.md for the full incident writeup and the post-run
+# copy of results back to bandicoot.
 #
 # rsync-based: safe to re-run (skips unchanged files) and safe to
 # interrupt and resume (--partial). The 0.1 um groups are ~2.5 GB per
@@ -58,7 +74,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BANDICOOT_ROOT="${BANDICOOT_ROOT:-$HOME/mnt/bandicoot/NF1_organoid_data/data}"
-DEST_ROOT="${DEST_ROOT:-$HOME/mnt/alpine/active/koala/nf1-3d-zstep-workflow-db/data}"
+ALPINE_HOST="${ALPINE_HOST:-alpine}"
+DEST_ROOT="${DEST_ROOT:-/pl/active/koala/nf1-3d-zstep-workflow-db/data}"
 PATIENTS_FILE="${PATIENTS_FILE:-$SCRIPT_DIR/patients.txt}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 
@@ -71,14 +88,15 @@ stage_from_bandicoot.sh
 
 Usage:
   staging/stage_from_bandicoot.sh [--dry-run] [--patient PATIENT] \
-    [--patients-file PATH] [--bandicoot-root PATH] [--dest-root PATH]
+    [--patients-file PATH] [--bandicoot-root PATH] [--alpine-host HOST] [--dest-root PATH]
 
 Options:
   --dry-run           Pass -n to rsync; report what would transfer without copying.
   --patient PATIENT   Stage exactly one patient instead of every line in --patients-file.
   --patients-file PATH  Default: staging/patients.txt (one patient per line, blank lines and lines starting with # ignored).
   --bandicoot-root PATH Default: $BANDICOOT_ROOT env var, or ~/mnt/bandicoot/NF1_organoid_data/data.
-  --dest-root PATH    Default: $DEST_ROOT env var, or ~/mnt/alpine/active/koala/nf1-3d-zstep-workflow-db/data.
+  --alpine-host HOST  SSH host alias for Alpine. Default: $ALPINE_HOST env var, or "alpine".
+  --dest-root PATH    Absolute path on Alpine (not a local mount). Default: $DEST_ROOT env var, or /pl/active/koala/nf1-3d-zstep-workflow-db/data.
   -h, --help          Show this help.
 
 zstack_images/ is always required (a missing one is an error). The native
@@ -112,6 +130,7 @@ while [[ $# -gt 0 ]]; do
     --patient) ONE_PATIENT="$2"; shift 2 ;;
     --patients-file) PATIENTS_FILE="$2"; shift 2 ;;
     --bandicoot-root) BANDICOOT_ROOT="$2"; shift 2 ;;
+    --alpine-host) ALPINE_HOST="$2"; shift 2 ;;
     --dest-root) DEST_ROOT="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
@@ -125,7 +144,17 @@ if [[ ! -d "$BANDICOOT_ROOT" ]]; then
   exit 1
 fi
 
-mkdir -p "$DEST_ROOT" "$LOG_DIR"
+mkdir -p "$LOG_DIR"
+
+# Sanity check: Alpine must actually be reachable over SSH, and DEST_ROOT
+# must exist there, before we start copying anything.
+if ! ssh -o ConnectTimeout=15 -o BatchMode=yes "$ALPINE_HOST" "mkdir -p '$DEST_ROOT'" 2>/tmp/stage_ssh_check.$$; then
+  echo "Could not reach '$ALPINE_HOST' over SSH, or could not create $DEST_ROOT there." >&2
+  cat /tmp/stage_ssh_check.$$ >&2
+  rm -f /tmp/stage_ssh_check.$$
+  exit 1
+fi
+rm -f /tmp/stage_ssh_check.$$
 
 patients=()
 if [[ -n "$ONE_PATIENT" ]]; then
@@ -147,31 +176,26 @@ if [[ "${#patients[@]}" -eq 0 ]]; then
   exit 1
 fi
 
-rsync_args=(-a --partial --exclude=".DS_Store" --exclude="._*")
-# --info=progress2 is a GNU-rsync (3.x) feature; macOS's stock
-# openrsync/rsync-2.6.9-compatible binary rejects it outright. Only add
-# it when the installed rsync actually understands it.
-if rsync --info=progress2 --version >/dev/null 2>&1; then
-  rsync_args+=(--info=progress2)
-fi
+rsync_args=(-a --partial -e "ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3" --exclude=".DS_Store" --exclude="._*")
 if [[ "$DRY_RUN" -eq 1 ]]; then
   rsync_args+=(-n)
 fi
 
-echo "Staging ${#patients[@]} patient(s) from $BANDICOOT_ROOT to $DEST_ROOT"
+echo "Staging ${#patients[@]} patient(s) from $BANDICOOT_ROOT to $ALPINE_HOST:$DEST_ROOT"
 echo "Patients: ${patients[*]}"
 [[ "$DRY_RUN" -eq 1 ]] && echo "Dry run: no files will be copied"
 
 # stage_one PATIENT SRC_SUBDIR DEST_SUBDIR REQUIRED
 # Copies {bandicoot_root}/{patient}/{src_subdir}/ to
-# {dest_root}/{patient}/{dest_subdir}/ (src and dest subdir names may
-# differ -- see the NF0055_T1-Z-0.1 native-mask rename above). Sets
-# overall_status=1 on a missing required source or an rsync failure.
-# A missing optional source just logs "skip (optional)".
+# {alpine_host}:{dest_root}/{patient}/{dest_subdir}/ over rsync's own ssh
+# transport (src and dest subdir names may differ -- see the
+# NF0055_T1-Z-0.1 native-mask rename above). Sets overall_status=1 on a
+# missing required source or an rsync failure. A missing optional source
+# just logs "skip (optional)".
 stage_one() {
   local patient="$1" src_subdir="$2" dest_subdir="$3" required="$4"
   local src="$BANDICOOT_ROOT/$patient/$src_subdir/"
-  local dst="$DEST_ROOT/$patient/$dest_subdir/"
+  local dst="$ALPINE_HOST:$DEST_ROOT/$patient/$dest_subdir/"
   local log="$LOG_DIR/${patient}.${dest_subdir}.log"
 
   if [[ ! -d "$src" ]]; then
@@ -184,7 +208,9 @@ stage_one() {
     return
   fi
 
-  [[ "$DRY_RUN" -eq 0 ]] && mkdir -p "$dst"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    ssh -o ConnectTimeout=15 "$ALPINE_HOST" "mkdir -p '$DEST_ROOT/$patient/$dest_subdir'"
+  fi
   echo "=== $patient/$dest_subdir: $src -> $dst ===" | tee "$log"
   if rsync "${rsync_args[@]}" "$src" "$dst" 2>&1 | tee -a "$log"; then
     echo "done: $patient/$dest_subdir" | tee -a "$log"

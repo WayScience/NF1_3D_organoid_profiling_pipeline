@@ -55,10 +55,12 @@ should run (~63 image sets vs the ~61 estimate).
 
 **bandicoot is not reachable from Alpine** (verified Nov 2026: no
 `~/mnt` on login nodes, compute nodes, or persistence1). Staging runs on
-the lab Mac with both shares mounted (Isilon via `mount_isilon`,
-PetaLibrary via sshfs), rsync over the two mounts -- see
-`staging/README.md` for the exact hops and the copy-back of results
-afterwards.
+the lab Mac with bandicoot mounted (Isilon via `mount_isilon`) and
+Alpine reached directly over `rsync -e ssh` -- NOT through an
+sshfs/macfuse mount of koala, which proved unreliable (see
+`staging/README.md` "Why not sshfs" for the two concrete failures this
+caused on 2026-11-05). See `staging/README.md` for the exact hops and
+the copy-back of results afterwards.
 
 **Working copy: a new PetaLibrary root.** `nf1-3d-zstep-workflow-db` was
 created alongside `nf1-3d-pilot-workflow-db` and
@@ -158,6 +160,14 @@ environments`, JDK 21 + Nextflow launcher under the new `tools/`
   (a stale keychain entry had to be fixed during prep) -- staging can
   fail on auth, not just on network. Retry with `mount_isilon` if the
   mount is empty.
+- An earlier sshfs-mediated staging path failed twice for real on
+  2026-11-05 (silent mount drop writing to local disk instead of koala;
+  then a macFUSE boundary bug killing transfers at ~3.68 GB per
+  session) -- fixed by switching to direct `rsync -e ssh`, which has no
+  local mount to drop and no FUSE layer to hit the boundary bug in. See
+  `staging/README.md` "Why not sshfs". If staging ever needs to write
+  through a local mount again for some reason, re-add the device-ID
+  guard that used to live in `stage_from_bandicoot.sh`.
 - Cluster contention: 63 tasks at mixed sizes is small, but the two
   0.1 um FOVs' worth of 224 GB tasks (12 total) can each wait a long
   time for a node with that much free memory. Not a correctness risk;

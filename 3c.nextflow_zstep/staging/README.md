@@ -6,19 +6,47 @@ before any Nextflow run can see it. `../workflows/featurize_image_set.nf`
 and `../scripts/*.py` all read from the PetaLibrary copy, never from
 bandicoot directly -- bandicoot is not reachable from Alpine at all
 (checked Nov 2026: no `~/mnt` on login nodes, compute nodes, or
-persistence1). The lab Mac can reach both shares, so staging runs there.
+persistence1). The lab Mac can reach both, so staging runs there.
 
-## The three hops
+## The two hops
 
 ```text
-1. lab Mac:   mount_isilon                      -> ~/mnt/bandicoot      (Isilon SMB share)
-2. lab Mac:   sshfs alpine:/pl/active ...       -> ~/mnt/alpine/active  (PetaLibrary over sshfs)
-3. lab Mac:   staging/stage_from_bandicoot.sh   (rsync bandicoot -> koala over the two mounts)
+1. lab Mac:   mount_isilon                      -> ~/mnt/bandicoot   (Isilon SMB share)
+2. lab Mac:   staging/stage_from_bandicoot.sh    (rsync -e ssh: bandicoot mount -> alpine:$DEST_ROOT directly)
 ```
+
+Writes go straight over `rsync -e ssh` to Alpine -- there is no local
+mount of koala involved. An earlier version of this script wrote through
+an sshfs/macfuse mount of `/pl/active` and hit two real failures on
+2026-11-05 (see "Why not sshfs" below); going straight over SSH avoids
+both, and was also meaningfully faster in practice (direct rsync protocol
+vs. FUSE-mediated local writes).
 
 After the run completes, results are copied back the other way (koala ->
 bandicoot) so everything lives with the rest of the project's data; see
 "Copying results back to bandicoot" below.
+
+## Why not sshfs
+
+The script used to write through `~/mnt/alpine/active` (`sshfs
+alpine:/pl/active ...`). Two real failures on 2026-11-05 killed that
+approach:
+
+1. The sshfs mount silently dropped mid-session, leaving an ordinary
+   local directory at the same path. rsync then "succeeded" writing
+   ~75 GB to the Mac's own disk instead of koala -- nothing landed
+   remotely, and local disk nearly filled (`df -h /` hit 138 MiB free).
+2. Even with the mount freshly re-established, transfers reproducibly
+   died with `Socket is not connected` / `Device not configured` at
+   almost exactly 3.68 GB into a session (8 x 494 MB files) -- a
+   macFUSE/sshfs boundary bug, not a data problem: the exact same file
+   transferred fine via direct `rsync -e ssh`, bypassing the FUSE layer
+   entirely, immediately afterward.
+
+Going straight over SSH sidesteps both: there is no local mount to
+silently drop, and no FUSE layer to hit a byte-count boundary bug in. If
+you ever see either symptom again, it will be from something re-adding
+an sshfs mount into the path -- don't.
 
 ## Source and destination layout
 
@@ -49,18 +77,14 @@ called on bandicoot. See the script's header comment for the full
 evidence trail.
 
 ```text
-bandicoot:   ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/zstack_images/{well_fov}/
-             ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks/{well_fov}/                      (native, most patients)
-             ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks_from_0_1um/{well_fov}/           (native, NF0055_T1-Z-0.1 ONLY)
-             ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks_from_0_1um_adjusted/{well_fov}/  (segmentation 2, 0.2/0.5/1 um groups only)
-petalibrary: ~/mnt/alpine/active/koala/nf1-3d-zstep-workflow-db/data/{patient}/zstack_images/{well_fov}/
-             ~/mnt/alpine/active/koala/nf1-3d-zstep-workflow-db/data/{patient}/segmentation_masks/{well_fov}/                      (native, always this name)
-             ~/mnt/alpine/active/koala/nf1-3d-zstep-workflow-db/data/{patient}/segmentation_masks_from_0_1um_adjusted/{well_fov}/   (segmentation 2, when it exists)
+bandicoot: ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/zstack_images/{well_fov}/
+           ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks/{well_fov}/                      (native, most patients)
+           ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks_from_0_1um/{well_fov}/           (native, NF0055_T1-Z-0.1 ONLY)
+           ~/mnt/bandicoot/NF1_organoid_data/data/{patient}/segmentation_masks_from_0_1um_adjusted/{well_fov}/  (segmentation 2, 0.2/0.5/1 um groups only)
+alpine:    /pl/active/koala/nf1-3d-zstep-workflow-db/data/{patient}/zstack_images/{well_fov}/
+           /pl/active/koala/nf1-3d-zstep-workflow-db/data/{patient}/segmentation_masks/{well_fov}/                      (native, always this name)
+           /pl/active/koala/nf1-3d-zstep-workflow-db/data/{patient}/segmentation_masks_from_0_1um_adjusted/{well_fov}/   (segmentation 2, when it exists)
 ```
-
-On Alpine itself, the PetaLibrary side of that same path is
-`/pl/active/koala/nf1-3d-zstep-workflow-db/data/...` -- same share,
-different mount point (see `../README.md`).
 
 `nf1-3d-zstep-workflow-db` is a new, isolated PetaLibrary folder, parallel
 to the pilot's `nf1-3d-pilot-workflow-db` and production's
@@ -98,9 +122,9 @@ shell. rsync-based: safe to re-run, safe to interrupt and resume.
 ```bash
 cd 3c.nextflow_zstep
 
-# both mounts present?
+# bandicoot mounted, and alpine reachable over SSH?
 ls ~/mnt/bandicoot/NF1_organoid_data/data >/dev/null && echo bandicoot OK
-ls ~/mnt/alpine/active/koala >/dev/null && echo koala OK
+ssh -o ConnectTimeout=15 alpine true && echo alpine OK
 
 # preview, then stage
 staging/stage_from_bandicoot.sh --dry-run
@@ -111,9 +135,10 @@ staging/stage_from_bandicoot.sh --patient NF0037_T1-Z-1
 ```
 
 Per-patient, per-subdirectory logs land in `staging/logs/` (gitignored).
-Override source/destination roots with `--bandicoot-root`/`--dest-root`
-or the `BANDICOOT_ROOT`/`DEST_ROOT` environment variables if the mounts
-land somewhere other than `~/mnt/...` on the host you run from.
+Override `--bandicoot-root`/`--alpine-host`/`--dest-root` (or the
+`BANDICOOT_ROOT`/`ALPINE_HOST`/`DEST_ROOT` environment variables) if
+bandicoot mounts somewhere other than `~/mnt/bandicoot` or your SSH alias
+for Alpine isn't `alpine`.
 
 ## Verifying completeness
 
@@ -141,8 +166,8 @@ the z-step results live alongside the rest of the project's data:
 
 ```bash
 # from the lab Mac
-rsync -a --partial \
-  ~/mnt/alpine/active/koala/nf1-3d-zstep-workflow-db/results/<run_id>/ \
+rsync -a --partial -e ssh \
+  alpine:/pl/active/koala/nf1-3d-zstep-workflow-db/results/<run_id>/ \
   ~/mnt/bandicoot/NF1_organoid_data/data/zstep_zedprofiler_results/<run_id>/
 ```
 
