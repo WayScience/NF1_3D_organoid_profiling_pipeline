@@ -1,0 +1,21 @@
+# Z-step experiment patient groups, one per line. Blank lines and lines
+# starting with # are ignored. Well/FOVs within each group are discovered
+# automatically at stage time (the staging script copies everything under
+# each group's zstack_images/ + segmentation mask dirs).
+#
+# NF0037 well/FOVs: F4-1, F4-2, F4-3 (F4-1 included -- user confirmed all
+# complete well/FOVs should run, not just the README table's F4-2/F4-3).
+# NF0055 well/FOVs: E4-1-0, E4-3-0, E4-5-0, G5-1-0, G5-2-0, G5-5-0 per
+# the technical-analysis README table.
+# The 0.1 um groups carry only segmentation_masks/ (no
+# segmentation_masks_from_0_1um_adjusted/); the staging script treats a
+# missing second mask dir as optional-skip for them and required for the
+# rest.
+NF0037_T1-Z-0.1
+NF0037_T1-Z-0.2
+NF0037_T1-Z-0.5
+NF0037_T1-Z-1
+NF0055_T1-Z-0.1
+NF0055_T1-Z-0.2
+NF0055_T1-Z-0.5
+NF0055_T1-Z-1
