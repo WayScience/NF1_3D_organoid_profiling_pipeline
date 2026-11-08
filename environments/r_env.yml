@@ -25,7 +25,7 @@ dependencies:
   - conda-forge::r-arrow
   - conda-forge::r-ggridges
   - conda-forge::r-circlize
+  - bioconda::bioconductor-complexheatmap
   - conda-forge::r-hrbrthemes
   - conda-forge::r-tm
   - conda-forge::r-ggbreak
-
