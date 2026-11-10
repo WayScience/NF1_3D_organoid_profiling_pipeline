@@ -74,14 +74,11 @@ from pycytominer import feature_select
 
 root_dir, in_notebook = init_notebook()
 
+
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-# NOTE: previously this line unconditionally overrode bandicoot_check()
-# with root_dir, meaning bandicoot was never actually used even when
-# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
-# takes effect.
 
 
 # In[2]:
@@ -93,7 +90,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 

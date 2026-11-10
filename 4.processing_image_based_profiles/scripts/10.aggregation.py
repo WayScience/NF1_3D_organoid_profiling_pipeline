@@ -4,43 +4,56 @@
 # # 10. Aggregation
 #
 # ## Purpose
-# Aggregate each feature-selected profile across single cells or organoids into
-# two levels of summary:
+# Aggregate each profile type into well-level and consensus (treatment-level)
+# summaries, using median aggregation via pycytominer's `aggregate`.
+#
+# For each profile type, aggregation and consensus are each run from **two**
+# inputs, producing 4 outputs total:
+# 1. Normalized profiles (`5.normalized_profiles/*_norm.parquet`) — "from norm"
+# 2. Feature-selected profiles (`6.feature_selected_profiles/*_fs.parquet`) — "from fs"
+#
+# Each input is aggregated at two levels:
 # 1. **Well-level** — median across all objects in a well (`PatientTumor × Well`)
 # 2. **Consensus** — median across all objects sharing a treatment (`PatientTumor × Treatment`)
 #
-# Both aggregations use pycytominer's `aggregate` with median as the operation.
+# The aggregation/consensus strata below are kept identical (by hand) to the
+# ones in `11.combine_patients.ipynb`'s cross-patient step, so both stages
+# compute aggregation/consensus the same way.
 #
 # This is **step 10 of Stage 4 (image-based profiling)**. It runs once per patient
 # and must follow `9.feature_selection.ipynb`.
 #
 # ## Inputs
 #
-# Six feature-selected parquets from `6.feature_selected_profiles/`:
+# Per profile type, two parquets:
 #
-# | File | Profile type |
+# | Directory | File pattern |
 # |---|---|
-# | `sc_fs.parquet` | Hand-crafted SC |
-# | `organoid_fs.parquet` | Hand-crafted organoid |
-# | `sammed_sc_fs.parquet` | Deep-learning SC (SAMMed3D) |
-# | `sammed_organoid_fs.parquet` | Deep-learning organoid (SAMMed3D) |
-# | `sammed_nucleocentric_fs.parquet` | Deep-learning nucleocentric (SAMMed3D) |
-# | `nucleocentric_morphem_fs.parquet` | Deep-learning nucleocentric (morphem) |
+# | `5.normalized_profiles/` | `{profile}_norm.parquet` |
+# | `6.feature_selected_profiles/` | `{profile}_fs.parquet` |
+#
+# Profile types: `sc`, `organoid` (always present), plus the optional
+# deep-learning types `sammed_sc`, `sammed_organoid`, `sammed_nucleocentric`,
+# `nucleocentric_morphem` (only produced for datasets with deep-learning
+# features; skipped here if the feature-selected file doesn't exist).
 #
 # ## Outputs
 #
-# Twelve parquets across two stage directories:
+# Four parquets per profile type, across two stage directories:
 #
-# | Directory | Files |
+# | Directory | File pattern |
 # |---|---|
-# | `7.aggregated_profiles/` | `sc_agg_well_level.parquet`, `organoid_agg_well_level.parquet`, `sammed_sc_agg_well_level.parquet`, `sammed_organoid_agg_well_level.parquet`, `sammed_nucleocentric_agg_well_level.parquet`, `nucleocentric_morphem_agg_well_level.parquet` |
-# | `8.consensus_profiles/` | `sc_consensus.parquet`, `organoid_consensus.parquet`, `sammed_sc_consensus.parquet`, `sammed_organoid_consensus.parquet`, `sammed_nucleocentric_consensus.parquet`, `nucleocentric_morphem_consensus.parquet` |
+# | `7.aggregated_profiles/` | `{profile}_agg_from_norm.parquet`, `{profile}_agg_from_fs.parquet` |
+# | `8.consensus_profiles/` | `{profile}_consensus_from_norm.parquet`, `{profile}_consensus_from_fs.parquet` |
 #
 # ## Notes
 # - QC-flagged rows are not filtered before aggregation; downstream analysis decides
 #   whether to exclude them.
 # - Consensus profiles collapse treatment replicates to a single row per treatment,
 #   making them the primary input for treatment-level comparisons.
+# - "From norm" outputs aggregate every normalized feature column; "from fs" outputs
+#   aggregate only the feature-selected subset. Comparing the two lets downstream
+#   analysis see whether feature selection changed the aggregate/consensus signal.
 
 # In[1]:
 
@@ -49,7 +62,6 @@ import os
 import pathlib
 
 import pandas as pd
-import pyarrow.parquet as pq
 from image_analysis_3D.file_utils.arg_parsing_utils import parse_args
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
@@ -86,158 +98,52 @@ else:
 
 
 ## Pathing
-sc_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sc_fs.parquet"
-).resolve(strict=True)
-organoid_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/organoid_fs.parquet"
-).resolve(strict=True)
-# The 4 deep-learning inputs are optional: a dataset with no deep-learning
-# features (e.g. ZEDProfiler-only) never has 9.feature_selection.py produce
-# these files, so each is only resolved here if it actually exists.
-sc_sammed_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_sc_fs.parquet"
-).resolve()
-organoid_sammed_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_organoid_fs.parquet"
-).resolve()
-nucleocentric_sammed_sc_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/sammed_nucleocentric_fs.parquet"
-).resolve()
-nucleocentric_morphem_sc_fs_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/nucleocentric_morphem_fs.parquet"
-).resolve()
-has_sc_sammed = sc_sammed_fs_path.exists()
-has_organoid_sammed = organoid_sammed_fs_path.exists()
-has_nucleocentric_sammed = nucleocentric_sammed_sc_fs_path.exists()
-has_nucleocentric_morphem = nucleocentric_morphem_sc_fs_path.exists()
+profile_dir = pathlib.Path(
+    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}"
+)
+normalized_dir = profile_dir / "5.normalized_profiles"
+feature_selected_dir = profile_dir / "6.feature_selected_profiles"
+agg_output_dir = profile_dir / "7.aggregated_profiles"
+consensus_output_dir = profile_dir / "8.consensus_profiles"
+agg_output_dir.mkdir(parents=True, exist_ok=True)
+consensus_output_dir.mkdir(parents=True, exist_ok=True)
 
+# "sc" and "organoid" (hand-crafted) are always present. The 4 deep-learning
+# profile types are optional: a dataset with no deep-learning features (e.g.
+# ZEDProfiler-only) never has 9.feature_selection.py produce them, so each is
+# only included below if its feature-selected file actually exists.
+required_profile_names = ["sc", "organoid"]
+optional_profile_names = [
+    "sammed_sc",
+    "sammed_organoid",
+    "sammed_nucleocentric",
+    "nucleocentric_morphem",
+]
 
-# output path
-sc_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sc_agg_well_level.parquet"
-).resolve()
-sc_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sc_consensus.parquet"
-).resolve()
-
-organoid_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/organoid_agg_well_level.parquet"
-).resolve()
-organoid_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/organoid_consensus.parquet"
-).resolve()
-
-sc_sammed_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sammed_sc_agg_well_level.parquet"
-).resolve()
-sc_sammed_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_sc_consensus.parquet"
-).resolve()
-
-organoid_sammed_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sammed_organoid_agg_well_level.parquet"
-).resolve()
-organoid_sammed_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_organoid_consensus.parquet"
-).resolve()
-
-nucleocentric_sammed_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sammed_nucleocentric_agg_well_level.parquet"
-).resolve()
-nucleocentric_sammed_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sammed_nucleocentric_consensus.parquet"
-).resolve()
-
-nucleocentric_morphem_agg_well_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/nucleocentric_morphem_agg_well_level.parquet"
-).resolve()
-nucleocentric_morphem_consensus_output_path = pathlib.Path(
-    f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/nucleocentric_morphem_consensus.parquet"
-).resolve()
-
-nucleocentric_morphem_agg_well_output_path.parent.mkdir(parents=True, exist_ok=True)
-nucleocentric_morphem_consensus_output_path.parent.mkdir(parents=True, exist_ok=True)
-
-
-# In[4]:
-
-
-# read in the data
-sc_fs = pd.read_parquet(sc_fs_path)
-organoid_fs = pd.read_parquet(organoid_fs_path)
-print(f"SC feature-selected loaded. Shape: {sc_fs.shape}")
-print(f"Organoid feature-selected loaded. Shape: {organoid_fs.shape}")
-
-run_dict = {
-    "sc": {
-        "df": sc_fs,
-        "agg_well_output_path": sc_agg_well_output_path,
-        "consensus_output_path": sc_consensus_output_path,
-    },
-    "organoid": {
-        "df": organoid_fs,
-        "agg_well_output_path": organoid_agg_well_output_path,
-        "consensus_output_path": organoid_consensus_output_path,
-    },
-}
-
-# The 4 deep-learning profile types are only added to run_dict (and therefore
-# aggregated below) when this dataset actually produced them -- absent for
-# datasets with no deep-learning features (e.g. ZEDProfiler-only).
-if has_sc_sammed:
-    sc_sammed_fs = pd.read_parquet(sc_sammed_fs_path)
-    print(f"SAMMed3D SC feature-selected loaded. Shape: {sc_sammed_fs.shape}")
-    run_dict["sc_sammed"] = {
-        "df": sc_sammed_fs,
-        "agg_well_output_path": sc_sammed_agg_well_output_path,
-        "consensus_output_path": sc_sammed_consensus_output_path,
-    }
-if has_organoid_sammed:
-    organoid_sammed_fs = pd.read_parquet(organoid_sammed_fs_path)
-    print(
-        f"SAMMed3D organoid feature-selected loaded. Shape: {organoid_sammed_fs.shape}"
-    )
-    run_dict["organoid_sammed"] = {
-        "df": organoid_sammed_fs,
-        "agg_well_output_path": organoid_sammed_agg_well_output_path,
-        "consensus_output_path": organoid_sammed_consensus_output_path,
-    }
-if has_nucleocentric_sammed:
-    nucleocentric_sammed_sc_fs = pd.read_parquet(nucleocentric_sammed_sc_fs_path)
-    print(
-        f"SAMMed3D nucleocentric feature-selected loaded. Shape: {nucleocentric_sammed_sc_fs.shape}"
-    )
-    run_dict["nucleocentric_sammed_sc"] = {
-        "df": nucleocentric_sammed_sc_fs,
-        "agg_well_output_path": nucleocentric_sammed_agg_well_output_path,
-        "consensus_output_path": nucleocentric_sammed_consensus_output_path,
-    }
-if has_nucleocentric_morphem:
-    nucleocentric_morphem_sc_fs = pd.read_parquet(nucleocentric_morphem_sc_fs_path)
-    print(
-        f"morphem nucleocentric feature-selected loaded. Shape: {nucleocentric_morphem_sc_fs.shape}"
-    )
-    run_dict["nucleocentric_morphem_sc"] = {
-        "df": nucleocentric_morphem_sc_fs,
-        "agg_well_output_path": nucleocentric_morphem_agg_well_output_path,
-        "consensus_output_path": nucleocentric_morphem_consensus_output_path,
-    }
+profile_names = list(required_profile_names)
+for profile_name in optional_profile_names:
+    fs_path = feature_selected_dir / f"{profile_name}_fs.parquet"
+    if fs_path.exists():
+        profile_names.append(profile_name)
+    else:
+        print(f"Skipping {profile_name}: {fs_path} does not exist.")
 
 
 # ## Aggregate the profiles
 #
-# Each profile type is aggregated at two levels:
+# For each profile type, both the normalized and feature-selected input are
+# aggregated at two levels:
 # 1. **Well-level** (`aggregate_strata`): median across all objects in a well,
 #    grouped by `PatientTumor x Well`. Preserves within-patient well-to-well variation.
 # 2. **Consensus** (`consensus_strata`): median across all objects sharing a treatment,
 #    grouped by `PatientTumor x Treatment`. Collapses replicates for treatment-level
 #    comparisons.
 
-# In[5]:
+# In[4]:
 
 
-# Well-level strata: one row per (patient, well) combination
+# Well-level strata: one row per (patient, well) combination. Kept identical
+# (by hand) to 11.combine_patients.ipynb's cross-patient strata.
 aggregate_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Well",
@@ -249,7 +155,7 @@ aggregate_strata = [
     "Metadata_Experiment_Unit",
     "Metadata_Experiment_ViabilityPercentage",
 ]
-# Consensus strata: one row per (patient, treatment) combination
+# Consensus strata: one row per (patient, treatment) combination.
 consensus_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Treatment",
@@ -265,39 +171,50 @@ consensus_strata = [
 # In[6]:
 
 
-for profile_name in run_dict.keys():
+for profile_name in profile_names:
     print(f"Processing {profile_name} profiles...")
-    df = run_dict[profile_name]["df"]
-    agg_well_output_path = run_dict[profile_name]["agg_well_output_path"]
-    consensus_output_path = run_dict[profile_name]["consensus_output_path"]
-    features_columns = [col for col in df.columns if not col.startswith("Metadata_")]
-    # aggregate the profiles
-    # aggregate by well
-    agg_well_df = aggregate(
-        population_df=df,
-        strata=aggregate_strata,
-        features=features_columns,
-        operation="median",
-        output_file=agg_well_output_path,
-        output_type="parquet",
-    )
+    norm_path = (normalized_dir / f"{profile_name}_norm.parquet").resolve(strict=True)
+    fs_path = (feature_selected_dir / f"{profile_name}_fs.parquet").resolve(strict=True)
+    norm_df = pd.read_parquet(norm_path)
+    fs_df = pd.read_parquet(fs_path)
+    print(f"  Normalized loaded. Shape: {norm_df.shape}")
+    print(f"  Feature-selected loaded. Shape: {fs_df.shape}")
 
-    # aggregate by treatment
-    consensus_df = aggregate(
-        population_df=df,
-        strata=consensus_strata,
-        features=features_columns,
-        operation="median",
-        output_file=consensus_output_path,
-        output_type="parquet",
-    )
-    parquet_file = pq.ParquetFile(agg_well_output_path)
-    num_rows = parquet_file.metadata.num_rows
-    num_columns = len(parquet_file.schema.names)
-    agg_well_shape = (num_rows, num_columns)
-    parquet_file = pq.ParquetFile(consensus_output_path)
-    num_rows = parquet_file.metadata.num_rows
-    num_columns = len(parquet_file.schema.names)
-    consensus_shape = (num_rows, num_columns)
-    print(f"  Well-level aggregated. Shape: {agg_well_shape}")
-    print(f"  Consensus aggregated. Shape: {consensus_shape}")
+    # Produce the 4 standard outputs for this profile type: well-level
+    # aggregation and treatment-level consensus, from both the normalized
+    # and the feature-selected input.
+    for source_name, df in (("norm", norm_df), ("fs", fs_df)):
+        features_columns = [
+            col for col in df.columns if not col.startswith("Metadata_")
+        ]
+        agg_path = agg_output_dir / f"{profile_name}_agg_from_{source_name}.parquet"
+        consensus_path = (
+            consensus_output_dir
+            / f"{profile_name}_consensus_from_{source_name}.parquet"
+        )
+
+        agg_df = aggregate(
+            population_df=df,
+            strata=aggregate_strata,
+            features=features_columns,
+            operation="median",
+            output_file=agg_path,
+            output_type="parquet",
+        )
+        consensus_df = aggregate(
+            population_df=df,
+            strata=consensus_strata,
+            features=features_columns,
+            operation="median",
+            output_file=consensus_path,
+            output_type="parquet",
+        )
+        print(
+            f"  agg_from_{source_name} aggregated. Shape: {pd.read_parquet(agg_path).shape}"
+        )
+        print(
+            f"  consensus_from_{source_name} aggregated. Shape: {pd.read_parquet(consensus_path).shape}"
+        )
+
+
+# In[ ]:

@@ -1,10 +1,10 @@
 Metadata_Experiment_Well,Metadata_Experiment_Treatment,Metadata_Experiment_Dose,Metadata_Experiment_Unit,Metadata_Experiment_Target,Metadata_Experiment_Class,Metadata_Experiment_TherapeuticCategories
 B2,ARV-825,1,uM,BRD4 inhibitor,PROTAC,PROTAC
-C2,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+C2,Staurosporine,10,uM,Apoptosis induction,Small Molecule,Experimental
 D2,Digoxin,1,uM,Na+/K+ pump inhibitor,Small Molecule,Cardiac Glycosides
 E2,Digoxin,1,uM,Na+/K+ pump inhibitor,Small Molecule,Cardiac Glycosides
 F2,Onalespib,1,uM,HSP90 inhibitor,Small Molecule,Investigational
-G2,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+G2,Staurosporine,10,uM,Apoptosis induction,Small Molecule,Experimental
 B3,ARV-825,1,uM,BRD4 inhibitor,PROTAC,PROTAC
 C3,Onalespib,1,uM,HSP90 inhibitor,Small Molecule,Investigational
 D3,Copanlisib,1,uM,PI3K inhibitor,Small Molecule,Kinase Inhibitor
@@ -54,8 +54,8 @@ E10,Trametinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
 F10,Trametinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
 G10,Selumetinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
 B11,Sapanisertib,1,uM,mTOR inhibitor,Small Molecule,Investigational
-C11,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+C11,Staurosporine,10,uM,Apoptosis induction,Small Molecule,Experimental
 D11,Selumetinib,1,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
 E11,Selumetinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
 F11,Selumetinib,10,uM,MEK1/2 inhibitor,Small Molecule,Kinase Inhibitor
-G11,Staurosporine,10,nM,Apoptosis induction,Small Molecule,Experimental
+G11,Staurosporine,10,uM,Apoptosis induction,Small Molecule,Experimental

@@ -67,7 +67,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "SARCO361_T1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -147,16 +147,14 @@ CytoDataFrame._add_label_overlay_to_plotter = add_label_overlay_and_scale_bar
 
 
 bbox_column_map = {
-    "x_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinX",
-    "x_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxX",
-    "y_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinY",
-    "y_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxY",
-    "z_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinZ",
-    "z_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxZ",
+    "x_min": "Metadata_Location_Nuclei_MinX",
+    "x_max": "Metadata_Location_Nuclei_MaxX",
+    "y_min": "Metadata_Location_Nuclei_MinY",
+    "y_max": "Metadata_Location_Nuclei_MaxY",
+    "z_min": "Metadata_Location_Nuclei_MinZ",
+    "z_max": "Metadata_Location_Nuclei_MaxZ",
 }
-center_columns = [
-    f"{COMPARTMENT}_NoChannel_VolumeSizeShape_Center{axis}" for axis in "XYZ"
-]
+center_columns = [f"Metadata_Location_Nuclei_Center{axis}" for axis in "XYZ"]
 
 mask_name = f"{COMPARTMENT.lower()}_mask.tiff"
 # scratch directory (not part of the repo) holding per-well-FOV mask symlinks
@@ -436,11 +434,17 @@ sc_profiles_df.to_parquet(sc_qc_output_path, index=False)
 sc_profiles_df.head()
 
 
+# In[12]:
+
+
+sc_profiles_df["Metadata_cqc_small_nuclei_outlier"]
+
+
 # ## Visualize nuclei in 3D to tune this patient's thresholds
 
 # ### Visualize the small nuclei outliers
 
-# In[12]:
+# In[13]:
 
 
 # Each view is a live server-side render, so show a random sample of each group
@@ -471,7 +475,7 @@ if in_notebook:
 
 # ### Visualize the large nuclei outliers
 
-# In[13]:
+# In[14]:
 
 
 if in_notebook:
@@ -499,7 +503,7 @@ if in_notebook:
 
 # ### Visualize the high mass displacement outliers
 
-# In[14]:
+# In[15]:
 
 
 if in_notebook:
@@ -527,27 +531,27 @@ if in_notebook:
 
 # ### Visualize a random selection of nuclei
 
-# In[15]:
+# In[16]:
 
 
-if in_notebook:
-    display(
-        make_voxel_view(
-            sc_profiles_df.sample(
-                n=min(N_NUCLEI_TO_VIEW, len(sc_profiles_df)), random_state=0
-            ),
-            [
-                "Metadata_Experiment_WellFOV",
-                "Metadata_Object_ObjectID",
-                "Metadata_cqc_small_nuclei_outlier",
-                "Metadata_cqc_large_nuclei_outlier",
-                "Metadata_cqc_mass_displacement_outlier",
-                "Nuclei_NoChannel_VolumeSizeShape_Volume",
-                f"Image_FileName_{CHANNEL}",
-            ],
-            cdf_params,
-        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
-    )
+# if in_notebook:
+#     display(
+#         make_voxel_view(
+#             sc_profiles_df.sample(
+#                 n=min(N_NUCLEI_TO_VIEW, len(sc_profiles_df)), random_state=0
+#             ),
+#             [
+#                 "Metadata_Experiment_WellFOV",
+#                 "Metadata_Object_ObjectID",
+#                 "Metadata_cqc_small_nuclei_outlier",
+#                 "Metadata_cqc_large_nuclei_outlier",
+#                 "Metadata_cqc_mass_displacement_outlier",
+#                 "Nuclei_NoChannel_VolumeSizeShape_Volume",
+#                 f"Image_FileName_{CHANNEL}",
+#             ],
+#             cdf_params,
+#         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+#     )
 
 
 # ### Merge the qc flags to the deep learning-based profiles and save the output
@@ -556,7 +560,7 @@ if in_notebook:
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[16]:
+# In[17]:
 
 
 # Each deep-learning profile is only added to df_dict (and therefore QC-flag
@@ -586,7 +590,7 @@ if not df_dict:
     )
 
 
-# In[17]:
+# In[18]:
 
 
 # set the merge keys to int for both dataframes to ensure they match
