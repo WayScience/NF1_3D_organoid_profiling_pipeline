@@ -117,7 +117,7 @@ for patient, well_fov in tqdm(
 df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 
 
-# In[6]:
+# In[ ]:
 
 
 # check each well fov to search for the number of extracted feature parquet files
@@ -125,7 +125,7 @@ df["duckdb_exists"] = df["file_path"].isin(existing_duckdbs)
 df["num_parquets"] = df.apply(count_parquets, axis=1)
 
 
-# In[7]:
+# In[ ]:
 
 
 total = len(df)
@@ -136,7 +136,7 @@ print(f"Present              : {present}")
 print(f"Missing              : {total - present}")
 
 
-# In[8]:
+# In[ ]:
 
 
 # Write missing combinations to load_file.txt
@@ -147,7 +147,7 @@ df_missing.to_csv(load_file_path, sep="\t", index=False, header=False)
 print(f"Wrote {len(df_missing)} missing combinations to: {load_file_path}")
 
 
-# In[9]:
+# In[ ]:
 
 
 # Summary by patient
@@ -159,7 +159,7 @@ summary_df = (
 summary_df.reset_index()
 
 
-# In[10]:
+# In[ ]:
 
 
 # send to df
@@ -178,19 +178,19 @@ df["FeatureType"] = df["file_name"].apply(lambda s: s.split("_")[2])
 df.head()
 
 
-# In[11]:
+# In[ ]:
 
 
 df["Compatment"].value_counts()
 
 
-# In[12]:
+# In[ ]:
 
 
 df["Channel"].value_counts()
 
 
-# In[13]:
+# In[ ]:
 
 
 df["FeatureType"].value_counts()

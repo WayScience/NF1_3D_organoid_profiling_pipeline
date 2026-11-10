@@ -66,7 +66,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0018_T6"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -790,7 +790,15 @@ nucleocentric_morphem_annotated["Metadata_Experiment_WellFOV"].replace(
 # In[16]:
 
 
-sc_merged
+column_substring = "AreaSizeShape"
+sc_merged.drop(
+    columns=[col for col in sc_merged.columns if column_substring in col],
+    inplace=True,
+)
+organoid_merged.drop(
+    columns=[col for col in organoid_merged.columns if column_substring in col],
+    inplace=True,
+)
 
 
 # In[17]:
@@ -811,7 +819,7 @@ if "well_fov" in nucleocentric_morphem_annotated.columns:
     nucleocentric_morphem_annotated.drop(columns=["well_fov"], inplace=True)
 
 
-# In[19]:
+# In[18]:
 
 
 # save annotated profiles
@@ -825,3 +833,18 @@ nucleocentric_sammed_annotated.to_parquet(
 nucleocentric_morphem_annotated.to_parquet(
     nucleocentric_annotated_morphem_output_path, index=False
 )
+
+
+# In[19]:
+
+
+print(f"Annotated single-cell profile shape: {sc_merged.shape}")
+print(f"Annotated organoid profile shape: {organoid_merged.shape}")
+print(
+    f"Annotated nucleocentric SAMMed3D profile shape: {nucleocentric_sammed_annotated.shape}"
+)
+print(
+    f"Annotated nucleocentric morphem profile shape: {nucleocentric_morphem_annotated.shape}"
+)
+print(f"Annotated SAMMed3D single-cell profile shape: {sc_sammed_merged.shape}")
+print(f"Annotated SAMMed3D organoid profile shape: {organoid_sammed_merged.shape}")

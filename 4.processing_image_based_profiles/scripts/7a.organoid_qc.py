@@ -103,16 +103,14 @@ CytoDataFrame._add_label_overlay_to_plotter = add_label_overlay_and_scale_bar
 
 
 bbox_column_map = {
-    "x_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinX",
-    "x_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxX",
-    "y_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinY",
-    "y_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxY",
-    "z_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinZ",
-    "z_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxZ",
+    "x_min": "Metadata_Location_Organoid_MinX",
+    "x_max": "Metadata_Location_Organoid_MaxX",
+    "y_min": "Metadata_Location_Organoid_MinY",
+    "y_max": "Metadata_Location_Organoid_MaxY",
+    "z_min": "Metadata_Location_Organoid_MinZ",
+    "z_max": "Metadata_Location_Organoid_MaxZ",
 }
-center_columns = [
-    f"{COMPARTMENT}_NoChannel_VolumeSizeShape_Center{axis}" for axis in "XYZ"
-]
+center_columns = [f"Metadata_Location_Organoid_Center{axis}" for axis in "XYZ"]
 
 mask_name = f"{COMPARTMENT.lower()}_mask.tiff"
 # scratch directory (not part of the repo) holding per-well-FOV mask symlinks
@@ -333,6 +331,12 @@ qc_annotated_sammed_organoid_df.to_parquet(sammed_organoid_qc_output_path, index
 # In[10]:
 
 
+small_organoid_profiles["Metadata_Location_Organoid_MinX"]
+
+
+# In[11]:
+
+
 # backend="server" renders server-side and streams images (no client-side geometry
 # sync, which fails with many views per table), so the in-view "Mask" checkbox
 # toggles the overlay on/off; a red dot marks each object's center. Views stay blank
@@ -353,7 +357,7 @@ if in_notebook:
 
 # ### Visualize a random selection of organoids
 
-# In[11]:
+# In[12]:
 
 
 # backend="server" renders server-side and streams images (no client-side geometry

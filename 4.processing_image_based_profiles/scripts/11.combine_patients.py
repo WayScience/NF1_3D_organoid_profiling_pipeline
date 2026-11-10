@@ -8,6 +8,16 @@
 # cross-patient dataset, then run feature selection and aggregation at the
 # population level.
 #
+# For each profile type, aggregation and consensus are each run from **two**
+# inputs, producing 4 outputs total:
+# 1. The concatenated cross-patient normalized profile — "from norm"
+# 2. The cross-patient feature-selected profile (re-computed via
+#    `pycytominer.feature_select` over the concatenated normalized profile) — "from fs"
+#
+# The aggregation/consensus strata below are kept identical (by hand) to the
+# ones in `10.aggregation.ipynb`'s per-patient step, so both stages compute
+# aggregation/consensus the same way.
+#
 # This is **step 11 of Stage 4 (image-based profiling)** and the only notebook
 # that runs **once globally** (not per-patient). It must follow `10.aggregation.ipynb`
 # for all patients.
@@ -19,14 +29,16 @@
 # ## Outputs
 #
 # All outputs go to `data/all_patient_profiles/`. For each of 6 profile types,
-# four files are produced:
+# five files are produced:
 #
-# | Suffix | Content |
-# |---|---|
-# | `*_norm_profile.parquet` | All-patient concatenated normalized profiles |
-# | `*_fs_profiles.parquet` | Feature-selected (cross-patient FS) |
-# | `*_sc_agg_profiles.parquet` | Well-level aggregated (median by PatientTumor × Well) |
-# | `*_sc_consensus_profiles.parquet` | Consensus (median by PatientTumor × Treatment) |
+# | Directory | File pattern | Content |
+# |---|---|---|
+# | `0.normalized_profiles/` | `{profile_type}_norm_profile.parquet` | All-patient concatenated normalized profiles |
+# | `1.feature_selected_profiles/` | `{profile_type}_fs_profiles.parquet` | Feature-selected (cross-patient FS) |
+# | `2.aggregated_profiles/` | `{profile_type}_agg_from_norm.parquet` | Well-level aggregated from the normalized profile |
+# | `2.aggregated_profiles/` | `{profile_type}_agg_from_fs.parquet` | Well-level aggregated from the feature-selected profile |
+# | `3.consensus_profiles/` | `{profile_type}_consensus_from_norm.parquet` | Consensus from the normalized profile |
+# | `3.consensus_profiles/` | `{profile_type}_consensus_from_fs.parquet` | Consensus from the feature-selected profile |
 
 # In[1]:
 
@@ -37,7 +49,6 @@ import pathlib
 
 import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
@@ -51,10 +62,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-# NOTE: previously this line unconditionally overrode bandicoot_check()
-# with root_dir, meaning bandicoot was never actually used even when
-# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
-# takes effect.
 
 
 # In[2]:
@@ -157,7 +164,8 @@ freq_cut = 0.05  # frequency threshold: most-common / second-most-common value r
 # In[6]:
 
 
-# Well-level strata: one row per (patient, well) combination
+# Well-level strata: one row per (patient, well) combination. Kept identical
+# (by hand) to 10.aggregation.ipynb's per-patient strata.
 aggregate_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Well",
@@ -167,8 +175,9 @@ aggregate_strata = [
     "Metadata_Experiment_TherapeuticCategories",
     "Metadata_Experiment_Treatment",
     "Metadata_Experiment_Unit",
+    "Metadata_Experiment_ViabilityPercentage",
 ]
-# Consensus strata: one row per (patient, treatment) combination
+# Consensus strata: one row per (patient, treatment) combination.
 consensus_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Treatment",
@@ -177,11 +186,17 @@ consensus_strata = [
     "Metadata_Experiment_Target",
     "Metadata_Experiment_TherapeuticCategories",
     "Metadata_Experiment_Unit",
+    "Metadata_Experiment_ViabilityPercentage",
 ]
 potential_compartments = ["Cell", "Cytoplasm", "Nuclei", "Organoid", "Nucleocentric"]
 
 
-# In[7]:
+def cp_feature_columns(df: pd.DataFrame) -> list:
+    """Infer feature columns the pycytominer way, using known compartment prefixes."""
+    return infer_cp_features(df, metadata=False, compartments=potential_compartments)
+
+
+# In[8]:
 
 
 for profile_type, files in levels_to_merge_dict.items():
@@ -197,24 +212,24 @@ for profile_type, files in levels_to_merge_dict.items():
     for file in files:
         df = pd.read_parquet(file)
         list_of_dfs.append(df)
-    df = pd.concat(list_of_dfs, ignore_index=True)
+    norm_df = pd.concat(list_of_dfs, ignore_index=True)
 
-    print(f"Concatenated DataFrame for {profile_type} has the shape: {df.shape}")
+    print(f"Concatenated DataFrame for {profile_type} has the shape: {norm_df.shape}")
     normalized_profiles_path = pathlib.Path(
         f"{all_patients_output_path}/0.normalized_profiles/{profile_type}_norm_profile.parquet"
     )
     normalized_profiles_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(
+    norm_df.to_parquet(
         normalized_profiles_path,
         index=False,
     )
     ###############################################
     # Feature selection
     ###############################################
-    feature_columns = infer_cp_features(
-        df, metadata=False, compartments=potential_compartments
+    feature_columns = cp_feature_columns(norm_df)
+    norm_df[feature_columns] = norm_df[feature_columns].replace(
+        [np.inf, -np.inf], np.nan
     )
-    df[feature_columns] = df[feature_columns].replace([np.inf, -np.inf], np.nan)
 
     # Confirmed real, pre-existing bugs unrelated to ZEDProfiler compatibility,
     # both of which would crash this call for any dataset: `method` isn't a
@@ -228,12 +243,10 @@ for profile_type, files in levels_to_merge_dict.items():
     # passed through, so "drop_outliers" was silently using pycytominer's own
     # default (500.0) instead of this file's own outlier_cutoff = 100 -- now
     # passed explicitly, matching 9.feature_selection.py's own call.
-    fs_profile = feature_select(
-        df,
+    fs_profile_path = feature_select(
+        norm_df,
         operation=feature_select_ops,
-        features=infer_cp_features(
-            df, metadata=False, compartments=potential_compartments
-        ),
+        features=cp_feature_columns(norm_df),
         na_cutoff=na_cutoff,
         outlier_cutoff=outlier_cutoff,
         corr_threshold=corr_threshold,  # comment out to use default value
@@ -242,51 +255,45 @@ for profile_type, files in levels_to_merge_dict.items():
         output_file=f"{all_patients_output_path}/1.feature_selected_profiles/{profile_type}_fs_profiles.parquet",
         output_type="parquet",
     )
+    fs_df = pd.read_parquet(fs_profile_path)
+    print(f"  Feature-selected profile shape: {fs_df.shape}")
 
     ###############################################
-    # Aggregation — produces well-level and consensus parquets
+    # Aggregation + consensus — "from norm" and "from fs" variants
     ###############################################
-    fs_df = pd.read_parquet(fs_profile)
-    # aggregate the profiles
-    agg_profile = aggregate(
-        population_df=fs_df,
-        strata=aggregate_strata,
-        features=infer_cp_features(
-            fs_df, metadata=False, compartments=potential_compartments
-        ),
-        operation="median",
-        output_file=f"{all_patients_output_path}/2.aggregated_profiles/{profile_type}_sc_agg_profiles.parquet",
-        output_type="parquet",
-    )
+    agg_output_dir = all_patients_output_path / "2.aggregated_profiles"
+    consensus_output_dir = all_patients_output_path / "3.consensus_profiles"
 
-    ###############################################
-    # Consensus profiles
-    ###############################################
-    consensus_profile = aggregate(
-        population_df=fs_df,
-        strata=consensus_strata,
-        features=infer_cp_features(
-            fs_df, metadata=False, compartments=potential_compartments
-        ),
-        operation="median",
-        output_file=f"{all_patients_output_path}/3.consensus_profiles/{profile_type}_sc_consensus_profiles.parquet",
-        output_type="parquet",
-    )
+    for source_name, df in (("norm", norm_df), ("fs", fs_df)):
+        features_columns = cp_feature_columns(df)
+        agg_path = agg_output_dir / f"{profile_type}_agg_from_{source_name}.parquet"
+        consensus_path = (
+            consensus_output_dir
+            / f"{profile_type}_consensus_from_{source_name}.parquet"
+        )
 
-    ###############################################
-    # print shapes as a sanity check
-    ###############################################
-    fs_pq_file, agg_pq_file, consensus_pq_file = (
-        pq.ParquetFile(fs_profile),
-        pq.ParquetFile(agg_profile),
-        pq.ParquetFile(consensus_profile),
-    )
-    fs_shape = (fs_pq_file.metadata.num_rows, len(fs_pq_file.schema.names))
-    agg_shape = (agg_pq_file.metadata.num_rows, len(agg_pq_file.schema.names))
-    consensus_shape = (
-        consensus_pq_file.metadata.num_rows,
-        len(consensus_pq_file.schema.names),
-    )
-    print(f"  Feature-selected profile shape: {fs_shape}")
-    print(f"  Well-level aggregated profile shape: {agg_shape}")
-    print(f"  Consensus aggregated profile shape: {consensus_shape}")
+        agg_df = aggregate(
+            population_df=df,
+            strata=aggregate_strata,
+            features=features_columns,
+            operation="median",
+            output_file=agg_path,
+            output_type="parquet",
+        )
+        consensus_df = aggregate(
+            population_df=df,
+            strata=consensus_strata,
+            features=features_columns,
+            operation="median",
+            output_file=consensus_path,
+            output_type="parquet",
+        )
+        print(
+            f"  agg_from_{source_name} profile shape: {pd.read_parquet(agg_path).shape}"
+        )
+        print(
+            f"  consensus_from_{source_name} profile shape: {pd.read_parquet(consensus_path).shape}"
+        )
+
+
+# In[ ]:

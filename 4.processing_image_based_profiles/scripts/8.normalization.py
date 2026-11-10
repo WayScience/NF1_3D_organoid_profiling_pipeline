@@ -77,7 +77,7 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0018_T6"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
 
 
@@ -144,14 +144,6 @@ def infs_to_nans(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
     return df
 
 
-def drop_rows_with_na_in_features(
-    df: pd.DataFrame, feature_cols: list[str]
-) -> pd.DataFrame:
-    """Drop rows where the fraction of NaN feature values exceeds cutoff."""
-    df.dropna(subset=feature_cols, how="any", inplace=True)
-    return df
-
-
 def drop_high_na_rows(
     df: pd.DataFrame, feature_cols: list[str], cutoff: float = ROW_NA_CUTOFF
 ) -> pd.DataFrame:
@@ -171,7 +163,6 @@ def drop_high_na_rows(
 def call_both_na_filters(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
     """Apply both metadata and feature NaN filters."""
     df = infs_to_nans(df, feature_cols)
-    df = drop_rows_with_na_in_features(df, feature_cols)
     df = drop_high_na_rows(df, feature_cols)
     return df
 
