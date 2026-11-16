@@ -45,7 +45,9 @@ Both the organoid and single cell profiles are further divided into different ty
   - Note that currently these profiles are normalized at the patient and tumor level, while feature selection is performed across all patients currently. please use the feature selected profiles with this in mind.
     All profiles after feature selection are based on the feature selected profiles.
 - Aggregated profiles are the aggregated profiles - we perform median aggregation across all objects within a well (essentially making these profiles well-level profiles).
+  - Derived from single-object normalized and single-object feature selected profiles.
 - Consensus profiles are the consensus profiles - we perform consensus aggregation across all objects within the same treatment condition or accross all replicates (essentially making these profiles treatment-level profiles).
+  - Derived from single-object normalized and single-object feature selected profiles.
 
 The profile processing order will probably change in the future to have a more robust feature selection and normalization strategy.
 The reason for feature selection being performed on all patients is so that the same features are selected across all patients, allowing for easier comparison.
