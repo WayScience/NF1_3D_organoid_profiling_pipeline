@@ -55,7 +55,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -69,7 +68,6 @@ else:
     well_fov = "C10-1"
     patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 
@@ -106,7 +104,6 @@ organoid_example_df_path = pathlib.Path(
     f"{root_dir}/4.processing_image_based_profiles/data/DB_structures/organoid_profile_structure.parquet"
 ).resolve()
 organoid_example_df_path.parent.mkdir(parents=True, exist_ok=True)
-
 
 # In[4]:
 
@@ -209,7 +206,6 @@ except Exception as e:
     # exit the script after writing the empty DataFrames
     sys.exit(0)
 
-
 # In[5]:
 
 
@@ -228,7 +224,6 @@ nuclei_table = nuclei_table[nuclei_table["object_id"].isin(intersection_set)]
 cells_table = cells_table[cells_table["object_id"].isin(intersection_set)]
 cytoplasm_table = cytoplasm_table[cytoplasm_table["object_id"].isin(intersection_set)]
 
-
 # In[6]:
 
 
@@ -246,7 +241,6 @@ with duckdb.connect() as con:
         LEFT JOIN cells USING (object_id)
         LEFT JOIN cytoplasm USING (object_id)
     """).df()
-
 
 # In[ ]:
 
@@ -279,7 +273,6 @@ print(f"Single cell sammed profiles shape: {sc_sammed_df.shape}")
 print(f"Organoid handcrafted profiles shape: {organoid_handcrafted_df.shape}")
 print(f"Organoid sammed profiles shape: {organoid_sammed_df.shape}")
 print(f"Nucleocentric profiles shape: {nucleocentric_table.shape}")
-
 
 # In[8]:
 

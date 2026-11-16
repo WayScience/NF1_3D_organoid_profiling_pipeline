@@ -67,7 +67,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -79,7 +78,6 @@ if not in_notebook:
 else:
     patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # ## Functions
 
@@ -220,7 +218,6 @@ nucleocentric_morphem_normalized_output_path = pathlib.Path(
 ).resolve()
 sc_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
 # In[5]:
 
 
@@ -245,7 +242,6 @@ nucleocentric_morphem_annotated_profiles = (
 if "well_fov" in sc_annotated_profiles.columns:
     sc_annotated_profiles.drop(columns=["well_fov"], inplace=True)
 
-
 # In[6]:
 
 
@@ -268,7 +264,6 @@ nucleocentric_sammed_annotated_profiles = _drop_qc_samples(
 nucleocentric_morphem_annotated_profiles = _drop_qc_samples(
     df=nucleocentric_morphem_annotated_profiles, qc_cols=SC_QC_COLS, verbose=True
 )
-
 
 # In[7]:
 
@@ -356,7 +351,6 @@ nucleocentric_morphem_feature_cols = (
     else []
 )
 
-
 # ## Normalize the profiles
 #
 # For each profile type, metadata columns (those starting with `Metadata_`) are
@@ -383,7 +377,6 @@ organoid_annotated_profiles = call_both_na_filters(
 )
 print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
 print("  --------------")
-
 
 # ## Run normalization
 

@@ -63,7 +63,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -109,7 +108,6 @@ for _subdir in (
 ):
     (all_patients_output_path / _subdir).mkdir(parents=True, exist_ok=True)
 
-
 # In[3]:
 
 
@@ -121,7 +119,6 @@ levels_to_merge_dict = {
     "sammed_nucleocentric_norm": [],
     "nucleocentric_morphem_norm": [],
 }
-
 
 # In[4]:
 
@@ -135,7 +132,6 @@ for patient in patients:
             if level == file.stem:
                 levels_to_merge_dict[level].append(file)
 levels_to_merge_dict
-
 
 # In[5]:
 
@@ -160,12 +156,9 @@ freq_cut = 0.05  # frequency threshold: most-common / second-most-common value r
 # unique_cut (frequency_threshold) and min_variance (variance_threshold) are
 # intentionally left at pycytominer's own defaults (0.01 and 1e-6) -- not overridden.
 
+# In[ ]:
 
-# In[6]:
 
-
-# Well-level strata: one row per (patient, well) combination. Kept identical
-# (by hand) to 10.aggregation.ipynb's per-patient strata.
 aggregate_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Well",
@@ -177,7 +170,6 @@ aggregate_strata = [
     "Metadata_Experiment_Unit",
     "Metadata_Experiment_ViabilityPercentage",
 ]
-# Consensus strata: one row per (patient, treatment) combination.
 consensus_strata = [
     "Metadata_Biology_PatientTumor",
     "Metadata_Experiment_Treatment",
@@ -190,13 +182,7 @@ consensus_strata = [
 ]
 potential_compartments = ["Cell", "Cytoplasm", "Nuclei", "Organoid", "Nucleocentric"]
 
-
-def cp_feature_columns(df: pd.DataFrame) -> list:
-    """Infer feature columns the pycytominer way, using known compartment prefixes."""
-    return infer_cp_features(df, metadata=False, compartments=potential_compartments)
-
-
-# In[8]:
+# In[ ]:
 
 
 for profile_type, files in levels_to_merge_dict.items():
@@ -226,7 +212,9 @@ for profile_type, files in levels_to_merge_dict.items():
     ###############################################
     # Feature selection
     ###############################################
-    feature_columns = cp_feature_columns(norm_df)
+    feature_columns = infer_cp_features(
+        norm_df, metadata=False, compartments=potential_compartments
+    )
     norm_df[feature_columns] = norm_df[feature_columns].replace(
         [np.inf, -np.inf], np.nan
     )
@@ -246,7 +234,9 @@ for profile_type, files in levels_to_merge_dict.items():
     fs_profile_path = feature_select(
         norm_df,
         operation=feature_select_ops,
-        features=cp_feature_columns(norm_df),
+        features=infer_cp_features(
+            norm_df, metadata=False, compartments=potential_compartments
+        ),
         na_cutoff=na_cutoff,
         outlier_cutoff=outlier_cutoff,
         corr_threshold=corr_threshold,  # comment out to use default value
@@ -265,7 +255,9 @@ for profile_type, files in levels_to_merge_dict.items():
     consensus_output_dir = all_patients_output_path / "3.consensus_profiles"
 
     for source_name, df in (("norm", norm_df), ("fs", fs_df)):
-        features_columns = cp_feature_columns(df)
+        features_columns = infer_cp_features(
+            df, metadata=False, compartments=potential_compartments
+        )
         agg_path = agg_output_dir / f"{profile_type}_agg_from_{source_name}.parquet"
         consensus_path = (
             consensus_output_dir
@@ -294,6 +286,3 @@ for profile_type, files in levels_to_merge_dict.items():
         print(
             f"  consensus_from_{source_name} profile shape: {pd.read_parquet(consensus_path).shape}"
         )
-
-
-# In[ ]:

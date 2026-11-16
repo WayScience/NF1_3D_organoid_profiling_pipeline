@@ -23,7 +23,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -48,7 +47,6 @@ patients = pd.read_csv(patient_data_path, header=None, names=["patient_ID"])[
     "patient_ID"
 ].tolist()
 
-
 # In[4]:
 
 
@@ -56,7 +54,6 @@ stats_output_path = pathlib.Path(
     f"{profile_base_dir}/data/all_patient_profiles/"
 ).resolve()
 stats_output_path.mkdir(parents=True, exist_ok=True)
-
 
 # In[5]:
 
@@ -95,7 +92,6 @@ with ThreadPoolExecutor(max_workers=12) as executor:
 stats_files.sort()
 print(f"\n✓ Found {len(stats_files)} stats files for {len(patients)} patients.")
 
-
 # In[6]:
 
 
@@ -108,7 +104,6 @@ if dataframes:
     df = pd.concat(dataframes, ignore_index=True)
 else:
     df = pd.DataFrame()
-
 
 # In[7]:
 

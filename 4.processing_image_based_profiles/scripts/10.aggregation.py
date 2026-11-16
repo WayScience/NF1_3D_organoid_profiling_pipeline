@@ -80,7 +80,6 @@ profile_base_dir = bandicoot_check(
 # mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
 # takes effect.
 
-
 # In[2]:
 
 
@@ -92,7 +91,6 @@ if not in_notebook:
 else:
     patient = "NF0037_T1_CQ1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 
@@ -127,7 +125,6 @@ for profile_name in optional_profile_names:
         profile_names.append(profile_name)
     else:
         print(f"Skipping {profile_name}: {fs_path} does not exist.")
-
 
 # ## Aggregate the profiles
 #
@@ -166,7 +163,6 @@ consensus_strata = [
     "Metadata_Experiment_Unit",
     "Metadata_Experiment_ViabilityPercentage",
 ]
-
 
 # In[6]:
 
@@ -215,6 +211,5 @@ for profile_name in profile_names:
         print(
             f"  consensus_from_{source_name} aggregated. Shape: {pd.read_parquet(consensus_path).shape}"
         )
-
 
 # In[ ]:

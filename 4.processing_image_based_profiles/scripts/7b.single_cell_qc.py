@@ -57,7 +57,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -69,7 +68,6 @@ if not in_notebook:
 else:
     patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 
@@ -97,7 +95,6 @@ small_nuclei_threshold = patient_sc_thresholds["small_nuclei_volume"]
 large_nuclei_threshold = patient_sc_thresholds["large_nuclei_volume"]
 high_mass_displacement_threshold = patient_sc_thresholds["high_mass_displacement"]
 print(f"Using single-cell outlier thresholds for {patient}: {patient_sc_thresholds}")
-
 
 # ## Set up 3D voxel views of nuclei with `CytoDataFrame`
 #
@@ -180,7 +177,6 @@ cdf_params = CdfDataClass(
     center_columns=center_columns,
 )
 
-
 # ## Load profiles and initialize QC flags
 #
 # QC is applied in three rounds:
@@ -256,7 +252,6 @@ organoid_qc_profiles_df = pd.read_parquet(organoid_file)
 print(orig_sc_profiles_df.shape)
 orig_sc_profiles_df
 
-
 # In[6]:
 
 
@@ -277,7 +272,6 @@ flagged_count = sc_profiles_df["Metadata_cqc_nan_detected"].sum()
 print(f"Number of organoids flagged: {flagged_count}")
 
 sc_profiles_df.head()
-
 
 # In[7]:
 
@@ -326,12 +320,10 @@ sc_profiles_df["Metadata_cqc_organoid_flagged"] = sc_profiles_df.apply(
 print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
-
 # In[8]:
 
 
 sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
-
 
 # ## Detect outlier single-cells using the non-flagged data
 #
@@ -345,7 +337,6 @@ sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
-
 
 # In[10]:
 
@@ -427,18 +418,15 @@ print(f"High mass displacement outliers found: {high_mass_count}")
 # Save updated plate_df with flag columns included
 sc_profiles_df.to_parquet(sc_qc_output_path, index=False)
 
-
 # In[11]:
 
 
 sc_profiles_df.head()
 
-
 # In[12]:
 
 
 sc_profiles_df["Metadata_cqc_small_nuclei_outlier"]
-
 
 # ## Visualize nuclei in 3D to tune this patient's thresholds
 
@@ -472,7 +460,6 @@ if in_notebook:
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
-
 # ### Visualize the large nuclei outliers
 
 # In[14]:
@@ -499,7 +486,6 @@ if in_notebook:
             cdf_params,
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
-
 
 # ### Visualize the high mass displacement outliers
 
@@ -528,31 +514,29 @@ if in_notebook:
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
-
 # ### Visualize a random selection of nuclei
 
-# In[16]:
+# In[ ]:
 
 
-# if in_notebook:
-#     display(
-#         make_voxel_view(
-#             sc_profiles_df.sample(
-#                 n=min(N_NUCLEI_TO_VIEW, len(sc_profiles_df)), random_state=0
-#             ),
-#             [
-#                 "Metadata_Experiment_WellFOV",
-#                 "Metadata_Object_ObjectID",
-#                 "Metadata_cqc_small_nuclei_outlier",
-#                 "Metadata_cqc_large_nuclei_outlier",
-#                 "Metadata_cqc_mass_displacement_outlier",
-#                 "Nuclei_NoChannel_VolumeSizeShape_Volume",
-#                 f"Image_FileName_{CHANNEL}",
-#             ],
-#             cdf_params,
-#         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
-#     )
-
+if in_notebook:
+    display(
+        make_voxel_view(
+            sc_profiles_df.sample(
+                n=min(N_NUCLEI_TO_VIEW, len(sc_profiles_df)), random_state=0
+            ),
+            [
+                "Metadata_Experiment_WellFOV",
+                "Metadata_Object_ObjectID",
+                "Metadata_cqc_small_nuclei_outlier",
+                "Metadata_cqc_large_nuclei_outlier",
+                "Metadata_cqc_mass_displacement_outlier",
+                "Nuclei_NoChannel_VolumeSizeShape_Volume",
+                f"Image_FileName_{CHANNEL}",
+            ],
+            cdf_params,
+        ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
+    )
 
 # ### Merge the qc flags to the deep learning-based profiles and save the output
 # Merge the QC flags back to the original single cell profiles, which will be used in downstream analyses and single cell QC.
@@ -588,7 +572,6 @@ if not df_dict:
         "No deep-learning annotated profiles found -- skipping DL QC flag "
         "propagation entirely (this dataset has no deep-learning features)."
     )
-
 
 # In[18]:
 

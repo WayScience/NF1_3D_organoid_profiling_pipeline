@@ -57,7 +57,6 @@ profile_base_dir = bandicoot_check(
 # mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
 # takes effect.
 
-
 # In[2]:
 
 
@@ -69,7 +68,6 @@ if not in_notebook:
 else:
     image_based_profiles_subparent_name = "image_based_profiles"
     patient = "SARCO361_T1"
-
 
 # In[3]:
 
@@ -133,7 +131,6 @@ cdf_params = CdfDataClass(
     center_columns=center_columns,
 )
 
-
 # In[4]:
 
 
@@ -159,7 +156,6 @@ small_outlier_threshold = small_outlier_thresholds[patient]
 print(
     f"Using small organoid outlier threshold for {patient}: {small_outlier_threshold}"
 )
-
 
 # ## Load in all the organoid profiles and concat together
 
@@ -204,7 +200,6 @@ orig_organoid_profiles_df = pd.read_parquet(organoid_file)
 print(orig_organoid_profiles_df.shape)
 orig_organoid_profiles_df.head()
 
-
 # ## (Sanity check) Round 1 QC: flag rows with NaN in key columns
 #
 # `Metadata_cqc_*` columns are boolean flags added by this notebook. A value of `True`
@@ -234,7 +229,6 @@ organoid_profiles_df["Metadata_cqc_nan_detected"] = (
 flagged_count = organoid_profiles_df["Metadata_cqc_nan_detected"].sum()
 print(f"Number of organoids flagged: {flagged_count}")
 
-
 # ## Process non-NaN rows to detect abnormally small and large organoids and flag them
 
 # In[7]:
@@ -242,7 +236,6 @@ print(f"Number of organoids flagged: {flagged_count}")
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in organoid_profiles_df.columns if "Metadata" in x]
-
 
 # In[8]:
 
@@ -281,7 +274,6 @@ small_organoid_profiles = organoid_profiles_df.loc[
 ]
 organoid_profiles_df.to_parquet(organoid_qc_output_path, index=False)
 
-
 # ## Merge the qc flags to the deep learning-based profiles and save the output
 # Merge the QC flags back to the original organoid profiles, which will be used in downstream analyses and single cell QC.
 # We need to do this beacuase we do not run qc on black-box features.
@@ -314,7 +306,6 @@ if qc_annotated_sammed_organoid_df.shape[1] == original_sammed_shape[1]:
     )
 qc_annotated_sammed_organoid_df.to_parquet(sammed_organoid_qc_output_path, index=False)
 
-
 # ## Set up 3D voxel views of organoids with `CytoDataFrame`
 #
 # Adapted from the CytoDataFrame NF1 3D pilot verification example, using this notebook's pathing.
@@ -332,7 +323,6 @@ qc_annotated_sammed_organoid_df.to_parquet(sammed_organoid_qc_output_path, index
 
 
 small_organoid_profiles["Metadata_Location_Organoid_MinX"]
-
 
 # In[11]:
 
@@ -353,7 +343,6 @@ if in_notebook:
             cdf_params,
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
-
 
 # ### Visualize a random selection of organoids
 

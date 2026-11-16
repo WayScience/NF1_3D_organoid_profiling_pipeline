@@ -76,7 +76,6 @@ profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
 
-
 # In[2]:
 
 
@@ -90,7 +89,6 @@ else:
     patient = "NF0014_T1"
     well_fov = "C10-1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # ### Pathing
 
@@ -137,7 +135,6 @@ nucleocentric_profile_output_path = pathlib.Path(
 ).resolve()
 sc_profile_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
 # In[4]:
 
 
@@ -178,7 +175,6 @@ print(f"Single-cell sammed profile shape: {sc_profile_sammed_df.shape}")
 print(f"Organoid sammed profile shape: {organoid_profile_sammed_df.shape}")
 print(f"Nucleocentric profile shape: {nucleocentric_df.shape}")
 
-
 # In[5]:
 
 
@@ -194,7 +190,6 @@ x_y_z_sc_colnames = [
     and "nuclei" in x.lower()
 ]
 x_y_z_sc_colnames
-
 
 # In[6]:
 
@@ -216,7 +211,6 @@ organoid_bbox_colnames = sorted(organoid_bbox_colnames)
 # VolumeSizeShape: the family name prefix is identical across all six
 # candidates, so sort order is determined only by the trailing Max/Min +
 # axis letter.
-
 
 # In[7]:
 
@@ -274,7 +268,6 @@ for organoid_index, organoid_row in tqdm(
 print(f"Assigned {(sc_profile_df['ParentOrganoid'] != -1).sum()} cells to organoids")
 print(f"Unassigned cells: {(sc_profile_df['ParentOrganoid'] == -1).sum()}")
 
-
 # ### Add single-cell counts for each organoid
 
 # In[8]:
@@ -297,7 +290,6 @@ organoid_profile_df = pd.merge(
 sc_count = organoid_profile_df.pop("OrganoidSingleCellCount")
 organoid_profile_df.insert(2, "OrganoidSingleCellCount", sc_count)
 
-
 # ### Carry the `ParentOrganoid` assignment and spatial features over to the sammed profiles, so that the same cells are assigned to the same organoids in both the
 
 # In[9]:
@@ -310,7 +302,6 @@ organoid_profile_sammed_df = organoid_profile_sammed_df.merge(
     how="left",
 )
 
-
 # In[10]:
 
 
@@ -320,7 +311,6 @@ sc_profile_sammed_df = sc_profile_sammed_df.merge(
     right_on="object_id",
     how="left",
 )
-
 
 # ### Empty dataframe fallbacks
 #
@@ -336,7 +326,6 @@ organoid_profile_df["OrganoidSingleCellCount"] = (
 )
 organoid_profile_df.head()
 
-
 # In[12]:
 
 
@@ -348,12 +337,10 @@ if organoid_profile_df.empty:
     # propagated through all downstream stages.
     pass
 
-
 # In[13]:
 
 
 print(f"Single-cell profile shape: {sc_profile_df.shape}")
-
 
 # In[14]:
 
@@ -363,12 +350,10 @@ if sc_profile_df.empty:
     sc_profile_df.loc[len(sc_profile_df)] = [None] * len(sc_profile_df.columns)
     sc_profile_df["image_set"] = well_fov
 
-
 # In[15]:
 
 
 nucleocentric_df
-
 
 # In[16]:
 
@@ -382,7 +367,6 @@ nucleocentric_df = pd.merge(
     on=["object_id", "image_set"],
     how="left",
 )
-
 
 # ## Get single cell and organoid relationships and spatial distributions
 
@@ -402,7 +386,6 @@ x_y_z_organoid_bbox_colnames = [
     if ("area" in x.lower() or "volumesizeshape" in x.lower())
     and ("min" in x.lower() or "max" in x.lower())
 ]
-
 
 # In[18]:
 
@@ -477,7 +460,6 @@ for organoid_id in organoid_ids:
     shell_classification_df["ParentOrganoid"] = organoid_id
     results.append(shell_classification_df)
 
-
 # In[19]:
 
 
@@ -511,7 +493,6 @@ df.rename(
     inplace=True,
 )
 
-
 # In[20]:
 
 
@@ -524,7 +505,6 @@ sc_profile_with_shells_df = pd.merge(
     how="left",
 )
 
-
 # ### Save the profiles
 
 # In[21]:
@@ -533,13 +513,11 @@ sc_profile_with_shells_df = pd.merge(
 organoid_profile_df.to_parquet(organoid_profile_handcrafted_output_path, index=False)
 organoid_profile_df.head()
 
-
 # In[22]:
 
 
 sc_profile_with_shells_df.to_parquet(sc_profile_handcrafted_output_path, index=False)
 sc_profile_with_shells_df.head()
-
 
 # In[23]:
 
@@ -547,13 +525,11 @@ sc_profile_with_shells_df.head()
 nucleocentric_df.to_parquet(nucleocentric_profile_output_path, index=False)
 nucleocentric_df.head()
 
-
 # In[24]:
 
 
 sc_profile_sammed_df.to_parquet(sc_profile_sammed_output_path, index=False)
 sc_profile_sammed_df.head()
-
 
 # In[25]:
 
