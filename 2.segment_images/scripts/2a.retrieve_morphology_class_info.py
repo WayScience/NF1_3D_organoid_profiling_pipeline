@@ -296,7 +296,7 @@ summary = summary.sort_values(
     ["model", "split", "patient", "treatment_label"]
 ).reset_index(drop=True)
 
-summary_csv_path = pathlib.Path("../results/group_performance_summary.csv").resolve()
+summary_csv_path = pathlib.Path("../results/performance_summary.csv").resolve()
 summary.to_csv(summary_csv_path, index=False)
 
 print(f"{len(summary)} (model, split, patient, treatment+dose) rows")

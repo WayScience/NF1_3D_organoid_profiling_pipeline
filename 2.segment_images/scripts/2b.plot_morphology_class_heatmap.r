@@ -6,7 +6,7 @@ suppressPackageStartupMessages({
   library(grid)
 })
 
-summary_csv_path <- normalizePath("../results/group_performance_summary.csv")
+summary_csv_path <- normalizePath("../results/performance_summary.csv")
 themes_path <- normalizePath("../../utils/r_plot_themes.r")
 heatmap_png_path <- file.path(
   "..", "figures",
@@ -104,7 +104,7 @@ build_cell_fun <- function(n_mat) {
     if (!is.na(n_val)) {
       grid.text(
         sprintf("n=%d", n_val), x, y,
-        gp = gpar(fontsize = 9, col = text_color_for_fill(fill))
+        gp = gpar(fontsize = 24, col = text_color_for_fill(fill))
       )
     }
   }
@@ -161,11 +161,11 @@ build_panel <- function(split_name, show_row_names, show_col_names) {
     row_order = patients,
     column_order = treatment_cols,
     row_names_side = "left",
-    row_names_gp = gpar(fontsize = 12),
+    row_names_gp = gpar(fontsize = 28),
     column_names_rot = 45,
-    column_names_gp = gpar(fontsize = 11),
+    column_names_gp = gpar(fontsize = 28),
     column_title = split_name,
-    column_title_gp = gpar(fontsize = 16, fontface = "bold"),
+    column_title_gp = gpar(fontsize = 32, fontface = "bold"),
     show_row_names = show_row_names,
     show_column_names = show_col_names,
     show_heatmap_legend = FALSE,
@@ -320,7 +320,7 @@ build_confusion_cell_fun <- function(n_mat) {
     if (!is.na(n_val)) {
       grid.text(
         sprintf("n=%d", n_val), x, y,
-        gp = gpar(fontsize = 9, col = confusion_text_color_for_fill(fill))
+        gp = gpar(fontsize = 24, col = confusion_text_color_for_fill(fill))
       )
     }
   }
@@ -359,13 +359,13 @@ build_confusion_panel <- function(split_name, show_row_names, show_col_names) {
     row_order = classes,
     column_order = classes,
     row_title = "Actual",
-    row_title_gp = gpar(fontsize = 12, fontface = "bold"),
+    row_title_gp = gpar(fontsize = 32, fontface = "bold"),
     row_names_side = "left",
-    row_names_gp = gpar(fontsize = 11),
+    row_names_gp = gpar(fontsize = 28),
     column_names_rot = 45,
-    column_names_gp = gpar(fontsize = 11),
+    column_names_gp = gpar(fontsize = 28),
     column_title = split_name,
-    column_title_gp = gpar(fontsize = 16, fontface = "bold"),
+    column_title_gp = gpar(fontsize = 32, fontface = "bold"),
     show_row_names = show_row_names,
     show_column_names = show_col_names,
     show_heatmap_legend = FALSE,
