@@ -56,7 +56,6 @@ image_base_dir = nas_path_check(root_dir, "bandicoot")
 image_base_dir = image_base_dir / "NF1_organoid_data"
 IBP_SUBPARENT_NAME = "image_based_profiles"
 
-
 # In[2]:
 
 
@@ -92,7 +91,6 @@ else:
     patient = "NF0014_T1"
     well_fov = "C11-2"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 

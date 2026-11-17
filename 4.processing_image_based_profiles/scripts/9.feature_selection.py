@@ -74,15 +74,11 @@ from pycytominer import feature_select
 
 root_dir, in_notebook = init_notebook()
 
+
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot/NF1_organoid_data")).resolve(),
     root_dir,
 )
-# NOTE: previously this line unconditionally overrode bandicoot_check()
-# with root_dir, meaning bandicoot was never actually used even when
-# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
-# takes effect.
-
 
 # In[2]:
 
@@ -93,9 +89,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 
@@ -149,7 +144,6 @@ nucleocentric_morphem_feature_selected_output_path = pathlib.Path(
 ).resolve()
 
 organoid_fs_output_path.parent.mkdir(parents=True, exist_ok=True)
-
 
 # In[4]:
 
@@ -213,7 +207,6 @@ if has_nucleocentric_morphem:
         "output_path": nucleocentric_morphem_feature_selected_output_path,
     }
 
-
 # In[5]:
 
 
@@ -242,7 +235,6 @@ corr_threshold = 0.90  # drop one of any pair with Pearson r >= 0.90
 freq_cut = 0.05  # frequency threshold: most-common / second-most-common value ratio
 # unique_cut (frequency_threshold) and min_variance (variance_threshold) are
 # intentionally left at pycytominer's own defaults (0.01 and 1e-6) -- not overridden.
-
 
 # ## Feature select the profiles
 #

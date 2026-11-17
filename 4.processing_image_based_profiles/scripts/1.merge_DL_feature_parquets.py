@@ -50,7 +50,6 @@ root_dir, in_notebook = init_notebook()
 profile_base_dir = nas_path_check(root_dir, nas_name="bandicoot")
 profile_base_dir = profile_base_dir / "NF1_organoid_data"
 
-
 # In[2]:
 
 
@@ -87,7 +86,6 @@ parquet_files = list(result_path.rglob("*.parquet"))
 parquet_files.sort()
 print(len(parquet_files), "parquet files found")
 
-
 # In[3]:
 
 
@@ -97,7 +95,6 @@ feature_types = [
     "CHAMMI75",
 ]
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
-
 
 # In[4]:
 
@@ -114,7 +111,6 @@ output_dict = {
     for compartment in compartments
 }
 output_dict
-
 
 # In[5]:
 
@@ -152,7 +148,6 @@ if unknown_feature_types:
 
 files_df.head()
 
-
 # In[6]:
 
 
@@ -189,7 +184,6 @@ for compartment in final_df_dict.keys():
             compartment
         ][feature_type]["object_id"].astype(int)
 
-
 # In[7]:
 
 
@@ -214,7 +208,6 @@ try:
             )
 except Exception as e:
     print(f"Error merging dataframes for compartment {compartment}: {e}")
-
 
 # ## Skipping cell temporarily
 # This should be uncommented later but will work for now.
@@ -246,7 +239,6 @@ except Exception as e:
 #     )
 # )
 
-
 # In[9]:
 
 
@@ -268,7 +260,6 @@ dict_of_DB_structures = {
     "Cytoplasm": cytoplasm_table,
     "Nucleocentric": nucleocentric_table,
 }
-
 
 # In[10]:
 

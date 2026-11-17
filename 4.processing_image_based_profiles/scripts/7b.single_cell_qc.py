@@ -57,7 +57,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -67,9 +66,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "SARCO361_T1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 
@@ -97,7 +95,6 @@ small_nuclei_threshold = patient_sc_thresholds["small_nuclei_volume"]
 large_nuclei_threshold = patient_sc_thresholds["large_nuclei_volume"]
 high_mass_displacement_threshold = patient_sc_thresholds["high_mass_displacement"]
 print(f"Using single-cell outlier thresholds for {patient}: {patient_sc_thresholds}")
-
 
 # ## Set up 3D voxel views of nuclei with `CytoDataFrame`
 #
@@ -147,16 +144,14 @@ CytoDataFrame._add_label_overlay_to_plotter = add_label_overlay_and_scale_bar
 
 
 bbox_column_map = {
-    "x_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinX",
-    "x_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxX",
-    "y_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinY",
-    "y_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxY",
-    "z_min": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MinZ",
-    "z_max": f"{COMPARTMENT}_NoChannel_VolumeSizeShape_MaxZ",
+    "x_min": "Metadata_Location_Nuclei_MinX",
+    "x_max": "Metadata_Location_Nuclei_MaxX",
+    "y_min": "Metadata_Location_Nuclei_MinY",
+    "y_max": "Metadata_Location_Nuclei_MaxY",
+    "z_min": "Metadata_Location_Nuclei_MinZ",
+    "z_max": "Metadata_Location_Nuclei_MaxZ",
 }
-center_columns = [
-    f"{COMPARTMENT}_NoChannel_VolumeSizeShape_Center{axis}" for axis in "XYZ"
-]
+center_columns = [f"Metadata_Location_Nuclei_Center{axis}" for axis in "XYZ"]
 
 mask_name = f"{COMPARTMENT.lower()}_mask.tiff"
 # scratch directory (not part of the repo) holding per-well-FOV mask symlinks
@@ -181,7 +176,6 @@ cdf_params = CdfDataClass(
     bbox_column_map=bbox_column_map,
     center_columns=center_columns,
 )
-
 
 # ## Load profiles and initialize QC flags
 #
@@ -258,7 +252,6 @@ organoid_qc_profiles_df = pd.read_parquet(organoid_file)
 print(orig_sc_profiles_df.shape)
 orig_sc_profiles_df
 
-
 # In[6]:
 
 
@@ -279,7 +272,6 @@ flagged_count = sc_profiles_df["Metadata_cqc_nan_detected"].sum()
 print(f"Number of organoids flagged: {flagged_count}")
 
 sc_profiles_df.head()
-
 
 # In[7]:
 
@@ -328,12 +320,10 @@ sc_profiles_df["Metadata_cqc_organoid_flagged"] = sc_profiles_df.apply(
 print(sc_profiles_df.shape)
 sc_profiles_df.head()
 
-
 # In[8]:
 
 
 sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
-
 
 # ## Detect outlier single-cells using the non-flagged data
 #
@@ -347,7 +337,6 @@ sc_profiles_df["Nuclei_NoChannel_VolumeSizeShape_Volume"].describe()
 
 # Set the metadata columns to be used in the QC process
 metadata_columns = [x for x in sc_profiles_df.columns if "Metadata" in x]
-
 
 # In[10]:
 
@@ -429,18 +418,21 @@ print(f"High mass displacement outliers found: {high_mass_count}")
 # Save updated plate_df with flag columns included
 sc_profiles_df.to_parquet(sc_qc_output_path, index=False)
 
-
 # In[11]:
 
 
 sc_profiles_df.head()
 
+# In[12]:
+
+
+sc_profiles_df["Metadata_cqc_small_nuclei_outlier"]
 
 # ## Visualize nuclei in 3D to tune this patient's thresholds
 
 # ### Visualize the small nuclei outliers
 
-# In[12]:
+# In[13]:
 
 
 # Each view is a live server-side render, so show a random sample of each group
@@ -468,10 +460,9 @@ if in_notebook:
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
-
 # ### Visualize the large nuclei outliers
 
-# In[13]:
+# In[14]:
 
 
 if in_notebook:
@@ -496,10 +487,9 @@ if in_notebook:
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
-
 # ### Visualize the high mass displacement outliers
 
-# In[14]:
+# In[15]:
 
 
 if in_notebook:
@@ -524,10 +514,9 @@ if in_notebook:
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
-
 # ### Visualize a random selection of nuclei
 
-# In[15]:
+# In[ ]:
 
 
 if in_notebook:
@@ -549,14 +538,13 @@ if in_notebook:
         ).show_widget_table(column=f"Image_FileName_{CHANNEL}", backend="server")
     )
 
-
 # ### Merge the qc flags to the deep learning-based profiles and save the output
 # Merge the QC flags back to the original single cell profiles, which will be used in downstream analyses and single cell QC.
 # We need to do this beacuase we do not run qc on black-box features.
 # Merge on the Metadata_Biology_PatientTumor, Metadata_Experiment_WellFOV
 # and the Metadata_Object_ObjectID columns, which together uniquely identify each organoid profile row.
 
-# In[16]:
+# In[17]:
 
 
 # Each deep-learning profile is only added to df_dict (and therefore QC-flag
@@ -585,8 +573,7 @@ if not df_dict:
         "propagation entirely (this dataset has no deep-learning features)."
     )
 
-
-# In[17]:
+# In[18]:
 
 
 # set the merge keys to int for both dataframes to ensure they match

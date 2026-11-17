@@ -67,7 +67,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -77,9 +76,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0018_T6"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # ## Functions
 
@@ -144,14 +142,6 @@ def infs_to_nans(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
     return df
 
 
-def drop_rows_with_na_in_features(
-    df: pd.DataFrame, feature_cols: list[str]
-) -> pd.DataFrame:
-    """Drop rows where the fraction of NaN feature values exceeds cutoff."""
-    df.dropna(subset=feature_cols, how="any", inplace=True)
-    return df
-
-
 def drop_high_na_rows(
     df: pd.DataFrame, feature_cols: list[str], cutoff: float = ROW_NA_CUTOFF
 ) -> pd.DataFrame:
@@ -171,7 +161,6 @@ def drop_high_na_rows(
 def call_both_na_filters(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
     """Apply both metadata and feature NaN filters."""
     df = infs_to_nans(df, feature_cols)
-    df = drop_rows_with_na_in_features(df, feature_cols)
     df = drop_high_na_rows(df, feature_cols)
     return df
 
@@ -229,7 +218,6 @@ nucleocentric_morphem_normalized_output_path = pathlib.Path(
 ).resolve()
 sc_normalized_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
 # In[5]:
 
 
@@ -254,7 +242,6 @@ nucleocentric_morphem_annotated_profiles = (
 if "well_fov" in sc_annotated_profiles.columns:
     sc_annotated_profiles.drop(columns=["well_fov"], inplace=True)
 
-
 # In[6]:
 
 
@@ -277,7 +264,6 @@ nucleocentric_sammed_annotated_profiles = _drop_qc_samples(
 nucleocentric_morphem_annotated_profiles = _drop_qc_samples(
     df=nucleocentric_morphem_annotated_profiles, qc_cols=SC_QC_COLS, verbose=True
 )
-
 
 # In[7]:
 
@@ -365,7 +351,6 @@ nucleocentric_morphem_feature_cols = (
     else []
 )
 
-
 # ## Normalize the profiles
 #
 # For each profile type, metadata columns (those starting with `Metadata_`) are
@@ -392,7 +377,6 @@ organoid_annotated_profiles = call_both_na_filters(
 )
 print(f"  Organoid handcrafted: {len(organoid_annotated_profiles)} rows remaining")
 print("  --------------")
-
 
 # ## Run normalization
 
