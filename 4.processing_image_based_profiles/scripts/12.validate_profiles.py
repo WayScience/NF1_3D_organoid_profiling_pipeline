@@ -21,11 +21,6 @@ root_dir, in_notebook = init_notebook()
 profile_base_dir = bandicoot_check(
     pathlib.Path(os.path.expanduser("~/mnt/bandicoot")).resolve(), root_dir
 )
-# NOTE: previously this line unconditionally overrode bandicoot_check()
-# with root_dir, meaning bandicoot was never actually used even when
-# mounted. Removed so bandicoot_check()'s own bandicoot-first behavior
-# takes effect.
-
 
 # In[2]:
 
@@ -50,7 +45,6 @@ else:
 
 threshold = 1e3
 
-
 # In[3]:
 
 
@@ -58,7 +52,6 @@ patient_ids_file_path = pathlib.Path(f"{root_dir}/data/patient_IDs.txt").resolve
     strict=True
 )
 patient_ids = pd.read_csv(patient_ids_file_path, header=None).iloc[:, 0].tolist()
-
 
 # In[4]:
 
@@ -95,17 +88,29 @@ with open(log_path, "w") as log_file:
             "organoid_fs": pathlib.Path(
                 f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/6.feature_selected_profiles/organoid_fs.parquet"
             ).resolve(strict=True),
-            "sc_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sc_agg_well_level.parquet"
+            "sc_agg_well_from_norm": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sc_agg_from_norm.parquet"
             ).resolve(strict=True),
-            "organoid_agg_well": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/organoid_agg_well_level.parquet"
+            "organoid_agg_well_from_norm": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/organoid_agg_from_norm.parquet"
             ).resolve(strict=True),
-            "sc_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sc_consensus.parquet"
+            "sc_agg_well_from_fs": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/sc_agg_from_fs.parquet"
             ).resolve(strict=True),
-            "organoid_agg_treatment": pathlib.Path(
-                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/organoid_consensus.parquet"
+            "organoid_agg_well_from_fs": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/7.aggregated_profiles/organoid_agg_from_fs.parquet"
+            ).resolve(strict=True),
+            "sc_agg_treatment_from_norm": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sc_consensus_from_norm.parquet"
+            ).resolve(strict=True),
+            "organoid_agg_treatment_from_norm": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/organoid_consensus_from_norm.parquet"
+            ).resolve(strict=True),
+            "sc_agg_treatment_from_fs": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/sc_consensus_from_fs.parquet"
+            ).resolve(strict=True),
+            "organoid_agg_treatment_from_fs": pathlib.Path(
+                f"{profile_base_dir}/data/{patient}/{image_based_profiles_subparent_name}/8.consensus_profiles/organoid_consensus_from_fs.parquet"
             ).resolve(strict=True),
         }
         optional_dl_paths = {
@@ -172,7 +177,6 @@ with open(log_path, "w") as log_file:
             )
 
 print(f"\nLog written to: {log_path}")
-
 
 # In[5]:
 

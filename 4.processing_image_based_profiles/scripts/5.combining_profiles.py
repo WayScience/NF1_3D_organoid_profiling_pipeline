@@ -53,7 +53,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -65,7 +64,6 @@ if not in_notebook:
 else:
     patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # In[3]:
 
@@ -92,7 +90,6 @@ nucleocentric_profile_output_path = pathlib.Path(
 ).resolve()
 organoid_merged_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
 # In[4]:
 
 
@@ -100,7 +97,6 @@ organoid_merged_handcrafted_output_path.parent.mkdir(parents=True, exist_ok=True
 # The directory structure is 1.related_profiles/{well_fov}/*.parquet,
 # so one wildcard level is sufficient.
 profiles = list(profiles_path.rglob("*/*.parquet"))
-
 
 # In[5]:
 
@@ -132,7 +128,6 @@ print(
     len(nucleocentric_profiles),
 )
 
-
 # In[6]:
 
 
@@ -141,7 +136,6 @@ for x in nucleocentric_profiles:
     if df.isnull().any().any():
         print(f"Null values found in {x}")
 print(df.shape)
-
 
 # In[7]:
 
@@ -171,7 +165,6 @@ with duckdb.connect() as conn:
 print(f"Single-cell profiles concatenated. Shape: {sc_profile.shape}")
 print(f"Organoid profiles concatenated. Shape: {organoid_profile.shape}")
 print(f"Nucleocentric profiles concatenated. Shape: {nucleocentric_profile.shape}")
-
 
 # ## Remove all BF channels
 #
@@ -212,7 +205,6 @@ nucleocentric_profile = nucleocentric_profile.drop(columns=bf_cols_nucleocentric
 print(
     f"Nucleocentric: dropped {len(bf_cols_nucleocentric)} BF columns. Shape: {nucleocentric_profile.shape}"
 )
-
 
 # In[9]:
 

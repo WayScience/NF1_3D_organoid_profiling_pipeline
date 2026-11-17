@@ -58,7 +58,6 @@ for patient in "${patient_array[@]}"; do
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/6.annotation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/7a.organoid_qc.py  --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/7b.single_cell_qc.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
-        "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/7c.propagate_cqc_to_dl.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/8.normalization.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/9.feature_selection.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"
         "$PYTHON_BIN" "$git_root"/4.processing_image_based_profiles/scripts/10.aggregation.py --patient "$patient" --image_based_profiles_subparent_name "image_based_profiles"

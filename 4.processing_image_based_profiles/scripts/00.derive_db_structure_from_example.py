@@ -26,7 +26,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -64,7 +63,6 @@ parquet_files = list(result_path.rglob("*.parquet"))
 parquet_files.sort()
 print(len(parquet_files), "parquet files found")
 
-
 # In[3]:
 
 
@@ -80,7 +78,6 @@ feature_types = [
     "CHAMMI75",
 ]
 compartments = ["Organoid", "Nuclei", "Cell", "Cytoplasm", "Nucleocentric"]
-
 
 # In[4]:
 
@@ -98,7 +95,6 @@ output_dict = {
 }
 output_dict
 
-
 # In[5]:
 
 
@@ -113,7 +109,6 @@ files_df["feature_type"] = files_df["file_name"].apply(
 file_path = files_df.pop("file_path")
 files_df.insert(4, "file_path", file_path)
 files_df.head()
-
 
 # In[6]:
 
@@ -139,7 +134,6 @@ for compartment in output_dict.keys():
             [pd.read_parquet(file) for file in output_dict[compartment][feature_type]],
         )
 
-
 # In[7]:
 
 
@@ -159,7 +153,6 @@ for compartment in final_df_dict.keys():
             ),
             final_df_dict[compartment].values(),
         )
-
 
 # In[8]:
 

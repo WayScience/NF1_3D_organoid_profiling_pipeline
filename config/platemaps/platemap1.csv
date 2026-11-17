@@ -1,9 +1,9 @@
 WellRow,WellCol,WellPosition,Treatment,Dose,Unit
-C,2,C2,Staurosporine,10,nM
+C,2,C2,Staurosporine,10,uM
 D,2,D2,Digoxin,1,uM
 E,2,E2,Digoxin,1,uM
 F,2,F2,Onalespib,1,uM
-G,2,G2,Staurosporine,10,nM
+G,2,G2,Staurosporine,10,uM
 C,3,C3,Onalespib,1,uM
 D,3,D3,Copanlisib,1,uM
 E,3,E3,Copanlisib,1,uM
@@ -44,8 +44,8 @@ D,10,D10,Trametinib,1,uM
 E,10,E10,Trametinib,10,uM
 F,10,F10,Trametinib,10,uM
 G,10,G10,Selumetinib,1,uM
-C,11,C11,Staurosporine,10,nM
+C,11,C11,Staurosporine,10,uM
 D,11,D11,Selumetinib,1,uM
 E,11,E11,Selumetinib,10,uM
 F,11,F11,Selumetinib,10,uM
-G,11,G11,Staurosporine,10,nM
+G,11,G11,Staurosporine,10,uM

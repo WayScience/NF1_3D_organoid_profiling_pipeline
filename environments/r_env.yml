@@ -29,3 +29,4 @@ dependencies:
   - conda-forge::r-hrbrthemes
   - conda-forge::r-tm
   - conda-forge::r-ggbreak
+  - conda-forge::r-ggsignif

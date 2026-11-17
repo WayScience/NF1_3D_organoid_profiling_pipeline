@@ -9,6 +9,8 @@ import pathlib
 import shutil
 
 import pandas as pd
+import synapseclient
+import synapseutils
 from image_analysis_3D.file_utils.notebook_init_utils import (
     bandicoot_check,
     init_notebook,
@@ -113,7 +115,7 @@ for profile_file_path in tqdm.tqdm(profile_dirs):
         )
 
 
-# In[ ]:
+# In[6]:
 
 
 list_of_replacement_strings = [
@@ -188,39 +190,39 @@ shutil.copy(README_path, sage_readme_path)
 # In[10]:
 
 
-# # note, must run synapse config first in terminal to set up .synapseConfig file
-# # or set some environment variables
-# syn = synapseclient.login()
+# note, must run synapse config first in terminal to set up .synapseConfig file
+# or set some environment variables
+syn = synapseclient.login()
 
 
 # In[11]:
 
 
-# my_project_id = my_project_id = syn.findEntityId(
-#     name="A deep learning microscopy framework for NF1 patient-derived organoid drug screening"
-# )
-# DIRECTORY_FOR_MY_PROJECT = os.path.join(
-#     "..", "data_for_sage/"
-# )  # tried using pathlib and it throws an error in the generate sync manifest function
-# PATH_TO_MANIFEST_FILE = os.path.join(".", "manifest-for-upload.tsv")
+my_project_id = my_project_id = syn.findEntityId(
+    name="A deep learning microscopy framework for NF1 patient-derived organoid drug screening"
+)
+DIRECTORY_FOR_MY_PROJECT = os.path.join(
+    "..", "data_for_sage/"
+)  # tried using pathlib and it throws an error in the generate sync manifest function
+PATH_TO_MANIFEST_FILE = os.path.join(".", "manifest-for-upload.tsv")
 
 
 # In[12]:
 
 
-# # generate the manifest file to sync on
-# synapseutils.generate_sync_manifest(
-#     syn=syn,
-#     directory_path=DIRECTORY_FOR_MY_PROJECT,
-#     parent_id=my_project_id,
-#     manifest_path=PATH_TO_MANIFEST_FILE,
-# )
+# generate the manifest file to sync on
+synapseutils.generate_sync_manifest(
+    syn=syn,
+    directory_path=DIRECTORY_FOR_MY_PROJECT,
+    parent_id=my_project_id,
+    manifest_path=PATH_TO_MANIFEST_FILE,
+)
 
 
 # In[13]:
 
 
-# # sync the files to synapse
-# synapseutils.syncToSynapse(
-#     syn=syn, manifestFile=PATH_TO_MANIFEST_FILE, sendMessages=False
-# )
+# sync the files to synapse
+synapseutils.syncToSynapse(
+    syn=syn, manifestFile=PATH_TO_MANIFEST_FILE, sendMessages=False
+)

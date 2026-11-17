@@ -56,7 +56,6 @@ profile_base_dir = bandicoot_check(
     root_dir,
 )
 
-
 # In[2]:
 
 
@@ -66,9 +65,8 @@ if not in_notebook:
     image_based_profiles_subparent_name = args["image_based_profiles_subparent_name"]
 
 else:
-    patient = "NF0037_T1_CQ1"
+    patient = "NF0014_T1"
     image_based_profiles_subparent_name = "image_based_profiles"
-
 
 # ## Combine the metadata into a single annotation file
 
@@ -212,7 +210,6 @@ else:
         annotation_df["Metadata_Biology_PatientTumor"] == patient
     ]
 
-
 # ## Pathing
 
 # In[4]:
@@ -256,7 +253,6 @@ sammed_annotated_organoid_profiles_path = pathlib.Path(
 
 organoid_annotated_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
 # In[5]:
 
 
@@ -266,7 +262,6 @@ organoid_merged = pd.read_parquet(organoid_merged_path)
 sc_sammed_merged = pd.read_parquet(sc_sammed_merged_path)
 organoid_sammed_merged = pd.read_parquet(organoid_sammed_merged_path)
 nucleocentric_merged = pd.read_parquet(nucleocentric_merged_path)
-
 
 # In[6]:
 
@@ -289,7 +284,6 @@ organoid_sammed_merged["Well"] = (
     organoid_sammed_merged["image_set"].str.split("-").str[0]
 )
 nucleocentric_merged["Well"] = nucleocentric_merged["image_set"].str.split("-").str[0]
-
 
 # In[7]:
 
@@ -354,7 +348,6 @@ nucleocentric_merged.drop(
     inplace=True,
 )
 
-
 # ### Get single cell counts per well and organoid counts per well
 
 # In[8]:
@@ -376,7 +369,6 @@ nucleocentric_merged["Metadata_WellNucleocentricCount"] = nucleocentric_merged.g
     "Well"
 )["image_set"].transform("count")
 
-
 # In[9]:
 
 
@@ -393,20 +385,22 @@ sc_sammed_merged.rename(columns=column_rename_mapping, inplace=True)
 organoid_sammed_merged.rename(columns=column_rename_mapping, inplace=True)
 nucleocentric_merged.rename(columns=column_rename_mapping, inplace=True)
 
-
 # In[10]:
 
 
 # Promote spatial coordinate columns to Metadata_Location_* so they are excluded
 # from normalization and feature selection in downstream steps.
 # Intensity-based location columns (MinX/MaxX etc. from intensity measurements)
-# are dropped entirely — only AreaSizeShape-derived coordinates are kept.
+# are dropped entirely — only VolumeSizeShape-derived coordinates are kept.
 
 organoid_location_features = [
     x
     for x in organoid_merged.columns
     if (
-        ("area" in (xl := x.lower()) and any(k in xl for k in ("max", "min", "center")))
+        (
+            "volume" in (xl := x.lower())
+            and any(k in xl for k in ("max", "min", "center"))
+        )
         or (
             "intensity" in xl
             and any(
@@ -420,7 +414,10 @@ sc_location_features = [
     x
     for x in sc_merged.columns
     if (
-        ("area" in (xl := x.lower()) and any(k in xl for k in ("max", "min", "center")))
+        (
+            "volume" in (xl := x.lower())
+            and any(k in xl for k in ("max", "min", "center"))
+        )
         or (
             "intensity" in xl
             and any(
@@ -464,7 +461,6 @@ _ = [
     for feature in sc_location_features
 ]
 
-
 # In[11]:
 
 
@@ -477,7 +473,6 @@ _ = [
     )
     for feature in sc_neighbors_features
 ]
-
 
 # In[12]:
 
@@ -589,7 +584,6 @@ nucleocentric_merged = nucleocentric_merged.rename(
     organoid_sammed_merged["Metadata_ZResolutionUm"],
     nucleocentric_merged["Metadata_ZResolutionUm"],
 ) = (1.0, 1.0, 1.0, 1.0, 1.0)
-
 
 # In[13]:
 
@@ -736,7 +730,6 @@ organoid_sammed_merged = organoid_sammed_merged.loc[
 ]
 sc_sammed_merged = sc_sammed_merged.loc[:, ~sc_sammed_merged.columns.duplicated()]
 
-
 # In[14]:
 
 
@@ -765,8 +758,51 @@ nucleocentric_morphem_annotated = nucleocentric_merged[
     nucleocentric_metadata_columns + nucleocentric_morphem_columns
 ]
 
-
 # In[15]:
+
+
+sc_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+organoid_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+sc_sammed_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+organoid_sammed_merged["Metadata_Experiment_WellFOV"].replace("_", "-", inplace=True)
+nucleocentric_sammed_annotated["Metadata_Experiment_WellFOV"].replace(
+    "_", "-", inplace=True
+)
+nucleocentric_morphem_annotated["Metadata_Experiment_WellFOV"].replace(
+    "_", "-", inplace=True
+)
+
+# In[16]:
+
+
+column_substring = "AreaSizeShape"
+sc_merged.drop(
+    columns=[col for col in sc_merged.columns if column_substring in col],
+    inplace=True,
+)
+organoid_merged.drop(
+    columns=[col for col in organoid_merged.columns if column_substring in col],
+    inplace=True,
+)
+
+# In[17]:
+
+
+# drop "well_fov" column if it exists - merge errors
+if "well_fov" in sc_merged.columns:
+    sc_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in organoid_merged.columns:
+    organoid_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in sc_sammed_merged.columns:
+    sc_sammed_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in organoid_sammed_merged.columns:
+    organoid_sammed_merged.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in nucleocentric_sammed_annotated.columns:
+    nucleocentric_sammed_annotated.drop(columns=["well_fov"], inplace=True)
+if "well_fov" in nucleocentric_morphem_annotated.columns:
+    nucleocentric_morphem_annotated.drop(columns=["well_fov"], inplace=True)
+
+# In[18]:
 
 
 # save annotated profiles
@@ -781,18 +817,16 @@ nucleocentric_morphem_annotated.to_parquet(
     nucleocentric_annotated_morphem_output_path, index=False
 )
 
+# In[19]:
 
-# In[16]:
 
-
-shapes_dict = {
-    "sc_merged": sc_merged.shape,
-    "organoid_merged": organoid_merged.shape,
-    "sc_sammed_merged": sc_sammed_merged.shape,
-    "organoid_sammed_merged": organoid_sammed_merged.shape,
-    "nucleocentric_merged": nucleocentric_merged.shape,
-    "nucleocentric_sammed_annotated": nucleocentric_sammed_annotated.shape,
-    "nucleocentric_morphem_annotated": nucleocentric_morphem_annotated.shape,
-}
-for key, value in shapes_dict.items():
-    print(f"{key}: {value}")
+print(f"Annotated single-cell profile shape: {sc_merged.shape}")
+print(f"Annotated organoid profile shape: {organoid_merged.shape}")
+print(
+    f"Annotated nucleocentric SAMMed3D profile shape: {nucleocentric_sammed_annotated.shape}"
+)
+print(
+    f"Annotated nucleocentric morphem profile shape: {nucleocentric_morphem_annotated.shape}"
+)
+print(f"Annotated SAMMed3D single-cell profile shape: {sc_sammed_merged.shape}")
+print(f"Annotated SAMMed3D organoid profile shape: {organoid_sammed_merged.shape}")
