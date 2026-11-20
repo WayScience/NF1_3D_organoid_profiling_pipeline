@@ -23,6 +23,7 @@ from matplotlib.patches import Polygon, RegularPolygon
 
 root_dir, in_notebook = init_notebook()
 
+
 # In[2]:
 
 
@@ -78,6 +79,8 @@ def mix(c1, c2, t):
 
 
 # --------------------------------------------------------- polygon helpers --
+
+
 def rect(cx, cy, w, h):
     return [
         (cx - w / 2, cy - h / 2),
@@ -343,7 +346,7 @@ def label(ax, x, y, s, ha="left", size=25, color=TEXT, **kw):
 
 
 # ------------------------------------------------------------------ canvas --
-fig = plt.figure(figsize=(W - X0, Y1 - Y0), dpi=100)
+fig = plt.figure(figsize=(W - X0, Y1 - Y0), dpi=600)
 ax = fig.add_axes([0, 0, 1, 1])
 ax.set_xlim(X0, W)
 ax.set_ylim(Y0, Y1)
